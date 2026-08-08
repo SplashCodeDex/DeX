@@ -275,7 +275,7 @@ fun MainScreen(
                                         viewModel.sendHandshake(device) { success ->
                                             pairingDeviceFingerprint = null
                                             if (success) {
-                                                Toast.makeText(context, context.getString(R.string.pairing_complete_from_pc, device.info.alias), Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
                                             } else {
                                                 Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
                                             }

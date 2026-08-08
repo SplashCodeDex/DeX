@@ -38,6 +38,7 @@ class WebSocketClientService(
         .build()
 
     private var activeSocket: WebSocket? = null
+    private var connectedFingerprint: String? = null
     private var serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isRunning = false
 
@@ -100,6 +101,7 @@ class WebSocketClientService(
 
         activeSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                connectedFingerprint = pcFingerprint
                 Timber.i("WebSocket connected to PC: ${pcDevice.ip}")
             }
 
@@ -111,12 +113,14 @@ class WebSocketClientService(
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Timber.i("WebSocket closed: $code $reason")
                 activeSocket = null
+                connectedFingerprint = null
                 scheduleReconnect()
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Timber.e(t, "WebSocket failure")
                 activeSocket = null
+                connectedFingerprint = null
                 scheduleReconnect()
             }
         })
@@ -134,5 +138,15 @@ class WebSocketClientService(
 
     fun sendMessage(jsonMessage: String) {
         activeSocket?.send(jsonMessage) ?: Timber.w("Cannot send message, socket is null")
+    }
+
+    /** Asks the PC we are connected to (if it is [targetFingerprint]) to start a PIN pairing. */
+    fun sendPairRequest(targetFingerprint: String): Boolean {
+        val socket = activeSocket ?: return false
+        if (connectedFingerprint != targetFingerprint) {
+            Timber.w("Not connected to requested PC, cannot send pair request")
+            return false
+        }
+        return socket.send("""{"type":"pair-request"}""")
     }
 }

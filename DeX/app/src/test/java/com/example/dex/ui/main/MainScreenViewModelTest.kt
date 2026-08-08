@@ -5,10 +5,12 @@ import com.example.dex.network.ClientEngine
 import com.example.dex.network.DiscoveredDevice
 import com.example.dex.network.DiscoveryEngine
 import com.example.dex.network.RegisterDto
+import com.example.dex.network.WebSocketClientService
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,7 @@ class MainScreenViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val mockDiscovery = mockk<DiscoveryEngine>()
     private val mockClient = mockk<ClientEngine>()
+    private val mockWs = mockk<WebSocketClientService>()
 
     private val testDevice = DiscoveredDevice(
         ip = "192.168.1.100",
@@ -61,7 +64,7 @@ class MainScreenViewModelTest {
 
     @Test
     fun `uiState initially loading`() = runTest {
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         val state = viewModel.uiState.value
         assertEquals(MainScreenUiState.Loading, state)
     }
@@ -72,7 +75,7 @@ class MainScreenViewModelTest {
             mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99") 
         } returns true
 
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var callbackResult: Boolean? = null
 
         viewModel.sendClipboard(testDevice, "Hello Text") { result ->
@@ -95,42 +98,40 @@ class MainScreenViewModelTest {
     }
 
     @Test
-    fun `sendHandshake registers device when registerDevice returns true`() = runTest(testDispatcher) {
-        coEvery { 
-            mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) 
-        } returns true
+    fun `sendHandshake sends pair request when connected to the PC`() = runTest(testDispatcher) {
+        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns true
 
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
-        viewModel.sendHandshake(testDevice)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
+        var callbackResult: Boolean? = null
+        viewModel.sendHandshake(testDevice) { result -> callbackResult = result }
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) }
-        assertFalse("Registration must NOT mark the device as paired — trust requires the PC-initiated PIN flow", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
+        verify { mockWs.sendPairRequest(testDevice.info.fingerprint) }
+        assertEquals(true, callbackResult)
+        assertFalse("Pair request alone must NOT mark the device as paired — trust requires the PIN exchange", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
     }
 
     @Test
-    fun `sendHandshake does not pair device when registerDevice returns false`() = runTest(testDispatcher) {
-        coEvery { 
-            mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) 
-        } returns false
+    fun `sendHandshake reports failure when not connected to the PC`() = runTest(testDispatcher) {
+        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
 
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
-        viewModel.sendHandshake(testDevice)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
+        var callbackResult: Boolean? = null
+        viewModel.sendHandshake(testDevice) { result -> callbackResult = result }
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) }
-        assertFalse("Fingerprint should not be paired on failed registerDevice", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
+        verify { mockWs.sendPairRequest(testDevice.info.fingerprint) }
+        assertEquals(false, callbackResult)
+        assertFalse("Failed pair request must not mark the device as paired", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
     }
 
     @Test
     fun `pairingDeviceFingerprint guards against concurrent duplicate handshake requests`() = runTest(testDispatcher) {
-        coEvery { 
-            mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) 
-        } returns true
+        every { mockWs.sendPairRequest(any()) } returns true
 
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var pairingDeviceFingerprint: String? = null
         var handshakeCalls = 0
 
@@ -173,11 +174,9 @@ class MainScreenViewModelTest {
 
     @Test
     fun `sendHandshake failure callback resets pairingDeviceFingerprint to null`() = runTest(testDispatcher) {
-        coEvery { 
-            mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) 
-        } returns false
+        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
 
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient)
+        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var pairingDeviceFingerprint: String? = testDevice.info.fingerprint
         var callbackSuccess: Boolean? = null
 

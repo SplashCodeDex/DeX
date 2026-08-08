@@ -369,41 +369,7 @@ namespace DeXShareTarget.Endpoints
                 if (string.IsNullOrEmpty(targetIp) || string.IsNullOrEmpty(targetFp))
                     return Results.BadRequest();
 
-                OutboundPairingStatus[targetIp] = "Pending";
-                var pin = new Random().Next(100000, 999999).ToString();
-                var token = Guid.NewGuid().ToString("N");
-                IdentityManager.SavePairedToken(targetFp, token);
-                var reqDto = new PairRequestDto
-                {
-                    Alias = Environment.MachineName,
-                    Fingerprint = IdentityManager.Fingerprint,
-                    Pin = pin,
-                    Token = token
-                };
-
-                // Fire and forget pairing request tracking status
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        if (WebSocketConnectionManager.HasConnection(targetFp))
-                        {
-                            var payload = new { type = "pair-prompt", data = reqDto };
-                            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                            await WebSocketConnectionManager.SendAsync(targetFp, json);
-                        }
-                        else
-                        {
-                            OutboundPairingStatus[targetIp] = "Failed"; // No active WebSocket connection
-                        }
-                    }
-                    catch (Exception ex)
-                    { 
-                        Console.WriteLine($"[PAIR-INITIATE] Failed to push to WebSocket: {ex.Message}");
-                        OutboundPairingStatus[targetIp] = "Failed";
-                    }
-                });
-
+                var pin = await PushPairPromptAsync(targetFp, targetIp);
                 return Results.Json(new { pin });
             });
 
@@ -464,6 +430,62 @@ namespace DeXShareTarget.Endpoints
             });
 
             _ = Task.Run(StartTcpServerAsync);
+        }
+
+        /// <summary>Generates a PIN + token, pushes a pair-prompt over the WebSocket and shows the PIN on the PC.</summary>
+        /// <returns>The PIN if the prompt was delivered, otherwise an empty string.</returns>
+        public static async Task<string> PushPairPromptAsync(string targetFp, string statusIp)
+        {
+            try
+            {
+                OutboundPairingStatus[statusIp] = "Pending";
+                var pin = new Random().Next(100000, 999999).ToString();
+                var token = Guid.NewGuid().ToString("N");
+                IdentityManager.SavePairedToken(targetFp, token);
+                var reqDto = new PairRequestDto
+                {
+                    Alias = Environment.MachineName,
+                    Fingerprint = IdentityManager.Fingerprint,
+                    Pin = pin,
+                    Token = token
+                };
+                var payload = new { type = "pair-prompt", data = reqDto };
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                if (await WebSocketConnectionManager.SendAsync(targetFp, json))
+                {
+                    ShowPairPinToast(pin, targetFp);
+                    return pin;
+                }
+                OutboundPairingStatus[statusIp] = "Failed"; // No active WebSocket connection
+                return "";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PAIR-PUSH] Failed to push pair-prompt: {ex.Message}");
+                OutboundPairingStatus[statusIp] = "Failed";
+                return "";
+            }
+        }
+
+        private static void ShowPairPinToast(string pin, string targetFp)
+        {
+            try
+            {
+                var alias = DiscoveryBackgroundService.Devices.TryGetValue(targetFp, out var dev)
+                    && !string.IsNullOrEmpty(dev.Info.Alias) ? dev.Info.Alias : "your device";
+                string toastXmlString = $@"<toast duration='long'>
+                    <visual>
+                        <binding template='ToastGeneric'>
+                            <text>DeX Pairing PIN</text>
+                            <text>Enter {pin} on {alias}</text>
+                        </binding>
+                    </visual>
+                </toast>";
+                var xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(toastXmlString);
+                ToastNotificationManager.CreateToastNotifier("DeX").Show(new ToastNotification(xmlDoc));
+            }
+            catch { }
         }
 
         private static async Task StartTcpServerAsync()

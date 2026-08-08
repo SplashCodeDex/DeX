@@ -68,7 +68,7 @@
     <string name="pairing_from">From: %1$s</string>
     <string name="pairing_enter_pin">Enter the PIN shown on the device</string>
     <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
-    <string name="pairing_complete_from_pc">%1$s found — complete pairing by requesting a PIN from your PC</string>
+    <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN on your PC</string>
 
     <!-- History Screen -->
     <string name="history_title">History</string>

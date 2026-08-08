@@ -3,10 +3,9 @@ package com.example.dex.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dex.network.ClientEngine
-import com.example.dex.network.DeviceConfig
 import com.example.dex.network.DiscoveryEngine
 import com.example.dex.network.DiscoveredDevice
-import com.example.dex.network.RegisterDto
+import com.example.dex.network.WebSocketClientService
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -17,7 +16,7 @@ import kotlinx.coroutines.launch
 class MainScreenViewModel(
     val discoveryEngine: DiscoveryEngine,
     val clientEngine: ClientEngine,
-    private val deviceConfig: DeviceConfig? = null
+    private val webSocketClientService: WebSocketClientService
 ) : ViewModel() {
   val uiState: StateFlow<MainScreenUiState> =
     discoveryEngine.devices
@@ -26,22 +25,11 @@ class MainScreenViewModel(
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainScreenUiState.Loading)
       
   fun sendHandshake(device: DiscoveredDevice, onResult: (Boolean) -> Unit = {}) {
+      // Phone-initiated pairing: ask the PC to push a PIN prompt back to this phone.
+      // Trust is established via the PIN exchange; this alone never marks the device as paired.
       viewModelScope.launch {
-          val localRegisterDto = RegisterDto(
-              alias = android.os.Build.MODEL ?: "Android Device",
-              version = "2.0",
-              deviceModel = android.os.Build.MODEL ?: "Android",
-              deviceType = "mobile",
-              fingerprint = deviceConfig?.fingerprint ?: "",
-              port = 53317,
-              protocol = "https",
-              download = false,
-              identityHash = deviceConfig?.identityHash
-          )
-          // Registration only makes this device visible to the PC. Trust is established
-          // exclusively via the PC-initiated PIN flow, which exchanges the pairing token.
-          val success = clientEngine.registerDevice(device.ip, device.info.port, localRegisterDto)
-          onResult(success)
+          val sent = webSocketClientService.sendPairRequest(device.info.fingerprint)
+          onResult(sent)
       }
   }
   

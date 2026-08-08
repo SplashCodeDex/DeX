@@ -72,7 +72,7 @@ namespace DeXShareTarget.Endpoints
                         if (result.MessageType == WebSocketMessageType.Text)
                         {
                             var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                            HandleIncomingMessage(fingerprint, clientIp, text);
+                            await HandleIncomingMessageAsync(fingerprint, clientIp, text);
                         }
                     }
                 }
@@ -91,14 +91,24 @@ namespace DeXShareTarget.Endpoints
             });
         }
 
-        private static void HandleIncomingMessage(string fingerprint, string clientIp, string text)
+        private static async Task HandleIncomingMessageAsync(string fingerprint, string clientIp, string text)
         {
             try
             {
                 using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
                 var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
-                if (type == "unpair")
+                if (type == "pair-request")
+                {
+                    // Phone-initiated pairing: generate a PIN and push the prompt back to the phone
+                    var pin = await LocalSendEndpoints.PushPairPromptAsync(fingerprint, clientIp);
+                    if (string.IsNullOrEmpty(pin))
+                    {
+                        LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Failed";
+                    }
+                    Console.WriteLine($"[WS] Pairing requested by {fingerprint}");
+                }
+                else if (type == "unpair")
                 {
                     IdentityManager.RemovePairedDevice(fingerprint);
                     WebSocketConnectionManager.Unverify(fingerprint);
