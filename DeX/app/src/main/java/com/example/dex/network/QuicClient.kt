@@ -9,6 +9,7 @@ import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
 import timber.log.Timber
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
@@ -147,4 +148,87 @@ class QuicClient(private val context: Context) {
     }
 
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+    /**
+     * Downloads a hosted file from the PC over HTTP/3 (QUIC). Streams GET /download/{fileId}
+     * into [output] and reports received bytes. The first request per PC warms up on
+     * HTTP/1.1, then Alt-Svc switches it to QUIC permanently — same path as uploads.
+     *
+     * Returns the started [UrlRequest] so callers can cancel it, or null when the engine
+     * is unavailable. [onResult] receives (success, httpStatusCode); -1 means transport failure.
+     */
+    fun downloadFile(
+        ip: String,
+        port: Int,
+        fileId: String,
+        output: OutputStream,
+        onProgress: (bytesReceived: Long) -> Unit = {},
+        onResult: (Boolean, Int) -> Unit
+    ): UrlRequest? {
+        val engine = engine
+        if (engine == null) return null
+        val url = "https://$ip:$port/download/${enc(fileId)}"
+
+        var receivedBytes = 0L
+        var reported = false
+        val buffer = ByteBuffer.allocateDirect(16384)
+
+        fun report(ok: Boolean, status: Int) {
+            if (!reported) {
+                reported = true
+                onResult(ok, status)
+            }
+        }
+
+        val listener = object : UrlRequest.Callback() {
+            override fun onRedirectReceived(request: UrlRequest, info: UrlResponseInfo, newLocationUrl: String) {
+                request.followRedirect()
+            }
+
+            override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
+                if (info.httpStatusCode !in 200..299) {
+                    report(false, info.httpStatusCode)
+                    request.cancel()
+                    return
+                }
+                request.read(buffer)
+            }
+
+            override fun onReadCompleted(request: UrlRequest, info: UrlResponseInfo, byteBuffer: ByteBuffer) {
+                byteBuffer.flip()
+                try {
+                    val chunk = ByteArray(byteBuffer.remaining())
+                    byteBuffer.get(chunk)
+                    output.write(chunk)
+                    receivedBytes += chunk.size
+                    onProgress(receivedBytes)
+                } catch (e: Exception) {
+                    report(false, -1)
+                    request.cancel()
+                    return
+                }
+                byteBuffer.clear()
+                request.read(byteBuffer)
+            }
+
+            override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
+                report(true, info.httpStatusCode)
+            }
+
+            override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
+                Timber.e(error, "QUIC download failed")
+                report(false, -1)
+            }
+
+            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
+                report(false, -1)
+            }
+        }
+
+        val request = engine.newUrlRequestBuilder(url, listener, executor)
+            .setHttpMethod("GET")
+            .build()
+        request.start()
+        return request
+    }
 }

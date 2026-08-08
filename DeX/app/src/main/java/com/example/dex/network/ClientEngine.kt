@@ -40,13 +40,13 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
 
     private val _uploadState = MutableStateFlow(UploadState())
     val uploadState = _uploadState.asStateFlow()
-    
+
     var activeWorkId: java.util.UUID? = null
 
     fun resetUploadState() {
         _uploadState.value = UploadState()
     }
-    
+
     fun finishUpload(successCount: Int, totalFiles: Int) {
         if (successCount > 0) {
             _uploadState.value = _uploadState.value.copy(
@@ -61,10 +61,10 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
             )
         }
     }
-    
+
     fun cancelUpload(context: android.content.Context) {
-        activeWorkId?.let { 
-            androidx.work.WorkManager.getInstance(context).cancelWorkById(it) 
+        activeWorkId?.let {
+            androidx.work.WorkManager.getInstance(context).cancelWorkById(it)
         }
         activeWorkId = null
         _uploadState.value = _uploadState.value.copy(
@@ -90,7 +90,7 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
     }
 
     suspend fun uploadFile(
-        ip: String, port: Int, sessionId: String, fileId: String, fileName: String, 
+        ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
         fileIndex: Int = 1, totalFiles: Int = 1,
         previousBatchBytes: Long = 0L, totalBatchSize: Long = fileSize,
@@ -104,7 +104,7 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                 isUploading = true
             )
             onProgress(startAggregate)
-            
+
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
@@ -114,7 +114,7 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                 onUpload { bytesSentTotal, _ ->
                     val currentProgress = if (fileSize > 0) bytesSentTotal.toFloat() / fileSize else 0f
                     val aggregate = if (totalBatchSize > 0) (previousBatchBytes + bytesSentTotal).toFloat() / totalBatchSize else 0f
-                    
+
                     _uploadState.value = UploadState(
                         fileName = fileName,
                         currentFileIndex = fileIndex,
@@ -198,8 +198,36 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         }
     }
 
-    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null): Boolean = withContext(Dispatchers.IO) {
-        try {
+    /**
+     * HTTP/3 (QUIC) download from the PC via Cronet. Streams GET /download/{fileId} into
+     * [output] and reports received bytes. Returns a [DownloadOutcome]; httpStatus of -1
+     * means the transport failed (e.g. Cronet engine unavailable).
+     */
+    suspend fun downloadFileQuic(
+        ip: String,
+        port: Int,
+        fileId: String,
+        output: java.io.OutputStream,
+        onProgress: suspend (Long) -> Unit = {}
+    ): DownloadOutcome {
+        val qc = quicClient ?: return DownloadOutcome(false, -1)
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            val request = qc.downloadFile(
+                ip, port, fileId, output,
+                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onResult = { ok, status ->
+                    if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status), null)
+                }
+            )
+            if (request == null) {
+                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1), null)
+            } else {
+                cont.invokeOnCancellation { request.cancel() }
+            }
+        }
+    }
+
+    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null): Boolean = withContext(Dispatchers.IO) {        try {
             val token = targetFingerprint?.let { AuthState.pairedTokens[it] }
             val response = client.post("https://$ip:$port/api/dex/clipboard") {
                 contentType(ContentType.Text.Plain)
@@ -222,5 +250,12 @@ data class UploadState(
     val aggregateProgress: Float = 0f,
     val isUploading: Boolean = false,
     val isSuccess: Boolean = false,
+    val error: String? = null
+)
+
+data class DownloadOutcome(
+    val ok: Boolean,
+    val httpStatus: Int = 0,
+    val bytes: Long = 0,
     val error: String? = null
 )
