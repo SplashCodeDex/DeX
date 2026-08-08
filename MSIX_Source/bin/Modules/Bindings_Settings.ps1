@@ -78,6 +78,11 @@ if ($btnSettingsQrCode) {
                 $initRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-initiate?ip=${ip}&fingerprint=${fp}" -Method Post -TimeoutSec 5 -ErrorAction Stop
                 $pin = $initRes.pin
                 
+                if (-not $pin) {
+                    Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."
+                    return
+                }
+                
                 if ($pin) {
                     $script:wpfWindow.FindName("txtPinCode").Text = $pin
                     $script:wpfWindow.FindName("txtPinStatus").Text = "Waiting for remote acceptance..."
