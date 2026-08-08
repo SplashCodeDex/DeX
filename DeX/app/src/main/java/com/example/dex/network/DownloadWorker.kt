@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import timber.log.Timber
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
@@ -30,6 +31,15 @@ class DownloadWorker(
     // PC's HTTPS host port: serves /download over HTTP/1.1 (TCP 53317) and, via Alt-Svc, HTTP/3 (UDP 53316)
     private val httpsPort = 53317
 
+    // Transient transport failures are retried with exponential backoff, capped attempts
+    private val maxRetryAttempts = 3
+
+    private data class DownloadResult(
+        val ok: Boolean,
+        val bytes: Long = 0L,
+        val error: String? = null,
+        val retryable: Boolean = false
+    )
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
@@ -81,8 +91,20 @@ class DownloadWorker(
 
             Result.success()
         } else {
+            // Never leave partial files behind: delete the document created for this attempt
+            try {
+                context.contentResolver.delete(docUri, null, null)
+            } catch (_: Exception) {}
+
             TcpDownloadService.updateState(DownloadState(fileName = fileName, error = outcome.error, isDownloading = false))
-            Result.failure()
+
+            when {
+                // User cancelled: never reschedule
+                isStopped -> Result.failure()
+                // Transient transport failure (e.g. flaky WAN): retry with backoff, capped
+                outcome.retryable && runAttemptCount < maxRetryAttempts -> Result.retry()
+                else -> Result.failure()
+            }
         }
     }
 
@@ -92,7 +114,7 @@ class DownloadWorker(
         fileName: String,
         fileSize: Long,
         out: java.io.OutputStream
-    ): DownloadOutcome {
+    ): DownloadResult {
         var downloaded = 0L
         var lastUpdateMillis = System.currentTimeMillis()
         val result = client.downloadFileQuic(ip, httpsPort, fileId, out) { bytes ->
@@ -112,14 +134,20 @@ class DownloadWorker(
                 lastUpdateMillis = now
             }
         }
+
+        if (result.protocol.isNotEmpty()) {
+            Timber.i("Download negotiated protocol: ${result.protocol}")
+        }
+
         return if (result.ok) {
-            DownloadOutcome(ok = true, bytes = downloaded)
+            DownloadResult(ok = true, bytes = downloaded)
         } else {
-            DownloadOutcome(
+            DownloadResult(
                 ok = false,
-                httpStatus = result.httpStatus,
                 error = if (result.httpStatus > 0) "Download failed (HTTP ${result.httpStatus})"
-                else "Download failed: no connection to PC"
+                else "Download failed: no connection to PC",
+                // -1 = transport failure, retryable; HTTP errors (404/500) never retry
+                retryable = result.httpStatus == -1
             )
         }
     }
@@ -131,7 +159,7 @@ class DownloadWorker(
         fileName: String,
         fileSize: Long,
         out: java.io.OutputStream
-    ): DownloadOutcome {
+    ): DownloadResult {
         var downloaded = 0L
         var lastUpdateMillis = System.currentTimeMillis()
         try {
@@ -141,7 +169,7 @@ class DownloadWorker(
             while (buffer.hasRemaining()) {
                 if (isStopped) {
                     socketChannel.close()
-                    return DownloadOutcome(ok = false, error = "Download cancelled")
+                    return DownloadResult(ok = false, error = "Download cancelled")
                 }
                 socketChannel.write(buffer)
             }
@@ -150,7 +178,7 @@ class DownloadWorker(
             while (socketChannel.read(ioBuffer) != -1) {
                 if (isStopped) {
                     socketChannel.close()
-                    return DownloadOutcome(ok = false, error = "Download cancelled")
+                    return DownloadResult(ok = false, error = "Download cancelled")
                 }
 
                 ioBuffer.flip()
@@ -178,10 +206,10 @@ class DownloadWorker(
             }
 
             socketChannel.close()
-            return DownloadOutcome(ok = true, bytes = downloaded)
+            return DownloadResult(ok = true, bytes = downloaded)
         } catch (e: Exception) {
             e.printStackTrace()
-            return DownloadOutcome(ok = false, error = e.message)
+            return DownloadResult(ok = false, error = e.message, retryable = true)
         }
     }
 

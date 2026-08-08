@@ -155,7 +155,8 @@ class QuicClient(private val context: Context) {
      * HTTP/1.1, then Alt-Svc switches it to QUIC permanently — same path as uploads.
      *
      * Returns the started [UrlRequest] so callers can cancel it, or null when the engine
-     * is unavailable. [onResult] receives (success, httpStatusCode); -1 means transport failure.
+     * is unavailable. [onResult] receives (success, httpStatusCode, negotiatedProtocol);
+     * -1 means transport failure, "" means the protocol is unknown.
      */
     fun downloadFile(
         ip: String,
@@ -163,7 +164,7 @@ class QuicClient(private val context: Context) {
         fileId: String,
         output: OutputStream,
         onProgress: (bytesReceived: Long) -> Unit = {},
-        onResult: (Boolean, Int) -> Unit
+        onResult: (Boolean, Int, String) -> Unit
     ): UrlRequest? {
         val engine = engine
         if (engine == null) return null
@@ -173,10 +174,10 @@ class QuicClient(private val context: Context) {
         var reported = false
         val buffer = ByteBuffer.allocateDirect(16384)
 
-        fun report(ok: Boolean, status: Int) {
+        fun report(ok: Boolean, status: Int, protocol: String) {
             if (!reported) {
                 reported = true
-                onResult(ok, status)
+                onResult(ok, status, protocol)
             }
         }
 
@@ -187,7 +188,7 @@ class QuicClient(private val context: Context) {
 
             override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
                 if (info.httpStatusCode !in 200..299) {
-                    report(false, info.httpStatusCode)
+                    report(false, info.httpStatusCode, info.negotiatedProtocol ?: "")
                     request.cancel()
                     return
                 }
@@ -203,7 +204,7 @@ class QuicClient(private val context: Context) {
                     receivedBytes += chunk.size
                     onProgress(receivedBytes)
                 } catch (e: Exception) {
-                    report(false, -1)
+                    report(false, -1, "")
                     request.cancel()
                     return
                 }
@@ -212,16 +213,16 @@ class QuicClient(private val context: Context) {
             }
 
             override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
-                report(true, info.httpStatusCode)
+                report(true, info.httpStatusCode, info.negotiatedProtocol ?: "")
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
                 Timber.e(error, "QUIC download failed")
-                report(false, -1)
+                report(false, -1, info?.negotiatedProtocol ?: "")
             }
 
             override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
-                report(false, -1)
+                report(false, -1, "")
             }
         }
 

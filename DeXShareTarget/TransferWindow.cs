@@ -150,6 +150,7 @@ namespace DeXShareTarget
                 
                 // 1. Host the file in Kestrel
                 LocalSendEndpoints.HostedFiles[fileId] = f;
+                LocalSendEndpoints.HostedFileLastAccess[fileId] = DateTime.UtcNow;
                 hostedIds.Add(fileId);
 
                 fileMap[fileId] = new 
@@ -195,10 +196,23 @@ namespace DeXShareTarget
             TaskbarItemInfo.ProgressValue = 1.0;
             await Task.Delay(3000);
             
-            // Clean up hosted files memory after a while so we don't leak memory (not deleting the physical file)
+            // Clean up hosted files memory after a while so we don't leak memory (not deleting the physical file).
+            // Sliding TTL: a file expires 5 minutes after its last download request, so slow pulls keep working.
             _ = Task.Run(async () => {
-                await Task.Delay(TimeSpan.FromMinutes(5));
-                foreach (var id in hostedIds) LocalSendEndpoints.HostedFiles.TryRemove(id, out _);
+                while (true)
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(1));
+                    var now = DateTime.UtcNow;
+                    var stale = hostedIds.Where(id =>
+                        !LocalSendEndpoints.HostedFileLastAccess.TryGetValue(id, out var last) ||
+                        (now - last) > TimeSpan.FromMinutes(5)).ToList();
+                    foreach (var id in stale)
+                    {
+                        LocalSendEndpoints.HostedFiles.TryRemove(id, out _);
+                        LocalSendEndpoints.HostedFileLastAccess.TryRemove(id, out _);
+                    }
+                    if (!hostedIds.Any(id => LocalSendEndpoints.HostedFiles.ContainsKey(id))) break;
+                }
             });
         }
 

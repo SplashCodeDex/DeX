@@ -21,6 +21,8 @@ namespace DeXShareTarget.Endpoints
     public static class LocalSendEndpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
+        // Last time each hosted file was served, used for sliding expiry so slow pulls don't 404
+        public static ConcurrentDictionary<string, DateTime> HostedFileLastAccess = new();
         public static bool IsDndEnabled { get; set; } = false;
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
         // Active outbound pairing attempts so the GUI can display the PIN even for phone-initiated pairing
@@ -239,17 +241,15 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok();
             });
 
-            app.MapGet("/download/{fileId}", async (string fileId, HttpContext context) =>
+            app.MapGet("/download/{fileId}", (string fileId) =>
             {
                 if (HostedFiles.TryGetValue(fileId, out string? path) && File.Exists(path))
                 {
-                    context.Response.ContentType = "application/octet-stream";
-                    await context.Response.SendFileAsync(path);
+                    HostedFileLastAccess[fileId] = DateTime.UtcNow;
+                    // Range processing enables resumable downloads over flaky WAN connections
+                    return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
                 }
-                else
-                {
-                    context.Response.StatusCode = 404;
-                }
+                return Results.NotFound();
             });
 
             var rateLimits = new ConcurrentDictionary<string, DateTime>();

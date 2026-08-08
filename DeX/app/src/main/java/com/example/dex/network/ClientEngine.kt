@@ -201,7 +201,8 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
     /**
      * HTTP/3 (QUIC) download from the PC via Cronet. Streams GET /download/{fileId} into
      * [output] and reports received bytes. Returns a [DownloadOutcome]; httpStatus of -1
-     * means the transport failed (e.g. Cronet engine unavailable).
+     * means the transport failed (e.g. Cronet engine unavailable). protocol is the
+     * negotiated ALPN ("h3", "http/1.1", ...) and is empty when unknown.
      */
     suspend fun downloadFileQuic(
         ip: String,
@@ -215,8 +216,8 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
             val request = qc.downloadFile(
                 ip, port, fileId, output,
                 onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
-                onResult = { ok, status ->
-                    if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status), null)
+                onResult = { ok, status, protocol ->
+                    if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol), null)
                 }
             )
             if (request == null) {
@@ -256,6 +257,5 @@ data class UploadState(
 data class DownloadOutcome(
     val ok: Boolean,
     val httpStatus: Int = 0,
-    val bytes: Long = 0,
-    val error: String? = null
+    val protocol: String = ""
 )
