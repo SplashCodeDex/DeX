@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- The PC uses a self-signed cert. Once the user installs it (Settings -> QUIC),
-         Cronet needs the "user" trust anchors to accept it for HTTP/3 connections. -->
+    <!-- Every DeX PC's certificate is signed by the bundled DeX root CA, so Cronet
+         (HTTP/3/QUIC) trusts every PC automatically — no user setup needed. -->
     <base-config>
         <trust-anchors>
             <certificates src="system"/>
-            <certificates src="user"/>
+            <certificates src="@raw/dex_ca"/>
         </trust-anchors>
     </base-config>
 </network-security-config>

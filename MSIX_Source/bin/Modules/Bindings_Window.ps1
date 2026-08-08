@@ -122,6 +122,13 @@ $script:wpfWindow.Add_KeyDown({
     if ($e.Key -eq [System.Windows.Input.Key]::Escape) {
         $settingsPanel = $script:wpfWindow.FindName("SettingsPanel")
         $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
+        $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
+        
+        # While the QR/PIN request screen is shown, Escape must not hide the window
+        if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) {
+            $e.Handled = $true
+            return
+        }
         
         # If settings is visible, contract it instead of hiding the whole window
         if ($settingsPanel.Visibility -eq 'Visible') {
@@ -275,6 +282,9 @@ $script:wpfWindow.Add_Deactivated({
         # If menu is expanded, do NOT close on click-outside (use Close button instead)
         if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible') { return }
         if ($script:wpfWindow.FindName("SettingsPanel").Visibility -eq 'Visible') { return }
+        # Keep the QR/PIN request screen visible on click-outside; only Cancel dismisses it
+        $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
+        if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) { return }
         $now = [DateTime]::Now
         Write-Trace "Deactivated - Ms since last: $(($now - $script:lastDeactivated).TotalMilliseconds)"
         if (($now - $script:lastDeactivated).TotalMilliseconds -gt 200) {

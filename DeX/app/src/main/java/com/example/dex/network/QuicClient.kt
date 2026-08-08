@@ -17,22 +17,13 @@ import java.util.concurrent.Executors
 /**
  * HTTP/3 (QUIC) client for the DeX PC, backed by Cronet (Chromium's network stack).
  *
- * QUIC only works once the PC's certificate is installed as a trusted CA on this device
- * (see the Settings -> QUIC flow). Until then [certInstalled] is false and callers
- * should fall back to the plain HTTP/1.1 path.
+ * Every PC's certificate is signed by the bundled DeX root CA, so QUIC works with
+ * zero user setup — Cronet trusts the CA via the app's network security config.
  */
 class QuicClient(private val context: Context) {
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private var engine: CronetEngine? = null
-
-    var certInstalled: Boolean
-        get() = context.getSharedPreferences("dex_quic_prefs", Context.MODE_PRIVATE)
-            .getBoolean("pc_cert_installed", false)
-        set(value) {
-            context.getSharedPreferences("dex_quic_prefs", Context.MODE_PRIVATE)
-                .edit().putBoolean("pc_cert_installed", value).apply()
-        }
 
     fun init() {
         if (engine != null) return
@@ -51,34 +42,7 @@ class QuicClient(private val context: Context) {
 
     fun available(): Boolean {
         init()
-        return certInstalled && engine != null
-    }
-
-    /** Fetches the PC's stable certificate (DER) from /local/cert over HTTPS. */
-    fun fetchCert(ip: String, port: Int = 53317): ByteArray? {
-        return try {
-            val url = java.net.URL("https://$ip:$port/local/cert")
-            val conn = url.openConnection() as javax.net.ssl.HttpsURLConnection
-            conn.sslSocketFactory = trustAllSslContext.socketFactory
-            conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
-            if (conn.responseCode == 200) conn.inputStream.use { it.readBytes() } else null
-        } catch (t: Throwable) {
-            Timber.e(t, "Certificate fetch from PC failed")
-            null
-        }
-    }
-
-    private val trustAllSslContext: javax.net.ssl.SSLContext by lazy {
-        val tm = object : javax.net.ssl.X509TrustManager {
-            override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-            override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
-        }
-        val ctx = javax.net.ssl.SSLContext.getInstance("TLS")
-        ctx.init(null, arrayOf(tm), java.security.SecureRandom())
-        ctx
+        return engine != null
     }
 
     /**

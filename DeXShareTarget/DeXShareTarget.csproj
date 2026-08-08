@@ -15,6 +15,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- DeX root CA: signs each PC's leaf certificate. The matching public cert is
+         bundled in the Android app, so QUIC works with zero user setup. The private
+         key ships here by design (nominal trust, same as the app's trust-all posture). -->
+    <EmbeddedResource Include="dex_ca.pfx" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
   </ItemGroup>

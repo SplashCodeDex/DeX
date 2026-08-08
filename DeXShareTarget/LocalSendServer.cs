@@ -115,8 +115,11 @@ namespace DeXShareTarget
                         existing.Extensions.OfType<X509SubjectAlternativeNameExtension>()
                             .Any(e => e.EnumerateDnsNames().Contains(publicAddress) ||
                                       e.EnumerateIPAddresses().Any(ip => ip.ToString() == publicAddress));
-                    // Regenerate if expiring soon or the public address changed
-                    if (existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7) && coversPublicAddress)
+                    // Regenerate if expiring soon, the public address changed, or it was signed
+                    // by the old self-signed scheme instead of the bundled DeX root CA
+                    if (existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7) &&
+                        coversPublicAddress &&
+                        string.Equals(existing.Issuer, "CN=DeX Root CA", StringComparison.OrdinalIgnoreCase))
                     {
                         return existing;
                     }
@@ -147,9 +150,24 @@ namespace DeXShareTarget
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
             request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, false));
 
-            var created = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-            File.WriteAllBytes(certPath, created.Export(X509ContentType.Pfx, "dex-local"));
+            // Signed by the bundled DeX root CA so Android's Cronet trusts it automatically
+            using var ca = LoadEmbeddedCa();
+            var leaf = request.Create(
+                ca,
+                DateTimeOffset.UtcNow.AddDays(-1),
+                DateTimeOffset.UtcNow.AddYears(1),
+                Guid.NewGuid().ToByteArray());
+            File.WriteAllBytes(certPath, leaf.Export(X509ContentType.Pfx, "dex-local"));
             return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
+        }
+
+        private static X509Certificate2 LoadEmbeddedCa()
+        {
+            using var stream = typeof(LocalSendServer).Assembly.GetManifestResourceStream("DeXShareTarget.dex_ca.pfx")
+                ?? throw new InvalidOperationException("Embedded DeX root CA missing");
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return X509CertificateLoader.LoadPkcs12(ms.ToArray(), "dex-ca-password", X509KeyStorageFlags.Exportable);
         }
 
         private static string[] GetLocalIPv4Addresses()
