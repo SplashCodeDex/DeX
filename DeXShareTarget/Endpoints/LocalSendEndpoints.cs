@@ -22,7 +22,6 @@ namespace DeXShareTarget.Endpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
         public static bool IsDndEnabled { get; set; } = false;
-        public static ConcurrentDictionary<string, DateTime> GuestFingerprints = new();
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
 
         public static void MapLocalSendEndpoints(this WebApplication app)
@@ -73,15 +72,8 @@ namespace DeXShareTarget.Endpoints
 
                 bool isAutoTrusted = !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash;
                 bool isPaired = !string.IsNullOrEmpty(token) && IdentityManager.PairedTokens.TryGetValue(req.Info.Fingerprint, out var expectedToken) && expectedToken == token;
-                
-                bool isGuest = GuestFingerprints.TryGetValue(req.Info.Fingerprint, out var guestTime);
-                if (isGuest && (DateTime.UtcNow - guestTime).TotalMinutes > 10)
-                {
-                    GuestFingerprints.TryRemove(req.Info.Fingerprint, out _);
-                    isGuest = false;
-                }
-                
-                if (!isAutoTrusted && !isPaired && !isGuest)
+
+                if (!isAutoTrusted && !isPaired)
                 {
                     return Results.StatusCode(403);
                 }
@@ -105,7 +97,6 @@ namespace DeXShareTarget.Endpoints
                 }
 
                 if (!res) return Results.StatusCode(403);
-                if (isGuest) GuestFingerprints.TryRemove(req.Info.Fingerprint, out _);
                 
                 var sessionId = Guid.NewGuid().ToString();
                 activeSessions[sessionId] = req;

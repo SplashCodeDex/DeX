@@ -49,8 +49,7 @@ data class BrowseFileDto(
 data class DiscoveredDevice(
     val ip: String,
     val info: RegisterDto,
-    val lastSeenTimestamp: Long = System.currentTimeMillis(),
-    val trustLevel: String = "Guest"
+    val lastSeenTimestamp: Long = System.currentTimeMillis()
 )
 @Serializable
 data class PairRequestDto(

@@ -77,4 +77,8 @@
     <string name="history_received">Received</string>
     <string name="history_no_source">Original file is no longer available</string>
     <string name="history_open_failed">Couldn\'t open this file</string>
+
+    <!-- Devices -->
+    <string name="device_not_paired">Not paired</string>
+    <string name="device_unknown">Unknown device</string>
 </resources>

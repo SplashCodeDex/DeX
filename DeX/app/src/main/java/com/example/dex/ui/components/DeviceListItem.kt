@@ -83,7 +83,7 @@ fun DeviceListItem(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Text(
-                                text = "Guest",
+                                text = stringResource(R.string.device_not_paired),
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 fontWeight = FontWeight.Medium
@@ -91,7 +91,11 @@ fun DeviceListItem(
                         }
                     }
                 }
-                Text(text = "${device.ip}:${device.info.port}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             DeXIconButton(onClick = {
                 val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()

@@ -2,38 +2,45 @@
 function Create-StatusIcon([System.Drawing.Color]$Color) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot "app-icon.ico"
+    $size = 32
     if (Test-Path $iconPath) {
-        $baseIcon = [System.Drawing.Icon]::ExtractAssociatedIcon($iconPath)
-        $bmp = $baseIcon.ToBitmap()
-        $g = [System.Drawing.Graphics]::FromImage($bmp)
-        $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-        
-        # Overlay a colored status indicator dot in the bottom right corner
-        $brushBorder = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Black)
-        $g.FillEllipse($brushBorder, 18, 18, 12, 12)
-        $brushStatus = New-Object System.Drawing.SolidBrush($Color)
-        $g.FillEllipse($brushStatus, 20, 20, 8, 8)
-        
-        $hIcon = $bmp.GetHicon()
-        $icon = [System.Drawing.Icon]::FromHandle($hIcon)
-        $g.Dispose()
-        $bmp.Dispose()
-        $baseIcon.Dispose()
-        return $icon
+        $baseIcon = [System.Drawing.Icon]::new($iconPath, $size, $size)
     } else {
-        $bmp = New-Object System.Drawing.Bitmap(16, 16)
-        $g = [System.Drawing.Graphics]::FromImage($bmp)
-        $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-        $brushBg = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(25, 25, 35))
-        $g.FillEllipse($brushBg, 0, 0, 15, 15)
-        $brushStatus = New-Object System.Drawing.SolidBrush($Color)
-        $g.FillEllipse($brushStatus, 3, 3, 10, 10)
-        $hIcon = $bmp.GetHicon()
-        $icon = [System.Drawing.Icon]::FromHandle($hIcon)
-        $g.Dispose()
-        $bmp.Dispose()
-        return $icon
+        $baseIcon = [System.Drawing.Icon]::ExtractAssociatedIcon((Get-Process -Id $PID).Path)
     }
+    $src = $baseIcon.ToBitmap()
+    $bmp = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.DrawImage($src, 0, 0, $size, $size)
+    $g.Dispose()
+
+    # Recolor the whole logo to $Color (preserving alpha) — no status dot
+    $rect = New-Object System.Drawing.Rectangle(0, 0, $size, $size)
+    $lock = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::ReadWrite, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $bpp = 4
+    $ptr = $lock.Scan0
+    $stride = $lock.Stride
+    for ($y = 0; $y -lt $size; $y++) {
+        for ($x = 0; $x -lt $size; $x++) {
+            $off = $y * $stride + $x * $bpp
+            $a = [System.Runtime.InteropServices.Marshal]::ReadByte($ptr, $off + 3)
+            if ($a -eq 0) { continue }  # keep fully transparent pixels untouched (transparent PNG background)
+            [System.Runtime.InteropServices.Marshal]::WriteByte($ptr, $off, $Color.B)
+            [System.Runtime.InteropServices.Marshal]::WriteByte($ptr, $off + 1, $Color.G)
+            [System.Runtime.InteropServices.Marshal]::WriteByte($ptr, $off + 2, $Color.R)
+            [System.Runtime.InteropServices.Marshal]::WriteByte($ptr, $off + 3, $a)
+        }
+    }
+    $bmp.UnlockBits($lock)
+
+    $hIcon = $bmp.GetHicon()
+    $icon = [System.Drawing.Icon]::FromHandle($hIcon)
+    $bmp.Dispose()
+    $src.Dispose()
+    $baseIcon.Dispose()
+    return $icon
 }
 #Export-ModuleMember -Function Create-StatusIcon
 
@@ -253,7 +260,7 @@ function Update-WpfUI {
             $devName = $Matches[1] -replace '_', ' '
         }
         $script:currentTarget = $target
-        $script:notifyIcon.Icon = $iconGreen
+        $script:notifyIcon.Icon = $iconOn
         $script:notifyIcon.Text = "Connected: $devName"
         $script:txtStatus.Text = "ADB Status: $devName"
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
@@ -261,7 +268,7 @@ function Update-WpfUI {
         if ($null -ne $btnQAConnect) { $btnQAConnect.IsChecked = $true }
         $script:wpfWindow.FindName("btnCopyIP").Visibility = 'Visible'
     } else {
-        $script:notifyIcon.Icon = $iconRed
+        $script:notifyIcon.Icon = $iconOff
         $script:notifyIcon.Text = "Disconnected"
         $script:txtStatus.Text = "ADB Status: Disconnected"
         try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
@@ -271,5 +278,15 @@ function Update-WpfUI {
     }
 }
 #Export-ModuleMember -Function Update-WpfUI
+
+function Update-TrayDeviceIcon {
+    param([bool]$Connected)
+    if ($null -eq $script:notifyIcon) { return }
+    if ($Connected) {
+        if ($script:notifyIcon.Icon -ne $iconOn) { $script:notifyIcon.Icon = $iconOn }
+    } else {
+        if ($script:notifyIcon.Icon -ne $iconOff) { $script:notifyIcon.Icon = $iconOff }
+    }
+}
 
 
