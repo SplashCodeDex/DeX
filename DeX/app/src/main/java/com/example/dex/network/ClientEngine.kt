@@ -19,7 +19,7 @@ import kotlinx.coroutines.Job
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.onUpload
 
-class ClientEngine(engine: HttpClientEngine? = null) {
+class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: QuicClient? = null) {
     // LocalSend uses self-signed certificates, so we must trust all certificates on the local network
     @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
     private val trustAllManager = object : X509TrustManager {
@@ -153,6 +153,48 @@ class ClientEngine(engine: HttpClientEngine? = null) {
             e.printStackTrace()
             _uploadState.value = _uploadState.value.copy(error = e.message)
             false
+        }
+    }
+
+    fun quicAvailable(): Boolean = quicClient?.available() == true
+
+    /**
+     * HTTP/3 (QUIC) upload via Cronet, with the same contract and progress semantics as
+     * [uploadFile]. Falls back to the caller when QUIC is not available.
+     */
+    suspend fun uploadFileQuic(
+        ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
+        token: String, stream: java.io.InputStream, fileSize: Long,
+        fileIndex: Int = 1, totalFiles: Int = 1,
+        previousBatchBytes: Long = 0L, totalBatchSize: Long = fileSize,
+        onProgress: suspend (Float) -> Unit = {}
+    ): Boolean {
+        val qc = quicClient ?: return false
+        val startAggregate = if (totalBatchSize > 0) previousBatchBytes.toFloat() / totalBatchSize else 0f
+        _uploadState.value = UploadState(
+            fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
+            progress = 0f, aggregateProgress = startAggregate, isUploading = true
+        )
+        onProgress(startAggregate)
+
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            qc.uploadFile(
+                ip, port, sessionId, fileId, fileName, token, stream, fileSize,
+                fileIndex, totalFiles, previousBatchBytes, totalBatchSize,
+                onProgress = { current, aggregate ->
+                    _uploadState.value = UploadState(
+                        fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
+                        progress = current, aggregateProgress = aggregate, isUploading = true
+                    )
+                    kotlinx.coroutines.runBlocking { onProgress(aggregate) }
+                },
+                onResult = { ok ->
+                    _uploadState.value = _uploadState.value.copy(
+                        isUploading = false, isSuccess = ok, error = if (ok) null else "QUIC upload failed"
+                    )
+                    if (!cont.isCancelled) cont.resume(ok, null)
+                }
+            )
         }
     }
 

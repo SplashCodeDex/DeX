@@ -82,18 +82,27 @@
     <!-- Devices -->
     <string name="device_not_paired">Not paired</string>
     <string name="device_unknown">Unknown device</string>
+    <string name="device_send_file">Send File</string>
+    <string name="device_forget">Forget</string>
+    <string name="device_pair">Pair</string>
+    <string name="device_details_hide">Hide Details</string>
+    <string name="device_details">Details</string>
     <string name="device_paired">Paired</string>
-
-    <!-- Device Context Menu -->
-    <string name="device_send_file">Send file</string>
-    <string name="device_pair">Pair device</string>
-    <string name="device_details">Device details</string>
-    <string name="device_forget">Forget device</string>
-    <string name="device_details_hide">Hide details</string>
     <string name="device_ip">IP</string>
     <string name="device_port">Port</string>
     <string name="device_protocol">Protocol</string>
-    <string name="device_fingerprint">Fingerprint</string>
     <string name="device_version">Version</string>
-    <string name="device_forgotten">Forgot %1$s</string>
+    <string name="device_fingerprint">Fingerprint</string>
+
+    <!-- Settings: QUIC / WAN -->
+    <string name="settings_quic_title">QUIC (HTTP/3) Fast Transfers</string>
+    <string name="settings_quic_desc">Sends files to your PC over QUIC/UDP for the fastest possible transfers. Requires the PC certificate to be installed once.</string>
+    <string name="settings_install_cert">Install PC Certificate</string>
+    <string name="settings_cert_installed">PC Certificate Installed</string>
+    <string name="settings_cert_no_pc">No PC found yet — open the app near your PC first</string>
+    <string name="settings_cert_fetch_failed">Couldn\'t fetch the PC certificate — is the PC app running?</string>
+    <string name="settings_public_address">Public Address (WAN)</string>
+    <string name="settings_public_address_label">Public address</string>
+    <string name="settings_public_address_hint">mypc.ddns.net or 203.0.113.5</string>
+    <string name="settings_public_address_note">Lets the phone reach your PC from anywhere. Requires the PC\'s QUIC port (UDP 53316) to be forwarded, and a PC app restart after changing.</string>
 </resources>

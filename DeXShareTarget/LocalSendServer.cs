@@ -76,25 +76,47 @@ namespace DeXShareTarget
             await App.StartAsync();
         }
 
+        /// <summary>Persists the phone-configured public address so the next certificate covers it.</summary>
+        public static void SetPublicAddress(string address)
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX");
+                Directory.CreateDirectory(dir);
+                File.WriteAllText(Path.Combine(dir, "public_address.txt"), address);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CERT] Failed to persist public address: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Loads (or creates) a stable self-signed certificate persisted under %APPDATA%\DeX.
         /// A stable cert is required so Android's Cronet/QUIC client can trust it once and
         /// reuse it across app restarts. SANs cover the machine name and current LAN IPs so
         /// hostname verification succeeds whether the phone connects by hostname or by IP.
+        /// The configured public (WAN) address is added as a SAN too.
         /// </summary>
         private static X509Certificate2 GetOrCreateServerCertificate()
         {
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX");
             Directory.CreateDirectory(dir);
             var certPath = Path.Combine(dir, "dexcert.pfx");
+            var publicAddressPath = Path.Combine(dir, "public_address.txt");
+            var publicAddress = File.Exists(publicAddressPath) ? File.ReadAllText(publicAddressPath).Trim() : "";
 
             if (File.Exists(certPath))
             {
                 try
                 {
                     var existing = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
-                    // Regenerate if expiring soon
-                    if (existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7))
+                    var coversPublicAddress = string.IsNullOrEmpty(publicAddress) ||
+                        existing.Extensions.OfType<X509SubjectAlternativeNameExtension>()
+                            .Any(e => e.EnumerateDnsNames().Contains(publicAddress) ||
+                                      e.EnumerateIPAddresses().Any(ip => ip.ToString() == publicAddress));
+                    // Regenerate if expiring soon or the public address changed
+                    if (existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7) && coversPublicAddress)
                     {
                         return existing;
                     }
@@ -109,6 +131,17 @@ namespace DeXShareTarget
             foreach (var ip in GetLocalIPv4Addresses())
             {
                 san.AddIpAddress(IPAddress.Parse(ip));
+            }
+            if (!string.IsNullOrEmpty(publicAddress))
+            {
+                if (IPAddress.TryParse(publicAddress, out var publicIp))
+                {
+                    san.AddIpAddress(publicIp);
+                }
+                else
+                {
+                    san.AddDnsName(publicAddress);
+                }
             }
             request.CertificateExtensions.Add(san.Build());
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));

@@ -24,12 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.dex.network.AuthState
-import com.example.dex.network.DeviceManager
 import com.example.dex.network.DiscoveredDevice
-import com.example.dex.network.WebSocketClientService
 import kotlinx.coroutines.launch
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
@@ -42,15 +39,16 @@ import androidx.compose.ui.unit.sp
 
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import com.example.dex.network.WebSocketClientService
+import com.example.dex.network.DeviceManager
 import com.example.dex.ui.components.DeviceListItem
 import com.example.dex.ui.components.NetworkErrorDialog
-import com.example.dex.ui.components.PairingRequestDialog
 import com.example.dex.ui.components.TransferProgressOverlay
 import com.example.dex.ui.components.FloatingTopAppBar
 import com.example.dex.ui.components.*
+import androidx.compose.ui.text.style.TextAlign
 import com.kashif_e.backdrop.backdrops.layerBackdrop
 import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
-import androidx.compose.ui.text.style.TextAlign
 
 @android.annotation.SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -63,9 +61,9 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val wsService: WebSocketClientService = koinInject()
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
-    var contextMenuDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
+    var showTrustedDevicesDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -76,8 +74,6 @@ fun MainScreen(
             notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-
-
 
     val launchQrScanner = {
         val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
@@ -166,9 +162,6 @@ fun MainScreen(
     ) { padding ->
         val glassBackdrop = rememberLayerBackdrop()
         Box(modifier = modifier.fillMaxSize()) {
-            // Real app background captured into the glass backdrop. This layer is
-            // flat and cheap — it does NOT capture the scrolling content below, so
-            // it stays safe from heavy per-frame render-tree captures.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -180,134 +173,133 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-            FloatingTopAppBar(
-                modifier = Modifier,
-                backdrop = glassBackdrop
-            )
+                FloatingTopAppBar(
+                    modifier = Modifier,
+                    onOpenTrustedDevices = { showTrustedDevicesDialog = true }
+                )
 
-            val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
+                val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
 
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = devices.isEmpty(),
-                    enter = com.example.dex.ui.theme.spatialMenuEnter(),
-                    exit = com.example.dex.ui.theme.spatialMenuExit(),
-                    modifier = Modifier.align(Alignment.Center).padding(bottom = 88.dp)
-                ) {
-                    DeXPanel(
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier
-                            .widthIn(max = 400.dp)
-                            .fillMaxWidth()
-                            .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = devices.isEmpty(),
+                        enter = com.example.dex.ui.theme.spatialMenuEnter(),
+                        exit = com.example.dex.ui.theme.spatialMenuExit(),
+                        modifier = Modifier.align(Alignment.Center).padding(bottom = 88.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(vertical = 32.dp, horizontal = 16.dp)
+                        DeXPanel(
+                            shape = RoundedCornerShape(32.dp),
+                            modifier = Modifier
+                                .widthIn(max = 400.dp)
+                                .fillMaxWidth()
+                                .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            // Radar Box (Static)
-                            Box(
-                                modifier = Modifier
-                                    .padding(bottom = 24.dp)
-                                    .size(96.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(vertical = 32.dp, horizontal = 16.dp)
                             ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
-                                    contentDescription = "Scan",
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                                // Radar Box (Static)
+                                Box(
+                                    modifier = Modifier
+                                        .padding(bottom = 24.dp)
+                                        .size(96.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
+                                        contentDescription = "Scan",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
 
-                            Text(
-                                text = "Scan to add Device",
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-                            Text(
-                                text = "No Devices Connected. Make sure they are powered on and nearby.",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp),
-                                textAlign = TextAlign.Center
-                            )
-
-                            DeXButton(
-                                onClick = { launchQrScanner() },
-                                modifier = Modifier.fillMaxWidth(0.8f).height(44.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            ) {
                                 Text(
-                                    "Scan",
+                                    text = "Scan to add Device",
+                                    fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.padding(bottom = 4.dp)
                                 )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            DeXTextButton(
-                                onClick = { showTroubleshootDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                Text(
+                                    text = "No Devices Connected. Make sure they are powered on and nearby.",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp),
+                                    textAlign = TextAlign.Center
                                 )
-                            ) {
-                                Text("Troubleshoot", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+
+                                DeXButton(
+                                    onClick = { launchQrScanner() },
+                                    modifier = Modifier.fillMaxWidth(0.8f).height(44.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Text(
+                                        "Scan",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                DeXTextButton(
+                                    onClick = { showTroubleshootDialog = true },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("Troubleshoot", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                }
                             }
                         }
                     }
-                }
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = devices.isNotEmpty(),
-                    enter = com.example.dex.ui.theme.spatialMenuEnter(),
-                    exit = com.example.dex.ui.theme.spatialMenuExit(),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = devices.isNotEmpty(),
+                        enter = com.example.dex.ui.theme.spatialMenuEnter(),
+                        exit = com.example.dex.ui.theme.spatialMenuExit(),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        items(devices, key = { it.info.fingerprint }) { device ->
-                            val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
-                            DeviceListItem(
-                                modifier = Modifier.animateItem(),
-                                device = device,
-                                isTrusted = isTrusted,
-                                onLongClick = { contextMenuDevice = device },
-                                onClick = {
-                                    if (isTrusted) {
-                                        selectedDevice = device
-                                        filePickerLauncher.launch(arrayOf("*/*"))
-                                    } else {
-                                        if (pairingDeviceFingerprint == device.info.fingerprint) return@DeviceListItem
-                                        pairingDeviceFingerprint = device.info.fingerprint
-                                        Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
-                                        viewModel.requestPairing(device) { success ->
-                                            pairingDeviceFingerprint = null
-                                            if (success) {
-                                                Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(devices, key = { it.info.fingerprint }) { device ->
+                                val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
+                                DeviceListItem(
+                                    modifier = Modifier.animateItem(),
+                                    device = device,
+                                    isTrusted = isTrusted,
+                                    onClick = {
+                                        if (isTrusted) {
+                                            selectedDevice = device
+                                            filePickerLauncher.launch(arrayOf("*/*"))
+                                        } else {
+                                            if (pairingDeviceFingerprint == device.info.fingerprint) return@DeviceListItem
+                                            pairingDeviceFingerprint = device.info.fingerprint
+                                            Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
+                                            viewModel.requestPairing(device) { success ->
+                                                pairingDeviceFingerprint = null
+                                                if (success) {
+                                                    Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                            )
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
         }
     }
 
@@ -325,38 +317,9 @@ fun MainScreen(
         )
     }
 
-
-
-    contextMenuDevice?.let { device ->
-        val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
-        DeviceContextMenu(
-            device = device,
-            isTrusted = isTrusted,
-            onSendFile = {
-                selectedDevice = device
-                filePickerLauncher.launch(arrayOf("*/*"))
-            },
-            onPair = {
-                if (pairingDeviceFingerprint != device.info.fingerprint) {
-                    pairingDeviceFingerprint = device.info.fingerprint
-                    Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
-                    viewModel.requestPairing(device) { success ->
-                        pairingDeviceFingerprint = null
-                        Toast.makeText(
-                            context,
-                            if (success) context.getString(R.string.pairing_request_sent, device.info.alias)
-                            else context.getString(R.string.pairing_failed),
-                            if (success) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            },
-            onForget = {
-                wsService.sendMessage("""{"type":"unpair"}""")
-                DeviceManager.removePairedFingerprint(device.info.fingerprint)
-                Toast.makeText(context, context.getString(R.string.device_forgotten, device.info.alias), Toast.LENGTH_SHORT).show()
-            },
-            onDismiss = { contextMenuDevice = null }
+    if (showTrustedDevicesDialog) {
+        TrustedDevicesDialog(
+            onDismiss = { showTrustedDevicesDialog = false }
         )
     }
 
@@ -379,5 +342,3 @@ fun MainScreen(
         )
     }
 }
-
-

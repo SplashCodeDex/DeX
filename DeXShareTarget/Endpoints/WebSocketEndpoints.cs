@@ -98,7 +98,16 @@ namespace DeXShareTarget.Endpoints
                 using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
                 var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
-                if (type == "pair-request")
+                if (type == "set-public-address" && root.TryGetProperty("data", out var addrData))
+                {
+                    var address = addrData.TryGetProperty("address", out var pa) ? pa.GetString() : "";
+                    if (!string.IsNullOrWhiteSpace(address))
+                    {
+                        LocalSendServer.SetPublicAddress(address.Trim());
+                        Console.WriteLine($"[WS] Public address set by {fingerprint}: {address}");
+                    }
+                }
+                else if (type == "pair-request")
                 {
                     // Phone-initiated pairing: generate a PIN and push the prompt back to the phone
                     var pin = await LocalSendEndpoints.PushPairPromptAsync(fingerprint, clientIp);

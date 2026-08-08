@@ -57,6 +57,21 @@ object LiquidGlassPresets {
         chromaticAberration = true
     )
 
+    /** Frosted pill glass tuned for a floating bottom navigation bar. */
+    val NavBar: LiquidGlassConfig = LiquidGlassConfig(
+        shape = CircleShape,
+        blurRadius = 12.dp,
+        lensHeight = 18.dp,
+        lensAmount = 32.dp,
+        vibrancyEnabled = true,
+        chromaticAberration = false,
+        surfaceTint = Color.White,
+        surfaceTintAlpha = 0.12f,
+        highlight = Highlight.Plain,
+        shadowRadius = 12.dp,
+        shadowColor = Color.Black.copy(alpha = 0.2f),
+    )
+
     val Frosted: LiquidGlassConfig = LiquidGlassConfig(
         shape = CircleShape,
         blurRadius = 12.dp,

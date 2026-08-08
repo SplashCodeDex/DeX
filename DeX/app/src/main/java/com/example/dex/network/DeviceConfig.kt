@@ -33,6 +33,7 @@ class DeviceConfig(private val context: Context) {
         val EMAIL_KEY = stringPreferencesKey("email")
         val FINGERPRINT_KEY = stringPreferencesKey("fingerprint")
         val IDENTITY_HASH_KEY = stringPreferencesKey("identity_hash")
+        val PUBLIC_ADDRESS_KEY = stringPreferencesKey("public_address")
     }
 
     private val _emailFlow = MutableStateFlow("")
@@ -43,6 +44,21 @@ class DeviceConfig(private val context: Context) {
 
     private val _identityHashFlow = MutableStateFlow("")
     val identityHashFlow: StateFlow<String> = _identityHashFlow.asStateFlow()
+
+    private val _publicAddressFlow = MutableStateFlow("")
+    val publicAddressFlow: StateFlow<String> = _publicAddressFlow.asStateFlow()
+
+    val publicAddress: String
+        get() = _publicAddressFlow.value
+
+    fun setPublicAddress(value: String) {
+        _publicAddressFlow.value = value.trim()
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                prefs[PUBLIC_ADDRESS_KEY] = value.trim()
+            }
+        }
+    }
 
     var email: String
         get() = _emailFlow.value
@@ -84,6 +100,7 @@ class DeviceConfig(private val context: Context) {
             _fingerprintFlow.value = savedFingerprint
 
             updateIdentityHashInternal(savedEmail, prefs[IDENTITY_HASH_KEY])
+            _publicAddressFlow.value = prefs[PUBLIC_ADDRESS_KEY] ?: ""
             Timber.i("DeviceConfig fully initialized.")
         }
     }

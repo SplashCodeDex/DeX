@@ -3,7 +3,6 @@ package com.example.dex.network
 import android.content.Context
 import org.chromium.net.CronetEngine
 import org.chromium.net.CronetException
-import org.chromium.net.QuicOptions
 import org.chromium.net.UploadDataProvider
 import org.chromium.net.UploadDataSink
 import org.chromium.net.UrlRequest
@@ -43,11 +42,6 @@ class QuicClient(private val context: Context) {
                 .enableHttp2(false)
                 .enableBrotli(true)
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 8L * 1024 * 1024)
-                .setQuicOptions(
-                    QuicOptions.Builder()
-                        .setMaxServerConfigsStoredInProperties(10)
-                        .build()
-                )
                 .build()
         } catch (t: Throwable) {
             Timber.e(t, "Cronet engine init failed; QUIC unavailable")
@@ -58,6 +52,33 @@ class QuicClient(private val context: Context) {
     fun available(): Boolean {
         init()
         return certInstalled && engine != null
+    }
+
+    /** Fetches the PC's stable certificate (DER) from /local/cert over HTTPS. */
+    fun fetchCert(ip: String, port: Int = 53317): ByteArray? {
+        return try {
+            val url = java.net.URL("https://$ip:$port/local/cert")
+            val conn = url.openConnection() as javax.net.ssl.HttpsURLConnection
+            conn.sslSocketFactory = trustAllSslContext.socketFactory
+            conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            if (conn.responseCode == 200) conn.inputStream.use { it.readBytes() } else null
+        } catch (t: Throwable) {
+            Timber.e(t, "Certificate fetch from PC failed")
+            null
+        }
+    }
+
+    private val trustAllSslContext: javax.net.ssl.SSLContext by lazy {
+        val tm = object : javax.net.ssl.X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
+        }
+        val ctx = javax.net.ssl.SSLContext.getInstance("TLS")
+        ctx.init(null, arrayOf(tm), java.security.SecureRandom())
+        ctx
     }
 
     /**
@@ -101,8 +122,8 @@ class QuicClient(private val context: Context) {
                 val chunk = ByteArray(toRead)
                 val read = try {
                     stream.read(chunk)
-                } catch (t: Throwable) {
-                    sink.onReadError(t)
+                } catch (e: Exception) {
+                    sink.onReadError(e)
                     return
                 }
                 if (read <= 0) {
@@ -111,8 +132,9 @@ class QuicClient(private val context: Context) {
                 }
                 buffer.put(chunk, 0, read)
                 sentBytes += read
+                val current = if (fileSize > 0) sentBytes.toFloat() / fileSize else 0f
                 val aggregate = if (totalBatchSize > 0) (previousBatchBytes + sentBytes).toFloat() / totalBatchSize else 0f
-                onProgress(aggregate)
+                onProgress(current, aggregate)
                 sink.onReadSucceeded(sentBytes >= fileSize || read == chunk.size)
             }
 

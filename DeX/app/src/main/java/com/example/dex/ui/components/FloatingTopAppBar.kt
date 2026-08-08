@@ -19,14 +19,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.dex.R
-import com.example.dex.ui.components.glass.LiquidGlassIconButton
-import com.example.dex.ui.components.glass.LiquidGlassPresets
-import com.kashif_e.backdrop.Backdrop
 
 @Composable
 fun FloatingTopAppBar(
     modifier: Modifier = Modifier,
-    backdrop: Backdrop? = null,
+    onOpenTrustedDevices: (() -> Unit)? = null
 ) {
     var showProfileDialog by remember { mutableStateOf(false) }
 
@@ -37,12 +34,21 @@ fun FloatingTopAppBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // User Avatar — liquid glass samples the real backdrop behind the top bar
-        LiquidGlassIconButton(
-            onClick = { showProfileDialog = true },
-            size = 56.dp,
-            backdrop = backdrop,
-            config = LiquidGlassPresets.IconButton
+        // User Avatar
+        val avatarInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .bubbleFluidity()
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                .clickable(
+                    interactionSource = avatarInteractionSource,
+                    indication = LocalIndication.current,
+                    onClick = { showProfileDialog = true }
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_account_circle),
@@ -70,12 +76,47 @@ fun FloatingTopAppBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Search Button — liquid glass samples the real backdrop behind the top bar
-            LiquidGlassIconButton(
-                onClick = { /* Search action placeholder */ },
-                size = 56.dp,
-                backdrop = backdrop,
-                config = LiquidGlassPresets.IconButton
+            if (onOpenTrustedDevices != null) {
+                val devicesInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .bubbleFluidity()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                        .clickable(
+                            interactionSource = devicesInteractionSource,
+                            indication = LocalIndication.current,
+                            onClick = { onOpenTrustedDevices() }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_filled),
+                        contentDescription = "Trusted Devices",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            // Search Button
+            val searchInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    // Apply physics BEFORE drawing background/borders so the whole button scales
+                    .bubbleFluidity()
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                    .clickable(
+                        interactionSource = searchInteractionSource,
+                        indication = LocalIndication.current,
+                        onClick = { /* Search action placeholder */ }
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_search),

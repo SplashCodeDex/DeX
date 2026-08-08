@@ -113,7 +113,7 @@ dependencies {
   // OkHttp (WebSocket client)
   implementation(libs.okhttp)
 
-  // Cronet (HTTP/3 + QUIC)
+  // Cronet (HTTP/3 + QUIC) — 143+ embedded is fully self-contained (API + native stack)
   implementation(libs.cronet.embedded)
 
     // Storage

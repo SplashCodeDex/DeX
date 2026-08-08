@@ -98,13 +98,23 @@ class UploadWorker(
                     TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
                 } else {
                     applicationContext.contentResolver.openInputStream(d.first)?.use { stream ->
-                        val success = client.uploadFile(
-                            ip, port, response.sessionId, id, d.second, token, stream, d.third,
-                            fileIndex = index, totalFiles = fileData.size, previousBatchBytes = previousBytes, totalBatchSize = totalBatchSize
-                        ) { aggregateProgress ->
-                            // The callback provides aggregate progress so we can update the notification
-                            val progressInt = (aggregateProgress * 100).toInt()
-                            setForeground(createForegroundInfo(progressInt, applicationContext.getString(R.string.upload_worker_progress, index, fileData.size, d.second)))
+                        val useQuic = client.quicAvailable()
+                        val success = if (useQuic) {
+                            client.uploadFileQuic(
+                                ip, port, response.sessionId, id, d.second, token, stream, d.third,
+                                fileIndex = index, totalFiles = fileData.size, previousBatchBytes = previousBytes, totalBatchSize = totalBatchSize
+                            ) { aggregateProgress ->
+                                val progressInt = (aggregateProgress * 100).toInt()
+                                setForeground(createForegroundInfo(progressInt, applicationContext.getString(R.string.upload_worker_progress, index, fileData.size, d.second)))
+                            }
+                        } else {
+                            client.uploadFile(
+                                ip, port, response.sessionId, id, d.second, token, stream, d.third,
+                                fileIndex = index, totalFiles = fileData.size, previousBatchBytes = previousBytes, totalBatchSize = totalBatchSize
+                            ) { aggregateProgress ->
+                                val progressInt = (aggregateProgress * 100).toInt()
+                                setForeground(createForegroundInfo(progressInt, applicationContext.getString(R.string.upload_worker_progress, index, fileData.size, d.second)))
+                            }
                         }
                         if (success) {
                             successCount++

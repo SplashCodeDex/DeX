@@ -22,6 +22,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.dex.ui.components.glass.LiquidGlassConfig
+import com.example.dex.ui.components.glass.LiquidGlassPanel
+import com.example.dex.ui.components.glass.LiquidGlassPresets
+import com.kashif_e.backdrop.Backdrop
 
 data class NavBarItem(
     val selectedIcon: ImageVector,
@@ -34,15 +38,11 @@ data class NavBarItem(
 @Composable
 fun FloatingPillNavBar(
     items: List<NavBarItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backdrop: Backdrop? = null,
+    config: LiquidGlassConfig = LiquidGlassPresets.NavBar,
 ) {
-    DeXPanel(
-        shape = CircleShape,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(72.dp)
-    ) {
+    val content: @Composable BoxScope.() -> Unit = {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -52,6 +52,27 @@ fun FloatingPillNavBar(
                 NavBarIcon(item = item, modifier = Modifier.weight(1f))
             }
         }
+    }
+
+    val panelModifier = modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)
+        .height(72.dp)
+
+    if (backdrop != null) {
+        LiquidGlassPanel(
+            backdrop = backdrop,
+            modifier = panelModifier,
+            shape = config.shape,
+            config = config,
+            content = content
+        )
+    } else {
+        DeXPanel(
+            modifier = panelModifier,
+            shape = CircleShape,
+            content = content
+        )
     }
 }
 

@@ -61,6 +61,9 @@ class WebSocketClientService(
     }
 
     private fun findTargetPc(devices: Collection<DiscoveredDevice>): DiscoveredDevice? {
+        // WAN override: when a public address is configured, connect there instead of the LAN
+        wanTarget()?.let { return it }
+
         val desktops = devices.filter { it.info.deviceType.equals("desktop", ignoreCase = true) }
         if (desktops.isEmpty()) return null
         // 1. Prefer the PC used last time (persistent memory across restarts)
@@ -71,6 +74,27 @@ class WebSocketClientService(
         // 2. Fall back to an already-paired PC
         return desktops.firstOrNull { AuthState.pairedTokens.containsKey(it.info.fingerprint) }
             ?: desktops.firstOrNull()
+    }
+
+    /** Synthetic target for the configured public (WAN) address. */
+    private fun wanTarget(): DiscoveredDevice? {
+        val address = deviceConfig.publicAddress.trim()
+        if (address.isBlank()) return null
+        val fingerprint = PcMemory.fingerprint(context) ?: AuthState.pairedTokens.keys.firstOrNull() ?: return null
+        return DiscoveredDevice(
+            ip = address,
+            info = RegisterDto(
+                alias = "PC (WAN)",
+                version = "2.0",
+                deviceModel = "PC",
+                deviceType = "desktop",
+                fingerprint = fingerprint,
+                port = 53317,
+                protocol = "https",
+                download = false,
+                identityHash = null
+            )
+        )
     }
 
     fun stop() {
@@ -148,5 +172,11 @@ class WebSocketClientService(
             return false
         }
         return socket.send("""{"type":"pair-request"}""")
+    }
+
+    /** Tells the PC the phone's configured public address so it can add it to its certificate. */
+    fun sendPublicAddress(address: String) {
+        val safe = address.trim().replace("\"", "")
+        sendMessage("""{"type":"set-public-address","data":{"address":"$safe"}}""")
     }
 }

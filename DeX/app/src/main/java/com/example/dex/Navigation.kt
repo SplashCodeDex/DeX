@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.dex.R
+import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -82,6 +84,17 @@ fun MainNavigation() {
   )
 
   Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // Real app background captured into the glass backdrop. This layer is flat
+    // and cheap — it does NOT capture the scrolling content, keeping the navbar
+    // glass safe from heavy per-frame render-tree captures.
+    val navBackdrop = rememberLayerBackdrop()
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
+        .layerBackdrop(navBackdrop)
+    )
+
     NavDisplay(
       backStack = backStack,
       onBack = { backStack.removeLastOrNull() },
@@ -116,7 +129,7 @@ fun MainNavigation() {
       exit = slideOutVertically(targetOffsetY = { it }),
       modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
     ) {
-      FloatingPillNavBar(items = navItems)
+      FloatingPillNavBar(items = navItems, backdrop = navBackdrop)
     }
 
     val incomingPairRequest by com.example.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()

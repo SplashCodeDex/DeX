@@ -40,17 +40,16 @@ fun DeviceListItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(48.dp), // Deep rounded corners as requested
         shadowRadius = 16.dp
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(400.dp)) {
             // 1. Wallpaper Placeholder (Engine TODO)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                // Placeholder Icon representing the device type
                 Icon(
                     imageVector = ImageVector.vectorResource(
                         if (device.info.deviceType.lowercase().contains("phone")) R.drawable.ic_smartphone
@@ -62,15 +61,15 @@ fun DeviceListItem(
                 )
             }
 
-            // 2. Glassy Gradient Overlay for depth and legibility
+            // 2. Glassy Gradient Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             0f to Color.Transparent,
-                            0.4f to MaterialTheme.colorScheme.surface.copy(alpha = 0.2f),
-                            0.7f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            0.3f to MaterialTheme.colorScheme.surface.copy(alpha = 0.1f),
+                            0.6f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
                             1f to MaterialTheme.colorScheme.surface
                         )
                     )
@@ -80,7 +79,8 @@ fun DeviceListItem(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp, top = 24.dp), // 24dp spacing from bottom edge
                 verticalArrangement = Arrangement.Bottom
             ) {
                 Row(
@@ -128,13 +128,13 @@ fun DeviceListItem(
                     DeviceTag(text = "5GHz")
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Primary Action Button (Dynamic)
+                // Primary Action Button (Pill Shape)
                 DeXButton(
                     onClick = onClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
+                    shape = CircleShape, // Exact pill shape from reference
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.onSurface,
                         contentColor = MaterialTheme.colorScheme.surface
