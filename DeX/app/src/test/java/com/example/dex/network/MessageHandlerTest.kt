@@ -54,7 +54,7 @@ class MessageHandlerTest {
 
         DeviceManager.init(mockContext)
         AuthState.incomingPairRequest.value = null
-        TransferState.incomingTransferRequest.value = null
+        
         TransferState.pendingPrompts.clear()
     }
 
@@ -63,7 +63,7 @@ class MessageHandlerTest {
         unmockkObject(TokenCodec)
         Dispatchers.resetMain()
         AuthState.incomingPairRequest.value = null
-        TransferState.incomingTransferRequest.value = null
+        
         TransferState.pendingPrompts.clear()
     }
 

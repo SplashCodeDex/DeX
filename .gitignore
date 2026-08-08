@@ -21,3 +21,6 @@ test*.csx
 test_raw_tls*.ps1
 test_udp.ps1
 
+# IDE artifacts
+DeX/.artifacts/
+

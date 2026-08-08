@@ -98,12 +98,12 @@ class MainScreenViewModelTest {
     }
 
     @Test
-    fun `sendHandshake sends pair request when connected to the PC`() = runTest(testDispatcher) {
+    fun `requestPairing sends pair request when connected to the PC`() = runTest(testDispatcher) {
         every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns true
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var callbackResult: Boolean? = null
-        viewModel.sendHandshake(testDevice) { result -> callbackResult = result }
+        viewModel.requestPairing(testDevice) { result -> callbackResult = result }
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -113,12 +113,12 @@ class MainScreenViewModelTest {
     }
 
     @Test
-    fun `sendHandshake reports failure when not connected to the PC`() = runTest(testDispatcher) {
+    fun `requestPairing reports failure when not connected to the PC`() = runTest(testDispatcher) {
         every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var callbackResult: Boolean? = null
-        viewModel.sendHandshake(testDevice) { result -> callbackResult = result }
+        viewModel.requestPairing(testDevice) { result -> callbackResult = result }
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -138,7 +138,7 @@ class MainScreenViewModelTest {
         val simulateDeviceClick = { device: DiscoveredDevice ->
             if (pairingDeviceFingerprint != device.info.fingerprint) {
                 pairingDeviceFingerprint = device.info.fingerprint
-                viewModel.sendHandshake(device) { _ ->
+                viewModel.requestPairing(device) { _ ->
                     pairingDeviceFingerprint = null
                 }
                 handshakeCalls++
@@ -173,14 +173,14 @@ class MainScreenViewModelTest {
     }
 
     @Test
-    fun `sendHandshake failure callback resets pairingDeviceFingerprint to null`() = runTest(testDispatcher) {
+    fun `requestPairing failure callback resets pairingDeviceFingerprint to null`() = runTest(testDispatcher) {
         every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var pairingDeviceFingerprint: String? = testDevice.info.fingerprint
         var callbackSuccess: Boolean? = null
 
-        viewModel.sendHandshake(testDevice) { success ->
+        viewModel.requestPairing(testDevice) { success ->
             pairingDeviceFingerprint = null
             callbackSuccess = success
         }

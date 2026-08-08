@@ -80,7 +80,6 @@ class MessageHandler(
     private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
         val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
         Timber.i("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
-        TransferState.incomingTransferRequest.value = uploadReq
 
         val sessionId = UUID.randomUUID().toString()
         val deferred = CompletableDeferred<Boolean>()
@@ -91,7 +90,6 @@ class MessageHandler(
         CoroutineScope(Dispatchers.IO).launch {
             val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS) { deferred.await() } == true
             TransferState.pendingPrompts.remove(sessionId)
-            TransferState.incomingTransferRequest.value = null
             if (!accepted) {
                 Timber.i("Incoming transfer rejected or timed out")
                 return@launch

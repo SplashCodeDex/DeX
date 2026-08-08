@@ -1,1 +1,0 @@
-$files = @(".\MSIX_Source\bin\TrayUIBindings.ps1", ".\MSIX_Source\bin\Connect-Engine.ps1", ".\MSIX_Source\bin\TrayUIHandlers.ps1"); foreach ($f in $files) { $c = Get-Content $f -Raw; Set-Content $f -Value $c -Encoding UTF8 }

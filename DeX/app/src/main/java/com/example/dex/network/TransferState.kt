@@ -5,8 +5,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 object TransferState {
     val pendingPrompts = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
-    val activeSessions = ConcurrentHashMap<String, PrepareUploadRequestDto>()
-    val incomingTransferRequest = kotlinx.coroutines.flow.MutableStateFlow<PrepareUploadRequestDto?>(null)
 }
 
 data class PairRequestInfo(

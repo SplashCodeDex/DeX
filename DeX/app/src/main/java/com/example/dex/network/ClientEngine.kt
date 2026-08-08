@@ -73,19 +73,6 @@ class ClientEngine(engine: HttpClientEngine? = null) {
         )
     }
 
-    suspend fun registerDevice(ip: String, port: Int, info: RegisterDto): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val response = client.post("https://$ip:$port/api/localsend/v2/register") {
-                contentType(ContentType.Application.Json)
-                setBody(info)
-            }
-            response.status.isSuccess()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
-    }
-    
     suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareUploadResponseDto? = withContext(Dispatchers.IO) {
         try {
             val response = client.post("https://$ip:$port/api/localsend/v2/prepare-upload") {

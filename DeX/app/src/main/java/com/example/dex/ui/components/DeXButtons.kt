@@ -29,6 +29,7 @@ fun DeXButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.buttonColors(),
+    shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.shape,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
 ) {
@@ -37,6 +38,7 @@ fun DeXButton(
         modifier = modifier.bubbleFluidity(),
         enabled = enabled,
         colors = colors,
+        shape = shape,
         interactionSource = interactionSource,
         content = content
     )

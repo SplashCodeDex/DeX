@@ -24,7 +24,7 @@ class MainScreenViewModel(
       .catch { emit(MainScreenUiState.Error(it)) }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainScreenUiState.Loading)
       
-  fun sendHandshake(device: DiscoveredDevice, onResult: (Boolean) -> Unit = {}) {
+  fun requestPairing(device: DiscoveredDevice, onResult: (Boolean) -> Unit = {}) {
       // Phone-initiated pairing: ask the PC to push a PIN prompt back to this phone.
       // Trust is established via the PIN exchange; this alone never marks the device as paired.
       viewModelScope.launch {

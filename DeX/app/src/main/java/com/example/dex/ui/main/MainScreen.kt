@@ -272,7 +272,7 @@ fun MainScreen(
                                         if (pairingDeviceFingerprint == device.info.fingerprint) return@DeviceListItem
                                         pairingDeviceFingerprint = device.info.fingerprint
                                         Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
-                                        viewModel.sendHandshake(device) { success ->
+                                        viewModel.requestPairing(device) { success ->
                                             pairingDeviceFingerprint = null
                                             if (success) {
                                                 Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
