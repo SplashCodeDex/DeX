@@ -71,6 +71,13 @@ class BatchDownloadWorker(
     )
 
     private val lastUiUpdate = AtomicLong(0L)
+    private val speedBytes = AtomicLong(0L)
+    private val speedTime = AtomicLong(0L)
+    private val smoothedSpeed = AtomicLong(0L)
+
+    // Negotiated protocol of the transfer ("h3", "tcp", ...) once any file has completed
+    @Volatile
+    private var transferProtocol: String = ""
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
@@ -224,6 +231,7 @@ class BatchDownloadWorker(
 
         if (result.protocol.isNotEmpty()) {
             Timber.i("Download negotiated protocol: ${result.protocol}")
+            transferProtocol = result.protocol
         }
 
         return if (result.ok) {
@@ -278,6 +286,7 @@ class BatchDownloadWorker(
             }
 
             socketChannel.close()
+            transferProtocol = "tcp"
             return DownloadResult(ok = true, bytes = downloaded)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -289,6 +298,16 @@ class BatchDownloadWorker(
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
         lastUiUpdate.set(now)
+
+        val lastBytes = speedBytes.get()
+        val lastTime = speedTime.get()
+        if (lastTime != 0L && now - lastTime > 200) {
+            val instant = ((sentBytes - lastBytes) * 1000L) / (now - lastTime)
+            val prev = smoothedSpeed.get()
+            smoothedSpeed.set(if (prev == 0L) instant else (prev * 7 + instant * 3) / 10)
+        }
+        speedBytes.set(sentBytes)
+        speedTime.set(now)
 
         val progress = when {
             totalBytes > 0 -> sentBytes.toFloat() / totalBytes
@@ -303,7 +322,9 @@ class BatchDownloadWorker(
                     progress = progress,
                     isDownloading = true,
                     doneFiles = doneFiles,
-                    totalFiles = totalFiles
+                    totalFiles = totalFiles,
+                    protocol = transferProtocol,
+                    speedBps = smoothedSpeed.get()
                 )
             )
             setForeground(createForegroundInfo((progress * 100).toInt(), "Downloading: $displayName"))

@@ -17,6 +17,7 @@
     <string name="cancel">Cancel</string>
     <string name="download_success">Successfully Downloaded %1$s</string>
     <string name="download_failed">Download Failed: %1$s</string>
+    <string name="transfer_via">%1$s • %2$s</string>
     <plurals name="uploading_progress">
         <item quantity="one">Uploading %1$d of %2$d file…</item>
         <item quantity="other">Uploading %1$d of %2$d files…</item>

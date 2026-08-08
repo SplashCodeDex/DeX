@@ -41,6 +41,23 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
     private val _uploadState = MutableStateFlow(UploadState())
     val uploadState = _uploadState.asStateFlow()
 
+    // Speed tracking for the transfer status display (sequential uploads, single-writer)
+    private var lastUploadBytes = 0L
+    private var lastUploadTime = 0L
+    private var smoothedUploadSpeed = 0L
+
+    private fun trackUploadSpeed(bytes: Long): Long {
+        val now = System.currentTimeMillis()
+        val dt = now - lastUploadTime
+        if (dt > 50) {
+            val instant = ((bytes - lastUploadBytes) * 1000L) / dt
+            smoothedUploadSpeed = if (smoothedUploadSpeed == 0L) instant else (smoothedUploadSpeed * 7 + instant * 3) / 10
+            lastUploadBytes = bytes
+            lastUploadTime = now
+        }
+        return smoothedUploadSpeed
+    }
+
     var activeWorkId: java.util.UUID? = null
 
     fun resetUploadState() {
@@ -97,14 +114,17 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         onProgress: suspend (Float) -> Unit = {}
     ): Boolean = withContext(Dispatchers.IO) {
         try {
+            lastUploadBytes = 0L
+            lastUploadTime = 0L
+            smoothedUploadSpeed = 0L
             val startAggregate = if (totalBatchSize > 0) previousBatchBytes.toFloat() / totalBatchSize else 0f
             _uploadState.value = UploadState(
                 fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
                 progress = 0f, aggregateProgress = startAggregate,
-                isUploading = true
+                isUploading = true, protocol = "http/1.1"
             )
             onProgress(startAggregate)
-
+            
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
@@ -114,14 +134,17 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                 onUpload { bytesSentTotal, _ ->
                     val currentProgress = if (fileSize > 0) bytesSentTotal.toFloat() / fileSize else 0f
                     val aggregate = if (totalBatchSize > 0) (previousBatchBytes + bytesSentTotal).toFloat() / totalBatchSize else 0f
-
+                    val speed = trackUploadSpeed(bytesSentTotal)
+                    
                     _uploadState.value = UploadState(
                         fileName = fileName,
                         currentFileIndex = fileIndex,
                         totalFiles = totalFiles,
                         progress = currentProgress,
                         aggregateProgress = aggregate,
-                        isUploading = true
+                        isUploading = true,
+                        protocol = "http/1.1",
+                        speedBps = speed
                     )
                     onProgress(aggregate)
                 }
@@ -170,10 +193,14 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         onProgress: suspend (Float) -> Unit = {}
     ): Boolean {
         val qc = quicClient ?: return false
+        lastUploadBytes = 0L
+        lastUploadTime = 0L
+        smoothedUploadSpeed = 0L
         val startAggregate = if (totalBatchSize > 0) previousBatchBytes.toFloat() / totalBatchSize else 0f
         _uploadState.value = UploadState(
             fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
-            progress = 0f, aggregateProgress = startAggregate, isUploading = true
+            progress = 0f, aggregateProgress = startAggregate, isUploading = true,
+            protocol = qc.lastUploadProtocol
         )
         onProgress(startAggregate)
 
@@ -181,16 +208,20 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
             qc.uploadFile(
                 ip, port, sessionId, fileId, fileName, token, stream, fileSize,
                 fileIndex, totalFiles, previousBatchBytes, totalBatchSize,
-                onProgress = { current, aggregate ->
+                onProgress = { current, aggregate, bytes ->
+                    val speed = trackUploadSpeed(bytes)
                     _uploadState.value = UploadState(
                         fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
-                        progress = current, aggregateProgress = aggregate, isUploading = true
+                        progress = current, aggregateProgress = aggregate, isUploading = true,
+                        protocol = qc.lastUploadProtocol, speedBps = speed
                     )
                     kotlinx.coroutines.runBlocking { onProgress(aggregate) }
                 },
                 onResult = { ok ->
                     _uploadState.value = _uploadState.value.copy(
-                        isUploading = false, isSuccess = ok, error = if (ok) null else "QUIC upload failed"
+                        isUploading = false, isSuccess = ok,
+                        protocol = qc.lastUploadProtocol,
+                        error = if (ok) null else "QUIC upload failed"
                     )
                     if (!cont.isCancelled) cont.resume(ok, null)
                 }
@@ -251,7 +282,9 @@ data class UploadState(
     val aggregateProgress: Float = 0f,
     val isUploading: Boolean = false,
     val isSuccess: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val protocol: String = "",
+    val speedBps: Long = 0L
 )
 
 data class DownloadOutcome(

@@ -23,19 +23,33 @@ import java.util.concurrent.Executors
  */
 class QuicClient(private val context: Context) {
 
-    // Pooled executor so parallel Cronet requests (uploads/downloads) don't serialize each other's reads
     private val executor: ExecutorService = Executors.newFixedThreadPool(4)
     private var engine: CronetEngine? = null
+
+    // The PC serves HTTP/3 on UDP 53316 and HTTP/1.1 on TCP 53317
+    private companion object {
+        const val QUIC_PORT = 53316
+        const val HTTPS_PORT = 53317
+    }
+
+    // Negotiated protocol ("h3", "http/1.1", ...) of the last completed upload
+    @Volatile
+    var lastUploadProtocol: String = ""
 
     fun init() {
         if (engine != null) return
         try {
-            engine = CronetEngine.Builder(context)
+            val builder = CronetEngine.Builder(context)
                 .enableQuic(true)
                 .enableHttp2(false)
                 .enableBrotli(true)
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 8L * 1024 * 1024)
-                .build()
+            // Hint remembered PCs so even the first transfer of the day skips the
+            // HTTP/1.1 warm-up and attempts QUIC directly; falls back to TCP 53317.
+            PcMemory.ip(context)?.let { ip ->
+                builder.addQuicHint(ip, QUIC_PORT, HTTPS_PORT)
+            }
+            engine = builder.build()
         } catch (t: Throwable) {
             Timber.e(t, "Cronet engine init failed; QUIC unavailable")
             engine = null
@@ -64,7 +78,7 @@ class QuicClient(private val context: Context) {
         totalFiles: Int = 1,
         previousBatchBytes: Long = 0L,
         totalBatchSize: Long = fileSize,
-        onProgress: (current: Float, aggregate: Float) -> Unit = { _, _ -> },
+        onProgress: (current: Float, aggregate: Float, bytesSent: Long) -> Unit = { _, _, _ -> },
         onResult: (Boolean) -> Unit
     ) {
         val engine = engine
@@ -100,7 +114,7 @@ class QuicClient(private val context: Context) {
                 sentBytes += read
                 val current = if (fileSize > 0) sentBytes.toFloat() / fileSize else 0f
                 val aggregate = if (totalBatchSize > 0) (previousBatchBytes + sentBytes).toFloat() / totalBatchSize else 0f
-                onProgress(current, aggregate)
+                onProgress(current, aggregate, sentBytes)
                 sink.onReadSucceeded(sentBytes >= fileSize || read == chunk.size)
             }
 
@@ -125,12 +139,14 @@ class QuicClient(private val context: Context) {
             }
 
             override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
+                lastUploadProtocol = info.negotiatedProtocol ?: ""
                 val ok = info.httpStatusCode in 200..299
                 if (!ok) Timber.w("QUIC upload failed with HTTP ${info.httpStatusCode}")
                 onResult(ok)
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
+                lastUploadProtocol = info?.negotiatedProtocol ?: ""
                 Timber.e(error, "QUIC upload failed")
                 onResult(false)
             }

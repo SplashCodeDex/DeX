@@ -22,7 +22,9 @@ data class DownloadState(
     val isSuccess: Boolean = false,
     val error: String? = null,
     val doneFiles: Int = 0,
-    val totalFiles: Int = 1
+    val totalFiles: Int = 1,
+    val protocol: String = "",
+    val speedBps: Long = 0L
 )
 
 object TcpDownloadService {

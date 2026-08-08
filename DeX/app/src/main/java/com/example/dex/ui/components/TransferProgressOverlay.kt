@@ -57,7 +57,13 @@ fun TransferProgressOverlay(
                         trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("${(downloadState.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${(downloadState.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                        Text(transferStatus(downloadState.protocol, downloadState.speedBps), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         } else if (downloadState.isSuccess) {
@@ -98,7 +104,13 @@ fun TransferProgressOverlay(
                         trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(stringResource(R.string.toast_percent_total, (uploadState.aggregateProgress * 100).toInt()), style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(stringResource(R.string.toast_percent_total, (uploadState.aggregateProgress * 100).toInt()), style = MaterialTheme.typography.bodySmall)
+                        Text(transferStatus(uploadState.protocol, uploadState.speedBps), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         } else if (uploadState.isSuccess) {
@@ -114,4 +126,21 @@ fun TransferProgressOverlay(
             }
         }
     }
+}
+
+@Composable
+private fun transferStatus(protocol: String, speedBps: Long): String {
+    val speed = formatSpeed(speedBps)
+    return if (protocol.isNotEmpty()) {
+        stringResource(R.string.transfer_via, protocol, speed)
+    } else {
+        speed
+    }
+}
+
+private fun formatSpeed(bps: Long): String = when {
+    bps >= 1024L * 1024 * 1024 -> String.format("%.1f GB/s", bps / (1024f * 1024 * 1024))
+    bps >= 1024L * 1024 -> String.format("%.1f MB/s", bps / (1024f * 1024))
+    bps >= 1024L -> String.format("%.0f KB/s", bps / 1024f)
+    else -> "$bps B/s"
 }
