@@ -56,13 +56,13 @@ $actionConnect = {
     $res = Invoke-AdbConnect
     if ($res.Success) {
         $script:currentTarget = $res.Target
-        $script:notifyIcon.Icon = $iconOn
+        $script:notifyIcon.Icon = $iconConnected
         $script:notifyIcon.Text = "Connected: $($res.Name)"
         $script:txtStatus.Text = "ADB Status: $($res.Name)"
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
         Show-Toast -Title "ADB Connected" -Message "Successfully connected to $($res.Name)"
     } else {
-        $script:notifyIcon.Icon = $iconOff
+        $script:notifyIcon.Icon = $iconDisconnected
         $script:notifyIcon.Text = "Disconnected"
         $script:txtStatus.Text = "ADB Status: $($res.Message)"
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
@@ -72,7 +72,7 @@ $actionConnect = {
 }
 $actionDisconnect = {
     $null = adb disconnect 2>&1
-    $script:notifyIcon.Icon = $iconOff
+    $script:notifyIcon.Icon = $iconDisconnected
     $script:notifyIcon.Text = "Connect ADB: Disconnected"
     $script:txtStatus.Text = "ADB Status: Disconnected"
     try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}

@@ -33,10 +33,12 @@ namespace DeXShareTarget
 
             builder.WebHost.ConfigureKestrel(options =>
             {
-                // Endpoint 1: HTTP/1.1 and HTTP/2 on TCP 53317 (Does not block UDP 53317)
+                // Endpoint 1: HTTP/1.1 on TCP 53317 (Does not block UDP 53317)
+                // HTTP/1.1 only: OkHttp WebSockets (the Android client) cannot run over HTTP/2,
+                // and every other client (Ktor CIO, PowerShell, .NET HttpClient) is HTTP/1.1 anyway.
                 options.ListenAnyIP(53317, listenOptions =>
                 {
-                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
                     listenOptions.UseHttps(cert);
                 });
                 

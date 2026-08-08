@@ -56,10 +56,10 @@ $script:notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 $script:notifyIcon.Text = "Connect ADB: Initializing..."
 
 
-$iconOff = Create-StatusIcon ([System.Drawing.Color]::FromArgb(160, 160, 160))
-$iconOn  = Create-StatusIcon ([System.Drawing.Color]::White)
+$iconConnected = Load-TrayIcon "app-icon-light.ico"
+$iconDisconnected = Load-TrayIcon "app-icon-gray.ico"
 
-$script:notifyIcon.Icon = $iconOff
+$script:notifyIcon.Icon = $iconDisconnected
 $script:notifyIcon.Visible = $true
 
 
@@ -100,11 +100,11 @@ if ($null -eq $script:wpfWindow) {
     $miConnect.Add_Click({
         $res = Invoke-AdbConnect
         if ($res.Success) {
-            $script:notifyIcon.Icon = $iconOn
+            $script:notifyIcon.Icon = $iconConnected
             $script:notifyIcon.Text = "Connected: $($res.Name)"
             Show-Toast -Title "ADB Connected" -Message "Successfully connected to $($res.Name)"
         } else {
-            $script:notifyIcon.Icon = $iconOff
+            $script:notifyIcon.Icon = $iconDisconnected
             $script:notifyIcon.Text = "Disconnected"
             Show-Toast -Title "Connection Failed" -Message $res.Message
         }
@@ -459,13 +459,6 @@ $mdnsTimer.Add_Tick({
                     }
                 }
             } catch { }
-
-            # Tray icon reflects DeX device connectivity (not ADB): white when any
-            # device is live, grey when none.
-            $deviceCount = 0
-            if ($null -ne $livePeers) { $deviceCount += @($livePeers).Count }
-            if ($null -ne $liveUdp)   { $deviceCount += @($liveUdp).Count }
-            Update-TrayDeviceIcon -Connected ($deviceCount -gt 0)
   } catch { }
     })
     $mdnsTimer.Start()
