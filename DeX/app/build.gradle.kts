@@ -113,6 +113,9 @@ dependencies {
   // OkHttp (WebSocket client)
   implementation(libs.okhttp)
 
+  // Cronet (HTTP/3 + QUIC)
+  implementation(libs.cronet.embedded)
+
     // Storage
     implementation(libs.androidx.datastore.preferences)
 

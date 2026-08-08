@@ -1,5 +1,7 @@
 package com.example.dex.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,7 +30,9 @@ import com.example.dex.ui.theme.spatialMenuExit
  *
  * Kept presentational: all actions are hoisted up to the caller so this stays
  * reusable across screens. The card anchors to the bottom for thumb-friendly
- * reach and pops in using the app-wide spatial physics.
+ * reach and pops in using the app-wide spatial physics. Entry and exit are both
+ * animated: [onDismiss] is invoked only after the exit animation completes, so
+ * the caller can unmount this overlay without cutting the exit short.
  */
 @Composable
 fun DeviceContextMenu(
@@ -42,21 +46,41 @@ fun DeviceContextMenu(
 ) {
     var showDetails by remember { mutableStateOf(false) }
 
-    Box(
+    // Drives both the pop-in (mount) and pop-out (dismiss) transitions. The
+    // content stays composed while [targetState] is false so the exit animation
+    // can play; onDismiss is fired only once the exit is idle (finished).
+    val transitionState = remember { MutableTransitionState(false) }
+    var hasOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { transitionState.targetState = true }
+
+    fun dismiss() {
+        transitionState.targetState = false
+    }
+
+    LaunchedEffect(transitionState.targetState) {
+        if (transitionState.targetState) hasOpened = true
+    }
+
+    LaunchedEffect(transitionState.currentState, transitionState.isIdle) {
+        if (hasOpened && transitionState.isIdle && !transitionState.targetState) onDismiss()
+    }
+
+    AnimatedVisibility(
+        visibleState = transitionState,
+        enter = spatialMenuEnter(),
+        exit = spatialMenuExit(),
         modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.35f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            ),
-        contentAlignment = Alignment.BottomCenter
     ) {
-        androidx.compose.animation.AnimatedVisibility(
-            visible = true,
-            enter = spatialMenuEnter(),
-            exit = spatialMenuExit()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.35f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = ::dismiss
+                ),
+            contentAlignment = Alignment.BottomCenter
         ) {
             DeXPanel(
                 shape = RoundedCornerShape(28.dp),
@@ -85,13 +109,19 @@ fun DeviceContextMenu(
                         DeviceContextMenuItem(
                             icon = ImageVector.vectorResource(R.drawable.ic_send),
                             label = stringResource(R.string.device_send_file),
-                            onClick = { onDismiss(); onSendFile() }
+                            onClick = { onSendFile(); dismiss() }
+                        )
+                        DeviceContextMenuItem(
+                            icon = ImageVector.vectorResource(R.drawable.ic_tune_outlined),
+                            label = stringResource(R.string.device_forget),
+                            tint = MaterialTheme.colorScheme.error,
+                            onClick = { onForget(); dismiss() }
                         )
                     } else {
                         DeviceContextMenuItem(
                             icon = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
                             label = stringResource(R.string.device_pair),
-                            onClick = { onDismiss(); onPair() }
+                            onClick = { onPair(); dismiss() }
                         )
                     }
 
@@ -103,15 +133,6 @@ fun DeviceContextMenu(
                         ),
                         onClick = { showDetails = !showDetails }
                     )
-
-                    if (isTrusted) {
-                        DeviceContextMenuItem(
-                            icon = ImageVector.vectorResource(R.drawable.ic_tune_outlined),
-                            label = stringResource(R.string.device_forget),
-                            tint = MaterialTheme.colorScheme.error,
-                            onClick = { onDismiss(); onForget() }
-                        )
-                    }
 
                     if (showDetails) {
                         Spacer(modifier = Modifier.height(8.dp))

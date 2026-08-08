@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The PC uses a self-signed cert. Once the user installs it (Settings -> QUIC),
+         Cronet needs the "user" trust anchors to accept it for HTTP/3 connections. -->
+    <base-config>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

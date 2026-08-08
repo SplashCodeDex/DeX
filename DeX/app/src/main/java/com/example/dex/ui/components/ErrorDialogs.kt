@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -98,6 +99,7 @@ fun PairingRequestDialog(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.4f))
+            .imePadding() // Keyboard handling
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -118,23 +120,30 @@ fun PairingRequestDialog(
                     .bubbleFluidity(targetScale = 0.98f)
             ) {
                 // Close Button
-                IconButton(
-                    onClick = {
-                        visible = false
-                        // Delay reject slightly to allow exit animation if handled by caller,
-                        // but here we just call it. For true sync exit we'd need a callback.
-                        onReject()
-                    },
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(20.dp) // Increased padding to avoid clipping
-                        .size(24.dp) // Reduced size
+                        .padding(20.dp)
+                        .size(18.dp) // Further reduced background size
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                visible = false
+                                onReject()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         "✕",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp // Ensure it fits the 18dp box but looks "big" enough
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.offset(y = (-1).dp) // Visual centering adjustment for the glyph
                     )
                 }
 
@@ -265,14 +274,31 @@ fun PinInputField(
     onValueChange: (String) -> Unit,
     isError: Boolean
 ) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val cursorAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 1000
+                1f at 0
+                1f at 499
+                0f at 500
+                0f at 999
+            }
+        )
+    )
+
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        cursorBrush = SolidColor(Color.Transparent),
+        textStyle = androidx.compose.ui.text.TextStyle(color = Color.Transparent),
         decorationBox = { innerTextField ->
-            Box(contentAlignment = Alignment.Center) {
-                // Invisible real text field to handle focus and input
-                Box(Modifier.size(1.dp)) { innerTextField() }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                // Real text field capturing input but visually hidden
+                Box(Modifier.fillMaxWidth()) { innerTextField() }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(5) { index ->
@@ -309,7 +335,7 @@ fun PinInputField(
                                 )
                             )
 
-                            // Cursor simulation
+                            // Animated Blinking Cursor Caret
                             if (isFocused) {
                                 Box(
                                     modifier = Modifier
@@ -317,6 +343,7 @@ fun PinInputField(
                                         .padding(bottom = 12.dp)
                                         .width(12.dp)
                                         .height(2.dp)
+                                        .graphicsLayer { alpha = cursorAlpha }
                                         .background(MaterialTheme.colorScheme.primary)
                                 )
                             }

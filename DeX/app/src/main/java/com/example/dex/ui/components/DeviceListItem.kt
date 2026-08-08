@@ -1,6 +1,7 @@
 package com.example.dex.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,10 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.dex.R
 import com.example.dex.network.AuthState
 import com.example.dex.network.DiscoveredDevice
@@ -31,75 +35,134 @@ fun DeviceListItem(
     DeXPanel(
         modifier = modifier
             .fillMaxWidth()
-            .bubbleFluidity()
+            .bubbleFluidity(targetScale = 0.98f)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            )
+            ),
+        shape = RoundedCornerShape(32.dp),
+        shadowRadius = 16.dp
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+            // 1. Wallpaper Placeholder (Engine TODO)
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
+                // Placeholder Icon representing the device type
                 Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_computer),
-                    contentDescription = stringResource(R.string.device_icon),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
+                    imageVector = ImageVector.vectorResource(
+                        if (device.info.deviceType.lowercase().contains("phone")) R.drawable.ic_smartphone
+                        else R.drawable.ic_computer
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp).align(Alignment.Center).alpha(0.08f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+
+            // 2. Glassy Gradient Overlay for depth and legibility
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.4f to MaterialTheme.colorScheme.surface.copy(alpha = 0.2f),
+                            0.7f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            1f to MaterialTheme.colorScheme.surface
+                        )
+                    )
+            )
+
+            // 3. Content Layer
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Bottom
+            ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = device.info.alias, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                    if (isTrusted) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ) {
-                            Text(
-                                text = "Paired",
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ) {
-                            Text(
-                                text = stringResource(R.string.device_not_paired),
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                    Text(
+                        text = device.info.alias,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // "Price Tag" Status Bubble
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+                        contentColor = MaterialTheme.colorScheme.inverseOnSurface
+                    ) {
+                        Text(
+                            text = if (isTrusted) "Online" else "Nearby",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Text(
                     text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Tags Row
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeviceTag(text = if (isTrusted) "Paired" else "Guest")
+                    DeviceTag(text = "High Speed")
+                    DeviceTag(text = "5GHz")
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Primary Action Button (Dynamic)
+                DeXButton(
+                    onClick = onClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.onSurface,
+                        contentColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Text(
+                        text = if (isTrusted) "Send File" else "Connect",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_send),
-                contentDescription = stringResource(R.string.send_file),
-                tint = MaterialTheme.colorScheme.primary
-            )
         }
+    }
+}
+
+@Composable
+private fun DeviceTag(text: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

@@ -85,7 +85,6 @@
     <string name="device_paired">Paired</string>
 
     <!-- Device Context Menu -->
-    <string name="device_actions">Device Actions</string>
     <string name="device_send_file">Send file</string>
     <string name="device_pair">Pair device</string>
     <string name="device_details">Device details</string>

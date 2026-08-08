@@ -48,6 +48,8 @@ import com.example.dex.ui.components.PairingRequestDialog
 import com.example.dex.ui.components.TransferProgressOverlay
 import com.example.dex.ui.components.FloatingTopAppBar
 import com.example.dex.ui.components.*
+import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.text.style.TextAlign
 
 @android.annotation.SuppressLint("LocalContextGetResourceValueCall")
@@ -64,7 +66,6 @@ fun MainScreen(
     var contextMenuDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
-    var showTrustedDevicesDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -163,12 +164,25 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-        ) {
+        val glassBackdrop = rememberLayerBackdrop()
+        Box(modifier = modifier.fillMaxSize()) {
+            // Real app background captured into the glass backdrop. This layer is
+            // flat and cheap — it does NOT capture the scrolling content below, so
+            // it stays safe from heavy per-frame render-tree captures.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .layerBackdrop(glassBackdrop)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
             FloatingTopAppBar(
-                onOpenTrustedDevices = { showTrustedDevicesDialog = true }
+                modifier = Modifier,
+                backdrop = glassBackdrop
             )
 
             val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
@@ -294,6 +308,7 @@ fun MainScreen(
                 }
             }
         }
+        }
     }
 
     if (uploadState.error != null) {
@@ -311,12 +326,6 @@ fun MainScreen(
     }
 
 
-
-    if (showTrustedDevicesDialog) {
-        TrustedDevicesDialog(
-            onDismiss = { showTrustedDevicesDialog = false }
-        )
-    }
 
     contextMenuDevice?.let { device ->
         val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)

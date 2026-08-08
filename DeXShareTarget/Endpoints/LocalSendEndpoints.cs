@@ -370,6 +370,17 @@ namespace DeXShareTarget.Endpoints
                 return Results.Json(new { ip = entry.Key, fingerprint = entry.Value.Fingerprint, pin = entry.Value.Pin, alias = entry.Value.Alias });
             });
 
+            app.MapGet("/local/cert", () =>
+            {
+                // The stable server certificate, for the Android app to install as a trusted CA
+                // so Cronet can speak HTTP/3 (QUIC) to this PC
+                if (LocalSendServer.ServerCert == null)
+                {
+                    return Results.NotFound();
+                }
+                return Results.File(LocalSendServer.ServerCert.RawData, "application/x-x509-ca-cert", "dex.pem");
+            });
+
             app.MapPost("/local/pair-initiate", async (HttpRequest request) => 
             {
                 var targetIp = request.Query["ip"].ToString();
