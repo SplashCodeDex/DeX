@@ -127,7 +127,7 @@ fun PairingRequestDialog(
                     },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(16.dp)
+                        .padding(20.dp) // Increased padding to avoid clipping
                         .size(24.dp) // Reduced size
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
                 ) {
@@ -143,7 +143,7 @@ fun PairingRequestDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        stringResource(R.string.pairing_enter_pin).lowercase(),
+                        stringResource(R.string.pairing_enter_pin_on_device, alias),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold
@@ -152,20 +152,12 @@ fun PairingRequestDialog(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        stringResource(R.string.pairing_from, alias),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
                     Spacer(modifier = Modifier.height(32.dp))
 
                     PinInputField(
                         value = enteredPin,
                         onValueChange = {
-                            if (it.length <= 6) {
+                            if (it.length <= 5) {
                                 enteredPin = it
                                 isError = false
                             }
@@ -184,7 +176,7 @@ fun PairingRequestDialog(
 
                     Spacer(modifier = Modifier.height(48.dp))
 
-                    val isComplete = enteredPin.length == 6
+                    val isComplete = enteredPin.length == 5
 
                     DeXButton(
                         onClick = {
@@ -283,7 +275,7 @@ fun PinInputField(
                 Box(Modifier.size(1.dp)) { innerTextField() }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(6) { index ->
+                    repeat(5) { index ->
                         val char = when {
                             index < value.length -> value[index].toString()
                             else -> ""

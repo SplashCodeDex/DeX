@@ -27,7 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.dex.network.AuthState
+import com.example.dex.network.DeviceManager
 import com.example.dex.network.DiscoveredDevice
+import com.example.dex.network.WebSocketClientService
 import kotlinx.coroutines.launch
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
@@ -39,6 +41,7 @@ import kotlinx.serialization.encodeToString
 import androidx.compose.ui.unit.sp
 
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import com.example.dex.ui.components.DeviceListItem
 import com.example.dex.ui.components.NetworkErrorDialog
 import com.example.dex.ui.components.PairingRequestDialog
@@ -56,7 +59,9 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val wsService: WebSocketClientService = koinInject()
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
+    var contextMenuDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
     var showTrustedDevicesDialog by remember { mutableStateOf(false) }
@@ -264,6 +269,7 @@ fun MainScreen(
                                 modifier = Modifier.animateItem(),
                                 device = device,
                                 isTrusted = isTrusted,
+                                onLongClick = { contextMenuDevice = device },
                                 onClick = {
                                     if (isTrusted) {
                                         selectedDevice = device
@@ -282,12 +288,7 @@ fun MainScreen(
                                         }
                                     }
                                 },
-                                onSendClipboard = { text ->
-                                viewModel.sendClipboard(device, text) { success ->
-                                    if (success) Toast.makeText(context, context.getString(R.string.clipboard_sent_success), Toast.LENGTH_SHORT).show()
-                                    else Toast.makeText(context, context.getString(R.string.clipboard_sent_failed), Toast.LENGTH_SHORT).show()
-                                }
-                            })
+                            )
                         }
                     }
                 }
@@ -314,6 +315,39 @@ fun MainScreen(
     if (showTrustedDevicesDialog) {
         TrustedDevicesDialog(
             onDismiss = { showTrustedDevicesDialog = false }
+        )
+    }
+
+    contextMenuDevice?.let { device ->
+        val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
+        DeviceContextMenu(
+            device = device,
+            isTrusted = isTrusted,
+            onSendFile = {
+                selectedDevice = device
+                filePickerLauncher.launch(arrayOf("*/*"))
+            },
+            onPair = {
+                if (pairingDeviceFingerprint != device.info.fingerprint) {
+                    pairingDeviceFingerprint = device.info.fingerprint
+                    Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
+                    viewModel.requestPairing(device) { success ->
+                        pairingDeviceFingerprint = null
+                        Toast.makeText(
+                            context,
+                            if (success) context.getString(R.string.pairing_request_sent, device.info.alias)
+                            else context.getString(R.string.pairing_failed),
+                            if (success) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            },
+            onForget = {
+                wsService.sendMessage("""{"type":"unpair"}""")
+                DeviceManager.removePairedFingerprint(device.info.fingerprint)
+                Toast.makeText(context, context.getString(R.string.device_forgotten, device.info.alias), Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { contextMenuDevice = null }
         )
     }
 

@@ -67,6 +67,7 @@
     <string name="pairing_failed">Pairing failed!</string>
     <string name="pairing_from">From: %1$s</string>
     <string name="pairing_enter_pin">Enter the PIN shown on the device</string>
+    <string name="pairing_enter_pin_on_device">Enter the PIN shown on %1$s</string>
     <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
     <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN on your PC</string>
 
@@ -81,4 +82,19 @@
     <!-- Devices -->
     <string name="device_not_paired">Not paired</string>
     <string name="device_unknown">Unknown device</string>
+    <string name="device_paired">Paired</string>
+
+    <!-- Device Context Menu -->
+    <string name="device_actions">Device Actions</string>
+    <string name="device_send_file">Send file</string>
+    <string name="device_pair">Pair device</string>
+    <string name="device_details">Device details</string>
+    <string name="device_forget">Forget device</string>
+    <string name="device_details_hide">Hide details</string>
+    <string name="device_ip">IP</string>
+    <string name="device_port">Port</string>
+    <string name="device_protocol">Protocol</string>
+    <string name="device_fingerprint">Fingerprint</string>
+    <string name="device_version">Version</string>
+    <string name="device_forgotten">Forgot %1$s</string>
 </resources>

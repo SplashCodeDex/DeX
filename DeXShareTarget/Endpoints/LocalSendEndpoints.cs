@@ -449,7 +449,7 @@ namespace DeXShareTarget.Endpoints
             try
             {
                 OutboundPairingStatus[statusIp] = "Pending";
-                var pin = new Random().Next(100000, 999999).ToString();
+                var pin = new Random().Next(10000, 99999).ToString();
                 var token = Guid.NewGuid().ToString("N");
                 IdentityManager.SavePairedToken(targetFp, token);
                 var reqDto = new PairRequestDto

@@ -394,6 +394,7 @@ $mdnsTimer.Add_Tick({
                         $script:wpfWindow.FindName("btnPinCancel").Visibility = 'Visible'
                         $script:wpfWindow.FindName("btnSettingsQrCode").Visibility = 'Collapsed'
                         $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Visible'
+                        try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($script:wpfWindow) } catch {}
                         
                         $pb = $script:wpfWindow.FindName("pbPinTimeout")
                         if ($pb) {
@@ -410,6 +411,7 @@ $mdnsTimer.Add_Tick({
                                 if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                                     $script:pairWaitTimer.Stop()
                                     $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed'
+                                    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
                                     $script:activeOutboundPairIp = $null
                                     $script:activeOutboundPairFp = $null
                                     if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message "Device has been paired." }

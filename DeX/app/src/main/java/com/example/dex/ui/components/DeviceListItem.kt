@@ -1,7 +1,7 @@
 package com.example.dex.ui.components
 
-import android.widget.Toast
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,22 +20,22 @@ import com.example.dex.network.AuthState
 import com.example.dex.network.DiscoveredDevice
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun DeviceListItem(
     device: DiscoveredDevice,
     onClick: () -> Unit,
-    onSendClipboard: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     isTrusted: Boolean = AuthState.pairedFingerprints.contains(device.info.fingerprint)
 ) {
-    val context = LocalContext.current
-    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-    val emptyMsg = stringResource(R.string.clipboard_empty)
-
     DeXPanel(
         modifier = modifier
             .fillMaxWidth()
             .bubbleFluidity()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -95,20 +93,6 @@ fun DeviceListItem(
                     text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DeXIconButton(onClick = {
-                val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
-                if (!text.isNullOrEmpty()) {
-                    onSendClipboard(text)
-                } else {
-                    Toast.makeText(context, emptyMsg, Toast.LENGTH_SHORT).show()
-                }
-            }) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_content_paste),
-                    contentDescription = stringResource(R.string.send_clipboard),
-                    tint = MaterialTheme.colorScheme.secondary
                 )
             }
             Icon(
