@@ -95,8 +95,17 @@ namespace DeXShareTarget
             {
                 if (!string.IsNullOrEmpty(TargetIp))
                 {
-                    var directDevice = new DiscoveredDevice { Ip = TargetIp, Info = new RegisterDto { Port = 53317 } };
-                    await PerformLocalSendTransferAsync(directDevice);
+                    // Resolve the target IP to its fingerprint so the WebSocket push targets the right device
+                    var matched = DeXShareTarget.Services.DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == TargetIp);
+                    if (matched != null)
+                    {
+                        await PerformLocalSendTransferAsync(matched);
+                    }
+                    else
+                    {
+                        txtStatus.Text = "Error: Android device not paired or not connected via WebSocket.";
+                        await Task.Delay(3000);
+                    }
                     return;
                 }
 
@@ -124,36 +133,16 @@ namespace DeXShareTarget
             long totalBytes = files.Sum(f => new FileInfo(f).Length);
             Stopwatch globalSw = Stopwatch.StartNew();
 
-            // Ignore cert errors
-            var handler = new SocketsHttpHandler
+            if (!DeXShareTarget.Services.WebSocketConnectionManager.IsVerified(device.Info.Fingerprint))
             {
-                SslOptions = new System.Net.Security.SslClientAuthenticationOptions
-                {
-                    RemoteCertificateValidationCallback = (sender, cert, chain, errors) => true,
-                    ApplicationProtocols = new System.Collections.Generic.List<System.Net.Security.SslApplicationProtocol>
-                        { System.Net.Security.SslApplicationProtocol.Http11 }
-                }
-            };
-            using var http = new HttpClient(handler);
-            http.Timeout = TimeSpan.FromSeconds(15);
-            if (IdentityManager.PairedTokens.TryGetValue(device.Info.Fingerprint, out var token)) {
-                http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            } else {
-                http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", IdentityManager.IdentityHash);
+                txtStatus.Text = "Error: Android device not paired or not connected via WebSocket.";
+                await Task.Delay(3000);
+                return;
             }
 
-            var baseUrl = $"https://{device.Ip}:{device.Info.Port}";
-            
-            // Get local IP used to reach the device
-            string localIp = "127.0.0.1";
-            try
-            {
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0);
-                socket.Connect(device.Ip, 53317);
-                localIp = (socket.LocalEndPoint as IPEndPoint)?.Address.ToString() ?? "127.0.0.1";
-            } catch {}
-
             var hostedIds = new List<string>();
+            var fileMap = new Dictionary<string, object>();
+
             foreach (var f in files)
             {
                 var fi = new FileInfo(f);
@@ -163,20 +152,32 @@ namespace DeXShareTarget
                 LocalSendEndpoints.HostedFiles[fileId] = f;
                 hostedIds.Add(fileId);
 
-                txtStatus.Text = $"Notifying Android to pull {fi.Name}...";
-
-                // 2. Send the notify-download signal
-                var notifyReq = new Dictionary<string, string>
+                fileMap[fileId] = new 
                 {
-                    { "ip", localIp },
-                    { "port", "53319" },
-                    { "fileId", fileId },
-                    { "fileName", fi.Name },
-                    { "fileSize", fi.Length.ToString() }
+                    id = fileId,
+                    fileName = fi.Name,
+                    size = fi.Length,
+                    fileType = "application/octet-stream"
                 };
+            }
 
-                var content = new StringContent(JsonSerializer.Serialize(notifyReq), System.Text.Encoding.UTF8, "application/json");
-                await http.PostAsync($"{baseUrl}/notify-download", content);
+            txtStatus.Text = $"Notifying Android to pull {files.Count} files...";
+
+            var prepareReq = new 
+            {
+                info = new { alias = Environment.MachineName, deviceModel = "PC", deviceType = "desktop", fingerprint = IdentityManager.Fingerprint, port = 53317, protocol = "localsend", download = false },
+                files = fileMap
+            };
+
+            var wsPayload = new { type = "prepare-upload", data = prepareReq };
+            var json = JsonSerializer.Serialize(wsPayload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            var pushed = await DeXShareTarget.Services.WebSocketConnectionManager.SendAsync(device.Info.Fingerprint, json, requireVerified: true);
+            if (!pushed)
+            {
+                txtStatus.Text = "Error: Android device not paired or not connected via WebSocket.";
+                await Task.Delay(3000);
+                return;
             }
 
             globalSw.Stop();
@@ -286,7 +287,9 @@ namespace DeXShareTarget
                 http.Timeout = TimeSpan.FromSeconds(2);
                 var res = await http.GetStringAsync("http://127.0.0.1:53318/local/devices");
                 var list = JsonSerializer.Deserialize<List<DiscoveredDevice>>(res, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return list?.FirstOrDefault(); // return first found Wi-Fi device
+                // Prefer the mobile DeX client over other desktops on the LAN
+                return list?.FirstOrDefault(d => string.Equals(d.Info.DeviceType, "mobile", StringComparison.OrdinalIgnoreCase))
+                    ?? list?.FirstOrDefault();
             } 
             catch { return null; }
         }

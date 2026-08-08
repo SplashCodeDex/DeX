@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dex.network.ClientEngine
 import com.example.dex.network.DeviceConfig
-import com.example.dex.network.DeviceManager
 import com.example.dex.network.DiscoveryEngine
 import com.example.dex.network.DiscoveredDevice
 import com.example.dex.network.RegisterDto
@@ -36,13 +35,12 @@ class MainScreenViewModel(
               fingerprint = deviceConfig?.fingerprint ?: "",
               port = 53317,
               protocol = "https",
-              download = true,
+              download = false,
               identityHash = deviceConfig?.identityHash
           )
+          // Registration only makes this device visible to the PC. Trust is established
+          // exclusively via the PC-initiated PIN flow, which exchanges the pairing token.
           val success = clientEngine.registerDevice(device.ip, device.info.port, localRegisterDto)
-          if (success) {
-              DeviceManager.savePairedFingerprint(device.info.fingerprint)
-          }
           onResult(success)
       }
   }

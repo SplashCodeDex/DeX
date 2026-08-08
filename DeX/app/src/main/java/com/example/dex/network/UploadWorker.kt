@@ -69,7 +69,7 @@ class UploadWorker(
             info = RegisterDto(
                 alias = getDeviceName(applicationContext), version = "2.0", deviceModel = android.os.Build.MODEL ?: "Android",
                 deviceType = "mobile", fingerprint = deviceConfig.fingerprint,
-                port = 53317, protocol = "https", download = true,
+                port = 53317, protocol = "https", download = false,
                 identityHash = deviceConfig.identityHash
             ),
             files = fileData.mapValues { (id, d) -> 
@@ -95,6 +95,7 @@ class UploadWorker(
                 val token = response.files[id] ?: return@forEach
                 if (token == "[SKIP]") {
                     successCount++
+                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
                 } else {
                     applicationContext.contentResolver.openInputStream(d.first)?.use { stream ->
                         val success = client.uploadFile(
@@ -107,6 +108,7 @@ class UploadWorker(
                         }
                         if (success) {
                             successCount++
+                            TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
                         }
                     }
                 }
@@ -138,7 +140,7 @@ class UploadWorker(
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Sending Files")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_sys_upload) // Uses a system standard icon
+            .setSmallIcon(R.drawable.ic_stat_dex)
             .setProgress(100, progress, false)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)

@@ -46,14 +46,15 @@ class DiscoveryEngine(
             fingerprint = deviceConfig.fingerprint,
             port = 53317,
             protocol = "https",
-            download = true,
+            // This device no longer hosts a LocalSend receiver; pushes arrive via the PC's WebSocket
+            download = false,
             identityHash = deviceConfig.identityHash
         )
 
     fun startDiscovery() {
         Timber.i("Starting DiscoveryEngine (NSD + UDP Multicast)...")
         nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
-        udpManager = UdpMulticastManager(context, localInfo).apply { start() }
+        udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
 
         cleanupJob = scope.launch {
             while (isActive) {
@@ -63,6 +64,12 @@ class DiscoveryEngine(
                     map.filterValues { now - it.lastSeenTimestamp < 20000 }
                 }
             }
+        }
+    }
+
+    fun addDevice(device: DiscoveredDevice) {
+        _devices.update { map ->
+            map + (device.info.fingerprint to device)
         }
     }
 

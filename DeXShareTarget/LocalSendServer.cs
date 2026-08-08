@@ -66,7 +66,10 @@ namespace DeXShareTarget
                 await next();
             });
 
+            App.UseWebSockets();
+
             App.MapLocalSendEndpoints();
+            App.MapWebSocketEndpoints();
 
             await App.StartAsync();
         }

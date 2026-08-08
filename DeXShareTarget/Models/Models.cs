@@ -55,6 +55,4 @@ namespace DeXShareTarget.Models
         public bool IsPaired { get; set; }
         public bool IsAutoTrusted { get; set; }
     }
-
-    public enum PairResult { Reject, AcceptPermanent, AcceptGuest }
 }

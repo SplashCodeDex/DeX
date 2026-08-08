@@ -59,11 +59,3 @@ data class PairRequestDto(
     val pin: String,
     val token: String? = null
 )
-@Serializable
-data class NotifyDownloadDto(
-    val ip: String,
-    val port: String,
-    val fileId: String,
-    val fileName: String? = null,
-    val fileSize: String? = null
-)

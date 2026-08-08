@@ -25,12 +25,15 @@ import androidx.compose.ui.unit.dp
 import com.example.dex.R
 import com.example.dex.network.AuthState
 import com.example.dex.network.DeviceManager
+import com.example.dex.network.WebSocketClientService
+import org.koin.compose.koinInject
 
 @Composable
 fun TrustedDevicesDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val wsService: WebSocketClientService = koinInject()
     val pairedDevices = remember {
         mutableStateListOf<String>().apply {
             addAll(AuthState.pairedFingerprints)
@@ -143,6 +146,8 @@ fun TrustedDevicesDialog(
                                 }
                                 DeXTextButton(
                                     onClick = {
+                                        // Ask the PC to forget this device too, so it stops pushing to us
+                                        wsService.sendMessage("""{"type":"unpair"}""")
                                         DeviceManager.removePairedFingerprint(fingerprint)
                                         pairedDevices.remove(fingerprint)
                                     }

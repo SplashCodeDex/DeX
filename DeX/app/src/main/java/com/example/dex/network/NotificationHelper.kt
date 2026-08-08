@@ -32,7 +32,7 @@ class NotificationHelper(private val context: Context) {
         return NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.notif_bg_title))
             .setContentText(context.getString(R.string.notif_bg_desc))
-            .setSmallIcon(android.R.drawable.ic_menu_share)
+            .setSmallIcon(R.drawable.ic_stat_dex)
             .build()
     }
 
@@ -59,7 +59,7 @@ class NotificationHelper(private val context: Context) {
         val notification = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.notif_incoming_title))
             .setContentText(context.resources.getQuantityString(R.plurals.notif_incoming_desc, fileCount, fileCount))
-            .setSmallIcon(android.R.drawable.ic_menu_share)
+            .setSmallIcon(R.drawable.ic_stat_dex)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .addAction(android.R.drawable.ic_menu_add, context.getString(R.string.notif_action_accept), acceptPendingIntent)
@@ -75,10 +75,35 @@ class NotificationHelper(private val context: Context) {
         val successNotification = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.notif_file_received_title))
             .setContentText(context.getString(R.string.notif_file_received_desc, originalFileName))
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(R.drawable.ic_stat_dex)
             .setAutoCancel(true)
             .build()
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(originalFileName.hashCode(), successNotification)
+    }
+
+    fun showPairingRequestNotification(alias: String) {
+        val intent = Intent(context, com.example.dex.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 
+            0, 
+            intent, 
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setContentTitle("Pairing Request")
+            .setContentText("Pairing request from $alias. Tap to enter PIN.")
+            .setSmallIcon(R.drawable.ic_stat_dex)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify("pairing".hashCode(), notification)
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,15 +17,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.dex.R
 import com.example.dex.ui.components.DeXPanel
 
 @Composable
 fun NetworkErrorDialog(
-    error: String, 
-    onDismiss: () -> Unit, 
+    error: String,
+    onDismiss: () -> Unit,
     title: String = stringResource(R.string.error_network_title)
 ) {
     // We use a Dialog with usePlatformDefaultWidth = false to overlay the whole screen,
@@ -70,12 +70,14 @@ fun NetworkErrorDialog(
 
 @Composable
 fun PairingRequestDialog(
-    alias: String, 
-    onAccept: (String) -> Unit, 
+    alias: String,
+    expectedPin: String,
+    onAccept: (String) -> Unit,
     onReject: () -> Unit
 ) {
-    var enteredPin by remember { mutableStateOf("") }
-    
+    var enteredPin by rememberSaveable { mutableStateOf("") }
+    var isError by remember { mutableStateOf(value = false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -109,21 +111,37 @@ fun PairingRequestDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "From: $alias",
+                    stringResource(R.string.pairing_from, alias),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "Enter the PIN shown on the device",
+                    stringResource(R.string.pairing_enter_pin),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (isError) {
+                    Text(
+                        stringResource(R.string.pairing_wrong_pin),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 OutlinedTextField(
                     value = enteredPin,
-                    onValueChange = { if (it.length <= 6) enteredPin = it },
+                    onValueChange = {
+                        if (it.length <= 6) {
+                            enteredPin = it
+                            isError = false
+                        }
+                    },
+                    isError = isError,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 4.sp),
@@ -140,11 +158,17 @@ fun PairingRequestDialog(
                         Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.error)
                     }
                     DeXButton(
-                        onClick = { onAccept(enteredPin) },
+                        onClick = {
+                            if (enteredPin == expectedPin) {
+                                onAccept(enteredPin)
+                            } else {
+                                isError = true
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         enabled = enteredPin.length == 6
                     ) {
-                        Text("Accept")
+                        Text(stringResource(R.string.accept))
                     }
                 }
             }

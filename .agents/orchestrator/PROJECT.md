@@ -23,7 +23,7 @@
 | M1 | Trusted Devices UI | `TrustedDevicesDialog.kt`, top bar action, `DeviceManager` wiring | M0 | DONE |
 | M2 | Shared Folders UI | `SharedFoldersDialog.kt`, top bar action, `SafStorage` wiring | M0 | DONE |
 | M3 | Handshake & Pairing | `MainScreenViewModel.sendHandshake`, `MainScreen` click branching | M0 | DONE |
-| M4 | Integration & Release | `./gradlew assembleDebug`, `lintDebug`, AppxManifest bump, MSIX, git | M1, M2, M3 | IN_PROGRESS |
+| M4 | Integration & Release | `./gradlew assembleDebug`, `lintDebug`, AppxManifest bump, MSIX, git | M1, M2, M3 | DONE |
 
 ## Interface Contracts
 ### MainScreen ↔ TrustedDevicesDialog / SharedFoldersDialog

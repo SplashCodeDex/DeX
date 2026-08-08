@@ -34,6 +34,14 @@ object SafStorage {
         } catch (_: Exception) {}
     }
 
+    fun promptForDownloadsDexGrant(context: Context) {
+        val intent = Intent(context, com.example.dex.MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra("REQUEST_DOWNLOADS_DEX_GRANT", true)
+        }
+        context.startActivity(intent)
+    }
+
     fun writeToDownloadsDex(context: Context, fileName: String, input: InputStream): Boolean {
         val dirUri = getDownloadsDexUri(context) ?: return false
         return writeFile(context, dirUri, fileName, input)
@@ -55,11 +63,19 @@ object SafStorage {
         }
     }
 
+    fun createDocumentUri(context: Context, dirUri: Uri, fileName: String): Uri? {
+        return try {
+            DocumentsContract.createDocument(
+                context.contentResolver, dirUri, "application/octet-stream", fileName
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun openOutputStream(context: Context, dirUri: Uri, fileName: String): OutputStream? {
         return try {
-            val doc = DocumentsContract.createDocument(
-                context.contentResolver, dirUri, "application/octet-stream", fileName
-            ) ?: return null
+            val doc = createDocumentUri(context, dirUri, fileName) ?: return null
             context.contentResolver.openOutputStream(doc)
         } catch (_: Exception) {
             null

@@ -5,6 +5,7 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
+import com.example.dex.R
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -48,7 +49,14 @@ class DownloadWorker(
                 socketChannel.write(buffer)
             }
 
-            val out = SafStorage.openOutputStream(context, destDirUri.toUri(), fileName)
+            val docUri = SafStorage.createDocumentUri(context, destDirUri.toUri(), fileName)
+            if (docUri == null) {
+                socketChannel.close()
+                TcpDownloadService.updateState(DownloadState(fileName = fileName, error = "Cannot write to Downloads/DeX", isDownloading = false))
+                return@withContext Result.failure()
+            }
+
+            val out = context.contentResolver.openOutputStream(docUri)
             if (out == null) {
                 socketChannel.close()
                 TcpDownloadService.updateState(DownloadState(fileName = fileName, error = "Cannot write to Downloads/DeX", isDownloading = false))
@@ -95,14 +103,16 @@ class DownloadWorker(
             out.close()
             socketChannel.close()
             println("TCP Download complete: $fileName")
-            
+
+            TransferHistory.log(applicationContext, fileName, downloaded, "received", docUri.toString())
+
             TcpDownloadService.updateState(DownloadState(fileName = fileName, progress = 1f, isSuccess = true))
             
             // Send completion notification
             val successNotification = NotificationCompat.Builder(context, channelId)
                 .setContentTitle("File Received")
                 .setContentText("Saved to Downloads/DeX/$fileName")
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setSmallIcon(R.drawable.ic_stat_dex)
                 .setAutoCancel(true)
                 .build()
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
@@ -119,10 +129,18 @@ class DownloadWorker(
     private fun createForegroundInfo(progress: Int, text: String): ForegroundInfo {
         val cancelIntent = androidx.work.WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
 
+        val channel = android.app.NotificationChannel(
+            channelId,
+            "Download progress",
+            android.app.NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        manager.createNotificationChannel(channel)
+
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Receiving File")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ic_stat_dex)
             .setProgress(100, progress, false)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)

@@ -4,3 +4,20 @@ DeXShareTarget/obj/
 *.appx
 
 MSIX_Source/win-x64/
+
+# Android build junk
+DeX/.gradle/
+DeX/build/
+DeX/app/build/
+DeX/local.properties
+*.apk
+*.aab
+DeX/.idea/planningMode.xml
+
+# Scratch / network experiments
+TestHttps/
+test*.cs
+test*.csx
+test_raw_tls*.ps1
+test_udp.ps1
+

@@ -37,7 +37,7 @@
         <item quantity="other">Sending %1$d files to %2$s…</item>
     </plurals>
     <string name="toast_percent_total">%1$d%% Total</string>
-    
+
     <!-- Notification & Services -->
     <string name="notif_channel_bg">DeX Background Service</string>
     <string name="notif_bg_title">DeX is running</string>
@@ -51,7 +51,7 @@
     <string name="notif_action_reject">Reject</string>
     <string name="notif_file_received_title">File Received</string>
     <string name="notif_file_received_desc">Saved to Downloads/DeX/%1$s</string>
-    
+
     <!-- Workers -->
     <string name="upload_worker_preparing">Preparing upload…</string>
     <string name="upload_worker_channel">File Uploads</string>
@@ -59,9 +59,22 @@
     <!-- Error Handling -->
     <string name="error_network_title">Network Error</string>
     <string name="dismiss">Dismiss</string>
+    <string name="accept">Accept</string>
 
-    <!-- Pairing Toasts -->
+    <!-- Pairing Toasts & Dialogs -->
     <string name="pairing_with">Pairing with %1$s...</string>
     <string name="paired_successfully">Paired successfully!</string>
     <string name="pairing_failed">Pairing failed!</string>
+    <string name="pairing_from">From: %1$s</string>
+    <string name="pairing_enter_pin">Enter the PIN shown on the device</string>
+    <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
+    <string name="pairing_complete_from_pc">%1$s found — complete pairing by requesting a PIN from your PC</string>
+
+    <!-- History Screen -->
+    <string name="history_title">History</string>
+    <string name="history_empty">No transfers yet. Files you send or receive will show up here.</string>
+    <string name="history_sent">Sent</string>
+    <string name="history_received">Received</string>
+    <string name="history_no_source">Original file is no longer available</string>
+    <string name="history_open_failed">Couldn\'t open this file</string>
 </resources>

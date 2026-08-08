@@ -344,7 +344,8 @@ class ShareTargetActivity : ComponentActivity() {
         val inputData = workDataOf(
             "ip" to device.ip,
             "port" to device.info.port,
-            "uris" to urisJson
+            "uris" to urisJson,
+            "targetFingerprint" to device.info.fingerprint
         )
         
         val workRequest = OneTimeWorkRequestBuilder<com.example.dex.network.UploadWorker>()

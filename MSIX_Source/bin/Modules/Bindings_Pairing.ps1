@@ -1,54 +1,14 @@
 # --- PIN Pairing Handlers ---
 $script:wpfWindow.FindName("btnPinCancel").Add_Click({
-    if ($script:activePairRequest) {
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-resolve?fingerprint=$($script:activePairRequest.fingerprint)&accept=false" -Method Post } catch {}
-        $script:activePairRequest = $null
-    }
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    if ($script:isOutgoingPairRequest -and $script:activeOutgoingPairJob) {
-        $script:activeOutgoingPairJob | Stop-Job
-        $script:activeOutgoingPairJob | Remove-Job
-        $script:activeOutgoingPairJob = $null
-        $script:isOutgoingPairRequest = $false
+    
+    if ($script:activeOutboundPairIp) {
+        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue } catch {}
     }
+    
     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
 })
 
-$script:wpfWindow.FindName("btnPinAcceptOnce").Add_Click({
-    if ($script:activePairRequest) {
-        $entered = $script:wpfWindow.FindName("txtPinInput").Text
-        if ($entered -ne $script:activePairRequest.pin) {
-            Show-Toast -Title "Pairing Failed" -Message "Incorrect PIN."
-            try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-resolve?fingerprint=$($script:activePairRequest.fingerprint)&accept=false" -Method Post } catch {}
-            $script:activePairRequest = $null
-            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-            return
-        }
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-resolve?fingerprint=$($script:activePairRequest.fingerprint)&accept=true&guest=true" -Method Post } catch {}
-        $script:activePairRequest = $null
-        Show-Toast -Title "Guest Device Added" -Message "Device trusted for a single transfer."
-    }
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-})
-
-$script:wpfWindow.FindName("btnPinAccept").Add_Click({
-    if ($script:activePairRequest) {
-        $entered = $script:wpfWindow.FindName("txtPinInput").Text
-        if ($entered -ne $script:activePairRequest.pin) {
-            Show-Toast -Title "Pairing Failed" -Message "Incorrect PIN."
-            try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-resolve?fingerprint=$($script:activePairRequest.fingerprint)&accept=false" -Method Post } catch {}
-            $script:activePairRequest = $null
-            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-            return
-        }
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-resolve?fingerprint=$($script:activePairRequest.fingerprint)&accept=true" -Method Post } catch {}
-        $script:activePairRequest = $null
-        Show-Toast -Title "Pairing Successful" -Message "Device trusted and added to Your Devices."
-    }
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-})
 
 $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [System.Windows.RoutedEventHandler]{
     param($sender, $e)

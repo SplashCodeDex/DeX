@@ -21,9 +21,7 @@ namespace DeXShareTarget.Endpoints
     public static class LocalSendEndpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
-        public static ConcurrentDictionary<string, PairRequestDto> PendingPairs = new();
         public static bool IsDndEnabled { get; set; } = false;
-        public static ConcurrentDictionary<string, TaskCompletionSource<PairResult>> PairTcs = new();
         public static ConcurrentDictionary<string, DateTime> GuestFingerprints = new();
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
 
@@ -263,78 +261,6 @@ namespace DeXShareTarget.Endpoints
 
             var rateLimits = new ConcurrentDictionary<string, DateTime>();
 
-            app.MapPost("/api/localsend/v2/pair-prompt", async (PairRequestDto req, CancellationToken ct) =>
-            {
-                if (IsDndEnabled) return Results.StatusCode(403);
-                if (string.IsNullOrEmpty(req.Fingerprint)) return Results.BadRequest();
-                if (rateLimits.TryGetValue(req.Fingerprint, out var lastTime) && DateTime.UtcNow - lastTime < TimeSpan.FromSeconds(3))
-                {
-                    return Results.StatusCode(429); // Rate limited
-                }
-                rateLimits[req.Fingerprint] = DateTime.UtcNow;
-
-                PendingPairs[req.Fingerprint] = req;
-                
-                // Cancel any orphaned task for this fingerprint to avoid leaks
-                if (PairTcs.TryGetValue(req.Fingerprint, out var oldTcs))
-                {
-                    oldTcs.TrySetCanceled();
-                }
-
-                var tcs = new TaskCompletionSource<PairResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-                PairTcs[req.Fingerprint] = tcs;
-                
-                // Tie the TCS to the client disconnect token
-                using (ct.Register(() => { tcs.TrySetCanceled(); PendingPairs.TryRemove(req.Fingerprint, out _); PairTcs.TryRemove(req.Fingerprint, out _); }))
-                {
-                    try 
-                    {
-                        var res = await tcs.Task;
-                        if (res == PairResult.Reject) return Results.StatusCode(403);
-                        
-                        if (res == PairResult.AcceptPermanent)
-                        {
-                            IdentityManager.SavePairedDevice(req.Fingerprint);
-                            if (!string.IsNullOrEmpty(req.Token)) IdentityManager.SavePairedToken(req.Fingerprint, req.Token);
-                        }
-                        if (res == PairResult.AcceptGuest) GuestFingerprints[req.Fingerprint] = DateTime.UtcNow;
-                        return Results.Ok();
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        return Results.StatusCode(499); // Client Closed Request
-                    }
-                }
-            });
-
-            app.MapGet("/local/pairing-requests", () => Results.Json(PendingPairs.Values));
-
-            app.MapPost("/local/pairing-resolve", async (HttpRequest request) =>
-            {
-                var fp = request.Query["fingerprint"].ToString();
-                var accept = request.Query["accept"].ToString() == "true";
-                var guest = request.Query["guest"].ToString() == "true";
-                var result = accept ? (guest ? PairResult.AcceptGuest : PairResult.AcceptPermanent) : PairResult.Reject;
-
-                string? pendingToken = null;
-                if (PendingPairs.TryGetValue(fp, out var pendingReq)) pendingToken = pendingReq.Token;
-                PendingPairs.TryRemove(fp, out _);
-
-                if (PairTcs.TryGetValue(fp, out var tcs))
-                {
-                    tcs.TrySetResult(result);
-                    PairTcs.TryRemove(fp, out _);
-                }
-                
-                if (result == PairResult.AcceptPermanent)
-                {
-                    IdentityManager.SavePairedDevice(fp);
-                    if (!string.IsNullOrEmpty(pendingToken)) IdentityManager.SavePairedToken(fp, pendingToken);
-                }
-                if (result == PairResult.AcceptGuest) GuestFingerprints[fp] = DateTime.UtcNow;
-                
-                return Results.Ok();
-            });
 
             // Local API for PowerShell to read discovered devices
             app.MapGet("/local/devices", () => 
@@ -460,39 +386,40 @@ namespace DeXShareTarget.Endpoints
                 {
                     try
                     {
-                        var handler = new System.Net.Http.SocketsHttpHandler
+                        if (WebSocketConnectionManager.HasConnection(targetFp))
                         {
-                            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
-                            {
-                                RemoteCertificateValidationCallback = (sender, cert, chain, errors) => true,
-                                // Lock ALPN to HTTP/1.1 only — prevents .NET from advertising h2,
-                                // which crashes Android Ktor Netty's TLS pipeline (no netty-tcnative)
-                                ApplicationProtocols = new System.Collections.Generic.List<System.Net.Security.SslApplicationProtocol>
-                                    { System.Net.Security.SslApplicationProtocol.Http11 }
-                            }
-                        };
-                        using var client = new System.Net.Http.HttpClient(handler);
-                        client.Timeout = TimeSpan.FromSeconds(60);
-                        var content = new System.Net.Http.StringContent(JsonSerializer.Serialize(reqDto, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), System.Text.Encoding.UTF8, "application/json");
-                        var response = await client.PostAsync($"https://{targetIp}:53317/api/localsend/v2/pair-prompt", content);
-                        
-                        if (response.IsSuccessStatusCode)
-                        {
-                            IdentityManager.SavePairedDevice(targetFp);
-                            OutboundPairingStatus[targetIp] = "Accepted";
+                            var payload = new { type = "pair-prompt", data = reqDto };
+                            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                            await WebSocketConnectionManager.SendAsync(targetFp, json);
                         }
                         else
                         {
-                            OutboundPairingStatus[targetIp] = "Rejected";
+                            OutboundPairingStatus[targetIp] = "Failed"; // No active WebSocket connection
                         }
                     }
-                    catch 
+                    catch (Exception ex)
                     { 
+                        Console.WriteLine($"[PAIR-INITIATE] Failed to push to WebSocket: {ex.Message}");
                         OutboundPairingStatus[targetIp] = "Failed";
                     }
                 });
 
                 return Results.Json(new { pin });
+            });
+
+            app.MapPost("/local/pair-cancel", (HttpRequest request) => 
+            {
+                var targetIp = request.Query["ip"].ToString();
+                var fp = request.Query["fingerprint"].ToString();
+                if (!string.IsNullOrEmpty(targetIp))
+                {
+                    OutboundPairingStatus[targetIp] = "Cancelled";
+                }
+                if (!string.IsNullOrEmpty(fp))
+                {
+                    IdentityManager.RemovePairedDevice(fp);
+                }
+                return Results.Ok();
             });
 
             app.MapPost("/local/alias", (HttpRequest request) => 

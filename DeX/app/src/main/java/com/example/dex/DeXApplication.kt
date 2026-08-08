@@ -2,6 +2,8 @@ package com.example.dex
 
 import android.app.Application
 import com.example.dex.di.appModule
+import com.example.dex.network.DeviceManager
+import com.example.dex.network.TransferHistory
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -11,7 +13,10 @@ import com.example.dex.BuildConfig
 class DeXApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        
+
+        DeviceManager.init(this)
+        TransferHistory.init(this)
+
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }

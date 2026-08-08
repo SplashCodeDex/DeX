@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.tween
@@ -27,7 +29,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.dex.ui.components.FloatingPillNavBar
 import com.example.dex.ui.components.NavBarItem
-import com.example.dex.ui.files.FilesScreen
+import com.example.dex.ui.history.HistoryScreen
 import com.example.dex.ui.main.MainScreen
 import com.example.dex.ui.settings.SettingsScreen
 
@@ -59,10 +61,10 @@ fun MainNavigation() {
       selectedIcon = historyFilled,
       unselectedIcon = historyOutlined,
       contentDescription = "History",
-      isSelected = currentRoute == Files,
+      isSelected = currentRoute == History,
       onClick = {
-        if (currentRoute != Files) {
-          backStack.add(Files)
+        if (currentRoute != History) {
+          backStack.add(History)
         }
       }
     ),
@@ -94,8 +96,8 @@ fun MainNavigation() {
               modifier = Modifier.safeDrawingPadding()
             )
           }
-          entry<Files> {
-            FilesScreen(
+          entry<History> {
+            HistoryScreen(
               modifier = Modifier.safeDrawingPadding()
             )
           }
@@ -107,7 +109,7 @@ fun MainNavigation() {
           }
         },
     )
-    
+
     androidx.compose.animation.AnimatedVisibility(
       visible = true,
       enter = slideInVertically(initialOffsetY = { it }),
@@ -118,12 +120,16 @@ fun MainNavigation() {
     }
 
     val incomingPairRequest by com.example.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
     incomingPairRequest?.let { req ->
         com.example.dex.ui.components.PairingRequestDialog(
             alias = req.alias,
+            expectedPin = req.pin,
             onAccept = { enteredPin ->
                 req.deferred.complete(enteredPin)
                 com.example.dex.network.AuthState.incomingPairRequest.value = null
+                Toast.makeText(context, context.getString(R.string.paired_successfully), Toast.LENGTH_SHORT).show()
             },
             onReject = {
                 req.deferred.complete("")

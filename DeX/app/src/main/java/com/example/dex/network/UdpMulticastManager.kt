@@ -18,7 +18,8 @@ import java.net.NetworkInterface
 
 class UdpMulticastManager(
     private val context: Context,
-    private val localInfo: RegisterDto
+    private val localInfo: RegisterDto,
+    private val onDeviceDiscovered: (DiscoveredDevice) -> Unit
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var udpJob: Job? = null
@@ -61,9 +62,25 @@ class UdpMulticastManager(
         runCatching {
             val json = JSONObject(msg)
             val fp = json.optString("fingerprint", "")
-            if (fp.isNotEmpty() && fp != localInfo.fingerprint) {
-                sendReply(packet)
-            }
+            if (fp.isEmpty() || fp == localInfo.fingerprint) return
+
+            onDeviceDiscovered(
+                DiscoveredDevice(
+                    ip = packet.address.hostAddress ?: return,
+                    info = RegisterDto(
+                        alias = json.optString("alias", "Unknown"),
+                        version = json.optString("version", "2.0"),
+                        deviceModel = json.optString("deviceModel", "Unknown"),
+                        deviceType = json.optString("deviceType", "unknown"),
+                        fingerprint = fp,
+                        port = json.optInt("port", 53317),
+                        protocol = json.optString("protocol", "https"),
+                        download = json.optBoolean("download", true),
+                        identityHash = if (json.has("identityHash")) json.optString("identityHash") else null
+                    )
+                )
+            )
+            sendReply(packet)
         }
     }
 
@@ -83,7 +100,7 @@ class UdpMulticastManager(
             val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
             val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 53317)
             val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
-            
+
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                 runCatching {
                     if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {

@@ -106,7 +106,7 @@ class MainScreenViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { mockClient.registerDevice(testDevice.ip, testDevice.info.port, any()) }
-        assertTrue("Fingerprint should be added to paired set on successful registerDevice", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
+        assertFalse("Registration must NOT mark the device as paired — trust requires the PC-initiated PIN flow", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
     }
 
     @Test

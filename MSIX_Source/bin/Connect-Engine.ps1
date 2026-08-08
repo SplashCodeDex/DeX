@@ -379,33 +379,6 @@ $mdnsTimer.Add_Tick({
                 } catch { }
             }
 
-            # Poll Pairing Requests
-            try {
-                $pairReqs = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pairing-requests" -TimeoutSec 1 -ErrorAction Stop
-                if ($pairReqs -and $pairReqs.Count -gt 0) {
-                    $req = $pairReqs[0]
-                    # Show PIN UI overlay if not already showing
-                    if ($script:wpfWindow.FindName("pinViewPanel").Visibility -ne 'Visible') {
-                        $script:wpfWindow.FindName("txtPinTitle").Text = "Pairing Request"
-                        $script:wpfWindow.FindName("txtPinSubtitle").Text = "from $($req.alias)"
-                        $script:wpfWindow.FindName("txtPinCode").Visibility = 'Collapsed'
-                        $script:wpfWindow.FindName("txtPinInput").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("txtPinInput").Text = ""
-                        $script:wpfWindow.FindName("txtPinStatus").Text = "Enter the PIN shown on their screen:"
-                        
-                        $script:wpfWindow.FindName("btnPinAccept").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("btnPinAcceptOnce").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("btnSettingsQrCode").Visibility = 'Collapsed'
-                        $btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
-                        $btnPinCancel.Visibility = 'Visible'
-                        $btnPinCancel.Content = "Cancel"
-                        try { $script:wpfWindow.Dispatcher.Invoke({ $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($script:wpfWindow) }) } catch {}
-                        
-                        $script:activePairRequest = $req
-                    }
-                }
-            } catch { }
-
             # Poll robust UDP devices (LocalSendServer Gateway Unicast fallback)
             # This runs INDEPENDENTLY of mDNS — every tick, unconditionally.
             try {

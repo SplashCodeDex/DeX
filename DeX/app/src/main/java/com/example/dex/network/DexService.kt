@@ -10,7 +10,7 @@ import androidx.core.app.ServiceCompat
 import org.koin.android.ext.android.inject
 
 class DexService : Service() {
-    private val restServerEngine: RestServerEngine by inject()
+    private val webSocketClientService: WebSocketClientService by inject()
     private val discoveryEngine: DiscoveryEngine by inject()
     private val notificationHelper: NotificationHelper by inject()
     
@@ -34,13 +34,13 @@ class DexService : Service() {
         multicastLock?.setReferenceCounted(true)
         multicastLock?.acquire()
 
-        restServerEngine.startServer()
+        webSocketClientService.start()
         discoveryEngine.startDiscovery()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        restServerEngine.stopServer()
+        webSocketClientService.stop()
         discoveryEngine.stopDiscovery()
         
         multicastLock?.let {
