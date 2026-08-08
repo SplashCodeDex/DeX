@@ -112,10 +112,9 @@ class MessageHandler(
                 }
             }
 
-            // Pull mode: download each file over TCP from the PC's pull server (port 53319)
-            for ((fileId, file) in uploadReq.files) {
-                TcpDownloadService.download(context, senderIp, PULL_PORT, fileId, file.fileName, file.size, dirUri)
-            }
+            // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress)
+            val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size) }
+            TcpDownloadService.downloadBatch(context, senderIp, PULL_PORT, files, dirUri)
         }
     }
 

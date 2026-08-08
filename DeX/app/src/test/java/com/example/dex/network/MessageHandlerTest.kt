@@ -134,10 +134,10 @@ class MessageHandlerTest {
     }
 
     @Test
-    fun `prepare-upload accepted downloads each file from the PC pull server`() = runTest(testDispatcher) {
+    fun `prepare-upload accepted enqueues one batch download for all files from the PC pull server`() = runTest(testDispatcher) {
         mockkObject(TcpDownloadService)
         mockkObject(SafStorage)
-        every { TcpDownloadService.download(any(), any(), any(), any(), any(), any(), any()) } returns Unit
+        every { TcpDownloadService.downloadBatch(any(), any(), any(), any(), any()) } returns Unit
         every { SafStorage.getDownloadsDexUri(any()) } returns mockk<android.net.Uri>()
 
         try {
@@ -161,16 +161,12 @@ class MessageHandlerTest {
             }
             assertTrue("coroutine should have consumed the pending prompt", TransferState.pendingPrompts.isEmpty())
 
-            verify(timeout = 10_000) {
-                TcpDownloadService.download(any(), "192.168.1.10", 53319, "f1", "photo.jpg", 1024L, any())
-            }
-
-            verify(timeout = 10_000, exactly = 2) {
-                TcpDownloadService.download(any(), "192.168.1.10", 53319, any(), any(), any(), any())
-            }
-
-            verify(timeout = 10_000) {
-                TcpDownloadService.download(any(), "192.168.1.10", 53319, "f2", "doc.pdf", 2048L, any())
+            verify(timeout = 10_000, exactly = 1) {
+                TcpDownloadService.downloadBatch(
+                    any(), "192.168.1.10", 53319,
+                    match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+                    any()
+                )
             }
             assertNull(TransferState.pendingPrompts[sessionSlot.captured])
         } finally {

@@ -23,7 +23,8 @@ import java.util.concurrent.Executors
  */
 class QuicClient(private val context: Context) {
 
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+    // Pooled executor so parallel Cronet requests (uploads/downloads) don't serialize each other's reads
+    private val executor: ExecutorService = Executors.newFixedThreadPool(4)
     private var engine: CronetEngine? = null
 
     fun init() {

@@ -8,6 +8,7 @@ import androidx.work.BackoffPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.serialization.json.Json
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,9 @@ data class DownloadState(
     val progress: Float = 0f,
     val isDownloading: Boolean = false,
     val isSuccess: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val doneFiles: Int = 0,
+    val totalFiles: Int = 1
 )
 
 object TcpDownloadService {
@@ -36,15 +39,25 @@ object TcpDownloadService {
         _downloadState.value = state
     }
 
-    fun download(context: Context, ip: String, port: Int, fileId: String, fileName: String, fileSize: Long, destDirUri: Uri) {
-        _downloadState.value = DownloadState(fileName = fileName, isDownloading = true)
-        
+    /**
+     * Enqueues one work item for the whole transfer session. The worker downloads all
+     * [files] concurrently (QUIC streams) and reports aggregate progress, so a cancel
+     * stops the entire session instead of just the last file.
+     */
+    fun downloadBatch(context: Context, ip: String, port: Int, files: List<PullFileDto>, destDirUri: Uri) {
+        val totalBytes = files.sumOf { it.size }
+        _downloadState.value = DownloadState(
+            fileName = if (files.isNotEmpty()) files.first().fileName else "",
+            isDownloading = true,
+            doneFiles = 0,
+            totalFiles = files.size
+        )
+
         val inputData = Data.Builder()
             .putString("ip", ip)
             .putInt("port", port)
-            .putString("fileId", fileId)
-            .putString("fileName", fileName)
-            .putLong("fileSize", fileSize)
+            .putString("files", Json.encodeToString(files))
+            .putLong("totalBytes", totalBytes)
             .putString("destDirUri", destDirUri.toString())
             .build()
 
@@ -52,14 +65,14 @@ object TcpDownloadService {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+        val workRequest = OneTimeWorkRequestBuilder<BatchDownloadWorker>()
             .setConstraints(constraints)
             .setInputData(inputData)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
             .build()
 
-        activeWorkId = downloadWorkRequest.id
-        WorkManager.getInstance(context).enqueue(downloadWorkRequest)
+        activeWorkId = workRequest.id
+        WorkManager.getInstance(context).enqueue(workRequest)
     }
 
     fun cancelDownload(context: Context) {

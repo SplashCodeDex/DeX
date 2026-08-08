@@ -58,3 +58,10 @@ data class PairRequestDto(
     val pin: String,
     val token: String? = null
 )
+
+@Serializable
+data class PullFileDto(
+    val fileId: String,
+    val fileName: String,
+    val size: Long
+)
