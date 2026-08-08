@@ -55,4 +55,12 @@ namespace DeXShareTarget.Models
         public bool IsPaired { get; set; }
         public bool IsAutoTrusted { get; set; }
     }
+
+    public class PendingPairAttempt
+    {
+        public string Fingerprint { get; set; } = "";
+        public string Pin { get; set; } = "";
+        public string Alias { get; set; } = "";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
 }

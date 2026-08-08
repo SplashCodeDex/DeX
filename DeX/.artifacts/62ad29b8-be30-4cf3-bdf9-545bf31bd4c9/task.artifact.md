@@ -1,0 +1,6 @@
+- [ ] Redesign `PairingRequestDialog` in `ErrorDialogs.kt`
+    - [ ] Add Close Button (top-right)
+    - [ ] Update Title styling
+    - [ ] Implement Digit-based PIN input bubbles
+    - [ ] Update Action Button to pill shape
+- [ ] Verify changes with a preview or manual deployment

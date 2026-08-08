@@ -23,6 +23,8 @@ namespace DeXShareTarget.Endpoints
         public static ConcurrentDictionary<string, string> HostedFiles = new();
         public static bool IsDndEnabled { get; set; } = false;
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
+        // Active outbound pairing attempts so the GUI can display the PIN even for phone-initiated pairing
+        public static ConcurrentDictionary<string, PendingPairAttempt> PendingPairPins = new();
 
         public static void MapLocalSendEndpoints(this WebApplication app)
         {
@@ -352,6 +354,22 @@ namespace DeXShareTarget.Endpoints
                 return Results.NotFound();
             });
 
+            app.MapGet("/local/pending-pair", () =>
+            {
+                // Return the most recent active pairing attempt (phone-initiated flows have no GUI
+                // trigger, so the GUI polls this to display the PIN panel)
+                var now = DateTime.UtcNow;
+                var entry = PendingPairPins
+                    .Where(kv => now - kv.Value.CreatedAt < TimeSpan.FromSeconds(75))
+                    .OrderByDescending(kv => kv.Value.CreatedAt)
+                    .FirstOrDefault();
+                if (entry.Value == null)
+                {
+                    return Results.NotFound();
+                }
+                return Results.Json(new { ip = entry.Key, fingerprint = entry.Value.Fingerprint, pin = entry.Value.Pin, alias = entry.Value.Alias });
+            });
+
             app.MapPost("/local/pair-initiate", async (HttpRequest request) => 
             {
                 var targetIp = request.Query["ip"].ToString();
@@ -371,6 +389,7 @@ namespace DeXShareTarget.Endpoints
                 if (!string.IsNullOrEmpty(targetIp))
                 {
                     OutboundPairingStatus[targetIp] = "Cancelled";
+                    ClearPendingPair(targetIp);
                 }
                 if (!string.IsNullOrEmpty(fp))
                 {
@@ -444,6 +463,13 @@ namespace DeXShareTarget.Endpoints
                 var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                 if (await WebSocketConnectionManager.SendAsync(targetFp, json))
                 {
+                    PendingPairPins[statusIp] = new Models.PendingPairAttempt
+                    {
+                        Fingerprint = targetFp,
+                        Pin = pin,
+                        Alias = reqDto.Alias,
+                        CreatedAt = DateTime.UtcNow
+                    };
                     ShowPairPinToast(pin, targetFp);
                     return pin;
                 }
@@ -477,6 +503,12 @@ namespace DeXShareTarget.Endpoints
                 ToastNotificationManager.CreateToastNotifier("DeX").Show(new ToastNotification(xmlDoc));
             }
             catch { }
+        }
+
+        /// <summary>Clears the stored PIN for a pairing attempt once it completes, is cancelled, or expires.</summary>
+        public static void ClearPendingPair(string statusIp)
+        {
+            PendingPairPins.TryRemove(statusIp, out _);
         }
 
         private static async Task StartTcpServerAsync()

@@ -118,6 +118,7 @@ namespace DeXShareTarget.Endpoints
                 else if (type == "pair-response" && root.TryGetProperty("data", out var data))
                 {
                     var accepted = data.TryGetProperty("accepted", out var a) && a.GetBoolean();
+                    LocalSendEndpoints.ClearPendingPair(clientIp);
                     if (accepted)
                     {
                         IdentityManager.SavePairedDevice(fingerprint);
