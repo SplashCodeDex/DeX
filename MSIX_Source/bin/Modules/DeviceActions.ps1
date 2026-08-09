@@ -33,7 +33,7 @@ function Send-ClipboardToDevice {
 
     # 1. WebSocket path (no ADB): the local server forwards the text to the phone's app
     try {
-        $null = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/clipboard-push?ip=$Ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
+        $null = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/clipboard-push?ip=$Ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
         if (-not $Quiet) { Show-Toast -Title "Clipboard Synced" -Message "Sent to $Ip." }
         return $true
     } catch {
@@ -67,7 +67,7 @@ function Start-MirrorSession {
     param([Parameter(Mandatory)][string]$Ip)
 
     try {
-        $null = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror?ip=$Ip" -Method Post -TimeoutSec 5 -ErrorAction Stop
+        $null = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror?ip=$Ip" -Method Post -TimeoutSec 5 -ErrorAction Stop
         Show-Toast -Title "Mirroring Started" -Message "Phone screen mirror opened."
     } catch {
         Show-Toast -Title "Mirror Failed" -Message "Open the DeX app on the phone and allow screen sharing."
@@ -92,7 +92,7 @@ function Start-PinPairing {
     $alias = ""
     if (-not $Ip) {
         try {
-            $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+            $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
             $target = $devices | Where-Object { $_.info.fingerprint -eq $Fingerprint } | Select-Object -First 1
             if (-not $target) { throw "Device not found in the local device list." }
             $Ip = $target.ip
@@ -107,7 +107,7 @@ function Start-PinPairing {
     $script:activeOutboundPairFp = $Fingerprint
 
     try {
-        $initRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-initiate?ip=${Ip}&fingerprint=${Fingerprint}" -Method Post -TimeoutSec 5 -ErrorAction Stop
+        $initRes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-initiate?ip=${Ip}&fingerprint=${Fingerprint}" -Method Post -TimeoutSec 5 -ErrorAction Stop
         $pin = $initRes.pin
         if (-not $pin) {
             Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."
@@ -120,7 +120,7 @@ function Start-PinPairing {
 
     if (-not $alias) {
         try {
-            $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction SilentlyContinue
+            $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction SilentlyContinue
             $t = $devices | Where-Object { $_.info.fingerprint -eq $Fingerprint } | Select-Object -First 1
             if ($t) { $alias = $t.info.alias }
         } catch {}

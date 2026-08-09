@@ -14,7 +14,7 @@ $script:lastMouseUpTime = [DateTime]::MinValue
 function Invoke-DexEndpoint([string]$Name, [string]$Ip, $Extra) {
     $body = @{ ip = $Ip }
     if ($Extra) { foreach ($k in $Extra.Keys) { $body[$k] = $Extra[$k] } }
-    return Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/$Name" -Method Post `
+    return Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/$Name" -Method Post `
         -Body ($body | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
 }
 
@@ -83,7 +83,7 @@ function Refresh-PullDock {
 # cancelled flag wins over the local one so a cancel that races completion reports correctly.
 function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
     $st = $null
-    try { $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-status?requestId=$RequestId" -TimeoutSec 3 -ErrorAction Stop } catch {}
+    try { $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull-status?requestId=$RequestId" -TimeoutSec 3 -ErrorAction Stop } catch {}
     if ($null -eq $st) { return }
     $result = $st.result
     $cancelled = $false; $savedN = 0; $failedN = 0
@@ -121,7 +121,7 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
         $finished = $false
         while ((Get-Date) -lt $hardDeadline) {
             $st = $null
-            try { $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-status?requestId=$rid" -TimeoutSec 3 -ErrorAction Stop } catch {}
+            try { $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull-status?requestId=$rid" -TimeoutSec 3 -ErrorAction Stop } catch {}
             if ($null -eq $st) { Start-Sleep -Milliseconds 300; continue }
 
             $done = [bool]$st.done
@@ -169,7 +169,7 @@ if ($script:btnCancelPull) {
         $active = Get-ActivePullId
         if ($active) {
             try {
-                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-cancel?requestId=$active" -Method Post -TimeoutSec 3 -ErrorAction SilentlyContinue | Out-Null
+                Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull-cancel?requestId=$active" -Method Post -TimeoutSec 3 -ErrorAction SilentlyContinue | Out-Null
             } catch {}
         }
     })
@@ -343,7 +343,7 @@ $script:lbFiles.Add_MouseDoubleClick({
         if ($pullIp) {
             try {
                 $body = @{ ip = $pullIp; files = @($pullFiles) } | ConvertTo-Json -Depth 10
-                $start = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10 -ErrorAction Stop
+                $start = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10 -ErrorAction Stop
                 if ($start.requestId) {
                     Start-PullProgressPoll -RequestId $start.requestId -OutDir $outDir
                 }

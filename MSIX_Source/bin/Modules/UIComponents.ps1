@@ -65,7 +65,7 @@ function Set-AppTheme {
             $txtTheme.Text = if ($ThemeName -eq "DarkTheme") { "Dark" } else { "Light" }
         }
         try {
-            $themeFile = Join-Path $env:LOCALAPPDATA "DeX\theme.json"
+            $themeFile = Join-Path $global:DeXDataRoot "theme.json"
             @{ CurrentTheme = $global:CurrentTheme; AppThemeMode = $global:AppThemeMode } | ConvertTo-Json -Depth 2 | Set-Content -Path $themeFile -Force -ErrorAction SilentlyContinue
         } catch {}
     }
@@ -257,7 +257,7 @@ function Show-QrCode {
     if ($imgQrCode) {
         $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
         $bitmap.BeginInit()
-        $bitmap.UriSource = New-Object Uri("http://127.0.0.1:53318/local/qr?ip=$localIp")
+        $bitmap.UriSource = New-Object Uri("$global:DeXLocalApi/local/qr?ip=$localIp")
         $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
         $bitmap.EndInit()
         $imgQrCode.Source = $bitmap
@@ -320,7 +320,7 @@ function Show-PinPanel {
     $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
     $script:pairWaitTimer.Add_Tick({
         try {
-            $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
+            $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                 $script:pairWaitTimer.Stop()
                 if ($HidePanelOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }

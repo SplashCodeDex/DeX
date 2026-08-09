@@ -302,7 +302,7 @@ function Load-Directory($dirPath) {
             if ($ip) {
                 try {
                     $body = @{ ip = $ip; folderUri = $dirPath } | ConvertTo-Json
-                    $res = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
+                    $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
                     if ($res.entries) {
                         foreach ($prop in $res.entries.PSObject.Properties) {
                             $name = $prop.Value.name
@@ -445,7 +445,7 @@ function Convert-PhoneThumb([string]$base64) {
 # paired/auto-trusted device, falling back to the last known IP.
 function Get-FileExplorerTargetIp {
     try {
-        $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+        $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
         $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
         if ($target -and $target.ip) { return $target.ip }
     } catch {}

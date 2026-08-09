@@ -3,7 +3,7 @@ $script:wpfWindow.FindName("btnPinCancel").Add_Click({
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
     
     if ($script:activeOutboundPairIp) {
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue } catch {}
+        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue } catch {}
     }
     
     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
@@ -22,7 +22,7 @@ $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [Sy
                     Add-Type -AssemblyName Microsoft.VisualBasic
                     $alias = [Microsoft.VisualBasic.Interaction]::InputBox("Enter new alias for this device:", "Rename Device", "")
                     if (![string]::IsNullOrWhiteSpace($alias)) {
-                        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/alias?fingerprint=$fp&alias=$alias" -Method Post } catch {}
+                        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/alias?fingerprint=$fp&alias=$alias" -Method Post } catch {}
                         Show-Toast -Title "Device Renamed" -Message "New alias saved."
                     }
                 }
@@ -30,14 +30,14 @@ $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [Sy
             "menuForget" {
                 $fp = $menuItem.Tag
                 if ($fp) {
-                    try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$fp" -Method Post } catch {}
+                    try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/unpair?fingerprint=$fp" -Method Post } catch {}
                     Show-Toast -Title "Device Forgotten" -Message "Device has been unpaired."
                 }
             }
             "menuGuestForget" {
                 $fp = $menuItem.Tag
                 if ($fp) {
-                    try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$fp" -Method Post } catch {}
+                    try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/unpair?fingerprint=$fp" -Method Post } catch {}
                     Show-Toast -Title "Device Forgotten" -Message "Device removed from the trusted list."
                 }
             }

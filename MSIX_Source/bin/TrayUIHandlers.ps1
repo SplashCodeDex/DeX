@@ -85,13 +85,13 @@ $actionMirror = {
     # Quick-action toggle: start/stop the ADB-free screen mirror
     $mirrorActive = $false
     try {
-        $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-state" -TimeoutSec 2 -ErrorAction Stop
+        $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-state" -TimeoutSec 2 -ErrorAction Stop
         $mirrorActive = [bool]$st.active
     } catch {}
     
     if ($mirrorActive) {
         # Stop: close the mirror window; the server tells the phone to stop streaming
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-stop" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null } catch {}
+        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-stop" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null } catch {}
         Show-Toast -Title "Mirroring Stopped" -Message "Screen mirror closed."
     } else {
         # Start: resolve the active device (ADB target first, else the first paired device)
@@ -100,7 +100,7 @@ $actionMirror = {
         if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
         if (-not $ip) {
             try {
-                $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
                 $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
                 if ($target) { $ip = $target.ip }
             } catch {}
@@ -173,7 +173,7 @@ $actionClipboard = {
     
     # Tell the backend whether to accept phone clipboard pushes (stops the phone -> PC direction)
     try {
-        Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/clipboard-sync?enabled=$($script:clipboardSyncEnabled)" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null
+        Invoke-RestMethod -Uri "$global:DeXLocalApi/local/clipboard-sync?enabled=$($script:clipboardSyncEnabled)" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null
     } catch {}
     
     if ($script:clipboardSyncEnabled) {

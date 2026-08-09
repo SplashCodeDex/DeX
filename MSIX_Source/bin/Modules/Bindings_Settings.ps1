@@ -80,7 +80,7 @@ if ($btnSettingsQrCode) {
             # User clicked "QR CODE" to go back, cancel pending pairing if any
             try {
                 if ($script:activeOutboundPairFp) {
-                    Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
+                    Invoke-RestMethod -Uri "$global:DeXLocalApi/local/unpair?fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
                 }
             } catch {}
 
@@ -106,7 +106,7 @@ if ($btnSettingsDnd) {
     $btnSettingsDnd.Add_Click({
         $script:isDndEnabled = -not $script:isDndEnabled
         $stateStr = if ($script:isDndEnabled) { "true" } else { "false" }
-        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dnd?enabled=$stateStr" -Method Post } catch {}
+        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dnd?enabled=$stateStr" -Method Post } catch {}
         
         $txtBadge = $script:wpfWindow.FindName("txtBadgeDnd")
         $badge = $script:wpfWindow.FindName("badgeDnd")
@@ -213,14 +213,14 @@ function Update-ProfileUI {
             $p = Invoke-RestMethod -Uri $uri -TimeoutSec 5 -ErrorAction Stop
             [pscustomobject]@{ Email = $p.email; Name = $p.name; Picture = $p.picture }
         } catch { $null }
-    } -ArgumentList "http://127.0.0.1:53318/local/settings/google-profile"
+    } -ArgumentList "$global:DeXLocalApi/local/settings/google-profile"
 }
 
 $btnSettingsSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
 if ($btnSettingsSignOut) {
     $btnSettingsSignOut.Add_Click({
         try {
-            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/signout" -Method Post -TimeoutSec 5 | Out-Null
+            Invoke-RestMethod -Uri "$global:DeXLocalApi/local/settings/signout" -Method Post -TimeoutSec 5 | Out-Null
             Update-ProfileUI
             Show-Toast -Title "Signed Out" -Message "This PC no longer trusts same-email devices automatically."
         } catch {
@@ -250,7 +250,7 @@ if ($btnSettingsGoogleSignIn) {
                 elseif ($html -match 'not configured') { 'not-configured' }
                 else { 'cancelled' }
             } catch { $null }
-        } -ArgumentList "http://127.0.0.1:53318/local/settings/google-signin"
+        } -ArgumentList "$global:DeXLocalApi/local/settings/google-signin"
     })
 }
 
@@ -319,7 +319,7 @@ $script:profileRetryTimer.Start()
 $btnSettingsResetIdentity = $script:wpfWindow.FindName("btnSettingsResetIdentity")
 if ($btnSettingsResetIdentity) {
     $btnSettingsResetIdentity.Add_Click({
-        Remove-Item "$env:LOCALAPPDATA\DeX\identity.json" -Force -ErrorAction SilentlyContinue
+        Remove-Item "$global:DeXDataRoot\identity.json" -Force -ErrorAction SilentlyContinue
         [System.Windows.MessageBox]::Show("Trust identity reset. DeX will now restart.", "DeX", 'OK', 'Information') | Out-Null
         $script:notifyIcon.Visible = $false
         $script:notifyIcon.Dispose()

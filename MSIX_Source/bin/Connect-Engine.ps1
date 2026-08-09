@@ -12,6 +12,8 @@ param(
     [switch]$SelfTest
 )
 
+# Load shared constants (ports, paths) first so every subsequent module and binding can use them.
+. "$PSScriptRoot\DeX-Constants.ps1"
 . "$PSScriptRoot\Modules\EngineUtils.ps1"
 Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"
@@ -126,7 +128,7 @@ if ($null -eq $script:wpfWindow) {
         # Runs the OAuth loopback flow on the local engine (browser opens automatically)
         Start-Job {
             try {
-                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-signin" -TimeoutSec 240 | Out-Null
+                Invoke-RestMethod -Uri "$global:DeXLocalApi/local/settings/google-signin" -TimeoutSec 240 | Out-Null
             } catch {
                 Write-Output "Google sign-in failed: $($_.Exception.Message)"
             }
@@ -146,7 +148,7 @@ if ($null -eq $script:wpfWindow) {
     exit
 }
 
-$themeFile = Join-Path $env:LOCALAPPDATA "DeX\theme.json"
+$themeFile = Join-Path $global:DeXDataRoot "theme.json"
 if (Test-Path $themeFile) {
     try {
         $cfg = Get-Content $themeFile -Raw | ConvertFrom-Json
@@ -287,7 +289,7 @@ $mdnsTimer.Add_Tick({
             # Poll Outbound Pairing Status
             if ($script:activeOutboundPairIp) {
                 try {
-                    $outStatus = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
+                    $outStatus = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
                     if ($outStatus.status -eq 'Accepted') {
                         $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed'
                         $script:activeOutboundPairIp = $null
@@ -302,7 +304,7 @@ $mdnsTimer.Add_Tick({
             # Phone-initiated pairing: no button was clicked, so surface the pending PIN here
             else {
                 try {
-                    $pp = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pending-pair" -TimeoutSec 1 -ErrorAction Stop
+                    $pp = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pending-pair" -TimeoutSec 1 -ErrorAction Stop
                     if ($pp -and $pp.pin) {
                         $script:activeOutboundPairIp = $pp.ip
                         $script:activeOutboundPairFp = $pp.fingerprint
@@ -317,7 +319,7 @@ $mdnsTimer.Add_Tick({
             # Poll robust UDP devices (LocalSendServer Gateway Unicast fallback)
             # This runs INDEPENDENTLY of mDNS — every tick, unconditionally.
             try {
-                $udpRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                $udpRes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
                 if ($null -ne $udpRes) {
                     $icUdp = $script:wpfWindow.FindName("icUdpPeers")
                     if ($icUdp) {
@@ -429,7 +431,7 @@ $mdnsTimer.Add_Tick({
                 
                 # Keep the quick-action mirror toggle in sync with the actual mirror window state
                 try {
-                    $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-state" -TimeoutSec 1 -ErrorAction Stop
+                    $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-state" -TimeoutSec 1 -ErrorAction Stop
                     $btnMirror = $script:wpfWindow.FindName("btnQAMirror")
                     if ($btnMirror) {
                         $wanted = [bool]$st.active
@@ -457,7 +459,7 @@ $script:clipboardTimer.Add_Tick({
     try {
         # 1. Learn what the phone last pushed, so we don't echo it back to the phone
         try {
-            $state = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/clipboard-state" -TimeoutSec 1 -ErrorAction Stop
+            $state = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/clipboard-state" -TimeoutSec 1 -ErrorAction Stop
             if ($state -and $state.text -and $state.text -ne $script:clipLastReceived) {
                 $script:clipLastReceived = [string]$state.text
             }
@@ -474,7 +476,7 @@ $script:clipboardTimer.Add_Tick({
             if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
             if (-not $ip) {
                 try {
-                    $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                    $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
                     $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
                     if ($target) { $ip = $target.ip }
                 } catch {}
