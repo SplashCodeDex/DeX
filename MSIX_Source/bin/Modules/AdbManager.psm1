@@ -189,3 +189,67 @@ function Invoke-AdbPair {
 }
 Export-ModuleMember -Function Invoke-AdbPair
 
+
+function Start-UiDataPolling {
+    <#
+    .SYNOPSIS
+        Background runspace that polls the local control API for UI state (discovered devices,
+        mirror activity, pending-pair PIN) and enqueues the results. Keeps the blocking HTTP
+        calls off the WPF UI thread so a slow localhost response can never freeze the interface.
+        Mirrors Start-MdnsDiscovery (same runspace + ConcurrentQueue pattern).
+    .PARAMETER Queue
+        ConcurrentQueue the runspace enqueues @{Type='Devices'|'Mirror'|'PendingPair'; ...} messages into.
+    .PARAMETER LocalApi
+        Base URL of the local control API (e.g. http://127.0.0.1:53318).
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Concurrent.ConcurrentQueue[object]]$Queue,
+        [Parameter(Mandatory=$true)]
+        [string]$LocalApi
+    )
+
+    $iss = [management.automation.runspaces.initialsessionstate]::CreateDefault2()
+    $ps = [powershell]::Create($iss)
+
+    $script = {
+        param($api, $queue)
+        try {
+            while ($true) {
+                # Discovered devices (independent of mDNS — the LocalSendServer UDP/gateway fallback)
+                try {
+                    $devices = Invoke-RestMethod -Uri "$api/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                    [void]$queue.Enqueue(@{ Type = 'Devices'; Data = $devices })
+                } catch {}
+
+                # Mirror window active state (quick-action toggle sync)
+                try {
+                    $st = Invoke-RestMethod -Uri "$api/local/mirror-state" -TimeoutSec 1 -ErrorAction Stop
+                    [void]$queue.Enqueue(@{ Type = 'Mirror'; Active = [bool]$st.active })
+                } catch {}
+
+                # Phone-initiated pairing (surface the pending PIN; only when one exists)
+                try {
+                    $pp = Invoke-RestMethod -Uri "$api/local/pending-pair" -TimeoutSec 1 -ErrorAction Stop
+                    if ($pp -and $pp.pin) {
+                        [void]$queue.Enqueue(@{ Type = 'PendingPair'; ip = $pp.ip; fingerprint = $pp.fingerprint; alias = $pp.alias; pin = $pp.pin })
+                    }
+                } catch {}
+
+                Start-Sleep -Seconds 2
+            }
+        } catch {
+            $queue.Enqueue([pscustomobject]@{ Type = 'Error'; Message = "UI data polling error: $_" })
+        }
+    }
+
+    [void]$ps.AddScript($script).AddArgument($LocalApi).AddArgument($Queue)
+    $asyncResult = $ps.BeginInvoke()
+
+    return [PSCustomObject]@{
+        PowerShell = $ps
+        AsyncResult = $asyncResult
+    }
+}
+Export-ModuleMember -Function Start-UiDataPolling
+

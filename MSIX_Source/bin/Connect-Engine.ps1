@@ -230,6 +230,11 @@ $script:mdnsJob = $null
 
 $script:mdnsJob = Start-MdnsDiscovery -Queue $script:mdnsQueue
 
+# Background UI-data poller: fetches /local/devices, /local/mirror-state and /local/pending-pair
+# off the UI thread and enqueues results, so blocking HTTP never freezes the spatial menu.
+$script:uiPollQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
+$script:uiPollJob = Start-UiDataPolling -Queue $script:uiPollQueue -LocalApi $global:DeXLocalApi
+
 $mdnsTimer = New-Object System.Windows.Threading.DispatcherTimer
 $mdnsTimer.Interval = [TimeSpan]::FromSeconds(2)
 $mdnsTimer.Add_Tick({
@@ -286,6 +291,18 @@ $mdnsTimer.Add_Tick({
                 
             }
 
+            # Apply data fetched by the background UI-data poller (devices / mirror / pending-pair).
+            # The poller does the blocking HTTP; this tick only drains the queue and updates the UI.
+            $udpRes = $null
+            $mirrorActive = $null
+            $pendingPair = $null
+            $qMsg = $null
+            while ($script:uiPollQueue.TryDequeue([ref]$qMsg)) {
+                if ($qMsg.Type -eq 'Devices') { $udpRes = $qMsg.Data }
+                elseif ($qMsg.Type -eq 'Mirror') { $mirrorActive = $qMsg.Active }
+                elseif ($qMsg.Type -eq 'PendingPair') { $pendingPair = $qMsg }
+            }
+
             # Poll Outbound Pairing Status
             if ($script:activeOutboundPairIp) {
                 try {
@@ -301,25 +318,23 @@ $mdnsTimer.Add_Tick({
                     }
                 } catch { }
             }
-            # Phone-initiated pairing: no button was clicked, so surface the pending PIN here
+            # Phone-initiated pairing: no button was clicked, so surface the pending PIN here.
+            # The pending-pair fetch itself runs in the background poller; $pendingPair holds the result.
             else {
-                try {
-                    $pp = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pending-pair" -TimeoutSec 1 -ErrorAction Stop
-                    if ($pp -and $pp.pin) {
-                        $script:activeOutboundPairIp = $pp.ip
-                        $script:activeOutboundPairFp = $pp.fingerprint
-                        Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for remote acceptance..." `
-                            -HidePanelOnTerminal `
-                            -SuccessMessage "Device has been paired." `
-                            -FailureMessage "Request was declined or timed out."
-                    }
-                } catch { }
+                $pp = $pendingPair
+                if ($pp -and $pp.pin) {
+                    $script:activeOutboundPairIp = $pp.ip
+                    $script:activeOutboundPairFp = $pp.fingerprint
+                    Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for remote acceptance..." `
+                        -HidePanelOnTerminal `
+                        -SuccessMessage "Device has been paired." `
+                        -FailureMessage "Request was declined or timed out."
+                }
             }
 
-            # Poll robust UDP devices (LocalSendServer Gateway Unicast fallback)
-            # This runs INDEPENDENTLY of mDNS — every tick, unconditionally.
+            # Apply discovered devices fetched by the background poller (LocalSendServer Gateway
+            # Unicast fallback). Runs independently of mDNS; data arrives via $script:uiPollQueue.
             try {
-                $udpRes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
                 if ($null -ne $udpRes) {
                     $icUdp = $script:wpfWindow.FindName("icUdpPeers")
                     if ($icUdp) {
@@ -430,11 +445,11 @@ $mdnsTimer.Add_Tick({
             } catch { }
                 
                 # Keep the quick-action mirror toggle in sync with the actual mirror window state
+                # (state fetched by the background poller; $mirrorActive holds the latest value)
                 try {
-                    $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-state" -TimeoutSec 1 -ErrorAction Stop
                     $btnMirror = $script:wpfWindow.FindName("btnQAMirror")
-                    if ($btnMirror) {
-                        $wanted = [bool]$st.active
+                    if ($btnMirror -and $null -ne $mirrorActive) {
+                        $wanted = [bool]$mirrorActive
                         if ($btnMirror.IsChecked -ne $wanted) { $btnMirror.IsChecked = $wanted }
                     }
                 } catch {}
@@ -512,6 +527,10 @@ if (-not $Background -and -not $SelfTest) { $script:showUiEvent.Set() | Out-Null
     if ($script:mdnsJob -and $script:mdnsJob.PowerShell) {
         Write-Trace "Disposing mDNS Runspace..."
         $script:mdnsJob.PowerShell.Dispose()
+    }
+    if ($script:uiPollJob -and $script:uiPollJob.PowerShell) {
+        Write-Trace "Disposing UI-data poller Runspace..."
+        $script:uiPollJob.PowerShell.Dispose()
     }
     # Transfer server is hosted by DeXShareTarget.exe (C# LocalSendServer) — no PS runspace to dispose
 })
