@@ -28,6 +28,7 @@ class NsdManagerHelper(
             setAttribute("alias", localInfo.alias)
             setAttribute("fingerprint", localInfo.fingerprint)
             setAttribute("identityHash", localInfo.identityHash)
+            localInfo.googleSub?.let { setAttribute("googleSub", it) }
             setAttribute("deviceModel", localInfo.deviceModel)
             setAttribute("deviceType", localInfo.deviceType)
         }

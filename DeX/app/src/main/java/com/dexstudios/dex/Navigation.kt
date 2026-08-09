@@ -1,45 +1,47 @@
 package com.dexstudios.dex
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import com.dexstudios.dex.R
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
+import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.FloatingPillNavBar
 import com.dexstudios.dex.ui.components.NavBarItem
 import com.dexstudios.dex.ui.history.HistoryScreen
 import com.dexstudios.dex.ui.main.MainScreen
 import com.dexstudios.dex.ui.settings.SettingsScreen
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+
+/** The top-level tab destinations, in navbar order. */
+private val tabs = listOf(Main, History, Settings)
 
 @Composable
 fun MainNavigation() {
-  val backStack = rememberNavBackStack(Main)
-  val currentRoute = backStack.lastOrNull()
+  // Tabs are siblings, not a navigation stack: switching replaces the selected
+  // tab, and back on any tab falls through to the system (exit).
+  var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+  val currentRoute = tabs[selectedTabIndex]
 
   val devicesFilled = ImageVector.vectorResource(R.drawable.ic_devices_filled)
   val devicesOutlined = ImageVector.vectorResource(R.drawable.ic_devices_outlined)
@@ -54,42 +56,30 @@ fun MainNavigation() {
       unselectedIcon = devicesOutlined,
       contentDescription = "Devices",
       isSelected = currentRoute == Main,
-      onClick = {
-        if (currentRoute != Main) {
-          backStack.add(Main)
-        }
-      }
+      onClick = { selectedTabIndex = 0 }
     ),
     NavBarItem(
       selectedIcon = historyFilled,
       unselectedIcon = historyOutlined,
       contentDescription = "History",
       isSelected = currentRoute == History,
-      onClick = {
-        if (currentRoute != History) {
-          backStack.add(History)
-        }
-      }
+      onClick = { selectedTabIndex = 1 }
     ),
     NavBarItem(
       selectedIcon = tuneFilled,
       unselectedIcon = tuneOutlined,
       contentDescription = "Settings",
       isSelected = currentRoute == Settings,
-      onClick = {
-        if (currentRoute != Settings) {
-          backStack.add(Settings)
-        }
-      }
+      onClick = { selectedTabIndex = 2 }
     )
   )
 
   Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
     // Glass backdrop: captures all screen content (Devices, History, Settings)
-    // via NavDisplay, so the glass navbar and the glass PIN card sample whatever
-    // is behind them. Glass elements are drawn OUTSIDE this captured subtree —
-    // a backdrop that captures the glass sampling it is a render loop and
-    // crashes (SIGSEGV).
+    // via AnimatedContent, so the glass navbar and the glass PIN card sample
+    // whatever is behind them. Glass elements are drawn OUTSIDE this captured
+    // subtree — a backdrop that captures the glass sampling it is a render loop
+    // and crashes (SIGSEGV).
     val contentBackdrop = rememberLayerBackdrop()
     val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -99,32 +89,29 @@ fun MainNavigation() {
         .fillMaxSize()
         .layerBackdrop(contentBackdrop)
     ) {
-      NavDisplay(
-        backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        modifier = Modifier,
-        transitionSpec = {
-          fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
-        },
-        entryProvider =
-          entryProvider {
-          entry<Main> {
-            MainScreen(
+      // Tab switching animates with the iOS-style crossfade. Each tab's UI state
+      // (scroll position, etc.) is preserved while it is not visible.
+      val tabStateHolder = rememberSaveableStateHolder()
+      AnimatedContent(
+        targetState = currentRoute,
+        transitionSpec = { NavigationTransitions.tabSwitch() },
+        modifier = Modifier.fillMaxSize(),
+        label = "tabs"
+      ) { tab ->
+        tabStateHolder.SaveableStateProvider(tab.toString()) {
+          when (tab) {
+            Main -> MainScreen(
               modifier = Modifier
             )
+            History -> HistoryScreen(
+              modifier = Modifier.safeDrawingPadding()
+            )
+            Settings -> SettingsScreen(
+              modifier = Modifier.safeDrawingPadding()
+            )
           }
-            entry<History> {
-              HistoryScreen(
-                modifier = Modifier.safeDrawingPadding()
-              )
-            }
-            entry<Settings> {
-              SettingsScreen(
-                modifier = Modifier.safeDrawingPadding()
-              )
-            }
-          },
-      )
+        }
+      }
 
       if (incomingPairRequest != null) {
         // Dim recorded INTO the backdrop (not overlaid on top) so the glass PIN

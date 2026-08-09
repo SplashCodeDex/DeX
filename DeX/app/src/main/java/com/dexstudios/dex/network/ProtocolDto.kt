@@ -12,7 +12,8 @@ data class RegisterDto(
     val port: Int,
     val protocol: String,
     val download: Boolean,
-    val identityHash: String? = null
+    val identityHash: String? = null,
+    val googleSub: String? = null
 )
 
 @Serializable
@@ -38,14 +39,6 @@ data class FileDto(
 data class PrepareUploadResponseDto(
     val sessionId: String,
     val files: Map<String, String>
-)
-
-@Serializable
-data class BrowseFileDto(
-    val name: String,
-    val isDirectory: Boolean,
-    val size: Long,
-    val path: String
 )
 
 data class DiscoveredDevice(
@@ -145,4 +138,31 @@ data class PunchResumeInfoDto(
 data class PunchDoneDto(
     val type: String = "done",
     val sessionId: String = ""
+)
+
+// ---- PC File Explorer over the WebSocket (phone exposes shared folders) ----
+
+@Serializable
+data class SharedFolderDto(
+    val id: String = "",
+    val name: String = "",
+    val uri: String = ""
+)
+
+/** A single entry in a shared folder listing (file or subfolder). */
+@Serializable
+data class FolderEntryDto(
+    val name: String,
+    val uri: String,
+    val isDirectory: Boolean = false,
+    val size: Long = 0,
+    val thumb: String? = null
+)
+
+/** File the PC wants the phone to push back to it (reusing the upload path). */
+@Serializable
+data class PullFileDto2(
+    val name: String = "",
+    val uri: String = "",
+    val size: Long = 0
 )

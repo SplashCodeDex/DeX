@@ -69,6 +69,7 @@ fun MainScreen(
                     var selectedRosterDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
+    var contextMenuDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -155,8 +156,14 @@ fun MainScreen(
                 "targetFingerprint" to device.info.fingerprint
             ).let { base ->
                 val identityHash = device.info.identityHash
-                if (identityHash != null) {
-                    androidx.work.Data.Builder().putAll(base).putString("targetIdentityHash", identityHash).build()
+                val googleSub = device.info.googleSub
+                if (identityHash != null || googleSub != null) {
+                    androidx.work.Data.Builder().putAll(base)
+                        .apply {
+                            if (identityHash != null) putString("targetIdentityHash", identityHash)
+                            if (googleSub != null) putString("targetGoogleSub", googleSub)
+                        }
+                        .build()
                 } else {
                     base
                 }
@@ -386,11 +393,8 @@ fun MainScreen(
                                     }
                                 },
                                 onLongClick = {
-                                    // Long-press sends a folder (bundled without zipping)
-                                    if (isTrusted) {
-                                        selectedDevice = device
-                                        folderPickerLauncher.launch(null)
-                                    }
+                                    // Long-press opens the device context menu
+                                    contextMenuDevice = device
                                 }
                             )
                         }
@@ -421,9 +425,8 @@ fun MainScreen(
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     },
                                     onLongClick = {
-                                        // Long-press sends a folder (bundled without zipping)
-                                        selectedRosterDevice = device
-                                        folderPickerLauncher.launch(null)
+                                        // Long-press opens the device context menu
+                                        contextMenuDevice = device
                                     },
                                 )
                             }
@@ -568,6 +571,37 @@ fun MainScreen(
                     Text("Close")
                 }
             }
+        )
+    }
+
+    contextMenuDevice?.let { device ->
+        val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
+        DeviceContextMenu(
+            device = device,
+            isTrusted = isTrusted,
+            onSendFile = {
+                selectedDevice = device
+                filePickerLauncher.launch(arrayOf("*/*"))
+            },
+            onPair = {
+                if (pairingDeviceFingerprint != device.info.fingerprint) {
+                    pairingDeviceFingerprint = device.info.fingerprint
+                    Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
+                    viewModel.requestPairing(device) { success ->
+                        pairingDeviceFingerprint = null
+                        if (success) {
+                            Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
+            onForget = {
+                DeviceManager.removePairedFingerprint(device.info.fingerprint)
+                Toast.makeText(context, "Forgotten ${device.info.alias}", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { contextMenuDevice = null }
         )
     }
 }

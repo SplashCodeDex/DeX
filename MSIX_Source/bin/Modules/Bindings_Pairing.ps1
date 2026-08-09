@@ -15,22 +15,75 @@ $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [Sy
     $src = $e.OriginalSource
     if ($src -is [System.Windows.Controls.MenuItem]) {
         $menuItem = $src
-        if ($menuItem.Name -eq "menuRename") {
-            $fp = $menuItem.Tag
-            if ($fp) {
-                Add-Type -AssemblyName Microsoft.VisualBasic
-                $alias = [Microsoft.VisualBasic.Interaction]::InputBox("Enter new alias for this device:", "Rename Device", "")
-                if (![string]::IsNullOrWhiteSpace($alias)) {
-                    try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/alias?fingerprint=$fp&alias=$alias" -Method Post } catch {}
-                    Show-Toast -Title "Device Renamed" -Message "New alias saved."
+        switch ($menuItem.Name) {
+            "menuRename" {
+                $fp = $menuItem.Tag
+                if ($fp) {
+                    Add-Type -AssemblyName Microsoft.VisualBasic
+                    $alias = [Microsoft.VisualBasic.Interaction]::InputBox("Enter new alias for this device:", "Rename Device", "")
+                    if (![string]::IsNullOrWhiteSpace($alias)) {
+                        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/alias?fingerprint=$fp&alias=$alias" -Method Post } catch {}
+                        Show-Toast -Title "Device Renamed" -Message "New alias saved."
+                    }
                 }
             }
-        }
-        elseif ($menuItem.Name -eq "menuForget") {
-            $fp = $menuItem.Tag
-            if ($fp) {
-                try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$fp" -Method Post } catch {}
-                Show-Toast -Title "Device Forgotten" -Message "Device has been unpaired."
+            "menuForget" {
+                $fp = $menuItem.Tag
+                if ($fp) {
+                    try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$fp" -Method Post } catch {}
+                    Show-Toast -Title "Device Forgotten" -Message "Device has been unpaired."
+                }
+            }
+            "menuGuestForget" {
+                $fp = $menuItem.Tag
+                if ($fp) {
+                    try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/unpair?fingerprint=$fp" -Method Post } catch {}
+                    Show-Toast -Title "Device Forgotten" -Message "Device removed from the trusted list."
+                }
+            }
+            "menuCopyIp" {
+                $ip = $menuItem.Tag
+                if ($ip) {
+                    Set-Clipboard -Value $ip
+                    Show-Toast -Title "IP Copied" -Message "$ip copied to clipboard."
+                }
+            }
+            "menuGuestCopyIp" {
+                $ip = $menuItem.Tag
+                if ($ip) {
+                    Set-Clipboard -Value $ip
+                    Show-Toast -Title "IP Copied" -Message "$ip copied to clipboard."
+                }
+            }
+            "menuClipboard" {
+                $ip = $menuItem.Tag
+                if ($ip) { Send-ClipboardToDevice -Ip $ip }
+            }
+            "menuMirror" {
+                $ip = $menuItem.Tag
+                if ($ip) { Start-MirrorSession -Ip $ip }
+            }
+            "menuDisconnect" {
+                $ip = $menuItem.Tag
+                if ($ip) {
+                    $null = adb disconnect "${ip}:5555" 2>&1
+                    Show-Toast -Title "ADB Disconnected" -Message "Disconnected $ip."
+                }
+            }
+            "menuPair" {
+                $fp = $menuItem.Tag
+                if ($fp) { Start-PinPairing -Fingerprint $fp }
+            }
+            "menuGuestConnect" {
+                $ip = $menuItem.Tag
+                if ($ip) {
+                    $res = Invoke-AdbConnect -Target $ip
+                    if ($res.Success) {
+                        Invoke-MenuAction $actionPull
+                    } else {
+                        Show-Toast -Title "Connection Failed" -Message $res.Message
+                    }
+                }
             }
         }
         $e.Handled = $true

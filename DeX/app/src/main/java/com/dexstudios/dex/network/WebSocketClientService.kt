@@ -15,6 +15,25 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
+// android.net.wifi.WifiInfo.RSSI_INVALID is a hidden API; mirror its value (-127)
+private const val RSSI_INVALID = -127
+
+/**
+ * Builds the JSON telemetry payload for the PC.
+ * Returns null when there is nothing to report (no battery, no wifi).
+ */
+internal fun buildTelemetryPayload(battery: Int, ssid: String?, rssi: Int): String? {
+    if (battery < 0 && ssid == null && rssi == RSSI_INVALID) return null
+    return buildJsonObject {
+        put("type", "telemetry")
+        putJsonObject("data") {
+            if (battery >= 0) put("battery", battery)
+            if (ssid != null) put("wifiSsid", ssid)
+            if (rssi != RSSI_INVALID) put("wifiRssi", rssi)
+        }
+    }.toString()
+}
+
 class WebSocketClientService(
     private val deviceConfig: DeviceConfig,
     private val discoveryEngine: DiscoveryEngine,
@@ -42,7 +61,10 @@ class WebSocketClientService(
         .build()
 
     private var activeSocket: WebSocket? = null
-    private var connectedFingerprint: String? = null
+    private var _connectedFingerprint: String? = null
+
+    /** Fingerprint of the PC the socket is currently connected to. */
+    val connectedFingerprint: String? get() = _connectedFingerprint
 
     /** The PC address the current socket is connected to (LAN IP or public address). */
     @Volatile
@@ -71,6 +93,8 @@ class WebSocketClientService(
         Timber.i("Starting WebSocketClientService...")
 
         messageHandler.onSendMessage = { sendMessage(it) }
+        MirrorSession.textSender = { sendMessage(it) }
+        MirrorSession.frameSender = { sendBinary(it) }
 
         serviceScope.launch {
             // Monitor discovered devices for PCs to connect to (prefer an already-paired PC)
@@ -79,7 +103,7 @@ class WebSocketClientService(
                 if (pcDevice != null && activeSocket == null) {
                     connectToPC(pcDevice)
                 } else if (pcDevice != null && connectedViaWan && !pcDevice.viaWan &&
-                    pcDevice.info.fingerprint == connectedFingerprint) {
+                    pcDevice.info.fingerprint == _connectedFingerprint) {
                     // The PC we reached over WAN just appeared on the LAN: switch to the fast path
                     Timber.i("PC appeared on LAN; switching from WAN to LAN")
                     activeSocket?.close(1000, "Switching to LAN")
@@ -109,9 +133,6 @@ class WebSocketClientService(
         return if (level >= 0) level else -1
     }
 
-    // android.net.wifi.WifiInfo.RSSI_INVALID is a hidden API; mirror its value (-127)
-    private val RSSI_INVALID = -127
-
     /** Current WiFi network: (SSID, RSSI dBm). SSID is null and RSSI -127 when not connected. */
     private fun wifiInfo(): Pair<String?, Int> {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return null to RSSI_INVALID
@@ -124,17 +145,8 @@ class WebSocketClientService(
     fun sendTelemetry() {
         val level = batteryLevel()
         val (ssid, rssi) = wifiInfo()
-        if (level < 0 && ssid == null && rssi == RSSI_INVALID) return
-
-        val payload = buildJsonObject {
-            put("type", "telemetry")
-            putJsonObject("data") {
-                if (level >= 0) put("battery", level)
-                if (ssid != null) put("wifiSsid", ssid)
-                if (rssi != RSSI_INVALID) put("wifiRssi", rssi)
-            }
-        }
-        sendMessage(payload.toString())
+        val payload = buildTelemetryPayload(level, ssid, rssi) ?: return
+        sendMessage(payload)
         Timber.d("Telemetry sent: battery $level%, wifi $ssid ($rssi dBm)")
     }
 
@@ -187,12 +199,17 @@ class WebSocketClientService(
         val alias = java.net.URLEncoder.encode(getDeviceName(context), "UTF-8")
         val pcFingerprint = pcDevice.info.fingerprint
 
-        // Same-email devices are auto-trusted: the identity hash itself is the bearer token.
-        // Everything else presents the PIN-pairing token (or connects tokenless, unverified).
+        // Same-email devices are auto-trusted. Token order: Google account ID (unguessable)
+        // when both sides share it, then the identity hash, then the PIN-pairing token.
         val identityHash = deviceConfig.identityHash
+        val googleSub = deviceConfig.googleSub
         val pcIdentityHash = pcDevice.info.identityHash
-        val token = if (!identityHash.isNullOrEmpty() && identityHash == pcIdentityHash) identityHash
-                    else AuthState.pairedTokens[pcFingerprint]
+        val pcGoogleSub = pcDevice.info.googleSub
+        val token = when {
+            googleSub.isNotEmpty() && googleSub == pcGoogleSub -> googleSub
+            identityHash.isNotEmpty() && identityHash == pcIdentityHash -> identityHash
+            else -> AuthState.pairedTokens[pcFingerprint]
+        }
         val tokenParam = if (!token.isNullOrEmpty()) "&token=${java.net.URLEncoder.encode(token, "UTF-8")}" else ""
 
         // The PC serves TLS on port 53317, so we must use wss:// (plain ws:// fails TLS negotiation)
@@ -211,10 +228,10 @@ class WebSocketClientService(
 
         activeSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                connectedFingerprint = pcFingerprint
+                _connectedFingerprint = pcFingerprint
                 // Same-email trust is permanent, not session-scoped: remember the device so
                 // future transfers and UI trust badges work without another handshake
-                if (token == identityHash && !identityHash.isNullOrEmpty()) {
+                if (token == googleSub || (token == identityHash && !identityHash.isNullOrEmpty())) {
                     DeviceManager.savePairedFingerprint(pcFingerprint)
                     DeviceManager.savePairedToken(pcFingerprint, token)
                 }
@@ -232,22 +249,42 @@ class WebSocketClientService(
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Timber.i("WebSocket closed: $code $reason")
-                activeSocket = null
-                connectedFingerprint = null
-                connectedViaWan = false
-                connectedIp = null
-                scheduleReconnect()
+                // Only clear state if this socket is still the active one (stale callbacks
+                // must never clobber a newer connection)
+                if (activeSocket === webSocket) {
+                    activeSocket = null
+                    _connectedFingerprint = null
+                    connectedViaWan = false
+                    connectedIp = null
+                    // The PC is gone: never keep capturing/streaming into a dead socket
+                    MirrorSession.stop()
+                    scheduleReconnect()
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Timber.e(t, "WebSocket failure")
-                activeSocket = null
-                connectedFingerprint = null
-                connectedViaWan = false
-                connectedIp = null
-                scheduleReconnect()
+                if (activeSocket === webSocket) {
+                    activeSocket = null
+                    _connectedFingerprint = null
+                    connectedViaWan = false
+                    connectedIp = null
+                    MirrorSession.stop()
+                    scheduleReconnect()
+                }
             }
         })
+    }
+
+    /** Drops the current connection and immediately reconnects with the fresh identity token. */
+    fun reconnectNow() {
+        if (!isRunning) return
+        activeSocket?.close(1000, "Identity updated")
+        activeSocket = null
+        _connectedFingerprint = null
+        connectedViaWan = false
+        connectedIp = null
+        findTargetPc(discoveryEngine.devices.value.values)?.let { connectToPC(it) }
     }
 
     private fun scheduleReconnect() {
@@ -264,10 +301,15 @@ class WebSocketClientService(
         activeSocket?.send(jsonMessage) ?: Timber.w("Cannot send message, socket is null")
     }
 
+    /** Sends a binary frame (used for screen-mirror JPEG frames). */
+    fun sendBinary(bytes: ByteArray) {
+        activeSocket?.send(okio.ByteString.of(*bytes)) ?: Timber.w("Cannot send binary, socket is null")
+    }
+
     /** Asks the PC we are connected to (if it is [targetFingerprint]) to start a PIN pairing. */
     fun sendPairRequest(targetFingerprint: String): Boolean {
         val socket = activeSocket ?: return false
-        if (connectedFingerprint != targetFingerprint) {
+        if (_connectedFingerprint != targetFingerprint) {
             Timber.w("Not connected to requested PC, cannot send pair request")
             return false
         }

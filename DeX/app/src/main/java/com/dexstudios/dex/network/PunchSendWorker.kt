@@ -88,7 +88,8 @@ class PunchSendWorker(
     private suspend fun relayViaPc(targetFingerprint: String, uris: List<Uri>, relativePaths: List<String>?): String? = withContext(Dispatchers.IO) {
         val pcIp = wsService.connectedIp ?: return@withContext "The PC is not connected"
         val identityHash = deviceConfig.identityHash
-        if (identityHash.isBlank()) return@withContext "Sign in with your email to send over the internet"
+        val googleSub = deviceConfig.googleSub
+        if (identityHash.isBlank() && googleSub.isBlank()) return@withContext "Sign in with your email to send over the internet"
 
         val fileData = uris.map { uri ->
             var name = "shared_file"
@@ -120,7 +121,7 @@ class PunchSendWorker(
             }.toMap()
         )
 
-        val prepared = client.prepareUpload(pcIp, 53317, prepareRequest, token = identityHash)
+        val prepared = client.prepareUpload(pcIp, 53317, prepareRequest, token = googleSub.ifBlank { identityHash })
         val response = prepared.response ?: return@withContext "The PC rejected the upload (HTTP ${prepared.httpStatus})"
 
         var sent = 0L

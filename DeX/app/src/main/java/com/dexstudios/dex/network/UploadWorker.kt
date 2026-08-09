@@ -126,7 +126,8 @@ class UploadWorker(
 
         val targetFingerprint = inputData.getString("targetFingerprint")
         val targetIdentityHash = inputData.getString("targetIdentityHash")
-        val token = client.authToken(targetFingerprint, targetIdentityHash)
+        val targetGoogleSub = inputData.getString("targetGoogleSub")
+        val token = client.authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
         val prepared = client.prepareUpload(ip, port, prepareRequest, token)
         val response = prepared.response
         if (response == null) {

@@ -70,62 +70,12 @@ if ($btnSettingsQrCode) {
 
         if ($qrCodeContent.Visibility -eq 'Visible') {
             # User clicked "Request PIN"
-            try {
-                $ip = $script:activeOutboundPairIp
-                $fp = $script:activeOutboundPairFp
-                if (-not $ip -or -not $fp) { throw "No active device selected." }
-                
-                $initRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-initiate?ip=${ip}&fingerprint=${fp}" -Method Post -TimeoutSec 5 -ErrorAction Stop
-                $pin = $initRes.pin
-                
-                if (-not $pin) {
-                    Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."
-                    return
-                }
-                
-                if ($pin) {
-                    $script:wpfWindow.FindName("txtPinCode").Text = $pin
-                    $script:wpfWindow.FindName("txtPinStatus").Text = "Waiting for remote acceptance..."
-                    
-                    $qrCodeContent.Visibility = 'Collapsed'
-                    $pinCodeContent.Visibility = 'Visible'
-                    $txtQrBtnIcon.Visibility = 'Visible'
-                    $txtQrBtnIcon.Text = [char]0xED14
-                    $txtQrBtnText.Text = "QR CODE"
-
-                    # Start progress bar animation (60s countdown)
-                    $pb = $script:wpfWindow.FindName("pbPinTimeout")
-                    if ($pb) {
-                        $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
-                        $anim.From = 100
-                        $anim.To = 0
-                        $anim.Duration = [TimeSpan]::FromSeconds(60)
-                        $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $anim)
-                    }
-
-                    # Monitor pairing status through the backend
-                    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-                    $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
-                    $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
-                    $script:pairWaitTimer.Add_Tick({
-                        try {
-                            $statusRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=${ip}" -Method Get -ErrorAction Stop
-                            if ($statusRes.status -eq "Accepted") {
-                                $script:pairWaitTimer.Stop()
-                                Show-Toast -Title "Pairing Successful" -Message "Device trusted and added to Your Devices."
-                                try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                            } elseif ($statusRes.status -eq "Rejected" -or $statusRes.status -eq "Failed") {
-                                $script:pairWaitTimer.Stop()
-                                Show-Toast -Title "Pairing Failed" -Message "The remote device rejected or timed out."
-                                try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                            }
-                        } catch {}
-                    })
-                    $script:pairWaitTimer.Start()
-                }
-            } catch {
-                Show-Toast -Title "Request Failed" -Message $_.Exception.Message
+            $fp = $script:activeOutboundPairFp
+            if (-not $fp) {
+                Show-Toast -Title "No Device Selected" -Message "Select a device from the nearby list first."
+                return
             }
+            Start-PinPairing -Fingerprint $fp
         } else {
             # User clicked "QR CODE" to go back, cancel pending pairing if any
             try {
@@ -238,6 +188,72 @@ if ($btnSettingsAbout) {
         Start-Process "https://github.com/SplashCodeDex/DeX"
         $script:wpfWindow.Hide()
     })
+}
+
+# Google Sign-In button in settings (PC-side OAuth loopback flow)
+function Update-ProfileUI {
+    $profile = $null
+    try {
+        $profile = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-profile" -TimeoutSec 5
+    } catch {}
+
+    if ($profile -and $profile.email) {
+        $txtName = $script:wpfWindow.FindName("txtProfileName")
+        $txtEmail = $script:wpfWindow.FindName("txtProfileEmail")
+        $avatar = $script:wpfWindow.FindName("imgProfileAvatar")
+        $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+        if ($txtName) { $txtName.Text = if ($profile.name) { $profile.name } else { $profile.email } }
+        if ($txtEmail) { $txtEmail.Text = $profile.email }
+        if ($btnSignOut) { $btnSignOut.Visibility = 'Visible' }
+        if ($avatar -and $profile.picture) {
+            try {
+                $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+                $bitmap.BeginInit()
+                $bitmap.UriSource = New-Object Uri($profile.picture)
+                $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+                $bitmap.EndInit()
+                $avatar.Fill = New-Object System.Windows.Media.ImageBrush($bitmap)
+            } catch {}
+        }
+        return $true
+    } else {
+        $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+        if ($btnSignOut) { $btnSignOut.Visibility = 'Collapsed' }
+        return $false
+    }
+}
+
+$btnSettingsSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+if ($btnSettingsSignOut) {
+    $btnSettingsSignOut.Add_Click({
+        try {
+            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/signout" -Method Post | Out-Null
+            Update-ProfileUI
+            Show-Toast -Title "Signed Out" -Message "This PC no longer trusts same-email devices automatically."
+        } catch {
+            Show-Toast -Title "Sign Out" -Message "Could not reach the local engine."
+        }
+    })
+}
+
+$btnSettingsGoogleSignIn = $script:wpfWindow.FindName("btnSettingsGoogleSignIn")
+if ($btnSettingsGoogleSignIn) {
+    $btnSettingsGoogleSignIn.Add_Click({
+        try {
+            Show-Toast -Title "Google Sign-In" -Message "Opening browser — approve the account to trust all your devices."
+            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-signin" -TimeoutSec 240 | Out-Null
+            Update-ProfileUI
+        } catch {
+            Show-Toast -Title "Google Sign-In" -Message "Could not reach the local engine."
+        }
+    })
+}
+
+# Populate the profile placeholder with the last signed-in Google account.
+# Retry: the local engine may still be starting when the bindings load.
+for ($i = 0; $i -lt 6; $i++) {
+    if (Update-ProfileUI) { break }
+    Start-Sleep -Seconds 2
 }
 
 # Reset Identity & Trust button in settings

@@ -1,6 +1,7 @@
 package com.dexstudios.dex
 
 import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,12 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.dexstudios.dex.network.MirrorSession
 import com.dexstudios.dex.network.SafStorage
 import com.dexstudios.dex.ui.theme.DeXTheme
 import android.os.Build
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
@@ -31,17 +35,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val folderGrantLauncher = registerForActivityResult(
+    // PC File Explorer: grant a folder for remote browse + pull over the WebSocket
+    private val sharedFolderGrantLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         if (uri != null) {
-            val name = pendingFolderGrantName ?: "Folder"
-            SafStorage.addGrantedFolder(this, name, uri)
-            pendingFolderGrantName = null
+            SafStorage.addSharedFolder(this, uri)
         }
+        com.dexstudios.dex.network.SharedFolderGrantState.complete(
+            uri,
+            if (uri != null) SafStorage.sharedFolderName(this, uri) else ""
+        )
     }
 
-    private var pendingFolderGrantName: String? = null
+    // Screen mirror consent: the PC asked to mirror, this launcher shows the system dialog
+    private val mediaProjectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            val projection = projectionManager.getMediaProjection(result.resultCode, result.data!!) ?: run {
+                MirrorSession.stop()
+                return@registerForActivityResult
+            }
+            val metrics = resources.displayMetrics
+            MirrorSession.start(projection, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
+        } else {
+            MirrorSession.deny() // user denied screen sharing
+        }
+    }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -59,12 +81,12 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    // Handle grant requests triggered from the network layer (incoming transfer / file explorer)
+    // Handle grant requests triggered from the network layer (incoming transfer)
     if (intent?.getBooleanExtra("REQUEST_DOWNLOADS_DEX_GRANT", false) == true) {
         downloadsDexGrantLauncher.launch(null)
-    } else if (intent?.hasExtra("REQUEST_FOLDER_GRANT") == true) {
-        pendingFolderGrantName = intent.getStringExtra("REQUEST_FOLDER_GRANT")
-        folderGrantLauncher.launch(null)
+    }
+    if (intent?.getBooleanExtra("REQUEST_SHARED_FOLDER_GRANT", false) == true) {
+        sharedFolderGrantLauncher.launch(null)
     }
     
     // Start the DeX networking service
@@ -82,6 +104,17 @@ class MainActivity : ComponentActivity() {
     )
 
     enableEdgeToEdge()
+
+    // When the PC asks to mirror, surface the system screen-capture consent dialog
+    lifecycleScope.launch {
+        MirrorSession.pendingConsent.collect { requested ->
+            if (requested) {
+                val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+            }
+        }
+    }
+
     setContent {
       DeXTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
     }

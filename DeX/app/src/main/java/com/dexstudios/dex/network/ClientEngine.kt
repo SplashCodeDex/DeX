@@ -60,11 +60,13 @@ class ClientEngine(
     }
 
     /**
-     * Picks the bearer token for a target device. Devices signed in with the SAME email
-     * are automatically trusted: the identity hash itself is the token. Everything else
-     * falls back to the PIN-pairing token.
+     * Picks the bearer token for a target device. Same-email devices are auto-trusted:
+     * the Google account ID (unguessable) wins when both sides share it, then the identity
+     * hash (manual email), and finally the PIN-pairing token.
      */
-    fun authToken(targetFingerprint: String?, targetIdentityHash: String?): String? {
+    fun authToken(targetFingerprint: String?, targetIdentityHash: String?, targetGoogleSub: String? = null): String? {
+        val mySub = deviceConfig?.googleSub
+        if (!mySub.isNullOrEmpty() && targetGoogleSub == mySub) return mySub
         val myIdentity = deviceConfig?.identityHash
         if (!myIdentity.isNullOrEmpty() && targetIdentityHash == myIdentity) return myIdentity
         return targetFingerprint?.let { AuthState.pairedTokens[it] }
@@ -221,9 +223,9 @@ class ClientEngine(
             }
         }
     }
-    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null, targetGoogleSub: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
-            val token = authToken(targetFingerprint, targetIdentityHash)
+            val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
             val response = client.post("https://$ip:$port/api/dex/clipboard") {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")

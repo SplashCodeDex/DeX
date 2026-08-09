@@ -62,6 +62,7 @@ namespace DeXShareTarget.Services
             var myInfo = new RegisterDto { 
                 Fingerprint = IdentityManager.Fingerprint,
                 IdentityHash = IdentityManager.IdentityHash,
+                GoogleSub = string.IsNullOrEmpty(IdentityManager.GoogleSub) ? null : IdentityManager.GoogleSub,
                 DeviceModel = "Windows PC",
                 DeviceType = "desktop"
             };
@@ -93,6 +94,7 @@ namespace DeXShareTarget.Services
             service.AddProperty("alias", myInfo.Alias);
             service.AddProperty("fingerprint", myInfo.Fingerprint);
             service.AddProperty("identityHash", myInfo.IdentityHash);
+            if (!string.IsNullOrEmpty(myInfo.GoogleSub)) service.AddProperty("googleSub", myInfo.GoogleSub);
             service.AddProperty("deviceModel", myInfo.DeviceModel);
             service.AddProperty("deviceType", myInfo.DeviceType);
             
@@ -116,13 +118,14 @@ namespace DeXShareTarget.Services
                             var fp = txt.Strings.FirstOrDefault(x => x.StartsWith("fingerprint="))?.Split('=')[1];
                             var alias = txt.Strings.FirstOrDefault(x => x.StartsWith("alias="))?.Split('=')[1];
                             var identityHash = txt.Strings.FirstOrDefault(x => x.StartsWith("identityHash="))?.Split('=')[1];
+                            var googleSub = txt.Strings.FirstOrDefault(x => x.StartsWith("googleSub="))?.Split('=')[1];
                             var deviceModel = txt.Strings.FirstOrDefault(x => x.StartsWith("deviceModel="))?.Split('=')[1] ?? "Unknown";
                             var deviceType = txt.Strings.FirstOrDefault(x => x.StartsWith("deviceType="))?.Split('=')[1] ?? "unknown";
                             var senderIp = a.Address.ToString();
                             
                             if (!string.IsNullOrEmpty(fp) && !IsSelf(fp, alias, senderIp))
                             {
-                                var dto = new RegisterDto { Fingerprint = fp, Alias = alias ?? "Unknown", Port = srv.Port, IdentityHash = identityHash, DeviceModel = deviceModel, DeviceType = deviceType };
+                                var dto = new RegisterDto { Fingerprint = fp, Alias = alias ?? "Unknown", Port = srv.Port, IdentityHash = identityHash, GoogleSub = googleSub, DeviceModel = deviceModel, DeviceType = deviceType };
                                 Devices[fp] = new DiscoveredDevice
                                 {
                                     Ip = senderIp,

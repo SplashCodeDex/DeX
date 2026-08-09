@@ -43,6 +43,7 @@ import javax.net.ssl.X509TrustManager
 class PunchSession(
     private val deviceConfig: DeviceConfig,
     private val wsService: WebSocketClientService,
+    private val notificationHelper: NotificationHelper,
     private val context: Context
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -159,7 +160,7 @@ class PunchSession(
                 val deferred = CompletableDeferred<Boolean>()
                 TransferState.pendingPrompts[sessionId] = deferred
                 val notificationId = sessionId.hashCode()
-                NotificationHelper(context).showIncomingFileNotification(sessionId, notificationId, manifest.files.size)
+                notificationHelper.showIncomingFileNotification(sessionId, notificationId, manifest.files.size)
 
                 val accepted = withTimeoutOrNull(60_000) { deferred.await() } == true
                 TransferState.pendingPrompts.remove(sessionId)

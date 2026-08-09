@@ -13,6 +13,27 @@ namespace DeXShareTarget.Endpoints
 {
     public static class WebSocketEndpoints
     {
+        /// <summary>Asks the local user to confirm an unverified device claiming this PC's identity.</summary>
+        private static async Task<bool> PromptIdentityChangeAsync(string? senderAlias, string email)
+        {
+            try
+            {
+                var tcs = new TaskCompletionSource<bool>();
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        $"Device \"{senderAlias ?? "Unknown"}\" wants to sign this PC in as {email}.\n\nAllow it to become your trusted identity?",
+                        "DeX — Identity Change",
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Question);
+                    tcs.TrySetResult(result == System.Windows.MessageBoxResult.Yes);
+                });
+                return await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(60))).ContinueWith(t =>
+                    t.Result == tcs.Task && tcs.Task.IsCompletedSuccessfully && tcs.Task.Result);
+            }
+            catch { return false; }
+        }
+
         // Mirrors Android's WifiInfo.RSSI_INVALID
         private const int WifiInfoRssiInvalid = -127;
 
@@ -47,18 +68,18 @@ namespace DeXShareTarget.Endpoints
                 // identity hash is the bearer token, verified and persisted permanently.
                 bool verified = (IdentityManager.PairedFingerprints.Contains(fingerprint) &&
                     IdentityManager.PairedTokens.TryGetValue(fingerprint, out var expectedToken) && expectedToken == token)
-                    || (!string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash);
+                    || IdentityManager.IsIdentityToken(token);
 
-                if (!verified && !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash)
+                if (!verified && IdentityManager.IsIdentityToken(token))
                 {
                     IdentityManager.SavePairedDevice(fingerprint);
-                    IdentityManager.SavePairedToken(fingerprint, token);
+                    IdentityManager.SavePairedToken(fingerprint, token!);
                     verified = true;
                     Console.WriteLine($"[WS] Device {fingerprint} auto-trusted via email identity");
                 }
 
                 // Roster membership: same-email devices are visible to each other for direct transfers
-                if (verified && !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash && !string.IsNullOrEmpty(alias))
+                if (verified && IdentityManager.IsIdentityToken(token) && !string.IsNullOrEmpty(alias))
                 {
                     SameEmailAliases[fingerprint] = alias;
                 }
@@ -110,7 +131,26 @@ namespace DeXShareTarget.Endpoints
                         if (result.MessageType == WebSocketMessageType.Text)
                         {
                             var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                            await HandleIncomingMessageAsync(fingerprint, clientIp, text);
+                            await HandleIncomingMessageAsync(fingerprint, alias, clientIp, text);
+                        }
+                        else if (result.MessageType == WebSocketMessageType.Binary)
+                        {
+                            // Screen-mirror JPEG frames; reassemble fragmented chunks
+                            using var stream = new MemoryStream();
+                            stream.Write(buffer, 0, result.Count);
+                            while (!result.EndOfMessage && webSocket.State == WebSocketState.Open)
+                            {
+                                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                                if (result.MessageType != WebSocketMessageType.Binary) break;
+                                stream.Write(buffer, 0, result.Count);
+                            }
+                            // Orphan streams (no active window for this phone) are told to stop
+                            if (!MirrorWindowHost.PushFrame(fingerprint, stream.ToArray()))
+                            {
+                                var stop = JsonSerializer.Serialize(new { type = "mirror-stop", data = new { } },
+                                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                await WebSocketConnectionManager.SendAsync(fingerprint, stop);
+                            }
                         }
                     }
                 }
@@ -123,6 +163,8 @@ namespace DeXShareTarget.Endpoints
                     WebSocketConnectionManager.RemoveSocket(fingerprint);
                     TelemetryStore.Remove(fingerprint);
                     SameEmailAliases.TryRemove(fingerprint, out _);
+                    // The phone is gone: never leave a frozen mirror window behind
+                    MirrorWindowHost.Stop(fingerprint);
                     if (webSocket.State != WebSocketState.Closed && webSocket.State != WebSocketState.Aborted)
                     {
                         await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -131,7 +173,7 @@ namespace DeXShareTarget.Endpoints
             });
         }
 
-        private static async Task HandleIncomingMessageAsync(string fingerprint, string clientIp, string text)
+        private static async Task HandleIncomingMessageAsync(string fingerprint, string alias, string clientIp, string text)
         {
             try
             {
@@ -213,13 +255,39 @@ namespace DeXShareTarget.Endpoints
                 }
                 else if (type == "set-email" && root.TryGetProperty("data", out var emailData))
                 {
-                    // A verified phone sign-in propagates the email identity to this PC, so all
-                    // same-email devices become auto-trusted here too
+                    // A phone sign-in propagates identity + profile to this PC so every same-email
+                    // device becomes auto-trusted here too. SECURITY: an unverified device must be
+                    // confirmed locally before it may claim this PC's identity.
                     var email = emailData.TryGetProperty("email", out var em) ? em.GetString() : "";
+                    var name = emailData.TryGetProperty("name", out var nm) ? nm.GetString() : "";
+                    var picture = emailData.TryGetProperty("picture", out var pc) ? pc.GetString() : "";
+                    var googleSub = emailData.TryGetProperty("sub", out var sb) ? sb.GetString() : "";
+
                     if (!string.IsNullOrWhiteSpace(email))
                     {
-                        IdentityManager.SetEmail(email.Trim());
-                        Console.WriteLine($"[WS] Email identity set by {fingerprint}: {email}");
+                        var allowed = WebSocketConnectionManager.IsVerified(fingerprint);
+                        if (!allowed)
+                        {
+                            // Unverified device claiming this PC's identity: ask the local user
+                            allowed = await PromptIdentityChangeAsync(alias, email);
+                        }
+                        if (allowed)
+                        {
+                            IdentityManager.SetEmail(email.Trim());
+                            if (!string.IsNullOrEmpty(googleSub)) IdentityManager.SetGoogleSub(googleSub);
+                            if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(picture))
+                            {
+                                GoogleOAuth.SaveProfile(new GoogleOAuth.GoogleProfile(email.Trim(), name ?? "", picture ?? "", googleSub ?? ""));
+                            }
+                            Console.WriteLine($"[WS] Email identity set by {fingerprint}: {email}");
+                            await WebSocketConnectionManager.SendAsync(fingerprint,
+                                System.Text.Json.JsonSerializer.Serialize(new { type = "identity-accepted" },
+                                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[WS] Identity change rejected for {fingerprint}");
+                        }
                     }
                 }
                 else if (type == "telemetry" && root.TryGetProperty("data", out var telemetryData))
@@ -238,6 +306,11 @@ namespace DeXShareTarget.Endpoints
                     {
                         TelemetryStore.SetWifi(fingerprint, string.IsNullOrEmpty(ssid) ? null : ssid, rssi);
                     }
+                }
+                else if (type == "mirror-denied")
+                {
+                    // The user declined screen sharing: close the mirror window immediately
+                    MirrorWindowHost.Stop(fingerprint);
                 }
                 else if (type == "pair-request")
                 {
@@ -271,6 +344,27 @@ namespace DeXShareTarget.Endpoints
                     {
                         LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Rejected";
                         Console.WriteLine($"[WS] Pairing rejected by {fingerprint}");
+                    }
+                }
+                else if (type == "pull-progress" && root.TryGetProperty("data", out var progressData))
+                {
+                    // The phone reports live bytes while pushing files; surface it to the GUI.
+                    var requestId = progressData.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
+                    if (!string.IsNullOrEmpty(requestId))
+                    {
+                        DexRequestStore.UpdateProgress(requestId, progressData.Clone());
+                    }
+                }
+                else if ((type == "list-shared-folders-reply" || type == "browse-reply" ||
+                          type == "pull-reply" || type == "grant-reply") &&
+                         root.TryGetProperty("data", out var fileShareReply))
+                {
+                    // PC File Explorer: the phone answered a list/browse/pull/grant request.
+                    // Route the reply to the pending /local/dex/* caller using the requestId.
+                    var requestId = fileShareReply.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
+                    if (!string.IsNullOrEmpty(requestId))
+                    {
+                        DexRequestStore.Complete(requestId, fileShareReply);
                     }
                 }
             }

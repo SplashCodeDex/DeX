@@ -13,6 +13,9 @@ namespace DeXShareTarget.Services
         public static string Fingerprint { get; set; } = "";
         public static string IdentityHash { get; set; } = "";
         public static string Email { get; set; } = "";
+        // Google account ID (sub) of the verified identity. When set, same-email trust uses
+        // the sub (unguessable) instead of the derivable SHA-256(email) hash.
+        public static string GoogleSub { get; set; } = "";
         public static HashSet<string> PairedFingerprints { get; set; } = new();
         public static Dictionary<string, string> PairedTokens { get; set; } = new();
         private static readonly object _fileLock = new object();
@@ -30,6 +33,7 @@ namespace DeXShareTarget.Services
                     var doc = JsonDocument.Parse(json);
                     Fingerprint = doc.RootElement.GetProperty("fingerprint").GetString() ?? Guid.NewGuid().ToString();
                     Email = doc.RootElement.TryGetProperty("email", out var e) ? e.GetString() ?? "" : "";
+                    GoogleSub = doc.RootElement.TryGetProperty("googleSub", out var gs) ? gs.GetString() ?? "" : "";
                     
                     if (!string.IsNullOrWhiteSpace(Email))
                     {
@@ -177,13 +181,36 @@ namespace DeXShareTarget.Services
             else
             {
                 IdentityHash = Guid.NewGuid().ToString();
+                GoogleSub = "";
             }
             
+            PersistIdentity();
+        }
+
+        /// <summary>Sets the Google account ID and persists it. Clears it when empty (sign-out).</summary>
+        public static void SetGoogleSub(string sub)
+        {
+            GoogleSub = sub ?? "";
+            PersistIdentity();
+        }
+
+        /// <summary>True when the presented bearer token proves same-email identity.</summary>
+        public static bool IsIdentityToken(string? token)
+        {
+            if (string.IsNullOrEmpty(token)) return false;
+            // Google-verified identity: only the (unguessable) account ID is accepted
+            if (!string.IsNullOrEmpty(GoogleSub)) return token == GoogleSub;
+            // Manual email identity: the derivable hash is the key
+            return token == IdentityHash;
+        }
+
+        private static void PersistIdentity()
+        {
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
             var file = Path.Combine(dir, "identity.json");
             lock (_fileLock)
             {
-                File.WriteAllText(file, JsonSerializer.Serialize(new { fingerprint = Fingerprint, identityHash = IdentityHash, email = Email }));
+                File.WriteAllText(file, JsonSerializer.Serialize(new { fingerprint = Fingerprint, identityHash = IdentityHash, email = Email, googleSub = GoogleSub }));
             }
         }
     }

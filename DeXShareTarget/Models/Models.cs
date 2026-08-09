@@ -16,6 +16,7 @@ namespace DeXShareTarget.Models
         [JsonPropertyName("protocol")] public string Protocol { get; set; } = "https";
         [JsonPropertyName("download")] public bool Download { get; set; } = true;
         [JsonPropertyName("identityHash")] public string? IdentityHash { get; set; }
+        [JsonPropertyName("googleSub")] public string? GoogleSub { get; set; }
     }
 
     public class PrepareUploadRequestDto

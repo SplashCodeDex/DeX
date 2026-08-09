@@ -63,7 +63,7 @@ namespace DeXShareTarget
 
         public void Run(string[] args)
         {
-            Windows.ApplicationModel.Activation.IActivatedEventArgs? activatedArgs = null;
+            global::Windows.ApplicationModel.Activation.IActivatedEventArgs? activatedArgs = null;
             try { activatedArgs = AppInstance.GetActivatedEventArgs(); } catch { }
             
             // 1. Direct CLI invocation (e.g. from UI)

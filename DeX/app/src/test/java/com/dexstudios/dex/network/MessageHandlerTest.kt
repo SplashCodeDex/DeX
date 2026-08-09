@@ -5,8 +5,10 @@ import android.content.SharedPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,9 +38,10 @@ class MessageHandlerTest {
     private val mockPrefs = mockk<SharedPreferences>(relaxed = true)
     private val mockEditor = mockk<SharedPreferences.Editor>(relaxed = true)
     private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
+    private val fileShareManager = mockk<FileShareManager>(relaxed = true)
 
     private val pairPromptJson = """
-        {"type":"pair-prompt","data":{"alias":"PC-1","fingerprint":"pc_fp","pin":"123456","token":"tok123"}}
+        {"type":"pair-prompt","data":{"alias":"PC-1","fingerprint":"pc_fp","pin":"12345","token":"tok123"}}
     """.trimIndent()
 
     @Before
@@ -69,7 +72,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt with matching pin sends accepted response and saves fingerprint and token`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -79,7 +82,7 @@ class MessageHandlerTest {
 
         val info = AuthState.incomingPairRequest.value
         assertNotNull(info)
-        info!!.deferred.complete("123456")
+        info!!.deferred.complete("12345")
         testDispatcher.scheduler.advanceUntilIdle()
 
         val accepted = Json.parseToJsonElement(sent!!).jsonObject["data"]!!.jsonObject["accepted"]!!.jsonPrimitive.content
@@ -91,7 +94,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt with empty pin sends rejected response and does not save`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -108,7 +111,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt times out after 60 seconds and sends rejected response`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -124,7 +127,7 @@ class MessageHandlerTest {
 
     @Test
     fun `duplicate pair-prompt while one is pending is ignored`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
 
         handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
         handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
@@ -136,7 +139,7 @@ class MessageHandlerTest {
     @Test
     fun `public-address message auto-fills blank WAN config`() = runTest(testDispatcher) {
         val mockConfig = mockk<DeviceConfig>(relaxed = true)
-        val handler = MessageHandler(mockConfig, mockContext, notificationHelper)
+        val handler = MessageHandler(mockConfig, mockContext, notificationHelper, fileShareManager)
 
         handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
 
@@ -147,11 +150,45 @@ class MessageHandlerTest {
     fun `public-address message never overwrites manual WAN config`() = runTest(testDispatcher) {
         val mockConfig = mockk<DeviceConfig>(relaxed = true)
         every { mockConfig.publicAddress } returns "mypc.dyndns.org"
-        val handler = MessageHandler(mockConfig, mockContext, notificationHelper)
+        val handler = MessageHandler(mockConfig, mockContext, notificationHelper, fileShareManager)
 
         handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
 
         verify(exactly = 0) { mockConfig.setPublicAddress(any()) }
+    }
+
+    @Test
+    fun `set-clipboard writes text to the phone clipboard`() = runTest(testDispatcher) {
+        // android.jar stubs return null from ClipData.newPlainText; mock it statically
+        mockkStatic(android.content.ClipData::class)
+        val mockClip = mockk<android.content.ClipData>()
+        every { android.content.ClipData.newPlainText(any(), any()) } returns mockClip
+        val mockItem = mockk<android.content.ClipData.Item>()
+        every { mockClip.getItemAt(0) } returns mockItem
+        every { mockItem.text } returns "Hello from PC"
+        val mockClipboard = mockk<android.content.ClipboardManager>()
+        every { mockContext.getSystemService(Context.CLIPBOARD_SERVICE) } returns mockClipboard
+
+        try {
+            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
+            handler.handleMessage("""{"type":"set-clipboard","data":{"text":"Hello from PC"}}""", "192.168.1.10", 53317)
+
+            val clipSlot = slot<android.content.ClipData>()
+            verify(exactly = 1) { mockClipboard.setPrimaryClip(capture(clipSlot)) }
+            assertEquals("Hello from PC", clipSlot.captured.getItemAt(0).text.toString())
+        } finally {
+            unmockkStatic(android.content.ClipData::class)
+        }
+    }
+    @Test
+    fun `set-clipboard with blank text is ignored`() = runTest(testDispatcher) {
+        val mockClipboard = mockk<android.content.ClipboardManager>()
+        every { mockContext.getSystemService(Context.CLIPBOARD_SERVICE) } returns mockClipboard
+
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
+        handler.handleMessage("""{"type":"set-clipboard","data":{"text":"   "}}""", "192.168.1.10", 53317)
+
+        verify(exactly = 0) { mockClipboard.setPrimaryClip(any()) }
     }
 
     @Test
@@ -162,7 +199,7 @@ class MessageHandlerTest {
         every { SafStorage.getDownloadsDexUri(any()) } returns mockk<android.net.Uri>()
 
         try {
-            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
+            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
             val uploadJson = """
                 {"type":"prepare-upload","data":{"info":{"alias":"PC-1","version":"2.0","deviceModel":"Windows PC","deviceType":"desktop","fingerprint":"pc_fp","port":53317,"protocol":"https","download":false},"files":{"f1":{"id":"f1","fileName":"photo.jpg","size":1024,"fileType":"image/jpeg"},"f2":{"id":"f2","fileName":"doc.pdf","size":2048,"fileType":"application/pdf"}}}}
             """.trimIndent()

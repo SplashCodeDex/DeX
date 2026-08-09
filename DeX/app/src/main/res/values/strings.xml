@@ -110,9 +110,7 @@
     <string name="device_version">Version</string>
     <string name="device_fingerprint">Fingerprint</string>
 
-    <!-- Settings: QUIC / WAN -->
-    <string name="settings_quic_title">QUIC (HTTP/3) Fast Transfers</string>
-    <string name="settings_quic_desc">Files are sent to your PC over QUIC/UDP automatically — no setup needed.</string>
+    <!-- Settings: WAN -->
     <string name="settings_public_address">Public Address (WAN)</string>
     <string name="settings_public_address_label">Public address</string>
     <string name="settings_public_address_hint">mypc.ddns.net or 203.0.113.5</string>

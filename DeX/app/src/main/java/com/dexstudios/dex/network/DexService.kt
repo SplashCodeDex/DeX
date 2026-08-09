@@ -14,11 +14,13 @@ class DexService : Service() {
     private val discoveryEngine: DiscoveryEngine by inject()
     private val notificationHelper: NotificationHelper by inject()
     private val punchSession: PunchSession by inject()
+    private val clipboardSyncManager: ClipboardSyncManager by inject()
     
     private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceCompat.startForeground(
@@ -39,10 +41,13 @@ class DexService : Service() {
         discoveryEngine.startDiscovery()
         // Listen for direct (NAT-punched) transfers from same-email devices
         punchSession.start()
+        // Auto-push clipboard changes to the connected PC (2-way sync)
+        clipboardSyncManager.start()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        clipboardSyncManager.stop()
         webSocketClientService.stop()
         discoveryEngine.stopDiscovery()
         punchSession.stop()
@@ -67,5 +72,22 @@ class DexService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
+    }
+
+    companion object {
+        @Volatile
+        private var instance: DexService? = null
+
+        /**
+         * Re-declares the foreground service type. Android 14+ requires the service to
+         * be running with the MEDIA_PROJECTION type while a mirror session is active.
+         */
+        fun setMirroring(mirroring: Boolean) {
+            val svc = instance ?: return
+            val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
+                if (mirroring) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
+            ServiceCompat.startForeground(svc, 1, svc.notificationHelper.getForegroundServiceNotification(), types)
+        }
     }
 }

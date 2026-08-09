@@ -17,6 +17,7 @@ Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"
 . "$PSScriptRoot\Modules\UIComponents.ps1"
 . "$PSScriptRoot\Modules\DeviceTelemetry.ps1"
+. "$PSScriptRoot\Modules\DeviceActions.ps1"
 $mutexName = "Global\CodeDeX_DeX_Engine"
 $script:showUiEvent = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::AutoReset, "Global\CodeDeX_DeX_ShowUI")
 $script:engineMutex = New-Object System.Threading.Mutex($false, $mutexName)
@@ -120,6 +121,19 @@ if ($null -eq $script:wpfWindow) {
         Show-Toast -Title "Auto-Connect" -Message $(if ($miAuto.Checked) { "Enabled - will connect when PC joins phone hotspot." } else { "Disabled." })
     })
 
+    $miGoogle = $fallbackMenu.Items.Add("Sign in with Google")
+    $miGoogle.Add_Click({
+        # Runs the OAuth loopback flow on the local engine (browser opens automatically)
+        Start-Job {
+            try {
+                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-signin" -TimeoutSec 240 | Out-Null
+            } catch {
+                Write-Output "Google sign-in failed: $($_.Exception.Message)"
+            }
+        } | Out-Null
+        Show-Toast -Title "Google Sign-In" -Message "Opening browser — approve the account to trust all your devices."
+    })
+
     $miExit = $fallbackMenu.Items.Add("Exit Engine")
     $miExit.Add_Click({
         $script:notifyIcon.Visible = $false
@@ -207,9 +221,8 @@ if ($script:AutoConnectEnabled) {
 $script:transferQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 $script:mdnsQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
-# Start mDNS & Omni-Mesh auto-discovery
+# Start mDNS & ADB auto-discovery
 $script:mdnsJob = $null
-$script:omniPeers = @{}
 
 
 
@@ -267,71 +280,6 @@ $mdnsTimer.Add_Tick({
                     if ($script:currentTarget -ne $ct) {
                         Invoke-AdbConnect -Target $ct
                     }
-                }
-                
-                # Check for OmniMesh
-                $omniTargets = $uniqueServices | Where-Object { $_.Type -eq 'OmniMesh' }
-                foreach ($omni in $omniTargets) {
-                    $ip = $omni.IPPort -replace ':[0-9]+$',''
-                    $script:omniPeers[$ip] = New-OmniPeer -Service $omni -Existing $script:omniPeers[$ip]
-                }
-                
-                # Update Live Peers dynamically via ItemsControl (infinite scrolling rows)
-                $livePeers = @()
-                foreach ($ip in $script:omniPeers.Keys) {
-                    $peer = $script:omniPeers[$ip]
-                    if ((Get-Date) - $peer.LastSeen -lt [timespan]::FromSeconds(15)) {
-                        
-                        # Stale telemetry refresh: re-query battery if >60s old and device is the active ADB target
-                        $connectedIP = ($script:currentTarget -replace ':.*','')
-                        Update-PeerBattery -Peer $peer -DeviceIp $ip -IsActiveTarget ($ip -eq $connectedIP)
-                        
-                        $subText = Get-DeviceSubText -Peer $peer
-                        
-                        $livePeers += @{
-                            Name      = $peer.Name
-                            SubText   = $subText
-                            IconGlyph = "$([char]0xE8EA)"
-                            IP        = $ip
-                        }
-                    }
-                }
-                
-                # Only update icLivePeers when the device set actually changes
-                $newLiveFP = ($livePeers | ForEach-Object { "$($_['IP']):$($_['Name'])" } | Sort-Object) -join ','
-                if ($newLiveFP -ne $script:lastLivePeersFingerprint) {
-                    $ic = $script:wpfWindow.FindName("icLivePeers")
-                    if ($ic) {
-                        # Animate out departing items before swapping
-                        $oldIPs = @()
-                        if ($ic.ItemsSource) { $oldIPs = @($ic.ItemsSource | ForEach-Object { $_['IP'] }) }
-                        $newIPs = @($livePeers | ForEach-Object { $_['IP'] })
-                        $departing = @($oldIPs | Where-Object { $_ -notin $newIPs })
-                        if ($departing.Count -gt 0) {
-                            foreach ($container in @(0..($ic.Items.Count - 1) | ForEach-Object { $ic.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
-                                $item = $ic.ItemContainerGenerator.ItemFromContainer($container)
-                                if ($item -and $item['IP'] -and $departing -contains $item['IP']) {
-                                    $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
-                                    $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromMilliseconds(300)
-                                    $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
-                                }
-                            }
-                            # Schedule the actual swap after fade-out completes
-                            $timer = New-Object System.Windows.Threading.DispatcherTimer
-                            $timer.Interval = [TimeSpan]::FromMilliseconds(320)
-                            $capturedPeers = $livePeers
-                            $capturedIc = $ic
-                            $timer.Add_Tick({
-                                param($s, $e)
-                                $capturedIc.ItemsSource = $capturedPeers
-                                $s.Stop()
-                            }.GetNewClosure())
-                            $timer.Start()
-                        } else {
-                            $ic.ItemsSource = $livePeers
-                        }
-                    }
-                    $script:lastLivePeersFingerprint = $newLiveFP
                 }
                 
             }
@@ -410,46 +358,66 @@ $mdnsTimer.Add_Tick({
                             $dt = [datetimeOffset]::FromUnixTimeMilliseconds($p.lastSeen).UtcDateTime
                             if (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10)) {
                                 if ($p.isPaired -or $p.isAutoTrusted) {
-                                    # Telemetry (WebSocket) feeds battery + wifi for every device; ADB stays a fallback
-                                    if ($script:omniPeers.Contains($p.ip)) {
-                                        Update-PeerBattery -Peer $script:omniPeers[$p.ip] -DeviceIp $p.ip -BatteryLevel $p.battery
-                                        Update-PeerWifi -Peer $script:omniPeers[$p.ip] -Ssid $p.wifiSsid -Rssi $p.wifiRssi
+                                    # Telemetry (WebSocket) feeds battery + wifi for every device
+                                    $peerRow = @{
+                                        Model    = $p.info.deviceModel
+                                        Battery  = if ($null -ne $p.battery) { [string]$p.battery } else { $null }
+                                        WifiSsid = $p.wifiSsid
+                                        WifiRssi = $p.wifiRssi
                                     }
-                                    if (-not $script:omniPeers.Contains($p.ip)) {
-                                        $peerRow = @{
-                                            Model    = $p.info.deviceModel
-                                            Battery  = if ($null -ne $p.battery) { [string]$p.battery } else { $null }
-                                            WifiSsid = $p.wifiSsid
-                                            WifiRssi = $p.wifiRssi
-                                        }
-                                        $livePeers += @{
-                                            Name      = $p.info.alias
-                                            SubText   = Get-DeviceSubText -Peer $peerRow
-                                            IconGlyph = "$([char]0xE8EA)"
-                                            IP        = $p.ip
-                                        }
+                                    $livePeers += @{
+                                        Name        = $p.info.alias
+                                        SubText     = Get-DeviceSubText -Peer $peerRow
+                                        IconGlyph   = "$([char]0xE8EA)"
+                                        IP          = $p.ip
+                                        Fingerprint = $p.info.fingerprint
                                     }
                                 } else {
-                                    if (-not $script:omniPeers.Contains($p.ip)) {
-                                        $liveUdp += @{
-                                            Ip = $p.ip
-                                            Alias = $p.info.alias
-                                            DeviceModel = $p.info.deviceModel
-                                            DeviceType = $p.info.deviceType
-                                            Fingerprint = $p.info.fingerprint
-                                        }
+                                    $liveUdp += @{
+                                        Ip = $p.ip
+                                        Alias = $p.info.alias
+                                        DeviceModel = $p.info.deviceModel
+                                        DeviceType = $p.info.deviceType
+                                        Fingerprint = $p.info.fingerprint
                                     }
                                 }
                             }
                         }
                         
                         
-                        # Trigger the fingerprint-diffed update with animation at the next tick
+                        # Only update icLivePeers when the device set actually changes
                         $newLiveFP = ($livePeers | ForEach-Object { "$($_['IP']):$($_['Name'])" } | Sort-Object) -join ','
                         if ($newLiveFP -ne $script:lastLivePeersFingerprint) {
                             $ic = $script:wpfWindow.FindName("icLivePeers")
                             if ($ic) {
-                                $ic.ItemsSource = $livePeers
+                                # Animate out departing items before swapping
+                                $oldIPs = @()
+                                if ($ic.ItemsSource) { $oldIPs = @($ic.ItemsSource | ForEach-Object { $_['IP'] }) }
+                                $newIPs = @($livePeers | ForEach-Object { $_['IP'] })
+                                $departing = @($oldIPs | Where-Object { $_ -notin $newIPs })
+                                if ($departing.Count -gt 0) {
+                                    foreach ($container in @(0..($ic.Items.Count - 1) | ForEach-Object { $ic.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
+                                        $item = $ic.ItemContainerGenerator.ItemFromContainer($container)
+                                        if ($item -and $item['IP'] -and $departing -contains $item['IP']) {
+                                            $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
+                                            $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromMilliseconds(300)
+                                            $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
+                                        }
+                                    }
+                                    # Schedule the actual swap after fade-out completes
+                                    $timer = New-Object System.Windows.Threading.DispatcherTimer
+                                    $timer.Interval = [TimeSpan]::FromMilliseconds(320)
+                                    $capturedPeers = $livePeers
+                                    $capturedIc = $ic
+                                    $timer.Add_Tick({
+                                        param($s, $e)
+                                        $capturedIc.ItemsSource = $capturedPeers
+                                        $s.Stop()
+                                    }.GetNewClosure())
+                                    $timer.Start()
+                                } else {
+                                    $ic.ItemsSource = $livePeers
+                                }
                             }
                             $script:lastLivePeersFingerprint = $newLiveFP
                         }
@@ -490,6 +458,16 @@ $mdnsTimer.Add_Tick({
                     }
                 }
             } catch { }
+                
+                # Keep the quick-action mirror toggle in sync with the actual mirror window state
+                try {
+                    $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-state" -TimeoutSec 1 -ErrorAction Stop
+                    $btnMirror = $script:wpfWindow.FindName("btnQAMirror")
+                    if ($btnMirror) {
+                        $wanted = [bool]$st.active
+                        if ($btnMirror.IsChecked -ne $wanted) { $btnMirror.IsChecked = $wanted }
+                    }
+                } catch {}
   } catch { }
     })
     $mdnsTimer.Start()
@@ -497,6 +475,49 @@ $mdnsTimer.Add_Tick({
 if ($Background) {
     Show-Toast -Title "Connect ADB Active" -Message "Right-click tray icon to toggle Auto-Connect ON/OFF or Connect Now."
 }
+
+# Automatic clipboard sync (PC -> phone): push fresh local copies over the WebSocket.
+# Controlled by the quick-action clipboard toggle ($script:clipboardSyncEnabled).
+# The phone's own pushes are learned from /local/clipboard-state so they are never echoed.
+$script:clipboardSyncEnabled = $false
+$script:clipLastPushed = ""
+$script:clipLastReceived = ""
+$script:clipboardTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:clipboardTimer.Interval = [TimeSpan]::FromSeconds(2)
+$script:clipboardTimer.Add_Tick({
+    if (-not $script:clipboardSyncEnabled) { return }
+    try {
+        # 1. Learn what the phone last pushed, so we don't echo it back to the phone
+        try {
+            $state = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/clipboard-state" -TimeoutSec 1 -ErrorAction Stop
+            if ($state -and $state.text -and $state.text -ne $script:clipLastReceived) {
+                $script:clipLastReceived = [string]$state.text
+            }
+        } catch {}
+
+        # 2. Detect a fresh local clipboard change and push it to the active device
+        $text = Get-Clipboard -Raw -ErrorAction Ignore
+        if (-not [string]::IsNullOrWhiteSpace($text) -and
+            $text -ne $script:clipLastPushed -and
+            $text -ne $script:clipLastReceived) {
+
+            $ip = $null
+            $currentTarget = Get-ConnectedDeviceTarget
+            if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
+            if (-not $ip) {
+                try {
+                    $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                    $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+                    if ($target) { $ip = $target.ip }
+                } catch {}
+            }
+            if ($ip -and (Send-ClipboardToDevice -Ip $ip -Quiet)) {
+                $script:clipLastPushed = $text
+            }
+        }
+    } catch {}
+})
+$script:clipboardTimer.Start()
 
 $uiTimer = New-Object System.Windows.Threading.DispatcherTimer
 $uiTimer.Interval = [TimeSpan]::FromMilliseconds(150)

@@ -1,5 +1,7 @@
 package com.dexstudios.dex.network
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +23,8 @@ import java.util.UUID
 class MessageHandler(
     private val deviceConfig: DeviceConfig,
     private val context: Context,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val fileShareManager: FileShareManager
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -42,6 +45,11 @@ class MessageHandler(
                 "device-roster" -> handleDeviceRoster(dataElement)
                 "relay-started" -> handleRelayReply(true)
                 "relay-error" -> handleRelayReply(false)
+                "set-clipboard" -> handleSetClipboard(dataElement)
+                "mirror-start" -> MirrorSession.requestStart()
+                "mirror-stop" -> MirrorSession.stop()
+                "list-shared-folders", "browse-folder", "pull-files", "grant-shared-folder" ->
+                    fileShareManager.handleRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
                 else -> {
                     Timber.w("Unknown message type received: $type")
                 }
@@ -176,6 +184,24 @@ class MessageHandler(
             )
         }
         Timber.i("Roster updated: ${roster.devices.size} same-email devices")
+    }
+
+    /** The PC pushed clipboard text over the WebSocket — write it to the phone's clipboard. */
+    private fun handleSetClipboard(dataElement: JsonElement) {
+        val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.content
+        if (text.isNullOrBlank()) {
+            Timber.w("set-clipboard with empty text, ignoring")
+            return
+        }
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        if (clipboard == null) {
+            Timber.w("Clipboard service unavailable")
+            return
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText("DeX", text))
+        // Remember it so the auto-sync listener does not push it back to the PC
+        ClipboardSyncState.lastIncoming = text
+        Timber.i("Clipboard synced from PC")
     }
 
     /** The PC acknowledged (or failed) the relay-transfer fallback. */

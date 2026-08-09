@@ -106,10 +106,9 @@ fun SettingsScreen(
                         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         val account = com.dexstudios.dex.network.GoogleSignInManager.handleResult(result.data)
-                        if (account != null && !account.email.isNullOrBlank()) {
-                            val email = account.email!!
-                            deviceConfig.email = email
-                            webSocketClientService.sendMessage("""{"type":"set-email","data":{"email":"$email"}}""")
+                        val email = account?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                        if (email != null) {
+                            com.dexstudios.dex.network.GoogleSignInManager.pushIdentityToPc(webSocketClientService, deviceConfig)
                             Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
                         } else {
                             Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
@@ -154,42 +153,6 @@ fun SettingsScreen(
                             modifier = Modifier.padding(12.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    var showSharedFoldersDialog by remember { mutableStateOf(false) }
-
-                    DeXTextButton(
-                        onClick = { showSharedFoldersDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_folder),
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Manage Shared Folders")
-                    }
-
-                    if (showSharedFoldersDialog) {
-                        SharedFoldersDialog(
-                            onDismiss = { showSharedFoldersDialog = false }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        stringResource(R.string.settings_quic_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        stringResource(R.string.settings_quic_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 

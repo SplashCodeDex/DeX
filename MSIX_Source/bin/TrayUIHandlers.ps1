@@ -82,24 +82,34 @@ $actionDisconnect = {
 
 
 $actionMirror = {
-        $target = Get-ConnectedDeviceTarget
+    # Quick-action toggle: start/stop the ADB-free screen mirror
+    $mirrorActive = $false
+    try {
+        $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-state" -TimeoutSec 2 -ErrorAction Stop
+        $mirrorActive = [bool]$st.active
+    } catch {}
     
-    if (-not $target) {
-        Show-Toast -Title "Mirror Failed" -Message "No phone connected over ADB."
-        Update-WpfUI
-        return
-    }
-    
-    $scrcpyExe = Get-Command scrcpy.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-    if (-not $scrcpyExe -and (Test-Path "$PSScriptRoot\scrcpy.exe")) {
-        $scrcpyExe = "$PSScriptRoot\scrcpy.exe"
-    }
-    
-    if ($scrcpyExe) {
-        Show-Toast -Title "Mirroring Phone" -Message "Launching zero-latency screen mirror for $target..."
-        Start-Process -FilePath $scrcpyExe -ArgumentList "-s `"$target`" --window-title `"DeX - Screen Mirror ($target)`"" -WindowStyle Normal
+    if ($mirrorActive) {
+        # Stop: close the mirror window; the server tells the phone to stop streaming
+        try { Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/mirror-stop" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null } catch {}
+        Show-Toast -Title "Mirroring Stopped" -Message "Screen mirror closed."
     } else {
-        Show-Toast -Title "Mirroring Requires scrcpy" -Message "scrcpy.exe not found in PATH or app directory. Place scrcpy.exe in PATH to mirror."
+        # Start: resolve the active device (ADB target first, else the first paired device)
+        $ip = $null
+        $currentTarget = Get-ConnectedDeviceTarget
+        if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
+        if (-not $ip) {
+            try {
+                $devices = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+                if ($target) { $ip = $target.ip }
+            } catch {}
+        }
+        if ($ip) {
+            Start-MirrorSession -Ip $ip
+        } else {
+            Show-Toast -Title "Mirror Failed" -Message "No device connected. Open the DeX app on the phone."
+        }
     }
     Update-WpfUI
 }
@@ -152,26 +162,25 @@ $actionPull = {
 }
 
 $actionClipboard = {
-    $text = Get-Clipboard -Raw -ErrorAction Ignore
-    if ([string]::IsNullOrWhiteSpace($text)) {
-        Show-Toast -Title "Clipboard Empty" -Message "Nothing to sync."
-        return
-    }
-    
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
-    $b64 = [Convert]::ToBase64String($bytes)
-    
-    # Broadcast to Android app via ADB
-    $res = adb shell am broadcast -a com.example.dex.SET_CLIPBOARD -e text_b64 "$b64" 2>&1
-    
-    if ($res -match "Broadcast completed") {
-        Show-Toast -Title "Clipboard Synced" -Message "Sent to phone."
-    } else {
-        Show-Toast -Title "Clipboard Sync Failed" -Message "Is the phone connected via ADB?"
-    }
+    # Quick-action toggle: start/stop the automatic 2-way clipboard sync
+    $script:clipboardSyncEnabled = -not $script:clipboardSyncEnabled
     
     $btnQAClipboard = $script:wpfWindow.FindName("btnQAClipboard")
-    if ($btnQAClipboard) { $btnQAClipboard.IsChecked = $false }
+    if ($btnQAClipboard) {
+        $btnQAClipboard.IsChecked = $script:clipboardSyncEnabled
+        $btnQAClipboard.ToolTip = if ($script:clipboardSyncEnabled) { "Clipboard Sync: On" } else { "Clipboard Sync: Off" }
+    }
+    
+    # Tell the backend whether to accept phone clipboard pushes (stops the phone -> PC direction)
+    try {
+        Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/clipboard-sync?enabled=$($script:clipboardSyncEnabled)" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null
+    } catch {}
+    
+    if ($script:clipboardSyncEnabled) {
+        Show-Toast -Title "Clipboard Sync On" -Message "Phone and PC clipboards will auto-sync."
+    } else {
+        Show-Toast -Title "Clipboard Sync Off" -Message "Automatic clipboard sync stopped."
+    }
 }
 
 $actionAuto = {

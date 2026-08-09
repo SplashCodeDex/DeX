@@ -1,16 +1,22 @@
 
 $script:btnUpDir = $script:wpfWindow.FindName("btnUpDir")
-$script:currentTarget = ""
 $script:currentDirPath = ""
-$script:adbLsProc = $null
 $script:explorerMode = $false
-$script:grantedFolders = @()
-$script:currentFolderUri = $null
 
 $script:isLoadingDir = $false
 $script:isShowingMenu = $false
 $script:showMenuGuardTimer = $null
 $script:lastMouseUpTime = [DateTime]::MinValue
+
+
+# Forwards a PC File Explorer request to the local engine, which relays it to the phone
+# over the WebSocket and returns the phone's reply. Returns $null on failure.
+function Invoke-DexEndpoint([string]$Name, [string]$Ip, $Extra) {
+    $body = @{ ip = $Ip }
+    if ($Extra) { foreach ($k in $Extra.Keys) { $body[$k] = $Extra[$k] } }
+    return Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/$Name" -Method Post `
+        -Body ($body | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
+}
 
 
 $script:btnUpDir.Add_Click({
@@ -31,49 +37,45 @@ if ($script:btnToggleExplorerMode) {
     $script:btnToggleExplorerMode.Add_Click({
         $script:explorerMode = -not $script:explorerMode
         if ($script:explorerMode) {
-            # File Explorer Mode: load granted folders from the Android device
-            $target = Get-ConnectedDeviceTarget
-            if ($target) {
-                $ip = $target.Split(':')[0]
+            # File Explorer Mode: browse the phone's SAF-granted folders over the WebSocket
+            $ip = Get-FileExplorerTargetIp
+            $folders = @()
+            if ($ip) {
                 try {
-                    $tokRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/token?ip=$ip" -TimeoutSec 2 -ErrorAction Stop
-                    $headers = @{}
-                    if ($tokRes.token) { $headers["Authorization"] = "Bearer $($tokRes.token)" }
-                    $script:grantedFolders = @(Invoke-RestMethod -Uri "https://${ip}:53317/api/dex/folders" -Headers $headers -TimeoutSec 3 -ErrorAction Stop)
+                    $res = Invoke-DexEndpoint "list-folders" $ip $null
+                    $folders = @($res.folders.PSObject.Properties | ForEach-Object {
+                        [PSCustomObject]@{ Name = $_.Value.name; Uri = $_.Value.uri }
+                    })
                 } catch {
-                    $script:grantedFolders = @()
+                    $folders = @()
                 }
-            } else {
-                $script:grantedFolders = @()
             }
             
-            if ($script:grantedFolders.Count -eq 0) {
-                # No folders granted yet — prompt the user to request access
-                $target = Get-ConnectedDeviceTarget
-                if ($target) {
-                    $ip = $target.Split(':')[0]
-                    try {
-                        $tokRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/token?ip=$ip" -TimeoutSec 2 -ErrorAction Stop
-                        $headers = @{}
-                        if ($tokRes.token) { $headers["Authorization"] = "Bearer $($tokRes.token)" }
-                        Invoke-RestMethod -Uri "https://${ip}:53317/api/dex/grant-folder?name=Downloads" -Method Post -Headers $headers -TimeoutSec 3 -ErrorAction Stop | Out-Null
-                        Show-Toast -Title "Folder Access" -Message "Grant a folder on your phone to enable File Explorer mode."
-                    } catch {}
+            if ($folders.Count -eq 0) {
+                # No folders granted yet — ask the phone to open its folder picker
+                if ($ip) {
+                    try { Invoke-DexEndpoint "grant-folder" $ip $null | Out-Null } catch {}
+                    Show-Toast -Title "Folder Access" -Message "Grant a folder on your phone to enable File Explorer mode."
+                } else {
+                    Show-Toast -Title "No Device" -Message "Open the DeX app on your phone and connect first."
                 }
                 $script:explorerMode = $false
                 $script:btnToggleExplorerMode.Content = "&#xE8B7;"
                 return
             }
             
-            # Show granted folders as the file list
+            # Show granted folders as the file list (crossfade from transfer history)
+            $hadItems = $script:lbFiles.Items.Count -gt 0
+            if ($hadItems) { New-ExplorerSnapshot }
             $script:lbFiles.Items.Clear()
-            foreach ($folder in $script:grantedFolders) {
+            foreach ($folder in $folders) {
                 $item = New-Object System.Windows.Controls.ListBoxItem
-                $item.Content = [PSCustomObject]@{ Name = $folder.name; FullPath = $folder.uri; IsDir = $true; Meta = "Phone folder"; Thumb = $null; NoThumb = 'Visible' }
+                $item.Content = [PSCustomObject]@{ Name = $folder.Name; FullPath = $folder.Uri; IsDir = $true; Meta = "Phone folder"; Thumb = $null; NoThumb = 'Visible' }
                 $item.ContentTemplate = $script:wpfWindow.Resources["FolderGridTemplate"]
-                $item.Tag = $folder.uri
+                $item.Tag = $folder.Uri
                 $script:lbFiles.Items.Add($item)
             }
+            if ($hadItems) { Start-ExplorerTransition 'switch' }
             $script:currentDirPath = "Phone Folders"
             $script:btnToggleExplorerMode.Content = "&#xE8B7;"
             $script:btnToggleExplorerMode.ToolTip = "Switch to Transfer History"
@@ -170,38 +172,27 @@ $script:lbFiles.Add_MouseDoubleClick({
             if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
         }
         
-        $remotePaths = $fileItems | ForEach-Object { $_.Content.FullPath }
+        # Pull selected phone files: ask the phone to push them back to the PC over the
+        # WebSocket (they land in Downloads\DeX via the standard upload path).
+        $pullIp = Get-FileExplorerTargetIp
+        $pullFiles = @($fileItems | ForEach-Object {
+            $n = $_.Content.Name
+            $sz = 0
+            if ($script:phoneFileMeta -and $script:phoneFileMeta[$n]) { $sz = [long]$script:phoneFileMeta[$n].Size }
+            @{ name = $n; uri = $_.Content.FullPath; size = $sz }
+        })
         
-        $actionBatchBg = {
-            param($remPaths, $out, $ip, $localAppData)
-            
-            $wc = New-Object System.Net.WebClient
-            [Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+        $actionPullBg = {
+            param($targetIp, $fileList, $out)
             try {
-                $tokRes = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/token?ip=$ip" -TimeoutSec 2 -ErrorAction Stop
-                if ($tokRes.token) { $wc.Headers.Add("Authorization", "Bearer $($tokRes.token)") }
+                $body = @{ ip = $targetIp; files = @($fileList) } | ConvertTo-Json -Depth 10
+                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 200 -ErrorAction Stop | Out-Null
+                Start-Process "explorer.exe" -ArgumentList "`"$out`""
             } catch {}
-            
-            foreach ($rp in $remPaths) {
-                try {
-                    $fileName = [System.IO.Path]::GetFileName($rp)
-                    if (-not $fileName) { $fileName = $rp.Split('/')[-1] }
-                    $destPath = Join-Path $out $fileName
-                    $uri = "https://${ip}:53317/api/dex/pull?path=" + [uri]::EscapeDataString($rp)
-                    
-                    $wc.DownloadFile($uri, $destPath)
-                } catch {
-                    # Silent fail on bg job
-                }
-            }
-            if ($wc) { $wc.Dispose() }
-            Start-Process "explorer.exe" -ArgumentList "`"$out`""
         }
         
-        $target = Get-ConnectedDeviceTarget
-        if ($target) {
-            $ip = $target.Split(':')[0]
-            Start-Job -ScriptBlock $actionBatchBg -ArgumentList $remotePaths, $outDir, $ip, $env:LOCALAPPDATA
+        if ($pullIp) {
+            Start-Job -ScriptBlock $actionPullBg -ArgumentList $pullIp, $pullFiles, $outDir
         }
         
         $dispName = if ($script:customDownloadPath) { 

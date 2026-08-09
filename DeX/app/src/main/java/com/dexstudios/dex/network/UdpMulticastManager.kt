@@ -76,7 +76,8 @@ class UdpMulticastManager(
                         port = json.optInt("port", 53317),
                         protocol = json.optString("protocol", "https"),
                         download = json.optBoolean("download", true),
-                        identityHash = if (json.has("identityHash")) json.optString("identityHash") else null
+                        identityHash = if (json.has("identityHash")) json.optString("identityHash") else null,
+                        googleSub = if (json.has("googleSub")) json.optString("googleSub") else null
                     )
                 )
             )
@@ -96,6 +97,7 @@ class UdpMulticastManager(
                 put("protocol", localInfo.protocol)
                 put("download", localInfo.download)
                 put("identityHash", localInfo.identityHash)
+                localInfo.googleSub?.let { put("googleSub", it) }
             }
             val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
             val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 53317)

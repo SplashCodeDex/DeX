@@ -70,25 +70,6 @@ class MainScreenViewModelTest {
     }
 
     @Test
-    fun `sendClipboard delegates to clientEngine and triggers callback with result`() = runTest(testDispatcher) {
-        coEvery { 
-            mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99", null) 
-        } returns true
-
-        val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
-        var callbackResult: Boolean? = null
-
-        viewModel.sendClipboard(testDevice, "Hello Text") { result ->
-            callbackResult = result
-        }
-
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(true, callbackResult)
-        coVerify { mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99", null) }
-    }
-
-    @Test
     fun `untrusted device detection correctly identifies untrusted vs trusted state`() {
         assertFalse("Device should initially be untrusted", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
 

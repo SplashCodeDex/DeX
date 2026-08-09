@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Data.Xml.Dom;
@@ -21,6 +22,14 @@ namespace DeXShareTarget.Endpoints
     public static class LocalSendEndpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
+        // Most recent clipboard text pushed by a phone (text + UTC timestamp). Powers the
+        // PC-side auto-sync watcher, which must not echo the phone's text back to it.
+        public static (string Text, DateTime At)? LastPhoneClipboard { get; private set; }
+
+        // Master switch for automatic clipboard sync, controlled by the desktop quick-action
+        // toggle. When off, phone clipboard pushes are accepted but dropped (no PC clipboard
+        // write, no echo state). Manual PC -> phone pushes are NOT affected.
+        public static bool ClipboardSyncEnabled { get; set; } = false;
         // Per-file pull tokens: the phone must present the token to download a hosted file
         public static ConcurrentDictionary<string, string> HostedFileTokens = new();
         // Last time each hosted file was served, used for sliding expiry so slow pulls don't 404
@@ -54,10 +63,18 @@ namespace DeXShareTarget.Endpoints
                 var auth = request.Headers.Authorization.ToString();
                 if (string.IsNullOrEmpty(auth) || !auth.StartsWith("Bearer ")) return Results.StatusCode(401);
                 var token = auth.Substring("Bearer ".Length);
-                if (token != IdentityManager.IdentityHash && !IdentityManager.PairedTokens.Values.Contains(token)) return Results.StatusCode(401);
+                if (!IdentityManager.IsIdentityToken(token) && !IdentityManager.PairedTokens.Values.Contains(token)) return Results.StatusCode(401);
 
                 using var reader = new StreamReader(request.Body);
                 var text = await reader.ReadToEndAsync();
+                if (string.IsNullOrWhiteSpace(text)) return Results.BadRequest();
+
+                // Auto-sync is off: accept and drop silently (the desktop toggle controls this)
+                if (!ClipboardSyncEnabled) return Results.Ok();
+
+                // Remember what the phone pushed so the PC auto-sync watcher can recognize
+                // this text as "already synced" instead of echoing it back to the phone
+                LastPhoneClipboard = (text, DateTime.UtcNow);
                 
                 var psi = new System.Diagnostics.ProcessStartInfo("powershell", "-NoProfile -Command \"$input | Set-Clipboard\"")
                 {
@@ -91,7 +108,7 @@ namespace DeXShareTarget.Endpoints
                 var auth = request.Headers.Authorization.ToString();
                 var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length) : null;
 
-                bool isAutoTrusted = !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash;
+                bool isAutoTrusted = IdentityManager.IsIdentityToken(token);
                 bool isPaired = !string.IsNullOrEmpty(token) && IdentityManager.PairedTokens.TryGetValue(req.Info.Fingerprint, out var expectedToken) && expectedToken == token;
 
                 if (!isAutoTrusted && !isPaired)
@@ -229,61 +246,6 @@ namespace DeXShareTarget.Endpoints
                     }
                 }
                 catch { }
-
-                return Results.Ok();
-            });
-
-            app.MapPost("/notify-download", async (HttpRequest request) =>
-            {
-                var auth = request.Headers.Authorization.ToString();
-                var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length) : null;
-                // For notify-download, we only verify if the provided token is among the trusted ones.
-                bool isTrusted = false;
-                if (!string.IsNullOrEmpty(token)) {
-                    if (token == IdentityManager.IdentityHash) isTrusted = true;
-                    else if (IdentityManager.PairedTokens.Values.Contains(token)) isTrusted = true;
-                }
-                
-                if (!isTrusted) return Results.StatusCode(403);
-                using var reader = new StreamReader(request.Body);
-                var body = await reader.ReadToEndAsync();
-                var doc = JsonDocument.Parse(body);
-                var root = doc.RootElement;
-                var ip = root.TryGetProperty("ip", out var ipProp) ? ipProp.GetString() : null;
-                var port = root.TryGetProperty("port", out var portProp) ? portProp.GetInt32() : 53319;
-                var fileId = root.TryGetProperty("fileId", out var fidProp) ? fidProp.GetString() : null;
-                var fileName = root.TryGetProperty("fileName", out var fnProp) ? fnProp.GetString() : "downloaded_file";
-
-                if (string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(fileId)) return Results.BadRequest();
-
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        using var client = new TcpClient();
-                        await client.ConnectAsync(ip, port);
-                        using var stream = client.GetStream();
-                        var idBytes = Encoding.UTF8.GetBytes(fileId);
-                        await stream.WriteAsync(idBytes, 0, idBytes.Length);
-
-                        string downloadsFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads\\DeX";
-                        Directory.CreateDirectory(downloadsFolder);
-                        string safeFileName = Path.GetFileName(fileName);
-                        if (string.IsNullOrEmpty(safeFileName)) safeFileName = "downloaded_file";
-                        string destPath = Path.Combine(downloadsFolder, safeFileName);
-                        int counter = 1;
-                        while (File.Exists(destPath))
-                        {
-                            string nameNoExt = Path.GetFileNameWithoutExtension(safeFileName);
-                            string ext = Path.GetExtension(safeFileName);
-                            destPath = Path.Combine(downloadsFolder, $"{nameNoExt} ({counter}){ext}");
-                            counter++;
-                        }
-                        using var fs = new FileStream(destPath, FileMode.CreateNew);
-                        await stream.CopyToAsync(fs);
-                    }
-                    catch { }
-                });
 
                 return Results.Ok();
             });
@@ -498,6 +460,100 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok();
             });
 
+            app.MapPost("/local/clipboard-sync", (HttpRequest request) =>
+            {
+                // Desktop quick-action toggle: master switch for automatic 2-way clipboard sync
+                var enabled = request.Query["enabled"].ToString();
+                if (bool.TryParse(enabled, out var value))
+                {
+                    ClipboardSyncEnabled = value;
+                    return Results.Ok();
+                }
+                return Results.BadRequest();
+            });
+
+            app.MapGet("/local/clipboard-state", () =>
+            {
+                // Last clipboard text a phone pushed to this PC, so the auto-sync watcher
+                // can tell "already synced" text apart from fresh local copies
+                var last = LastPhoneClipboard;
+                return Results.Json(new
+                {
+                    text = last?.Text ?? "",
+                    at = last.HasValue ? new DateTimeOffset(last.Value.At).ToUnixTimeMilliseconds() : 0L
+                });
+            });
+
+            app.MapGet("/local/mirror-state", () =>
+            {
+                // Lets the desktop keep the quick-action mirror toggle in sync with reality
+                return Results.Json(new { active = MirrorWindowHost.IsActive, fingerprint = MirrorWindowHost.ActiveFingerprint });
+            });
+
+            app.MapPost("/local/mirror-stop", (HttpRequest request) =>
+            {
+                // Stops the active mirror session (or the one for a specific device)
+                var ip = request.Query["ip"].ToString();
+                var fp = request.Query["fingerprint"].ToString();
+                if (string.IsNullOrEmpty(fp) && !string.IsNullOrEmpty(ip))
+                {
+                    var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
+                    if (dev != null) fp = dev.Info.Fingerprint;
+                }
+                if (string.IsNullOrEmpty(fp)) { MirrorWindowHost.StopActive(); }
+                else { MirrorWindowHost.Stop(fp); }
+                return Results.Ok();
+            });
+
+            app.MapPost("/local/mirror", async (HttpRequest request) =>
+            {
+                // Start a screen-mirror session: ask the phone to stream (it shows the
+                // MediaProjection consent) and open the desktop mirror window.
+                var ip = request.Query["ip"].ToString();
+                var fp = request.Query["fingerprint"].ToString();
+                if (string.IsNullOrEmpty(fp) && !string.IsNullOrEmpty(ip))
+                {
+                    var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
+                    if (dev != null) fp = dev.Info.Fingerprint;
+                }
+                if (string.IsNullOrEmpty(fp)) return Results.NotFound();
+
+                var alias = DiscoveryBackgroundService.Devices.TryGetValue(fp, out var d) && d.Info != null
+                    ? d.Info.Alias ?? fp
+                    : fp;
+
+                var start = JsonSerializer.Serialize(new { type = "mirror-start", data = new { } },
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var sent = await WebSocketConnectionManager.SendAsync(fp, start);
+                if (!sent) return Results.NotFound();
+
+                MirrorWindowHost.Start(fp, alias);
+                return Results.Ok();
+            });
+
+            app.MapPost("/local/clipboard-push", async (HttpRequest request) =>
+            {
+                // PC -> phone clipboard sync over the WebSocket (no ADB required).
+                // PowerShell POSTs the clipboard text; the server forwards it to the phone.
+                var ip = request.Query["ip"].ToString();
+                var fp = request.Query["fingerprint"].ToString();
+                if (string.IsNullOrEmpty(fp) && !string.IsNullOrEmpty(ip))
+                {
+                    var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
+                    if (dev != null) fp = dev.Info.Fingerprint;
+                }
+                if (string.IsNullOrEmpty(fp)) return Results.NotFound();
+
+                using var reader = new StreamReader(request.Body);
+                var text = await reader.ReadToEndAsync();
+                if (string.IsNullOrWhiteSpace(text)) return Results.BadRequest();
+
+                var payload = JsonSerializer.Serialize(new { type = "set-clipboard", data = new { text } },
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var sent = await WebSocketConnectionManager.SendAsync(fp, payload);
+                return sent ? Results.Ok() : Results.NotFound();
+            });
+
             app.MapPost("/local/alias", (HttpRequest request) => 
             {
                 var fp = request.Query["fingerprint"].ToString();
@@ -539,7 +595,155 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok();
             });
 
+            // PC-side Google Sign-In: opens the browser (OAuth loopback), then sets the verified email.
+            // Reachable at http://127.0.0.1:53318/local/settings/google-signin
+            app.MapGet("/local/settings/google-signin", async () =>
+            {
+                if (!DeXShareTarget.Services.GoogleOAuth.IsConfigured())
+                {
+                    return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Google Sign-In is not configured (oauth.local.json missing).</h3></body></html>", "text/html");
+                }
+                var profile = await DeXShareTarget.Services.GoogleOAuth.SignInAsync();
+                if (profile != null)
+                {
+                    IdentityManager.SetEmail(profile.Email);
+                    Console.WriteLine($"[OAUTH] Signed in as {profile.Email}");
+                    var name = string.IsNullOrEmpty(profile.Name) ? profile.Email : profile.Name;
+                    return Results.Text($"<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Signed in as {name} — DeX devices with this email are now auto-trusted.</h3></body></html>", "text/html");
+                }
+                return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed or was cancelled.</h3></body></html>", "text/html");
+            });
+
+            // PC sign-out: clears the email identity and the stored Google profile
+            app.MapPost("/local/settings/signout", () =>
+            {
+                IdentityManager.SetEmail("");
+                DeXShareTarget.Services.GoogleOAuth.SignOut();
+                Console.WriteLine("[OAUTH] Signed out");
+                return Results.Ok();
+            });
+
+            // The last signed-in Google profile (name/email/avatar) for the settings UI
+            app.MapGet("/local/settings/google-profile", () =>
+            {
+                var profile = DeXShareTarget.Services.GoogleOAuth.LoadProfile();
+                if (profile == null) return Results.Json(new { email = "", name = "", picture = "" });
+                return Results.Json(profile);
+            });
+
+            // PC File Explorer over the WebSocket (phone exposes its SAF-granted folders).
+            // Each endpoint pushes a request to the phone. Fast calls (list/browse/grant) block
+            // for the reply; pulls are async so the GUI can show live progress and cancel.
+            app.MapPost("/local/dex/list-folders", async (HttpRequest request) =>
+            {
+                var body = await request.ReadFromJsonAsync<JsonObject>();
+                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
+                if (!TrySendDexRequest(ip, "list-shared-folders", null, out var requestId)) return Results.NotFound();
+                var reply = await DexRequestStore.WaitAsync(requestId, 25);
+                return reply == null ? Results.NotFound() : Results.Json(reply);
+            });
+
+            app.MapPost("/local/dex/browse", async (HttpRequest request) =>
+            {
+                var body = await request.ReadFromJsonAsync<JsonObject>();
+                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                var folderUri = body?["folderUri"]?.GetValue<string>() ?? request.Query["folderUri"].ToString();
+                if (string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(folderUri)) return Results.BadRequest();
+                var extra = new JsonObject { ["folderUri"] = folderUri };
+                if (!TrySendDexRequest(ip, "browse-folder", extra, out var requestId)) return Results.NotFound();
+                var reply = await DexRequestStore.WaitAsync(requestId, 25);
+                return reply == null ? Results.NotFound() : Results.Json(reply);
+            });
+
+            // Pull is asynchronous: returns the requestId immediately so the GUI polls progress.
+            app.MapPost("/local/dex/pull", async (HttpRequest request) =>
+            {
+                var body = await request.ReadFromJsonAsync<JsonObject>();
+                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                var files = body?["files"];
+                if (string.IsNullOrEmpty(ip) || files == null) return Results.BadRequest();
+                var extra = new JsonObject { ["files"] = files.DeepClone() };
+                if (!TrySendDexRequest(ip, "pull-files", extra, out var requestId)) return Results.NotFound();
+                return Results.Json(new { requestId });
+            });
+
+            // Live progress + terminal result of an in-flight pull.
+            app.MapGet("/local/dex/pull-status", (HttpRequest request) =>
+            {
+                var requestId = request.Query["requestId"].ToString();
+                if (string.IsNullOrEmpty(requestId)) return Results.BadRequest();
+                var state = DexRequestStore.GetState(requestId);
+                if (state == null) return Results.Json(new { done = true, gone = true });
+                var obj = new JsonObject
+                {
+                    ["done"] = state.Done,
+                    ["cancelled"] = state.Cancelled
+                };
+                if (state.Progress != null) obj["progress"] = JsonSerializer.SerializeToNode(state.Progress.Value);
+                if (state.Result != null) obj["result"] = JsonSerializer.SerializeToNode(state.Result.Value);
+                return Results.Json(obj);
+            });
+
+            // Ask the phone to abort an in-flight pull.
+            app.MapPost("/local/dex/pull-cancel", (HttpRequest request) =>
+            {
+                var requestId = request.Query["requestId"].ToString();
+                if (string.IsNullOrEmpty(requestId)) return Results.BadRequest();
+                var state = DexRequestStore.GetState(requestId);
+                if (state == null) return Results.NotFound();
+                DexRequestStore.Cancel(requestId);
+                if (!string.IsNullOrEmpty(state.Fingerprint))
+                {
+                    var cancel = JsonSerializer.Serialize(new { type = "pull-cancel", data = new { requestId } },
+                        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    _ = WebSocketConnectionManager.SendAsync(state.Fingerprint, cancel, requireVerified: false);
+                }
+                return Results.Ok();
+            });
+
+            app.MapPost("/local/dex/grant-folder", async (HttpRequest request) =>
+            {
+                var body = await request.ReadFromJsonAsync<JsonObject>();
+                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
+                if (!TrySendDexRequest(ip, "grant-shared-folder", null, out var requestId)) return Results.NotFound();
+                var reply = await DexRequestStore.WaitAsync(requestId, 190);
+                return reply == null ? Results.NotFound() : Results.Json(reply);
+            });
+
             _ = Task.Run(StartTcpServerAsync);
+        }
+
+        /// <summary>
+        /// Resolves the phone by LAN IP and forwards a File Explorer request over the WebSocket.
+        /// Registers a pending request, records the phone's fingerprint (for cancels) and returns
+        /// its requestId. Only verified (paired / same-email) phones are eligible — file browsing
+        /// must never reach an untrusted device.
+        /// </summary>
+        private static bool TrySendDexRequest(string ip, string type, JsonObject? extra, out string requestId)
+        {
+            requestId = "";
+            var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
+            if (dev == null || dev.Info == null) return false;
+            var fp = dev.Info.Fingerprint;
+
+            requestId = DexRequestStore.NewPending(type);
+            var state = DexRequestStore.GetState(requestId);
+            if (state != null) state.Fingerprint = fp;
+
+            var data = new JsonObject { ["requestId"] = requestId };
+            if (extra != null)
+            {
+                foreach (var kv in extra)
+                {
+                    if (kv.Value != null) data[kv.Key] = kv.Value.DeepClone();
+                }
+            }
+            var payload = new JsonObject { ["type"] = type, ["data"] = data };
+            var json = payload.ToJsonString();
+
+            return WebSocketConnectionManager.SendAsync(fp, json, requireVerified: true).GetAwaiter().GetResult();
         }
 
         /// <summary>Generates a PIN + token, pushes a pair-prompt over the WebSocket and shows the PIN on the PC.</summary>

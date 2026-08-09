@@ -26,3 +26,5 @@ DeX/.artifacts/
 
 # Local OAuth credentials - NEVER commit
 DeXShareTarget/oauth.local.json
+
+MSIX_Source/oauth.local.json

@@ -256,18 +256,29 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Ellipse Width="56" Height="56" Margin="0,0,16,0">
+                            <Ellipse x:Name="imgProfileAvatar" Width="56" Height="56" Margin="0,0,16,0">
                                 <Ellipse.Fill>
                                     <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/ProfileAvatar.jpg" Stretch="UniformToFill" AlignmentY="Top" />
                                 </Ellipse.Fill>
                             </Ellipse>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="DeXStudios" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                <TextBlock Text="dexify@dex.net" FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                <TextBlock x:Name="txtProfileName" Text="DeXStudios" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock x:Name="txtProfileEmail" Text="dexify@dex.net" FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" />
                                 <TextBlock Text="Premium User" FontSize="12" Foreground="{DynamicResource SecondaryBrush}" FontWeight="SemiBold" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
                     </Border>
+
+                    <Button x:Name="btnSettingsSignOut" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,-6,0,10" Padding="14,6" Background="{DynamicResource AccentBrush}" BorderThickness="0" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <TextBlock Text="Sign out" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryForegroundBrush}" />
+                    </Button>
 
                     <!-- Connection Settings -->
                     <TextBlock Text="Connection" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" Margin="4,8,0,8" />
@@ -323,6 +334,29 @@
                                     <Border Name="badgeDnd" Grid.Column="2" Background="{DynamicResource AccentBrush}" CornerRadius="10" Padding="10,4" Margin="0,0,4,0">
                                         <TextBlock Name="txtBadgeDnd" Text="OFF" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SecondaryTextBrush}" />
                                     </Border>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Identity -->
+                    <TextBlock Text="Identity" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" Margin="4,8,0,8" />
+                    
+                    <Border Background="{DynamicResource AccentBrush}" CornerRadius="16" Padding="4" Margin="0,0,0,12">
+                        <StackPanel>
+                            <Button Name="btnSettingsGoogleSignIn" Style="{StaticResource SpatialListItem}" Margin="0,2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE8C7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Sign in with Google" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <TextBlock Name="txtSettingsGoogleState" Text="Trust all devices signed in with your email" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 </Grid>
                             </Button>
                         </StackPanel>
@@ -658,6 +692,15 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Button Style="{StaticResource SpatialListItem}" Margin="0,2,0,2" Tag="{Binding [Ip]}">
+                                            <Button.ContextMenu>
+                                                <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
+                                                    <MenuItem Name="menuPair" Header="Request PIN (Pair)" Tag="{Binding [Fingerprint]}" />
+                                                    <MenuItem Name="menuGuestConnect" Header="Connect ADB" Tag="{Binding [Ip]}" />
+                                                    <MenuItem Name="menuGuestCopyIp" Header="Copy IP Address" Tag="{Binding [Ip]}" />
+                                                    <Separator Background="{DynamicResource PrimaryTextBrush}" />
+                                                    <MenuItem Name="menuGuestForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
                                             <Button.Triggers>
                                                 <EventTrigger RoutedEvent="Loaded">
                                                     <BeginStoryboard>
@@ -868,6 +911,11 @@
                                     </RadioButton.Triggers>
                                     <RadioButton.ContextMenu>
                                         <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
+                                            <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />
+                                            <MenuItem Name="menuMirror" Header="Mirror Screen" Tag="{Binding [IP]}" />
+                                            <MenuItem Name="menuCopyIp" Header="Copy IP Address" Tag="{Binding [IP]}" />
+                                            <MenuItem Name="menuDisconnect" Header="Disconnect ADB" Tag="{Binding [IP]}" />
+                                            <Separator Background="{DynamicResource PrimaryTextBrush}" />
                                             <MenuItem Name="menuRename" Header="Rename / Alias" Tag="{Binding [Fingerprint]}" />
                                             <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
                                         </ContextMenu>

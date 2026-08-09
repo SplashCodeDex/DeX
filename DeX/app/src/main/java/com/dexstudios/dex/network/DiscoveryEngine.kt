@@ -48,7 +48,8 @@ class DiscoveryEngine(
             protocol = "https",
             // This device no longer hosts a LocalSend receiver; pushes arrive via the PC's WebSocket
             download = false,
-            identityHash = deviceConfig.identityHash
+            identityHash = deviceConfig.identityHash,
+            googleSub = deviceConfig.googleSub.ifBlank { null }
         )
 
     fun startDiscovery() {
@@ -93,6 +94,7 @@ class DiscoveryEngine(
                     put("protocol", localInfo.protocol)
                     put("download", localInfo.download)
                     put("identityHash", localInfo.identityHash)
+                    localInfo.googleSub?.let { put("googleSub", it) }
                 }
                 val data = replyJson.toString().toByteArray(Charsets.UTF_8)
                 DatagramSocket().use { ds ->

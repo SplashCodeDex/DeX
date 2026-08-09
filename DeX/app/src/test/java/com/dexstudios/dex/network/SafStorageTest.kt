@@ -9,7 +9,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -29,57 +28,21 @@ class SafStorageTest {
     }
 
     @Test
-    fun `getGrantedFolders returns empty map when preference is empty or null`() {
-        every { mockPrefs.getString("granted_folders", null) } returns null
+    fun `getDownloadsDexUri returns null when preference is empty`() {
+        every { mockPrefs.getString("downloads_dex_uri", null) } returns null
 
-        val result = SafStorage.getGrantedFolders(mockContext)
-
-        assertTrue(result.isEmpty())
+        assertEquals(null, SafStorage.getDownloadsDexUri(mockContext))
     }
 
     @Test
-    fun `getGrantedFolders parses valid JSON preference into map`() {
-        val rawJson = """{"Documents":"content://com.android.providers.media.documents/tree/1","Downloads":"content://com.android.providers.downloads.documents/tree/2"}"""
-
-        every { mockPrefs.getString("granted_folders", null) } returns rawJson
-
-        val result = SafStorage.getGrantedFolders(mockContext)
-
-        assertEquals(2, result.size)
-        assertEquals("content://com.android.providers.media.documents/tree/1", result["Documents"])
-    }
-
-    @Test
-    fun `getGrantedFolders returns empty map when preference contains malformed JSON`() {
-        every { mockPrefs.getString("granted_folders", null) } returns "{ invalid_json: "
-
-        val result = SafStorage.getGrantedFolders(mockContext)
-
-        assertTrue(result.isEmpty())
-    }
-
-    @Test
-    fun `addGrantedFolder adds new folder entry and persists JSON string`() {
-        every { mockPrefs.getString("granted_folders", null) } returns null
-
+    fun `setDownloadsDexUri persists the tree uri string`() {
         val mockUri = mockk<Uri>()
-        every { mockUri.toString() } returns "content://com.android.providers.media.documents/tree/3"
+        every { mockUri.toString() } returns "content://com.android.externalstorage.documents/tree/primary%3ADownloads%2FDeX"
 
-        SafStorage.addGrantedFolder(mockContext, "Pictures", mockUri)
-
-        val slotJson = slot<String>()
-        verify { mockEditor.putString("granted_folders", capture(slotJson)) }
-    }
-
-    @Test
-    fun `removeGrantedFolder removes specified folder and updates JSON preference`() {
-        val initialJson = """{"FolderA":"content://uri/a","FolderB":"content://uri/b"}"""
-
-        every { mockPrefs.getString("granted_folders", null) } returns initialJson
-
-        SafStorage.removeGrantedFolder(mockContext, "FolderA")
+        SafStorage.setDownloadsDexUri(mockContext, mockUri)
 
         val slotJson = slot<String>()
-        verify { mockEditor.putString("granted_folders", capture(slotJson)) }
+        verify { mockEditor.putString("downloads_dex_uri", capture(slotJson)) }
+        assertEquals("content://com.android.externalstorage.documents/tree/primary%3ADownloads%2FDeX", slotJson.captured)
     }
 }

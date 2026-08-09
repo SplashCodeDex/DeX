@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -53,15 +54,17 @@ fun DeviceListItem(
 
     // Default Wallpaper (Hwaseong Fortress)
     val wallpaperSource = wallpaper ?: R.drawable.wallpaper_fortress
+    val cardShape = RoundedCornerShape(48.dp)
 
     DeXPanel(
         modifier = modifier
             .bubbleFluidity(targetScale = 0.98f)
+            .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(48.dp), // Deep rounded corners as requested
+        shape = cardShape, // Deep rounded corners as requested
         shadowRadius = 16.dp
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
