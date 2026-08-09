@@ -92,7 +92,7 @@ $script:notifyIcon.Add_MouseUp({
         try {
             $sb = $script:wpfWindow.FindResource("PopIn")
             if ($sb) {
-                $sb.Begin($script:wpfWindow, $true)
+                Start-CardTransition $sb
                 $sb.Pause($script:wpfWindow)
             }
         } catch { Write-Trace "PopIn pre-trigger failed: $_" }

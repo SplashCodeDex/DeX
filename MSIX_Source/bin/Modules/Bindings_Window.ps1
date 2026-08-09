@@ -135,7 +135,7 @@ $script:wpfWindow.Add_KeyDown({
             $sb = $script:wpfWindow.Resources["ContractSettings"].Clone()
             $sb.Children[0].By = $null
             $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
-            $sb.Begin($script:wpfWindow, $true)
+            Start-CardTransition $sb
             $e.Handled = $true
             return
         }
@@ -306,7 +306,7 @@ $script:wpfWindow.FindName("btnCloseMenu").Add_Click({
         $sb = $script:wpfWindow.Resources["ContractSettings"].Clone()
         $sb.Children[0].By = $null
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
-        $sb.Begin($script:wpfWindow, $true)
+        Start-CardTransition $sb
         return
     }
     
@@ -315,7 +315,7 @@ $script:wpfWindow.FindName("btnCloseMenu").Add_Click({
         $sb = $script:wpfWindow.Resources["ContractMenu"].Clone()
         $sb.Children[0].By = $null
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
-        $sb.Begin($script:wpfWindow, $true)
+        Start-CardTransition $sb
         $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
         return

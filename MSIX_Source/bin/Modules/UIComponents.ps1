@@ -244,6 +244,31 @@ function Update-WpfUI {
 }
 #Export-ModuleMember -Function Update-WpfUI
 
+# Begins a card resize/scale transition (Expand/Contract/PopIn) with the software drop shadow
+# suspended for its duration. The DropShadowEffect is the priciest per-frame cost while
+# mainBorder animates its size/scale, so we clear it up front and restore it ~0.95s later.
+$script:cardShadowRestoreTimer = $null
+function Start-CardTransition($storyboard) {
+    $mainBorder = $script:wpfWindow.FindName("mainBorder")
+    if ($mainBorder) { $mainBorder.Effect = $null }
+
+    if ($null -ne $script:cardShadowRestoreTimer) { $script:cardShadowRestoreTimer.Stop() }
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(950)
+    $timer.Add_Tick({
+        param($s, $e)
+        $s.Stop()
+        $mb = $script:wpfWindow.FindName("mainBorder")
+        if ($mb -and $null -eq $mb.Effect) {
+            try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
+        }
+    }.GetNewClosure())
+    $script:cardShadowRestoreTimer = $timer
+    $timer.Start()
+
+    $storyboard.Begin($script:wpfWindow, $true)
+}
+
 # Resolves the PC's LAN IP and loads the pairing QR code into the panel, showing the QR
 # view (hiding the PIN view) and arming the "Request PIN" button. Returns $true when the
 # QR is shown, or $false when no LAN IP could be resolved (caller decides how to react).

@@ -122,7 +122,7 @@ $actionPull = {
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         $sb.Children[1].By = $null
         $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
-        $sb.Begin($script:wpfWindow, $true)
+        Start-CardTransition $sb
         $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
         return
@@ -151,7 +151,7 @@ $actionPull = {
     $sb.Children[0].To = $script:contractedWidth + 754
     $sb.Children[1].By = $null
     $sb.Children[1].To = $script:contractedHeight + 195
-    $sb.Begin($script:wpfWindow, $true)
+    Start-CardTransition $sb
     
     $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
     if ($btnQAPull) { $btnQAPull.IsChecked = $true }
@@ -213,7 +213,7 @@ $actionSettings = {
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         $sb.Children[1].By = $null
         $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
-        $sb.Begin($script:wpfWindow, $true)
+        Start-CardTransition $sb
         return
     }
     
@@ -243,7 +243,7 @@ $actionSettings = {
     $sb.Children[0].To = 675
     $sb.Children[1].By = $null
     $sb.Children[1].To = $script:contractedHeight + 195
-    $sb.Begin($script:wpfWindow, $true)
+    Start-CardTransition $sb
     
 
     

@@ -10,7 +10,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="AppStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-<ContextMenu x:Key="TransferContextMenu" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="4">
+        <!-- Shared card shadow: a resource so the engine can suspend/re-apply it during resize transitions. -->
+        <DropShadowEffect x:Key="MainShadow" BlurRadius="14" ShadowDepth="8" Direction="270" Color="Black" Opacity="0.5" />
+        <ContextMenu x:Key="TransferContextMenu" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="4">
             <ContextMenu.Resources>
                 <Style TargetType="MenuItem">
                     <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
@@ -41,10 +43,7 @@
         </ResourceDictionary>
     
 </Window.Resources>
-    <Border x:Name="mainBorder" HorizontalAlignment="Right" VerticalAlignment="Bottom" CornerRadius="34" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Background="{DynamicResource PrimaryBrush}" RenderTransformOrigin="0.5,1" Margin="25">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="30" ShadowDepth="12" Direction="270" Color="Black" Opacity="0.5" />
-        </Border.Effect>
+    <Border x:Name="mainBorder" HorizontalAlignment="Right" VerticalAlignment="Bottom" CornerRadius="34" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Background="{DynamicResource PrimaryBrush}" RenderTransformOrigin="0.5,1" Margin="25" Effect="{StaticResource MainShadow}">
         <Border.RenderTransform>
             <TransformGroup>
                 <ScaleTransform ScaleX="1" ScaleY="1" x:Name="winScale" />

@@ -124,7 +124,7 @@ $script:wiggleTimer.Add_Tick({
                 try {
                     $sb = $script:wpfWindow.FindResource("PopIn")
                     if ($sb) {
-                        $sb.Begin($script:wpfWindow, $true)
+                        Start-CardTransition $sb
                         $sb.Pause($script:wpfWindow)
                     }
                 } catch {}
