@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <share-target android:targetClass="com.example.dex.ShareTargetActivity">
+    <share-target android:targetClass="com.dexstudios.dex.ShareTargetActivity">
         <data android:mimeType="*/*" />
-        <category android:name="com.example.dex.category.DIRECT_SHARE_TARGET" />
+        <category android:name="com.dexstudios.dex.category.DIRECT_SHARE_TARGET" />
     </share-target>
 </shortcuts>

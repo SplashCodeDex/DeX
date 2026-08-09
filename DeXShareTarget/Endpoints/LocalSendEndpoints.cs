@@ -25,10 +25,25 @@ namespace DeXShareTarget.Endpoints
         public static ConcurrentDictionary<string, string> HostedFileTokens = new();
         // Last time each hosted file was served, used for sliding expiry so slow pulls don't 404
         public static ConcurrentDictionary<string, DateTime> HostedFileLastAccess = new();
+        // Public TCP endpoints of phones (for direct phone-to-phone punching), keyed by fingerprint
+        public static ConcurrentDictionary<string, (string Ip, int Port, DateTime Ts)> PunchEndpoints = new();
+        // Files received per upload session (relay fallback): sessionId -> (name, path)
+        public static ConcurrentDictionary<string, List<(string Name, string Path)>> RelaySessionFiles = new();
+        public static ConcurrentDictionary<string, string> RelaySessionAliases = new();
         public static bool IsDndEnabled { get; set; } = false;
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
         // Active outbound pairing attempts so the GUI can display the PIN even for phone-initiated pairing
         public static ConcurrentDictionary<string, PendingPairAttempt> PendingPairPins = new();
+
+        /// <summary>Normalizes a client-supplied relative path: forward slashes, no ".." or traversal.</summary>
+        private static string SanitizeRelativePath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return "";
+            var parts = path.Replace('\\', '/').Split('/')
+                .Where(p => !string.IsNullOrEmpty(p) && p != "." && p != "..")
+                .Select(p => Path.GetFileName(p)); // strips any residual traversal
+            return string.Join(Path.DirectorySeparatorChar, parts);
+        }
 
         public static void MapLocalSendEndpoints(this WebApplication app)
         {
@@ -144,9 +159,19 @@ namespace DeXShareTarget.Endpoints
                 string safeFileName = Path.GetFileName(fileMeta.FileName);
                 if (string.IsNullOrEmpty(safeFileName)) safeFileName = "unnamed_file";
                 
+                // Folder bundles: recreate the relative path structure under Downloads/DeX
+                string safeRelative = SanitizeRelativePath(fileMeta.RelativePath);
+                
                 string downloadsFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads\\DeX";
                 Directory.CreateDirectory(downloadsFolder);
-                string destPath = Path.Combine(downloadsFolder, safeFileName);
+                string destPath = string.IsNullOrEmpty(safeRelative)
+                    ? Path.Combine(downloadsFolder, safeFileName)
+                    : Path.Combine(downloadsFolder, safeRelative);
+                if (!string.IsNullOrEmpty(safeRelative))
+                {
+                    var parentDir = Path.GetDirectoryName(destPath);
+                    if (!string.IsNullOrEmpty(parentDir)) Directory.CreateDirectory(parentDir);
+                }
 
                 int counter = 1;
                 while (File.Exists(destPath))
@@ -168,6 +193,17 @@ namespace DeXShareTarget.Endpoints
                     try { if (File.Exists(destPath)) File.Delete(destPath); } catch { }
                     return Results.StatusCode(500);
                 }
+
+                // Track received files for the relay fallback (A→PC→B when punching fails).
+                // Cleaned by its own 10-minute TTL, independent of the session's early removal.
+                var relayList = RelaySessionFiles.GetOrAdd(sessionId, _ => new List<(string, string)>());
+                lock (relayList) relayList.Add((safeFileName, destPath));
+                RelaySessionAliases[sessionId] = sessionReq.Info.Alias ?? "Device";
+                _ = Task.Delay(TimeSpan.FromMinutes(10)).ContinueWith(t =>
+                {
+                    RelaySessionFiles.TryRemove(sessionId, out _);
+                    RelaySessionAliases.TryRemove(sessionId, out _);
+                });
 
                 try
                 {
@@ -252,6 +288,29 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok();
             });
 
+            app.MapGet("/punch/endpoint", (string fingerprint, HttpContext context) =>
+            {
+                // STUN-style reflection: the phone connects FROM its punch listener port, so the
+                // source address of this TLS connection IS its public TCP endpoint. Other phones
+                // use it for direct (NAT-punched) transfers.
+                var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "";
+                var remotePort = context.Connection.RemotePort;
+                if (!string.IsNullOrEmpty(fingerprint) && !string.IsNullOrEmpty(remoteIp) && remotePort > 0)
+                {
+                    PunchEndpoints[fingerprint] = (remoteIp, remotePort, DateTime.UtcNow);
+
+                    // Prune stale registrations (phones refresh every 2 minutes)
+                    var cutoff = DateTime.UtcNow.AddMinutes(-5);
+                    foreach (var (fp, ep) in PunchEndpoints)
+                    {
+                        if (ep.Ts < cutoff) PunchEndpoints.TryRemove(fp, out _);
+                    }
+
+                    return Results.Json(new { ip = remoteIp, port = remotePort });
+                }
+                return Results.BadRequest();
+            });
+
             app.MapGet("/download/{fileId}", (string fileId, HttpRequest request) =>
             {
                 // Pulls are authenticated with the per-file token delivered in the prepare-upload message
@@ -281,7 +340,21 @@ namespace DeXShareTarget.Endpoints
                     if (now - DiscoveryBackgroundService.Devices[k].LastSeen > 10000)
                         DiscoveryBackgroundService.Devices.TryRemove(k, out _);
                 }
-                return Results.Json(DiscoveryBackgroundService.Devices.Values);
+                return Results.Json(DiscoveryBackgroundService.Devices.Values.Select(d =>
+                {
+                    var wifi = TelemetryStore.GetWifi(d.Info.Fingerprint);
+                    return new
+                    {
+                        d.Ip,
+                        d.Info,
+                        d.LastSeen,
+                        d.IsPaired,
+                        d.IsAutoTrusted,
+                        Battery = TelemetryStore.GetBattery(d.Info.Fingerprint),
+                        WifiSsid = wifi?.Ssid,
+                        WifiRssi = wifi?.Rssi
+                    };
+                }));
             });
 
             app.MapPost("/local/devices/flush", () => 

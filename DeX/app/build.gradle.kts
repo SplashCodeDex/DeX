@@ -5,14 +5,19 @@ plugins {
 }
 
 android {
-    namespace = "com.example.dex"
+    namespace = "com.dexstudios.dex"
     compileSdk = 37
     defaultConfig {
-        applicationId = "com.example.dex"
+        applicationId = "com.dexstudios.dex"
         minSdk = 26
         targetSdk = 37
         versionCode = 2
         versionName = "1.1"
+
+        // Google Sign-In OAuth client ID (Android type). Configure via
+        // -PGOOGLE_SIGN_IN_CLIENT_ID="..." or gradle.properties; blank = sign-in hidden.
+        val googleClientId = providers.gradleProperty("GOOGLE_SIGN_IN_CLIENT_ID").orNull ?: ""
+        buildConfigField("String", "GOOGLE_SIGN_IN_CLIENT_ID", "\"$googleClientId\"")
     }
 
     buildTypes {
@@ -135,6 +140,9 @@ dependencies {
 
   // QR Scanner
   implementation(libs.play.services.code.scanner)
+
+  // Google Sign-In (verified email identity)
+  implementation(libs.play.services.auth)
 
   // Image Loading
   implementation(libs.coil.compose)

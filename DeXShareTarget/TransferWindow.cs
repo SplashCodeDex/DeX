@@ -128,9 +128,28 @@ namespace DeXShareTarget
             }
         }
 
+        private static List<(string Path, string RelativePath)> FlattenFiles(IEnumerable<string> inputs)
+        {
+            var result = new List<(string, string)>();
+            foreach (var input in inputs)
+            {
+                if (Directory.Exists(input)) Collect(input, "", result);
+                else if (File.Exists(input)) result.Add((input, Path.GetFileName(input)));
+            }
+            return result;
+        }
+
+        private static void Collect(string dir, string prefix, List<(string, string)> acc)
+        {
+            foreach (var file in Directory.GetFiles(dir)) acc.Add((file, prefix + Path.GetFileName(file)));
+            foreach (var sub in Directory.GetDirectories(dir)) Collect(sub, prefix + Path.GetFileName(sub) + "/", acc);
+        }
+
         private async Task PerformLocalSendTransferAsync(DiscoveredDevice device)
         {
-            long totalBytes = files.Sum(f => new FileInfo(f).Length);
+            // Folder bundles: directories are flattened into (path, relativePath) pairs — no zipping
+            var pairs = FlattenFiles(files);
+            long totalBytes = pairs.Sum(p => new FileInfo(p.Path).Length);
             Stopwatch globalSw = Stopwatch.StartNew();
 
             if (!DeXShareTarget.Services.WebSocketConnectionManager.IsVerified(device.Info.Fingerprint))
@@ -140,43 +159,9 @@ namespace DeXShareTarget
                 return;
             }
 
-            var hostedIds = new List<string>();
-            var fileMap = new Dictionary<string, object>();
-
-            foreach (var f in files)
-            {
-                var fi = new FileInfo(f);
-                var fileId = Guid.NewGuid().ToString();
-                var pullToken = Guid.NewGuid().ToString();
-                
-                // 1. Host the file in Kestrel (pulls are authenticated with the per-file token)
-                LocalSendEndpoints.HostedFiles[fileId] = f;
-                LocalSendEndpoints.HostedFileTokens[fileId] = pullToken;
-                LocalSendEndpoints.HostedFileLastAccess[fileId] = DateTime.UtcNow;
-                hostedIds.Add(fileId);
-
-                fileMap[fileId] = new 
-                {
-                    id = fileId,
-                    fileName = fi.Name,
-                    size = fi.Length,
-                    fileType = "application/octet-stream",
-                    token = pullToken
-                };
-            }
-
             txtStatus.Text = $"Notifying Android to pull {files.Count} files...";
 
-            var prepareReq = new 
-            {
-                info = new { alias = Environment.MachineName, deviceModel = "PC", deviceType = "desktop", fingerprint = IdentityManager.Fingerprint, port = 53317, protocol = "localsend", download = false },
-                files = fileMap
-            };
-
-            var wsPayload = new { type = "prepare-upload", data = prepareReq };
-            var json = JsonSerializer.Serialize(wsPayload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-            var pushed = await DeXShareTarget.Services.WebSocketConnectionManager.SendAsync(device.Info.Fingerprint, json, requireVerified: true);
+            var pushed = await DeXShareTarget.Services.RelayService.HostAndPushAsync(device.Info.Fingerprint, pairs, Environment.MachineName);
             if (!pushed)
             {
                 txtStatus.Text = "Error: Android device not paired or not connected via WebSocket.";
@@ -198,26 +183,7 @@ namespace DeXShareTarget
             
             TaskbarItemInfo.ProgressValue = 1.0;
             await Task.Delay(3000);
-            
-            // Clean up hosted files memory after a while so we don't leak memory (not deleting the physical file).
-            // Sliding TTL: a file expires 5 minutes after its last download request, so slow pulls keep working.
-            _ = Task.Run(async () => {
-                while (true)
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(1));
-                    var now = DateTime.UtcNow;
-                    var stale = hostedIds.Where(id =>
-                        !LocalSendEndpoints.HostedFileLastAccess.TryGetValue(id, out var last) ||
-                        (now - last) > TimeSpan.FromMinutes(5)).ToList();
-                    foreach (var id in stale)
-                    {
-                        LocalSendEndpoints.HostedFiles.TryRemove(id, out _);
-                        LocalSendEndpoints.HostedFileTokens.TryRemove(id, out _);
-                        LocalSendEndpoints.HostedFileLastAccess.TryRemove(id, out _);
-                    }
-                    if (!hostedIds.Any(id => LocalSendEndpoints.HostedFiles.ContainsKey(id))) break;
-                }
-            });
+            // Hosted-file cleanup (sliding 5-minute TTL) is owned by RelayService.HostAndPushAsync
         }
 
         private async Task PerformThrufluxHostAsync()

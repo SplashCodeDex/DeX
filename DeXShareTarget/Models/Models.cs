@@ -31,6 +31,7 @@ namespace DeXShareTarget.Models
         [JsonPropertyName("size")] public long Size { get; set; }
         [JsonPropertyName("fileType")] public string FileType { get; set; } = "";
         [JsonPropertyName("partialHash")] public string? PartialHash { get; set; }
+        [JsonPropertyName("relativePath")] public string? RelativePath { get; set; }
     }
 
     public class PrepareUploadResponseDto

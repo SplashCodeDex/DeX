@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -11,6 +13,12 @@ namespace DeXShareTarget.Endpoints
 {
     public static class WebSocketEndpoints
     {
+        // Mirrors Android's WifiInfo.RSSI_INVALID
+        private const int WifiInfoRssiInvalid = -127;
+
+        // Same-email devices currently connected (fingerprint -> alias); powers the phone roster
+        public static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> SameEmailAliases = new();
+
         public static void MapWebSocketEndpoints(this WebApplication app)
         {
             app.Map("/ws", async context =>
@@ -47,6 +55,12 @@ namespace DeXShareTarget.Endpoints
                     IdentityManager.SavePairedToken(fingerprint, token);
                     verified = true;
                     Console.WriteLine($"[WS] Device {fingerprint} auto-trusted via email identity");
+                }
+
+                // Roster membership: same-email devices are visible to each other for direct transfers
+                if (verified && !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash && !string.IsNullOrEmpty(alias))
+                {
+                    SameEmailAliases[fingerprint] = alias;
                 }
 
                 using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
@@ -107,6 +121,8 @@ namespace DeXShareTarget.Endpoints
                 finally
                 {
                     WebSocketConnectionManager.RemoveSocket(fingerprint);
+                    TelemetryStore.Remove(fingerprint);
+                    SameEmailAliases.TryRemove(fingerprint, out _);
                     if (webSocket.State != WebSocketState.Closed && webSocket.State != WebSocketState.Aborted)
                     {
                         await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -129,6 +145,98 @@ namespace DeXShareTarget.Endpoints
                     {
                         LocalSendServer.SetPublicAddress(address.Trim());
                         Console.WriteLine($"[WS] Public address set by {fingerprint}: {address}");
+                    }
+                }
+                else if (type == "resolve-endpoint" && root.TryGetProperty("data", out var resData))
+                {
+                    // Phone A wants to send directly to phone B: hand each side the other's public endpoint
+                    var target = resData.TryGetProperty("targetFingerprint", out var tf) ? tf.GetString() : null;
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    if (!string.IsNullOrEmpty(target) && LocalSendEndpoints.PunchEndpoints.TryGetValue(target, out var targetEp))
+                    {
+                        var info = JsonSerializer.Serialize(new { type = "endpoint-info", data = new { targetFingerprint = target, ip = targetEp.Ip, port = targetEp.Port } }, options);
+                        await WebSocketConnectionManager.SendAsync(fingerprint, info);
+
+                        if (LocalSendEndpoints.PunchEndpoints.TryGetValue(fingerprint, out var requesterEp))
+                        {
+                            var peer = JsonSerializer.Serialize(new { type = "peer-endpoint", data = new { peerFingerprint = fingerprint, ip = requesterEp.Ip, port = requesterEp.Port } }, options);
+                            await WebSocketConnectionManager.SendAsync(target, peer);
+                        }
+                    }
+                    else
+                    {
+                        var missing = JsonSerializer.Serialize(new { type = "endpoint-info", data = new { targetFingerprint = target ?? "", ip = "", port = 0 } }, options);
+                        await WebSocketConnectionManager.SendAsync(fingerprint, missing);
+                    }
+                }
+                else if (type == "device-roster")
+                {
+                    // Same-email devices only (the phone's "my devices" list over WAN)
+                    var devices = SameEmailAliases
+                        .Where(kv => kv.Key != fingerprint)
+                        .Select(kv => new
+                        {
+                            fingerprint = kv.Key,
+                            alias = kv.Value,
+                            deviceType = DiscoveryBackgroundService.Devices.TryGetValue(kv.Key, out var d) && d.Info != null
+                                ? d.Info.DeviceType ?? "mobile"
+                                : "mobile"
+                        })
+                        .ToList();
+                    var roster = JsonSerializer.Serialize(new { type = "device-roster", data = new { devices } },
+                        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    await WebSocketConnectionManager.SendAsync(fingerprint, roster);
+                }
+                else if (type == "relay-transfer" && root.TryGetProperty("data", out var relayData))
+                {
+                    // Punch failed on the sender side: host the uploaded session files here and
+                    // push them to the target device, which pulls them over QUIC/HTTP
+                    var target = relayData.TryGetProperty("targetFingerprint", out var rt) ? rt.GetString() : null;
+                    var sessionId = relayData.TryGetProperty("sessionId", out var rs) ? rs.GetString() : null;
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+                    var ok = false;
+                    var reason = "no files";
+                    if (!string.IsNullOrEmpty(target) && !string.IsNullOrEmpty(sessionId) &&
+                        LocalSendEndpoints.RelaySessionFiles.TryGetValue(sessionId, out var relayFiles) && relayFiles.Count > 0)
+                    {
+                        var senderAlias = LocalSendEndpoints.RelaySessionAliases.TryGetValue(sessionId, out var a) ? a : "Device";
+                        // Recreate the folder structure the sender uploaded (relative to Downloads/DeX)
+                        string downloadsFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads\\DeX";
+                        var pairs = relayFiles.Select(f => (f.Path, Path.GetRelativePath(downloadsFolder, f.Path))).ToList();
+                        ok = await RelayService.HostAndPushAsync(target, pairs, senderAlias);
+                        if (!ok) reason = "target offline";
+                    }
+
+                    var relayReply = JsonSerializer.Serialize(new { type = ok ? "relay-started" : "relay-error", data = new { pushed = ok, reason } }, options);
+                    await WebSocketConnectionManager.SendAsync(fingerprint, relayReply);
+                }
+                else if (type == "set-email" && root.TryGetProperty("data", out var emailData))
+                {
+                    // A verified phone sign-in propagates the email identity to this PC, so all
+                    // same-email devices become auto-trusted here too
+                    var email = emailData.TryGetProperty("email", out var em) ? em.GetString() : "";
+                    if (!string.IsNullOrWhiteSpace(email))
+                    {
+                        IdentityManager.SetEmail(email.Trim());
+                        Console.WriteLine($"[WS] Email identity set by {fingerprint}: {email}");
+                    }
+                }
+                else if (type == "telemetry" && root.TryGetProperty("data", out var telemetryData))
+                {
+                    // Phone reports battery + WiFi over the WebSocket so the PC can show them
+                    // for every connected device (no ADB query required)
+                    var battery = telemetryData.TryGetProperty("battery", out var b) ? b.GetInt32() : -1;
+                    if (battery >= 0)
+                    {
+                        TelemetryStore.SetBattery(fingerprint, battery);
+                    }
+
+                    var ssid = telemetryData.TryGetProperty("wifiSsid", out var s) ? s.GetString() : null;
+                    var rssi = telemetryData.TryGetProperty("wifiRssi", out var r) ? r.GetInt32() : WifiInfoRssiInvalid;
+                    if (!string.IsNullOrEmpty(ssid) || rssi != WifiInfoRssiInvalid)
+                    {
+                        TelemetryStore.SetWifi(fingerprint, string.IsNullOrEmpty(ssid) ? null : ssid, rssi);
                     }
                 }
                 else if (type == "pair-request")

@@ -16,6 +16,7 @@ param(
 Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"
 . "$PSScriptRoot\Modules\UIComponents.ps1"
+. "$PSScriptRoot\Modules\DeviceTelemetry.ps1"
 $mutexName = "Global\CodeDeX_DeX_Engine"
 $script:showUiEvent = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::AutoReset, "Global\CodeDeX_DeX_ShowUI")
 $script:engineMutex = New-Object System.Threading.Mutex($false, $mutexName)
@@ -272,17 +273,7 @@ $mdnsTimer.Add_Tick({
                 $omniTargets = $uniqueServices | Where-Object { $_.Type -eq 'OmniMesh' }
                 foreach ($omni in $omniTargets) {
                     $ip = $omni.IPPort -replace ':[0-9]+$',''
-                    $existing = $script:omniPeers[$ip]
-                    $trustLevel = "Guest"
-                    $script:omniPeers[$ip] = @{
-                        Name         = $omni.Name
-                        LastSeen     = Get-Date
-                        Type         = $omni.DeviceType
-                        Model        = if ($omni.Model)   { $omni.Model }   elseif ($existing) { $existing.Model }   else { $null }
-                        Battery      = if ($existing) { $existing.Battery } else { $null }
-                        TelemetryAge = if ($existing) { $existing.TelemetryAge } else { [datetime]::MinValue }
-                        TrustLevel   = $trustLevel
-                    }
+                    $script:omniPeers[$ip] = New-OmniPeer -Service $omni -Existing $script:omniPeers[$ip]
                 }
                 
                 # Update Live Peers dynamically via ItemsControl (infinite scrolling rows)
@@ -293,26 +284,9 @@ $mdnsTimer.Add_Tick({
                         
                         # Stale telemetry refresh: re-query battery if >60s old and device is the active ADB target
                         $connectedIP = ($script:currentTarget -replace ':.*','')
-                        if ($ip -eq $connectedIP -and
-                            $peer.TelemetryAge -and
-                            (Get-Date) - $peer.TelemetryAge -gt [timespan]::FromSeconds(60)) {
-                            try {
-                                $batLine = (& $global:AdbExePath -s "${ip}:5555" shell dumpsys battery 2>$null) |
-                                           Where-Object { $_ -match '^\s*level:' } | Select-Object -First 1
-                                if ($batLine -match '(\d+)') {
-                                    $peer.Battery      = $matches[1]
-                                    $peer.TelemetryAge = Get-Date
-                                }
-                            } catch {}
-                        }
+                        Update-PeerBattery -Peer $peer -DeviceIp $ip -IsActiveTarget ($ip -eq $connectedIP)
                         
-                        $subText = if ($peer.Model -and $peer.Battery) {
-                            "$([char]0xE8EA) $($peer.Model)  $([char]0xE83F) $($peer.Battery)%"
-                        } elseif ($peer.Model) {
-                            "$([char]0xE8EA) $($peer.Model)"
-                        } else {
-                            "OmniMesh"
-                        }
+                        $subText = Get-DeviceSubText -Peer $peer
                         
                         $livePeers += @{
                             Name      = $peer.Name
@@ -436,10 +410,21 @@ $mdnsTimer.Add_Tick({
                             $dt = [datetimeOffset]::FromUnixTimeMilliseconds($p.lastSeen).UtcDateTime
                             if (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10)) {
                                 if ($p.isPaired -or $p.isAutoTrusted) {
+                                    # Telemetry (WebSocket) feeds battery + wifi for every device; ADB stays a fallback
+                                    if ($script:omniPeers.Contains($p.ip)) {
+                                        Update-PeerBattery -Peer $script:omniPeers[$p.ip] -DeviceIp $p.ip -BatteryLevel $p.battery
+                                        Update-PeerWifi -Peer $script:omniPeers[$p.ip] -Ssid $p.wifiSsid -Rssi $p.wifiRssi
+                                    }
                                     if (-not $script:omniPeers.Contains($p.ip)) {
+                                        $peerRow = @{
+                                            Model    = $p.info.deviceModel
+                                            Battery  = if ($null -ne $p.battery) { [string]$p.battery } else { $null }
+                                            WifiSsid = $p.wifiSsid
+                                            WifiRssi = $p.wifiRssi
+                                        }
                                         $livePeers += @{
                                             Name      = $p.info.alias
-                                            SubText   = "$([char]0xE8EA) $($p.info.deviceModel)"
+                                            SubText   = Get-DeviceSubText -Peer $peerRow
                                             IconGlyph = "$([char]0xE8EA)"
                                             IP        = $p.ip
                                         }

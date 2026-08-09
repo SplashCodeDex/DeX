@@ -24,3 +24,5 @@ test_udp.ps1
 # IDE artifacts
 DeX/.artifacts/
 
+# Local OAuth credentials - NEVER commit
+DeXShareTarget/oauth.local.json

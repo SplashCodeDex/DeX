@@ -1,0 +1,21 @@
+package com.dexstudios.dex.network
+
+import kotlinx.coroutines.CompletableDeferred
+import java.util.concurrent.ConcurrentHashMap
+
+object TransferState {
+    val pendingPrompts = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
+}
+
+data class PairRequestInfo(
+    val alias: String,
+    val fingerprint: String,
+    val pin: String,
+    val deferred: CompletableDeferred<String>
+)
+
+object AuthState {
+    val pairedFingerprints = androidx.compose.runtime.mutableStateSetOf<String>()
+    val pairedTokens = mutableMapOf<String, String>()
+    val incomingPairRequest = kotlinx.coroutines.flow.MutableStateFlow<PairRequestInfo?>(null)
+}

@@ -50,14 +50,14 @@
             
         <receiver android:name=".network.FileTransferReceiver" android:exported="false">
             <intent-filter>
-                <action android:name="com.example.dex.ACCEPT_TRANSFER" />
-                <action android:name="com.example.dex.REJECT_TRANSFER" />
+                <action android:name="com.dexstudios.dex.ACCEPT_TRANSFER" />
+                <action android:name="com.dexstudios.dex.REJECT_TRANSFER" />
             </intent-filter>
         </receiver>
 
         <receiver android:name=".network.ClipboardReceiver" android:exported="false">
             <intent-filter>
-                <action android:name="com.example.dex.SET_CLIPBOARD" />
+                <action android:name="com.dexstudios.dex.SET_CLIPBOARD" />
             </intent-filter>
         </receiver>
         
@@ -69,7 +69,7 @@
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="com.example.dex.category.DIRECT_SHARE_TARGET" />
+                <category android:name="com.dexstudios.dex.category.DIRECT_SHARE_TARGET" />
                 <data android:mimeType="*/*" />
             </intent-filter>
             <meta-data

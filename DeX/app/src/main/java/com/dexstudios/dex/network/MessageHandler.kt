@@ -1,0 +1,203 @@
+package com.dexstudios.dex.network
+
+import android.content.Context
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import timber.log.Timber
+import java.util.UUID
+
+class MessageHandler(
+    private val deviceConfig: DeviceConfig,
+    private val context: Context,
+    private val notificationHelper: NotificationHelper
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    var onSendMessage: ((String) -> Unit)? = null
+
+    fun handleMessage(text: String, senderIp: String, senderPort: Int) {
+        try {
+            val jsonObject = json.decodeFromString<JsonObject>(text)
+            val type = jsonObject["type"]?.jsonPrimitive?.content ?: return
+            val dataElement = jsonObject["data"] ?: return
+
+            when (type) {
+                "pair-prompt" -> handlePairPrompt(dataElement)
+                "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
+                "public-address" -> handlePublicAddress(dataElement)
+                "endpoint-info" -> handleEndpointInfo(dataElement)
+                "peer-endpoint" -> handlePeerEndpoint(dataElement)
+                "device-roster" -> handleDeviceRoster(dataElement)
+                "relay-started" -> handleRelayReply(true)
+                "relay-error" -> handleRelayReply(false)
+                else -> {
+                    Timber.w("Unknown message type received: $type")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to parse WebSocket message")
+        }
+    }
+
+    private fun handlePairPrompt(dataElement: JsonElement) {
+        if (AuthState.incomingPairRequest.value != null) {
+            Timber.w("Pairing request already pending, ignoring duplicate")
+            return
+        }
+
+        val pairReq = json.decodeFromJsonElement<PairRequestDto>(dataElement)
+        Timber.i("Incoming pair-prompt via WebSocket from ${pairReq.alias}")
+        val info = PairRequestInfo(
+            alias = pairReq.alias,
+            fingerprint = pairReq.fingerprint,
+            pin = pairReq.pin,
+            deferred = CompletableDeferred()
+        )
+        AuthState.incomingPairRequest.value = info
+        notificationHelper.showPairingRequestNotification(pairReq.alias)
+
+        CoroutineScope(Dispatchers.Main).launch {
+            val enteredPin = withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS) { info.deferred.await() }
+            AuthState.incomingPairRequest.value = null
+
+            val accepted = enteredPin != null && enteredPin == pairReq.pin
+            if (accepted) {
+                DeviceManager.savePairedFingerprint(pairReq.fingerprint)
+                pairReq.token?.let { DeviceManager.savePairedToken(pairReq.fingerprint, it) }
+                Timber.i("Pairing accepted with ${pairReq.alias}")
+            } else {
+                Timber.i("Pairing rejected or timed out with ${pairReq.alias}")
+            }
+            sendPairResponse(accepted)
+        }
+    }
+
+    private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
+        val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
+        Timber.i("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
+
+        val sessionId = UUID.randomUUID().toString()
+        val deferred = CompletableDeferred<Boolean>()
+        TransferState.pendingPrompts[sessionId] = deferred
+        val notificationId = sessionId.hashCode()
+        notificationHelper.showIncomingFileNotification(sessionId, notificationId, uploadReq.files.size)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS) { deferred.await() } == true
+            TransferState.pendingPrompts.remove(sessionId)
+            if (!accepted) {
+                Timber.i("Incoming transfer rejected or timed out")
+                return@launch
+            }
+
+            var dirUri = SafStorage.getDownloadsDexUri(context)
+            if (dirUri == null) {
+                Timber.w("Downloads/DeX folder grant missing, prompting user")
+                SafStorage.promptForDownloadsDexGrant(context)
+                // Wait for the user to grant the folder instead of silently dropping the transfer
+                val deadline = System.currentTimeMillis() + GRANT_WAIT_MS
+                while (System.currentTimeMillis() < deadline) {
+                    delay(500)
+                    dirUri = SafStorage.getDownloadsDexUri(context)
+                    if (dirUri != null) break
+                }
+                if (dirUri == null) {
+                    Timber.w("User did not grant Downloads/DeX folder; incoming transfer dropped")
+                    return@launch
+                }
+            }
+
+            // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress).
+            // The HTTPS port comes from the PC's advertised info; the TCP port is the legacy fallback.
+            val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size, file.token) }
+            TcpDownloadService.downloadBatch(context, senderIp, uploadReq.info.port, PULL_PORT, files, dirUri)
+        }
+    }
+
+    /** The PC tells us its public IP so WAN transfers work without manual configuration.
+     *  Only auto-fills when the field is blank — a manually entered address (e.g. a
+     *  DDNS hostname) always wins, otherwise a dynamic IP change would silently break it. */
+    private fun handlePublicAddress(dataElement: JsonElement) {
+        val address = json.decodeFromJsonElement<PublicAddressDto>(dataElement).address.trim()
+        if (address.isNotBlank() && deviceConfig.publicAddress.isBlank()) {
+            deviceConfig.setPublicAddress(address)
+            Timber.i("Auto-configured public address from PC: $address")
+        } else {
+            Timber.i("Ignoring auto public address (manual configuration exists or address empty)")
+        }
+    }
+
+    /** The PC resolved a punch target's public endpoint — completes the sender's pending request. */
+    private fun handleEndpointInfo(dataElement: JsonElement) {
+        val info = json.decodeFromJsonElement<EndpointInfoDto>(dataElement)
+        PunchState.pendingEndpointInfo.value?.let { it.complete(info) }
+        PunchState.pendingEndpointInfo.value = null
+    }
+
+    /** A peer announced it wants to punch us — remember its endpoint for the simultaneous-open. */
+    private fun handlePeerEndpoint(dataElement: JsonElement) {
+        val peer = json.decodeFromJsonElement<PeerEndpointDto>(dataElement)
+        if (peer.ip.isNotBlank() && peer.port > 0) {
+            PunchState.incomingPeerEndpoints.value = PunchState.incomingPeerEndpoints.value + (peer.peerFingerprint to PunchEndpoint(peer.ip, peer.port))
+            Timber.i("Peer endpoint announced: ${peer.peerFingerprint} at ${peer.ip}:${peer.port}")
+        }
+    }
+
+    /** The PC listed our same-email devices — refresh the roster shown on the main screen. */
+    private fun handleDeviceRoster(dataElement: JsonElement) {
+        val roster = json.decodeFromJsonElement<RosterDto>(dataElement)
+        PunchState.devices.value = roster.devices.map { d ->
+            DiscoveredDevice(
+                ip = "",
+                info = RegisterDto(
+                    alias = d.alias,
+                    version = "2.0",
+                    deviceModel = if (d.deviceType == "desktop") "PC" else "Phone",
+                    deviceType = d.deviceType,
+                    fingerprint = d.fingerprint,
+                    port = 0,
+                    protocol = "punch",
+                    download = false,
+                    identityHash = null
+                ),
+                viaRoster = true
+            )
+        }
+        Timber.i("Roster updated: ${roster.devices.size} same-email devices")
+    }
+
+    /** The PC acknowledged (or failed) the relay-transfer fallback. */
+    private fun handleRelayReply(success: Boolean) {
+        PunchState.pendingRelay.value?.let { it.complete(success) }
+        PunchState.pendingRelay.value = null
+    }
+
+    private fun sendPairResponse(accepted: Boolean) {
+        val payload = buildJsonObject {
+            put("type", "pair-response")
+            putJsonObject("data") {
+                put("accepted", accepted)
+            }
+        }
+        onSendMessage?.invoke(payload.toString())
+    }
+
+    private companion object {
+        const val PAIR_PROMPT_TIMEOUT_MS = 60_000L
+        const val PROMPT_TIMEOUT_MS = 60_000L
+        const val GRANT_WAIT_MS = 180_000L
+        const val PULL_PORT = 53319
+    }
+}
