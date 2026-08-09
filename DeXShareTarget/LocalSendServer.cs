@@ -29,7 +29,23 @@ namespace DeXShareTarget
             // Silence Kestrel verbose logs
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
+            // Auto-configure the router (UPnP) so WAN works without manual port forwarding.
+            // The public IP must be known BEFORE the certificate is created so its SAN covers
+            // it; the probe is hard-capped so startup is never blocked by a slow router.
+            try
+            {
+                using var upnpTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await UpnpPortForward.ProbePublicIpAsync(upnpTimeout.Token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UPNP] Public IP probe failed: {ex.Message}");
+            }
+
             ServerCert = GetOrCreateServerCertificate();
+
+            // Port mappings are not needed for the certificate, so run them in the background
+            _ = Task.Run(() => UpnpPortForward.ConfigureAsync(CancellationToken.None));
 
             builder.WebHost.ConfigureKestrel(options =>
             {

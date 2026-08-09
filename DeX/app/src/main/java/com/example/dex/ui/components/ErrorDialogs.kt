@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.sp
 import com.example.dex.R
 import com.example.dex.ui.components.DeXPanel
 import com.example.dex.ui.components.bubbleFluidity
+import com.example.dex.ui.components.glass.LiquidGlassPanel
+import com.example.dex.ui.components.glass.LiquidGlassPresets
+import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 
 @Composable
@@ -81,11 +84,71 @@ fun NetworkErrorDialog(
 }
 
 @Composable
+fun OnboardingDialog(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        DeXPanel(
+            shape = RoundedCornerShape(32.dp),
+            modifier = Modifier
+                .widthIn(max = 400.dp)
+                .fillMaxWidth(0.9f)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    stringResource(R.string.onboarding_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.onboarding_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(20.dp))
+                listOf(
+                    R.string.onboarding_step_1,
+                    R.string.onboarding_step_2,
+                    R.string.onboarding_step_3
+                ).forEach { step ->
+                    Row(modifier = Modifier.padding(vertical = 6.dp)) {
+                        Text("•  ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(step), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+                DeXButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text(stringResource(R.string.onboarding_got_it), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PairingRequestDialog(
     alias: String,
     expectedPin: String,
     onAccept: (String) -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    backdrop: Backdrop? = null,
 ) {
     var enteredPin by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(value = false) }
@@ -95,10 +158,14 @@ fun PairingRequestDialog(
         visible = true
     }
 
+    // With a backdrop the dim lives INSIDE the captured layer (the glass card
+    // samples the dimmed scene). Without one we fall back to an overlay dim.
+    val overlayDim = if (backdrop == null) Color.Black.copy(alpha = 0.4f) else Color.Transparent
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
+            .background(overlayDim)
             .imePadding() // Keyboard handling
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -112,13 +179,7 @@ fun PairingRequestDialog(
             enter = fadeIn(tween(400)) + scaleIn(tween(400, easing = BackOut), initialScale = 0.8f),
             exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.8f)
         ) {
-            DeXPanel(
-                shape = RoundedCornerShape(48.dp),
-                modifier = Modifier
-                    .widthIn(max = 400.dp)
-                    .fillMaxWidth(0.9f)
-                    .bubbleFluidity(targetScale = 0.98f)
-            ) {
+            val cardContent: @Composable BoxScope.() -> Unit = {
                 // Close Button
                 Box(
                     modifier = Modifier
@@ -226,6 +287,29 @@ fun PairingRequestDialog(
                         }
                     }
                 }
+            }
+
+            if (backdrop != null) {
+                // Liquid glass card — samples the dimmed scene captured in the backdrop
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .fillMaxWidth(0.9f)
+                        .bubbleFluidity(targetScale = 0.98f),
+                    shape = LiquidGlassPresets.Dialog.shape,
+                    config = LiquidGlassPresets.Dialog,
+                    content = cardContent
+                )
+            } else {
+                DeXPanel(
+                    shape = RoundedCornerShape(48.dp),
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .fillMaxWidth(0.9f)
+                        .bubbleFluidity(targetScale = 0.98f),
+                    content = cardContent
+                )
             }
         }
     }

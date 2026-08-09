@@ -47,15 +47,15 @@ import com.example.dex.ui.components.TransferProgressOverlay
 import com.example.dex.ui.components.FloatingTopAppBar
 import com.example.dex.ui.components.*
 import androidx.compose.ui.text.style.TextAlign
-import com.kashif_e.backdrop.backdrops.layerBackdrop
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @android.annotation.SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
-    viewModel: MainScreenViewModel = koinViewModel()
+    viewModel: MainScreenViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,7 +63,6 @@ fun MainScreen(
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
-    var showTrustedDevicesDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -135,6 +134,10 @@ fun MainScreen(
     val downloadState by com.example.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
     val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
 
+    // First-run onboarding: shown once, dismissed via a persisted flag
+    val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
+    var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
@@ -160,28 +163,30 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        val glassBackdrop = rememberLayerBackdrop()
+        val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
+        // Screen-owned backdrop for the top bar glass buttons. It is separate
+        // from the navbar's backdrop (which captures this whole screen) so the
+        // buttons never sample a backdrop that captures them.
+        val contentBackdrop = rememberLayerBackdrop()
         Box(modifier = modifier.fillMaxSize()) {
+            // ===== Backdrop source: the scrolling content the glass samples.
+            // Glass elements (top bar below) are drawn OUTSIDE this subtree —
+            // a backdrop that captures the glass sampling it is a render loop
+            // and crashes the renderer (documented library pitfall).
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .layerBackdrop(glassBackdrop)
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
+                    .padding(padding)
+                    .layerBackdrop(contentBackdrop)
             ) {
-                FloatingTopAppBar(
-                    modifier = Modifier,
-                    onOpenTrustedDevices = { showTrustedDevicesDialog = true }
+                // Background drawn into the backdrop so the layer is never empty
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
                 )
 
-                val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
-
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    androidx.compose.animation.AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                         visible = devices.isEmpty(),
                         enter = com.example.dex.ui.theme.spatialMenuEnter(),
                         exit = com.example.dex.ui.theme.spatialMenuExit(),
@@ -267,7 +272,14 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            // Cards scroll beneath the floating top bar and nav bar
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 96.dp,
+                                bottom = 128.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(devices, key = { it.info.fingerprint }) { device ->
@@ -298,28 +310,36 @@ fun MainScreen(
                             }
                         }
                     }
-                }
             }
+
+                // ===== Glass overlay: drawn AFTER the captured content, samples it =====
+                FloatingTopAppBar(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    backdrop = contentBackdrop
+                )
         }
     }
 
     if (uploadState.error != null) {
         NetworkErrorDialog(
-            error = stringResource(R.string.upload_failed, uploadState.error ?: ""),
+            error = stringResource(R.string.upload_failed, humanizeTransferError(uploadState.error ?: "")),
             onDismiss = { viewModel.clientEngine.resetUploadState() }
         )
     }
 
     if (downloadState.error != null) {
         NetworkErrorDialog(
-            error = stringResource(R.string.download_failed, downloadState.error ?: ""),
+            error = stringResource(R.string.download_failed, humanizeTransferError(downloadState.error ?: "")),
             onDismiss = { com.example.dex.network.TcpDownloadService.resetDownloadState() }
         )
     }
 
-    if (showTrustedDevicesDialog) {
-        TrustedDevicesDialog(
-            onDismiss = { showTrustedDevicesDialog = false }
+    if (showOnboarding) {
+        OnboardingDialog(
+            onDismiss = {
+                onboardingPrefs.edit().putBoolean("onboarding_done", true).apply()
+                showOnboarding = false
+            }
         )
     }
 
@@ -341,4 +361,20 @@ fun MainScreen(
             }
         )
     }
+}
+
+@Composable
+private fun humanizeTransferError(raw: String): String = when {
+    raw.contains("HTTP 404", ignoreCase = true) ||
+        raw.contains("HTTP 403", ignoreCase = true) ||
+        raw.contains("HTTP 410", ignoreCase = true) -> stringResource(R.string.error_transfer_expired)
+    raw.contains("no connection to PC", ignoreCase = true) ||
+        raw.contains("ConnectException", ignoreCase = true) ||
+        raw.contains("SocketTimeoutException", ignoreCase = true) ||
+        raw.contains("Failed to connect", ignoreCase = true) ||
+        raw.contains("Cronet", ignoreCase = true) -> stringResource(R.string.error_transfer_no_connection)
+    raw.contains("Cannot write to Downloads/DeX", ignoreCase = true) -> stringResource(R.string.error_transfer_folder)
+    raw.contains("cancelled", ignoreCase = true) -> stringResource(R.string.error_transfer_cancelled)
+    raw.contains("Upload failed for all files", ignoreCase = true) -> stringResource(R.string.error_upload_all)
+    else -> raw
 }

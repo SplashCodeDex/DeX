@@ -18,6 +18,17 @@
     <string name="download_success">Successfully Downloaded %1$s</string>
     <string name="download_failed">Download Failed: %1$s</string>
     <string name="transfer_via">%1$s • %2$s</string>
+    <string name="error_transfer_expired">The file is no longer available on the PC. Ask to send it again.</string>
+    <string name="error_transfer_no_connection">Cannot reach the PC. Check that it is on and on the same network.</string>
+    <string name="error_transfer_folder">Cannot save to Downloads/DeX. Open the app and grant folder access.</string>
+    <string name="error_transfer_cancelled">Transfer cancelled.</string>
+    <string name="error_upload_all">Upload failed. Check the PC is on and reachable.</string>
+    <string name="onboarding_title">Welcome to DeX</string>
+    <string name="onboarding_subtitle">Send and receive files between your PC and phone — no cables, no cloud.</string>
+    <string name="onboarding_step_1">Install &amp; open DeX on your PC — it lives in the system tray.</string>
+    <string name="onboarding_step_2">Keep both devices on the same Wi-Fi; the PC appears here automatically.</string>
+    <string name="onboarding_step_3">Tap a PC to pair, then send files both ways — even over the internet.</string>
+    <string name="onboarding_got_it">Got it</string>
     <plurals name="uploading_progress">
         <item quantity="one">Uploading %1$d of %2$d file…</item>
         <item quantity="other">Uploading %1$d of %2$d files…</item>

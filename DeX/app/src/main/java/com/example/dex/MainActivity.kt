@@ -71,9 +71,28 @@ class MainActivity : ComponentActivity() {
     val serviceIntent = android.content.Intent(this, com.example.dex.network.DexService::class.java)
     startForegroundService(serviceIntent)
 
+    // Background keep-alive: the periodic worker restarts the service if the OS killed the
+    // process, so the phone stays reachable for PC pushes up to 6 hours after last use.
+    androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+        com.example.dex.network.KeepAliveWorker.UNIQUE_NAME,
+        androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+        androidx.work.PeriodicWorkRequestBuilder<com.example.dex.network.KeepAliveWorker>(
+            15, java.util.concurrent.TimeUnit.MINUTES
+        ).build()
+    )
+
     enableEdgeToEdge()
     setContent {
       DeXTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
     }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    // Refresh the keep-alive window: the phone stays reachable for 6h after the last app use
+    getSharedPreferences(com.example.dex.network.KeepAliveWorker.PREFS, MODE_PRIVATE)
+        .edit()
+        .putLong(com.example.dex.network.KeepAliveWorker.KEY_LAST_ACTIVE, System.currentTimeMillis())
+        .apply()
   }
 }

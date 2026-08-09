@@ -40,7 +40,15 @@ class WebSocketClientService(
     private var activeSocket: WebSocket? = null
     private var connectedFingerprint: String? = null
     private var serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var isRunning = false
+
+    @Volatile
+    var isRunning = false
+
+    /** Reconnect to a known PC without waiting for a new discovery event (background keep-alive). */
+    fun ensureConnected() {
+        if (!isRunning || activeSocket != null) return
+        findTargetPc(discoveryEngine.devices.value.values)?.let { connectToPC(it) }
+    }
 
     fun start() {
         if (isRunning) return
