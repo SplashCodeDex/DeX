@@ -236,13 +236,33 @@ function Update-WpfUI {
 }
 #Export-ModuleMember -Function Update-WpfUI
 
+# The DropShadowEffect on mainBorder is the priciest per-frame cost in the whole UI: on a
+# layered (AllowsTransparency) window it re-rasterizes the full card region on every
+# repaint. Suspending it around size/scale transitions AND around bulk list swaps (which
+# repaint the card) keeps the visuals identical while removing the re-blur cost on each.
+# A depth counter lets overlapping suspenders (transition + refresh) share one restore.
+$script:cardShadowSuspendDepth = 0
+function Suspend-CardEffect {
+    $mb = $script:wpfWindow.FindName("mainBorder")
+    if ($mb -and $null -ne $mb.Effect) { $mb.Effect = $null }
+    $script:cardShadowSuspendDepth++
+}
+function Restore-CardEffect {
+    $script:cardShadowSuspendDepth = [Math]::Max(0, $script:cardShadowSuspendDepth - 1)
+    if ($script:cardShadowSuspendDepth -eq 0) {
+        $mb = $script:wpfWindow.FindName("mainBorder")
+        if ($mb -and $null -eq $mb.Effect) {
+            try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
+        }
+    }
+}
+
 # Begins a card resize/scale transition (Expand/Contract/PopIn) with the software drop shadow
 # suspended for its duration. The DropShadowEffect is the priciest per-frame cost while
 # mainBorder animates its size/scale, so we clear it up front and restore it ~0.95s later.
 $script:cardShadowRestoreTimer = $null
 function Start-CardTransition($storyboard) {
-    $mainBorder = $script:wpfWindow.FindName("mainBorder")
-    if ($mainBorder) { $mainBorder.Effect = $null }
+    Suspend-CardEffect
 
     if ($null -ne $script:cardShadowRestoreTimer) { $script:cardShadowRestoreTimer.Stop() }
     $timer = New-Object System.Windows.Threading.DispatcherTimer
@@ -250,10 +270,7 @@ function Start-CardTransition($storyboard) {
     $timer.Add_Tick({
         param($s, $e)
         $s.Stop()
-        $mb = $script:wpfWindow.FindName("mainBorder")
-        if ($mb -and $null -eq $mb.Effect) {
-            try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
-        }
+        Restore-CardEffect
     }.GetNewClosure())
     $script:cardShadowRestoreTimer = $timer
     $timer.Start()

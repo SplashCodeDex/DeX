@@ -46,6 +46,106 @@ $script:thumbCacheMax = 200
 $script:dirLoadSeq = 0
 $script:asyncBrowsePending = $false
 
+# Clipboard sync STA worker. Get-Clipboard only works on an STA thread, but running it on the
+# UI thread (via a DispatcherTimer) stalls the whole spatial UI whenever the clipboard owner
+# is slow. This uses the same proven pattern as Start-UiDataPolling: a dedicated PowerShell
+# runspace (here forced to STA via RunspaceFactory.ApartmentState) looping forever, driven by
+# a ConcurrentQueue mailbox. The engine's 2s tick only enqueues the enable toggle — the
+# runspace does the clipboard reads, HTTP and adb off the UI thread.
+$script:clipWorkerControl = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
+$script:clipWorkerPs = $null
+$script:clipWorkerRs = $null
+
+function Start-ClipboardSyncWorker {
+    if ($null -ne $script:clipWorkerPs) { return }
+    try {
+        $iss = [management.automation.runspaces.initialsessionstate]::CreateDefault2()
+        $rs = [runspacefactory]::CreateRunspace($iss)
+        $rs.ApartmentState = [System.Threading.ApartmentState]::STA
+        $rs.Open()
+        $ps = [powershell]::Create()
+        $ps.Runspace = $rs
+
+        $ctl = $script:clipWorkerControl
+        $api = $global:DeXLocalApi
+        $adbPath = $global:AdbExePath
+
+        [void]$ps.AddScript({
+            param($ctlQueue, $apiUrl, $adb)
+            $enabled = $false
+            $clipLastPushed = ""
+            $clipLastReceived = ""
+            while ($true) {
+                $m = $null
+                while ($ctlQueue.TryDequeue([ref]$m)) {
+                    if ($m.ContainsKey('SetEnabled')) { $enabled = [bool]$m.SetEnabled }
+                    if ($m.ContainsKey('Stop')) { return }
+                }
+                if ($enabled) {
+                    try {
+                        # 1. Learn what the phone last pushed, so we don't echo it back to the phone
+                        try {
+                            $state = Invoke-RestMethod -Uri "$apiUrl/local/clipboard-state" -TimeoutSec 1 -ErrorAction Stop
+                            if ($state -and $state.text -and $state.text -ne $clipLastReceived) {
+                                $clipLastReceived = [string]$state.text
+                            }
+                        } catch {}
+
+                        # 2. Detect a fresh local clipboard change and push it to a trusted device
+                        $text = Get-Clipboard -Raw -ErrorAction Ignore
+                        if (-not [string]::IsNullOrWhiteSpace($text) -and
+                            $text -ne $clipLastPushed -and
+                            $text -ne $clipLastReceived) {
+
+                            $ip = $null
+                            try {
+                                $devices = Invoke-RestMethod -Uri "$apiUrl/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                                $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+                                if ($target) { $ip = $target.ip }
+                            } catch {}
+
+                            if ($ip) {
+                                # WebSocket push first; adb broadcast fallback (same as Send-ClipboardToDevice)
+                                $delivered = $false
+                                try {
+                                    $null = Invoke-RestMethod -Uri "$apiUrl/local/clipboard-push?ip=$ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
+                                    $delivered = $true
+                                } catch {}
+                                if (-not $delivered) {
+                                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+                                    $b64 = [Convert]::ToBase64String($bytes)
+                                    $res = & $adb -s "${ip}:5555" shell am broadcast -a com.dexstudios.dex.SET_CLIPBOARD -e text_b64 "$b64" 2>&1
+                                    if ($res -match "Broadcast completed") { $delivered = $true }
+                                }
+                                if ($delivered) { $clipLastPushed = $text }
+                            }
+                        }
+                    } catch {}
+                }
+                Start-Sleep -Milliseconds 2000
+            }
+        }).AddArgument($ctl).AddArgument($api).AddArgument($adbPath)
+
+        $script:clipWorkerPs = $ps
+        $script:clipWorkerRs = $rs
+        $ps.BeginInvoke() | Out-Null
+    } catch {
+        Write-Trace "Clipboard STA worker failed to start: $($_.Exception.Message)"
+    }
+}
+
+function Stop-ClipboardSyncWorker {
+    if ($null -eq $script:clipWorkerPs) { return }
+    try {
+        $script:clipWorkerControl.Enqueue(@{ Stop = $true })
+        $script:clipWorkerPs.Stop() | Out-Null
+        $script:clipWorkerPs.Dispose()
+        if ($null -ne $script:clipWorkerRs) { $script:clipWorkerRs.Dispose() }
+    } catch {}
+    $script:clipWorkerPs = $null
+    $script:clipWorkerRs = $null
+}
+
 function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr) {
     if ($isDir -or -not ("ThumbHelper" -as [type])) { return }
 

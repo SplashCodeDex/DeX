@@ -303,7 +303,9 @@ $mdnsTimer.Add_Tick({
                 elseif ($qMsg.Type -eq 'PendingPair') { $pendingPair = $qMsg }
             }
 
-            # Poll Outbound Pairing Status
+            # Poll Outbound Pairing Status. Runs during an active pairing session only
+            # (short, user-initiated); kept synchronous so the flow matches the shipped
+            # behavior exactly.
             if ($script:activeOutboundPairIp) {
                 try {
                     $outStatus = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
@@ -334,8 +336,13 @@ $mdnsTimer.Add_Tick({
 
             # Apply discovered devices fetched by the background poller (LocalSendServer Gateway
             # Unicast fallback). Runs independently of mDNS; data arrives via $script:uiPollQueue.
+            # The card drop shadow is suspended for the swap so the repaint that follows a device
+            # set change doesn't re-rasterize the blur on a layered window (the priciest per-frame
+            # cost); it is restored immediately after (or on any error).
             try {
                 if ($null -ne $udpRes) {
+                    Suspend-CardEffect
+                    try {
                     $icUdp = $script:wpfWindow.FindName("icUdpPeers")
                     if ($icUdp) {
                         $liveUdp = @()
@@ -440,8 +447,11 @@ $mdnsTimer.Add_Tick({
                             }
                             $script:lastUdpFingerprint = $newFingerprint
                         }
-                    }
-                }
+                        }
+                        } finally {
+                            Restore-CardEffect
+                        }
+                        }
             } catch { }
                 
                 # Keep the quick-action mirror toggle in sync with the actual mirror window state
@@ -464,43 +474,16 @@ if ($Background) {
 # Automatic clipboard sync (PC -> phone): push fresh local copies over the WebSocket.
 # Controlled by the quick-action clipboard toggle ($script:clipboardSyncEnabled).
 # The phone's own pushes are learned from /local/clipboard-state so they are never echoed.
+# All the blocking work (clipboard reads + HTTP + adb) runs on the dedicated STA runspace
+# (Start-ClipboardSyncWorker); this tick only forwards the toggle, so a slow clipboard
+# owner or cold adb server can never stall the UI dispatcher.
 $script:clipboardSyncEnabled = $false
-$script:clipLastPushed = ""
-$script:clipLastReceived = ""
 $script:clipboardTimer = New-Object System.Windows.Threading.DispatcherTimer
 $script:clipboardTimer.Interval = [TimeSpan]::FromSeconds(2)
 $script:clipboardTimer.Add_Tick({
-    if (-not $script:clipboardSyncEnabled) { return }
-    try {
-        # 1. Learn what the phone last pushed, so we don't echo it back to the phone
-        try {
-            $state = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/clipboard-state" -TimeoutSec 1 -ErrorAction Stop
-            if ($state -and $state.text -and $state.text -ne $script:clipLastReceived) {
-                $script:clipLastReceived = [string]$state.text
-            }
-        } catch {}
-
-        # 2. Detect a fresh local clipboard change and push it to the active device
-        $text = Get-Clipboard -Raw -ErrorAction Ignore
-        if (-not [string]::IsNullOrWhiteSpace($text) -and
-            $text -ne $script:clipLastPushed -and
-            $text -ne $script:clipLastReceived) {
-
-            $ip = $null
-            $currentTarget = Get-ConnectedDeviceTarget
-            if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
-            if (-not $ip) {
-                try {
-                    $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
-                    $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
-                    if ($target) { $ip = $target.ip }
-                } catch {}
-            }
-            if ($ip -and (Send-ClipboardToDevice -Ip $ip -Quiet)) {
-                $script:clipLastPushed = $text
-            }
-        }
-    } catch {}
+    if ($script:clipboardSyncEnabled) { Start-ClipboardSyncWorker }
+    # Always forward the toggle (both enable AND disable) so the worker stops when turned off.
+    $script:clipWorkerControl.Enqueue(@{ SetEnabled = [bool]$script:clipboardSyncEnabled })
 })
 $script:clipboardTimer.Start()
 
@@ -532,6 +515,8 @@ if (-not $Background -and -not $SelfTest) { $script:showUiEvent.Set() | Out-Null
         Write-Trace "Disposing UI-data poller Runspace..."
         $script:uiPollJob.PowerShell.Dispose()
     }
+    # Clipboard STA runspace: stop + dispose so the background loop exits cleanly
+    Stop-ClipboardSyncWorker
     # Transfer server is hosted by DeXShareTarget.exe (C# LocalSendServer) — no PS runspace to dispose
 })
 

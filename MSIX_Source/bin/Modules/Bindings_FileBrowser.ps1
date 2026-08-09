@@ -72,7 +72,7 @@ function Show-PullDockIfActive([string]$RequestId, [int]$Pct, [string]$Status) {
     $wpf = $script:wpfWindow
     if ($null -eq $wpf) { return }
     $pctCopy = $Pct; $statusCopy = $Status
-    $wpf.Dispatcher.Invoke([Action]{ Set-PullProgressUi -Pct $pctCopy -Status $statusCopy }) | Out-Null
+    $wpf.Dispatcher.InvokeAsync([Action]{ Set-PullProgressUi -Pct $pctCopy -Status $statusCopy }) | Out-Null
 }
 
 # Re-render the dock for the current active pull, or hide it when none are running.
@@ -83,12 +83,14 @@ function Refresh-PullDock {
         Show-PullDockIfActive $active ([int]$e.Pct) $e.Status
     } else {
         $wpf = $script:wpfWindow
-        if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Hide-PullProgressDock }) | Out-Null }
+        if ($null -ne $wpf) { $wpf.Dispatcher.InvokeAsync([Action]{ Hide-PullProgressDock }) | Out-Null }
     }
 }
 
 # Reads the phone's terminal reply and shows an accurate completion toast. The phone's own
 # cancelled flag wins over the local one so a cancel that races completion reports correctly.
+# The status HTTP round trip runs on the CALLER's thread (a background poll thread); only the
+# toast / explorer / list-refresh UI work is marshaled onto the dispatcher.
 function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
     $st = $null
     try { $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull-status?requestId=$RequestId" -TimeoutSec 3 -ErrorAction Stop } catch {}
@@ -105,7 +107,7 @@ function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
     $wpf = $script:wpfWindow
     if ($null -eq $wpf) { return }
     $cCopy = $cancelled; $sCopy = $savedN; $fCopy = $failedN; $oCopy = $OutDir
-    $wpf.Dispatcher.Invoke([Action]{
+    $wpf.Dispatcher.InvokeAsync([Action]{
         if ($cCopy) {
             Show-Toast -Title "Pull Cancelled" -Message "The file pull was cancelled."
         } elseif ($fCopy -gt 0) {
@@ -162,7 +164,7 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
                 $pctCopy = $pct; $statusCopy = $status
                 $wpf = $script:wpfWindow
                 if ($null -ne $wpf) {
-                    $wpf.Dispatcher.Invoke([Action]{
+                    $wpf.Dispatcher.InvokeAsync([Action]{
                         if ($script:activePulls.ContainsKey($rid)) {
                             $script:activePulls[$rid].Pct = $pctCopy
                             $script:activePulls[$rid].Status = $statusCopy
@@ -182,21 +184,23 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
         $outDirCopy = $OutDir
         $wpf = $script:wpfWindow
         if ($null -ne $wpf) {
-            # Terminal handling on the UI thread: read the entry, remove it, toast, promote next.
+            # Terminal handling: remove the entry from the UI-owned map on the dispatcher and
+            # promote the next pull. The blocking completion-status HTTP then runs on THIS
+            # background thread (Show-PullCompleteToast), so the dispatcher only ever sees
+            # the cheap toast / list-refresh marshaled back from it.
             $wpf.Dispatcher.Invoke([Action]{
                 if ($script:activePulls.ContainsKey($rid)) {
                     $entryCopy = $script:activePulls[$rid]
                     $outDirCopy = $entryCopy.OutDir
                     $script:activePulls.TryRemove($rid, [ref]$null) | Out-Null
                 }
-                if ($finished) {
-                    Show-PullCompleteToast $rid $outDirCopy
-                } else {
-                    Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete."
-                }
-                # Promote the next active pull into the dock, or hide it when all are done.
                 Refresh-PullDock
             }.GetNewClosure()) | Out-Null
+            if ($finished) {
+                Show-PullCompleteToast $rid $outDirCopy
+            } else {
+                $wpf.Dispatcher.InvokeAsync([Action]{ Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete." }) | Out-Null
+            }
         }
     }.GetNewClosure())
 }
@@ -326,7 +330,7 @@ function Start-GrantFolderFlow([string]$Ip) {
         }
         $wpf = $script:wpfWindow
         if ($null -ne $wpf) {
-            $wpf.Dispatcher.Invoke([Action]{
+            $wpf.Dispatcher.InvokeAsync([Action]{
                 if ($grantCopy.granted) {
                     Show-Toast -Title "Folder Granted" -Message "Your phone folder is now accessible from File Explorer."
                     # Folders changed — reload the root so the fresh grant shows up immediately,

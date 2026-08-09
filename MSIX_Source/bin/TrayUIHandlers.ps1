@@ -52,6 +52,35 @@ function Get-ConnectedDeviceTarget {
     if ($connectedDevice) { return $connectedDevice.Split()[0].Trim() }
     return $null
 }
+
+# Runs `adb devices -l` asynchronously (spawn + poll) and feeds the result into Update-WpfUI,
+# so a cold adb server (first call can take seconds) can never block the UI thread during a
+# tray action. Mirrors the non-blocking pattern used by the tray-icon click handler.
+function Update-WpfUIAsync {
+    try {
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo.FileName = "adb.exe"
+        $proc.StartInfo.Arguments = "devices -l"
+        $proc.StartInfo.UseShellExecute = $false
+        $proc.StartInfo.RedirectStandardOutput = $true
+        $proc.StartInfo.CreateNoWindow = $true
+        $proc.Start() | Out-Null
+
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds(50)
+        $timer.Add_Tick({
+            if ($proc.HasExited) {
+                $timer.Stop()
+                try {
+                    $out = $proc.StandardOutput.ReadToEnd() -split "`r?`n"
+                    Update-WpfUI -DevicesOutput $out
+                } catch {}
+                $proc.Dispose()
+            }
+        })
+        $timer.Start()
+    } catch { Write-Trace "Update-WpfUIAsync error: $_" }
+}
 $actionConnect = {
     $res = Invoke-AdbConnect
     if ($res.Success) {
@@ -68,7 +97,7 @@ $actionConnect = {
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
         Show-Toast -Title "Connection Failed" -Message $res.Message
     }
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 $actionDisconnect = {
     $null = adb disconnect 2>&1
@@ -77,7 +106,7 @@ $actionDisconnect = {
     $script:txtStatus.Text = "ADB Status: Disconnected"
     try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
     Show-Toast -Title "ADB Disconnected" -Message "Severed all wireless connections."
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 
 
@@ -111,7 +140,7 @@ $actionMirror = {
             Show-Toast -Title "Mirror Failed" -Message "No device connected. Open the DeX app on the phone."
         }
     }
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 
 $actionPull = {
