@@ -109,10 +109,14 @@ class UploadWorker(
         client.resetUploadState()
 
         val targetFingerprint = inputData.getString("targetFingerprint")
-        val token = targetFingerprint?.let { AuthState.pairedTokens[it] }
-        val response = client.prepareUpload(ip, port, prepareRequest, token)
+        val targetIdentityHash = inputData.getString("targetIdentityHash")
+        val token = client.authToken(targetFingerprint, targetIdentityHash)
+        val prepared = client.prepareUpload(ip, port, prepareRequest, token)
+        val response = prepared.response
         if (response == null) {
-            return@withContext Result.failure()
+            // Transport failure (-1) is retryable; auth/HTTP failures are not
+            val retrying = prepared.httpStatus == -1 && !isStopped && runAttemptCount < maxRetryAttempts
+            return@withContext if (retrying) Result.retry() else Result.failure()
         }
 
         val totalSent = AtomicLong(0L)
@@ -141,7 +145,8 @@ class UploadWorker(
 
                             val stream = applicationContext.contentResolver.openInputStream(d.first)
                             if (stream == null) {
-                                outcomes.add(id to UploadOutcome(false, -1))
+                                // Not a transport failure: never retry a file we cannot read
+                                outcomes.add(id to UploadOutcome(false, 403))
                                 return@launch
                             }
 
@@ -175,8 +180,6 @@ class UploadWorker(
             throw e
         }
 
-        client.finishUpload(doneCount.get(), fileData.size)
-
         val failed = outcomes.filter { !it.second.ok }
         val anyHttpError = failed.any { it.second.httpStatus > 0 }
         val retrying = failed.isNotEmpty() &&
@@ -185,9 +188,22 @@ class UploadWorker(
             !isStopped &&
             runAttemptCount < maxRetryAttempts
 
+        if (retrying) {
+            // A retry re-runs the whole session — don't paint a failure state in between
+            return@withContext Result.retry()
+        }
+
+        client.finishUpload(doneCount.get(), fileData.size)
+
+        if (failed.isNotEmpty() && failed.all { it.second.httpStatus == 403 }) {
+            // Sharper than the generic all-failed message when the cause is unreadable files
+            client.updateUploadState(
+                client.uploadState.value.copy(error = "Cannot read one or more files", isUploading = false)
+            )
+        }
+
         when {
             failed.isEmpty() -> Result.success()
-            retrying -> Result.retry()
             else -> Result.failure()
         }
     }

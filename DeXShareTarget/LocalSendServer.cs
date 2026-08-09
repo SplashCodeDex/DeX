@@ -51,6 +51,8 @@ namespace DeXShareTarget
             }
 
             ServerCert = GetOrCreateServerCertificate();
+            // The address the current certificate covers; used to detect runtime IP changes
+            var certifiedAddress = PublicAddress;
 
             // Port mappings are not needed for the certificate, so run them in the background
             // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.
@@ -60,6 +62,26 @@ namespace DeXShareTarget
                 {
                     try { await UpnpPortForward.ConfigureAsync(CancellationToken.None); }
                     catch (Exception ex) { Console.WriteLine($"[UPNP] Auto-config failed: {ex.Message}"); }
+
+                    // The public IP changed at runtime: the running certificate no longer covers
+                    // it and QUIC over WAN would fail TLS. Restart the server so a fresh
+                    // certificate (with the new SAN) is created; phones reconnect automatically.
+                    if (!string.IsNullOrEmpty(PublicAddress) && PublicAddress != certifiedAddress)
+                    {
+                        certifiedAddress = PublicAddress;
+                        try
+                        {
+                            Console.WriteLine("[CERT] Public IP changed; restarting server to renew certificate");
+                            await App.StopAsync();
+                            ServerCert = GetOrCreateServerCertificate();
+                            await App.StartAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[CERT] Server restart after IP change failed: {ex.Message}");
+                        }
+                    }
+
                     await Task.Delay(TimeSpan.FromHours(1));
                 }
             });

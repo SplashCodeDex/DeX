@@ -35,8 +35,19 @@ namespace DeXShareTarget.Endpoints
                 // file pushes). Devices without a valid token still connect so they can receive
                 // pair-prompts and re-establish trust; their socket stays unverified until the
                 // pair-response arrives.
-                bool verified = IdentityManager.PairedFingerprints.Contains(fingerprint) &&
-                    IdentityManager.PairedTokens.TryGetValue(fingerprint, out var expectedToken) && expectedToken == token;
+                // Devices signed in with the SAME email are automatically trusted: their
+                // identity hash is the bearer token, verified and persisted permanently.
+                bool verified = (IdentityManager.PairedFingerprints.Contains(fingerprint) &&
+                    IdentityManager.PairedTokens.TryGetValue(fingerprint, out var expectedToken) && expectedToken == token)
+                    || (!string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash);
+
+                if (!verified && !string.IsNullOrEmpty(token) && token == IdentityManager.IdentityHash)
+                {
+                    IdentityManager.SavePairedDevice(fingerprint);
+                    IdentityManager.SavePairedToken(fingerprint, token);
+                    verified = true;
+                    Console.WriteLine($"[WS] Device {fingerprint} auto-trusted via email identity");
+                }
 
                 using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 WebSocketConnectionManager.AddSocket(fingerprint, webSocket, verified);

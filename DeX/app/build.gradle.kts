@@ -74,7 +74,7 @@ dependencies {
   implementation(libs.koin.androidx.compose)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
-  
+
   // Liquid Glass Backdrop
   implementation(libs.backdrop)
 
@@ -135,4 +135,8 @@ dependencies {
 
   // QR Scanner
   implementation(libs.play.services.code.scanner)
+
+  // Image Loading
+  implementation(libs.coil.compose)
+  implementation(libs.coil.network.okhttp)
 }

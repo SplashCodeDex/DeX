@@ -134,6 +134,27 @@ class MessageHandlerTest {
     }
 
     @Test
+    fun `public-address message auto-fills blank WAN config`() = runTest(testDispatcher) {
+        val mockConfig = mockk<DeviceConfig>(relaxed = true)
+        val handler = MessageHandler(mockConfig, mockContext, notificationHelper)
+
+        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
+
+        verify { mockConfig.setPublicAddress("203.0.113.5") }
+    }
+
+    @Test
+    fun `public-address message never overwrites manual WAN config`() = runTest(testDispatcher) {
+        val mockConfig = mockk<DeviceConfig>(relaxed = true)
+        every { mockConfig.publicAddress } returns "mypc.dyndns.org"
+        val handler = MessageHandler(mockConfig, mockContext, notificationHelper)
+
+        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
+
+        verify(exactly = 0) { mockConfig.setPublicAddress(any()) }
+    }
+
+    @Test
     fun `prepare-upload accepted enqueues one batch download for all files from the PC pull server`() = runTest(testDispatcher) {
         mockkObject(TcpDownloadService)
         mockkObject(SafStorage)

@@ -1,13 +1,14 @@
 package com.example.dex.ui.components.glass
 
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kashif_e.backdrop.highlight.Highlight
-import com.kashif_e.backdrop.shadow.InnerShadow
-import com.kashif_e.backdrop.shadow.Shadow
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
 
 /**
  * Central, reusable configuration for a liquid glass surface.
@@ -22,13 +23,20 @@ data class LiquidGlassConfig(
     /** Gaussian blur radius in [Dp] — small values keep the glass crisp. */
     val blurRadius: Dp = 3.dp,
     /** Lens refraction edge height in [Dp] (0 disables the lens entirely). */
-    val lensHeight: Dp = 20.dp,
+    val lensHeight: Dp = 24.dp,
     /** Lens refraction amount in [Dp] (0 disables the lens entirely). */
-    val lensAmount: Dp = 40.dp,
+    val lensAmount: Dp = 48.dp,
     /** Whether to apply the iOS-style saturation boost (requires API 33+). */
     val vibrancyEnabled: Boolean = true,
     /** RGB color separation on the lens edge for a premium prismatic look. */
-    val chromaticAberration: Boolean = false,
+    val chromaticAberration: Boolean = true,
+    /** Depth-based distortion on the lens for a stronger refracting look. */
+    val depthEffect: Boolean = true,
+    /**
+     * Fraction (0..1) of the lens refraction active at rest; the remainder kicks
+     * in on press. 0 = press-only refraction, 0.5 = half the lens always visible.
+     */
+    val restRefraction: Float = 0f,
     /** Optional surface tint overlaid on the glass (set [surfaceTintAlpha] to 0 to disable). */
     val surfaceTint: Color = Color.White,
     /** Alpha of the surface tint overlay (0..1). */
@@ -49,22 +57,37 @@ data class LiquidGlassConfig(
 object LiquidGlassPresets {
     val Default: LiquidGlassConfig = LiquidGlassConfig()
 
-    /** Crisp, glossy glass tuned for top-bar icon buttons (avatar, search, ...). */
+    /**
+     * Crisp glass tuned for top-bar icon buttons (avatar, search, ...). Half the
+     * refraction is always visible so the buttons read as glass at rest, ramping
+     * to full on press.
+     */
     val IconButton: LiquidGlassConfig = LiquidGlassConfig(
-        blurRadius = 2.dp,
+        blurRadius = 5.dp,
         lensHeight = 16.dp,
-        lensAmount = 32.dp,
-        chromaticAberration = true
+        lensAmount = 30.dp,
+        vibrancyEnabled = false,
+        chromaticAberration = true,
+        depthEffect = true,
+        restRefraction = 0.5f,
+        highlight = Highlight.Plain,
+        shadowRadius = 6.dp,
+        shadowColor = Color.Black.copy(alpha = 0.2f),
     )
 
-    /** Frosted pill glass tuned for a floating bottom navigation bar. */
+    /**
+     * Frosted pill glass for the floating bottom navigation bar, which sits over
+     * scrolling content. Always-on lens/aberration over a scrolling backdrop is
+     * the heaviest per-frame shader load — dial back if the navbar ever janks.
+     */
     val NavBar: LiquidGlassConfig = LiquidGlassConfig(
         shape = CircleShape,
         blurRadius = 12.dp,
-        lensHeight = 18.dp,
-        lensAmount = 32.dp,
-        vibrancyEnabled = true,
-        chromaticAberration = false,
+        lensHeight = 10.dp,
+        lensAmount = 20.dp,
+        vibrancyEnabled = false,
+        chromaticAberration = true,
+        depthEffect = true,
         surfaceTint = Color.White,
         surfaceTintAlpha = 0.12f,
         highlight = Highlight.Plain,
@@ -72,13 +95,33 @@ object LiquidGlassPresets {
         shadowColor = Color.Black.copy(alpha = 0.2f),
     )
 
+    /**
+     * Frosted heavy glass for dialogs/cards over a dimmed scene. Lens + prismatic
+     * edge over the (static) dimmed backdrop — readable thanks to the white tint.
+     */
+    val Dialog: LiquidGlassConfig = LiquidGlassConfig(
+        shape = RoundedCornerShape(48.dp),
+        blurRadius = 14.dp,
+        lensHeight = 12.dp,
+        lensAmount = 26.dp,
+        vibrancyEnabled = false,
+        chromaticAberration = true,
+        depthEffect = true,
+        surfaceTint = Color.White,
+        surfaceTintAlpha = 0.25f,
+        highlight = Highlight.Plain,
+        shadowRadius = 16.dp,
+        shadowColor = Color.Black.copy(alpha = 0.3f),
+    )
+
     val Frosted: LiquidGlassConfig = LiquidGlassConfig(
         shape = CircleShape,
         blurRadius = 12.dp,
-        lensHeight = 36.dp,
-        lensAmount = 64.dp,
+        lensHeight = 40.dp,
+        lensAmount = 60.dp,
         vibrancyEnabled = true,
-        chromaticAberration = false,
+        chromaticAberration = true,
+        depthEffect = true,
         surfaceTint = Color.White,
         surfaceTintAlpha = 0.18f,
         highlight = Highlight.Plain,

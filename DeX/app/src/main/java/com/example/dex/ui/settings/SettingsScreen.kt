@@ -1,10 +1,14 @@
 package com.example.dex.ui.settings
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,12 +21,13 @@ import com.example.dex.network.DeviceConfig
 import com.example.dex.network.DiscoveryEngine
 import com.example.dex.network.WebSocketClientService
 import com.example.dex.ui.components.*
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     deviceConfig: DeviceConfig = koinInject(),
     discoveryEngine: DiscoveryEngine = koinInject(),
@@ -32,30 +37,32 @@ fun SettingsScreen(
     val hashPreview by deviceConfig.identityHashFlow.collectAsState()
     val publicAddress by deviceConfig.publicAddressFlow.collectAsState()
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    DeXIconButton(onClick = onBack) {
-                        Icon(ImageVector.vectorResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = modifier
+    // Screen-owned backdrop: captures this screen's content so the glass header
+    // samples it. Separate from the navbar's backdrop (which captures this whole
+    // screen) — the header must never sample a backdrop that captures it.
+    val contentBackdrop = rememberLayerBackdrop()
+    Box(modifier = modifier.fillMaxSize()) {
+        // ===== Backdrop source: this screen's content =====
+        Box(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .layerBackdrop(contentBackdrop)
         ) {
+            // Background so the backdrop layer is never empty
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 104.dp, bottom = 144.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                     Text(
                         stringResource(R.string.trust_identity_title),
                         style = MaterialTheme.typography.titleMedium,
@@ -172,6 +179,16 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+            }
         }
+
+        // ===== Glass header overlay — drawn AFTER the captured content =====
+        // Settings shows only the avatar (navbar handles navigation; search is
+        // for Devices/History only).
+        FloatingTopAppBar(
+            modifier = Modifier.align(Alignment.TopCenter),
+            backdrop = contentBackdrop,
+            showSearch = false
+        )
     }
 }

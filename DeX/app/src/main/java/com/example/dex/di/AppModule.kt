@@ -16,7 +16,7 @@ val appModule = module {
     single { DeviceConfig(androidContext()) }
     single { NotificationHelper(androidContext()) }
     single { QuicClient(androidContext()) }
-    single { ClientEngine(quicClient = get()) }
+    single { ClientEngine(quicClient = get(), deviceConfig = get()) }
     single { DiscoveryEngine(get(), androidContext()) }
     single { MessageHandler(get(), androidContext(), get()) }
     single { WebSocketClientService(get(), get(), get(), androidContext()) }

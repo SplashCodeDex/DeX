@@ -121,12 +121,16 @@ class MessageHandler(
         }
     }
 
-    /** The PC tells us its public IP so WAN transfers work without manual configuration. */
+    /** The PC tells us its public IP so WAN transfers work without manual configuration.
+     *  Only auto-fills when the field is blank — a manually entered address (e.g. a
+     *  DDNS hostname) always wins, otherwise a dynamic IP change would silently break it. */
     private fun handlePublicAddress(dataElement: JsonElement) {
         val address = json.decodeFromJsonElement<PublicAddressDto>(dataElement).address.trim()
-        if (address.isNotBlank()) {
+        if (address.isNotBlank() && deviceConfig.publicAddress.isBlank()) {
             deviceConfig.setPublicAddress(address)
             Timber.i("Auto-configured public address from PC: $address")
+        } else {
+            Timber.i("Ignoring auto public address (manual configuration exists or address empty)")
         }
     }
 

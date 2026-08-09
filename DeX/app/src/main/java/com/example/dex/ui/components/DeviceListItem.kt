@@ -6,7 +6,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,6 +22,11 @@ import com.example.dex.R
 import com.example.dex.network.AuthState
 import com.example.dex.network.DiscoveredDevice
 
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.example.dex.ui.icons.MaterialSymbols
+import androidx.compose.runtime.remember
+
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 fun DeviceListItem(
@@ -30,11 +34,27 @@ fun DeviceListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
-    isTrusted: Boolean = AuthState.pairedFingerprints.contains(device.info.fingerprint)
+    isTrusted: Boolean = AuthState.pairedFingerprints.contains(device.info.fingerprint),
+    wallpaper: Any? = null // Allow passing a custom image source
 ) {
+    val batteryIcon = remember {
+        val level = (1..7).random()
+        when(level) {
+            1 -> MaterialSymbols.Battery1
+            2 -> MaterialSymbols.Battery2
+            3 -> MaterialSymbols.Battery3
+            4 -> MaterialSymbols.Battery4
+            5 -> MaterialSymbols.Battery5
+            6 -> MaterialSymbols.Battery6
+            else -> MaterialSymbols.BatteryFull
+        }
+    }
+
+    // Default Wallpaper (Hwaseong Fortress)
+    val wallpaperSource = wallpaper ?: R.drawable.wallpaper_fortress
+
     DeXPanel(
         modifier = modifier
-            .fillMaxWidth()
             .bubbleFluidity(targetScale = 0.98f)
             .combinedClickable(
                 onClick = onClick,
@@ -43,23 +63,16 @@ fun DeviceListItem(
         shape = RoundedCornerShape(48.dp), // Deep rounded corners as requested
         shadowRadius = 16.dp
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(400.dp)) {
-            // 1. Wallpaper Placeholder (Engine TODO)
-            Box(
+        Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
+            // 1. Wallpaper (AsyncImage with local resource or custom source)
+            AsyncImage(
+                model = wallpaperSource,
+                contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(
-                        if (device.info.deviceType.lowercase().contains("phone")) R.drawable.ic_smartphone
-                        else R.drawable.ic_computer
-                    ),
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp).align(Alignment.Center).alpha(0.08f),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop
+            )
 
             // 2. Glassy Gradient Overlay
             Box(
@@ -75,12 +88,11 @@ fun DeviceListItem(
                     )
             )
 
-            // 3. Content Layer
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp, top = 24.dp), // 24dp spacing from bottom edge
+                    .padding(bottom = 24.dp, top = 24.dp),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 Row(
@@ -95,7 +107,6 @@ fun DeviceListItem(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    // "Price Tag" Status Bubble
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
@@ -121,20 +132,22 @@ fun DeviceListItem(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tags Row
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DeviceTag(text = if (isTrusted) "Paired" else "Guest")
-                    DeviceTag(text = "High Speed")
+                // Tags Row (Updated with Icons)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DeviceIconTag(icon = MaterialSymbols.Wifi)
+                    DeviceIconTag(icon = batteryIcon)
                     DeviceTag(text = "5GHz")
+                    if (isTrusted) {
+                        DeviceTag(text = "Paired")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Primary Action Button (Pill Shape)
                 DeXButton(
                     onClick = onClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = CircleShape, // Exact pill shape from reference
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.onSurface,
                         contentColor = MaterialTheme.colorScheme.surface
@@ -148,6 +161,21 @@ fun DeviceListItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeviceIconTag(icon: ImageVector) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).size(18.dp)
+        )
     }
 }
 

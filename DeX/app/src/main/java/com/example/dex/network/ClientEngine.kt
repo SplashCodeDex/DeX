@@ -19,7 +19,11 @@ import kotlinx.coroutines.Job
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.onUpload
 
-class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: QuicClient? = null) {
+class ClientEngine(
+    engine: HttpClientEngine? = null,
+    private val quicClient: QuicClient? = null,
+    private val deviceConfig: DeviceConfig? = null
+) {
     // LocalSend uses self-signed certificates, so we must trust all certificates on the local network
     @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
     private val trustAllManager = object : X509TrustManager {
@@ -55,6 +59,17 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         _uploadState.value = UploadState()
     }
 
+    /**
+     * Picks the bearer token for a target device. Devices signed in with the SAME email
+     * are automatically trusted: the identity hash itself is the token. Everything else
+     * falls back to the PIN-pairing token.
+     */
+    fun authToken(targetFingerprint: String?, targetIdentityHash: String?): String? {
+        val myIdentity = deviceConfig?.identityHash
+        if (!myIdentity.isNullOrEmpty() && targetIdentityHash == myIdentity) return myIdentity
+        return targetFingerprint?.let { AuthState.pairedTokens[it] }
+    }
+
     fun finishUpload(successCount: Int, totalFiles: Int) {
         if (successCount > 0) {
             _uploadState.value = _uploadState.value.copy(
@@ -81,7 +96,13 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         )
     }
 
-    suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareUploadResponseDto? = withContext(Dispatchers.IO) {
+    /** Result of [prepareUpload]: httpStatus is -1 when the transport failed, otherwise the HTTP status. */
+    data class PrepareResult(
+        val response: PrepareUploadResponseDto?,
+        val httpStatus: Int
+    )
+
+    suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareResult = withContext(Dispatchers.IO) {
         try {
             val response = client.post("https://$ip:$port/api/localsend/v2/prepare-upload") {
                 contentType(ContentType.Application.Json)
@@ -89,11 +110,15 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                 setBody(request)
             }
             if (response.status.isSuccess()) {
-                response.body<PrepareUploadResponseDto>()
-            } else null
+                PrepareResult(response.body<PrepareUploadResponseDto>(), response.status.value)
+            } else {
+                PrepareResult(null, response.status.value)
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            PrepareResult(null, -1)
         }
     }
 
@@ -196,9 +221,9 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
             }
         }
     }
-
-    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null): Boolean = withContext(Dispatchers.IO) {        try {
-            val token = targetFingerprint?.let { AuthState.pairedTokens[it] }
+    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val token = authToken(targetFingerprint, targetIdentityHash)
             val response = client.post("https://$ip:$port/api/dex/clipboard") {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")

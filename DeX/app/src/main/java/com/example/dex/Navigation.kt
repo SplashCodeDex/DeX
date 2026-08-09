@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.dex.R
-import com.kashif_e.backdrop.backdrops.layerBackdrop
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -84,44 +85,58 @@ fun MainNavigation() {
   )
 
   Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    // Real app background captured into the glass backdrop. This layer is flat
-    // and cheap — it does NOT capture the scrolling content, keeping the navbar
-    // glass safe from heavy per-frame render-tree captures.
-    val navBackdrop = rememberLayerBackdrop()
+    // Glass backdrop: captures all screen content (Devices, History, Settings)
+    // via NavDisplay, so the glass navbar and the glass PIN card sample whatever
+    // is behind them. Glass elements are drawn OUTSIDE this captured subtree —
+    // a backdrop that captures the glass sampling it is a render loop and
+    // crashes (SIGSEGV).
+    val contentBackdrop = rememberLayerBackdrop()
+    val incomingPairRequest by com.example.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(MaterialTheme.colorScheme.background)
-        .layerBackdrop(navBackdrop)
-    )
-
-    NavDisplay(
-      backStack = backStack,
-      onBack = { backStack.removeLastOrNull() },
-      modifier = Modifier,
-      transitionSpec = {
-        fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
-      },
-      entryProvider =
-        entryProvider {
-          entry<Main> {
-            MainScreen(
-              modifier = Modifier.safeDrawingPadding()
-            )
-          }
-          entry<History> {
-            HistoryScreen(
-              modifier = Modifier.safeDrawingPadding()
-            )
-          }
-          entry<Settings> {
-            SettingsScreen(
-              onBack = { backStack.removeLastOrNull() },
-              modifier = Modifier.safeDrawingPadding()
-            )
-          }
+        .layerBackdrop(contentBackdrop)
+    ) {
+      NavDisplay(
+        backStack = backStack,
+        onBack = { backStack.removeLastOrNull() },
+        modifier = Modifier,
+        transitionSpec = {
+          fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
         },
-    )
+        entryProvider =
+          entryProvider {
+            entry<Main> {
+              MainScreen(
+                modifier = Modifier.safeDrawingPadding()
+              )
+            }
+            entry<History> {
+              HistoryScreen(
+                modifier = Modifier.safeDrawingPadding()
+              )
+            }
+            entry<Settings> {
+              SettingsScreen(
+                modifier = Modifier.safeDrawingPadding()
+              )
+            }
+          },
+      )
+
+      if (incomingPairRequest != null) {
+        // Dim recorded INTO the backdrop (not overlaid on top) so the glass PIN
+        // card samples the dimmed scene behind it — the documented pattern for
+        // glass dialogs.
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+        )
+      }
+    }
 
     androidx.compose.animation.AnimatedVisibility(
       visible = true,
@@ -129,11 +144,8 @@ fun MainNavigation() {
       exit = slideOutVertically(targetOffsetY = { it }),
       modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
     ) {
-      FloatingPillNavBar(items = navItems, backdrop = navBackdrop)
+      FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
     }
-
-    val incomingPairRequest by com.example.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     incomingPairRequest?.let { req ->
         com.example.dex.ui.components.PairingRequestDialog(
@@ -147,7 +159,8 @@ fun MainNavigation() {
             onReject = {
                 req.deferred.complete("")
                 com.example.dex.network.AuthState.incomingPairRequest.value = null
-            }
+            },
+            backdrop = contentBackdrop
         )
     }
   }

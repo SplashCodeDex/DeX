@@ -33,6 +33,8 @@ import com.example.dex.R
 import com.example.dex.network.TransferHistory
 import com.example.dex.network.TransferRecord
 import com.example.dex.ui.components.FloatingTopAppBar
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,45 +50,72 @@ fun HistoryScreen(
         TransferHistory.refresh(context)
     }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        FloatingTopAppBar()
-
-        Text(
-            text = stringResource(R.string.history_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
+    // Screen-owned backdrop: captures this screen's content so the glass header
+    // samples it. Separate from the navbar's backdrop (which captures this whole
+    // screen) — the header must never sample a backdrop that captures it.
+    val contentBackdrop = rememberLayerBackdrop()
+    Box(modifier = modifier.fillMaxSize()) {
+        // ===== Backdrop source: this screen's content =====
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp)
-        )
-
-        if (items.isEmpty()) {
+                .fillMaxSize()
+                .layerBackdrop(contentBackdrop)
+        ) {
+            // Background so the backdrop layer is never empty
             Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
+
+            Column(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.history_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp)
+                    text = stringResource(R.string.history_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 96.dp, bottom = 8.dp)
                 )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(items, key = { it.id }) { record ->
-                    HistoryRow(record = record, onClick = { openRecord(context, record) })
+
+                if (items.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.history_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        // Rows scroll beneath the floating top bar and nav bar, but
+                        // the scroll range keeps them clear of the bars at the ends
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 144.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(items, key = { it.id }) { record ->
+                            HistoryRow(record = record, onClick = { openRecord(context, record) })
+                        }
+                    }
                 }
             }
         }
+
+        // ===== Glass header overlay — drawn AFTER the captured content =====
+        FloatingTopAppBar(
+            modifier = Modifier.align(Alignment.TopCenter),
+            backdrop = contentBackdrop
+        )
     }
 }
 

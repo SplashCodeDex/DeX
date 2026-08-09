@@ -25,7 +25,7 @@ import androidx.compose.ui.zIndex
 import com.example.dex.ui.components.glass.LiquidGlassConfig
 import com.example.dex.ui.components.glass.LiquidGlassPanel
 import com.example.dex.ui.components.glass.LiquidGlassPresets
-import com.kashif_e.backdrop.Backdrop
+import com.kyant.backdrop.Backdrop
 
 data class NavBarItem(
     val selectedIcon: ImageVector,

@@ -39,6 +39,10 @@ class WebSocketClientService(
 
     private var activeSocket: WebSocket? = null
     private var connectedFingerprint: String? = null
+
+    @Volatile
+    private var connectedViaWan = false
+
     private var serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Volatile
@@ -65,6 +69,14 @@ class WebSocketClientService(
             discoveryEngine.devices.collectLatest { devices ->
                 val pcDevice = findTargetPc(devices.values)
                 if (pcDevice != null && activeSocket == null) {
+                    connectToPC(pcDevice)
+                } else if (pcDevice != null && connectedViaWan && !pcDevice.viaWan &&
+                    pcDevice.info.fingerprint == connectedFingerprint) {
+                    // The PC we reached over WAN just appeared on the LAN: switch to the fast path
+                    Timber.i("PC appeared on LAN; switching from WAN to LAN")
+                    activeSocket?.close(1000, "Switching to LAN")
+                    activeSocket = null
+                    connectedViaWan = false
                     connectToPC(pcDevice)
                 }
             }
@@ -102,7 +114,8 @@ class WebSocketClientService(
                 protocol = "https",
                 download = false,
                 identityHash = null
-            )
+            ),
+            viaWan = true
         )
     }
 
@@ -119,8 +132,12 @@ class WebSocketClientService(
         val alias = java.net.URLEncoder.encode(getDeviceName(context), "UTF-8")
         val pcFingerprint = pcDevice.info.fingerprint
 
-        // Paired devices present their pairing token; unpaired devices connect tokenless
-        val token = AuthState.pairedTokens[pcFingerprint]
+        // Same-email devices are auto-trusted: the identity hash itself is the bearer token.
+        // Everything else presents the PIN-pairing token (or connects tokenless, unverified).
+        val identityHash = deviceConfig.identityHash
+        val pcIdentityHash = pcDevice.info.identityHash
+        val token = if (!identityHash.isNullOrEmpty() && identityHash == pcIdentityHash) identityHash
+                    else AuthState.pairedTokens[pcFingerprint]
         val tokenParam = if (!token.isNullOrEmpty()) "&token=${java.net.URLEncoder.encode(token, "UTF-8")}" else ""
 
         // The PC serves TLS on port 53317, so we must use wss:// (plain ws:// fails TLS negotiation)
@@ -129,12 +146,22 @@ class WebSocketClientService(
 
         val request = Request.Builder().url(url).build()
 
-        // Remember this PC so we reconnect to the same one after restarts
-        PcMemory.save(context, pcFingerprint, pcDevice.ip)
+        // Remember this PC so we reconnect to the same one after restarts — but only
+        // LAN addresses: a WAN connection must never overwrite the LAN IP memory
+        if (!pcDevice.viaWan) {
+            PcMemory.save(context, pcFingerprint, pcDevice.ip)
+        }
+        connectedViaWan = pcDevice.viaWan
 
         activeSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connectedFingerprint = pcFingerprint
+                // Same-email trust is permanent, not session-scoped: remember the device so
+                // future transfers and UI trust badges work without another handshake
+                if (token == identityHash && !identityHash.isNullOrEmpty()) {
+                    DeviceManager.savePairedFingerprint(pcFingerprint)
+                    DeviceManager.savePairedToken(pcFingerprint, token)
+                }
                 Timber.i("WebSocket connected to PC: ${pcDevice.ip}")
             }
 
@@ -147,6 +174,7 @@ class WebSocketClientService(
                 Timber.i("WebSocket closed: $code $reason")
                 activeSocket = null
                 connectedFingerprint = null
+                connectedViaWan = false
                 scheduleReconnect()
             }
 
@@ -154,6 +182,7 @@ class WebSocketClientService(
                 Timber.e(t, "WebSocket failure")
                 activeSocket = null
                 connectedFingerprint = null
+                connectedViaWan = false
                 scheduleReconnect()
             }
         })

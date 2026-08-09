@@ -50,7 +50,9 @@ data class BrowseFileDto(
 data class DiscoveredDevice(
     val ip: String,
     val info: RegisterDto,
-    val lastSeenTimestamp: Long = System.currentTimeMillis()
+    val lastSeenTimestamp: Long = System.currentTimeMillis(),
+    // True for the synthetic WAN target — its IP must never be treated as a LAN address
+    val viaWan: Boolean = false
 )
 @Serializable
 data class PairRequestDto(

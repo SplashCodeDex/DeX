@@ -24,12 +24,12 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.dex.ui.components.bubbleFluidity
-import com.kashif_e.backdrop.Backdrop
-import com.kashif_e.backdrop.drawBackdrop
-import com.kashif_e.backdrop.effects.blur
-import com.kashif_e.backdrop.effects.lens
-import com.kashif_e.backdrop.effects.vibrancy
-import com.kashif_e.backdrop.shadow.Shadow
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.shadow.Shadow
 
 /**
  * A reusable circular liquid-glass icon button.
@@ -72,9 +72,12 @@ fun LiquidGlassIconButton(
                     if (config.vibrancyEnabled) vibrancy()
                     blur((config.blurRadius * (1f - 0.5f * pressProgress)).toPx())
                     if (config.lensHeight > 0.dp && config.lensAmount > 0.dp) {
+                        // Resting refraction base + press boost
+                        val refraction = config.restRefraction + (1f - config.restRefraction) * pressProgress
                         lens(
-                            refractionHeight = (config.lensHeight * pressProgress).toPx(),
-                            refractionAmount = (config.lensAmount * pressProgress).toPx(),
+                            refractionHeight = (config.lensHeight * refraction).toPx(),
+                            refractionAmount = (config.lensAmount * refraction).toPx(),
+                            depthEffect = config.depthEffect,
                             chromaticAberration = config.chromaticAberration
                         )
                     }

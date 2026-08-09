@@ -7,12 +7,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
-import com.kashif_e.backdrop.Backdrop
-import com.kashif_e.backdrop.drawBackdrop
-import com.kashif_e.backdrop.effects.blur
-import com.kashif_e.backdrop.effects.lens
-import com.kashif_e.backdrop.effects.vibrancy
-import com.kashif_e.backdrop.shadow.Shadow
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.shadow.Shadow
 
 /**
  * A liquid glass panel — the glass counterpart to [com.example.dex.ui.components.DeXPanel].
@@ -43,6 +43,7 @@ fun LiquidGlassPanel(
                     lens(
                         refractionHeight = config.lensHeight.toPx(),
                         refractionAmount = config.lensAmount.toPx(),
+                        depthEffect = config.depthEffect,
                         chromaticAberration = config.chromaticAberration
                     )
                 }

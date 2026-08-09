@@ -72,7 +72,7 @@ class MainScreenViewModelTest {
     @Test
     fun `sendClipboard delegates to clientEngine and triggers callback with result`() = runTest(testDispatcher) {
         coEvery { 
-            mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99") 
+            mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99", null) 
         } returns true
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
@@ -85,7 +85,7 @@ class MainScreenViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(true, callbackResult)
-        coVerify { mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99") }
+        coVerify { mockClient.sendClipboard("192.168.1.100", 53317, "Hello Text", "fp_untrusted_99", null) }
     }
 
     @Test
