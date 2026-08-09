@@ -198,14 +198,6 @@ function Update-WpfUI {
     }
 
     $brushConverter = New-Object System.Windows.Media.BrushConverter
-    $qaAutoText = $script:wpfWindow.FindName("txtQAAuto")
-    if ($null -ne $qaAutoText) {
-        if ($script:AutoConnectEnabled) { 
-            $qaAutoText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "SuccessBrush")
-        } else { 
-            $qaAutoText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "PrimaryTextBrush")
-        }
-    }
     
     $connectedDevice = ($DevicesOutput | Where-Object { $_ -match ':5555\s+device' })
     if (-not $connectedDevice) { $connectedDevice = ($DevicesOutput | Where-Object { $_ -match '\bdevice\b' -and $_ -notmatch 'List of devices' }) }

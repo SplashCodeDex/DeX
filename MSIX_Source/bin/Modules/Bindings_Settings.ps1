@@ -181,6 +181,8 @@ if ($btnSettingsAbout) {
 # Google Sign-In button in settings (PC-side OAuth loopback flow)
 # Applies a fetched profile to the settings UI. UI thread only.
 function Apply-GoogleProfile($profile) {
+    $txtSub = $script:wpfWindow.FindName("txtSettingsSubtitle")
+    $txtGoogle = $script:wpfWindow.FindName("txtSettingsGoogleState")
     if ($profile -and $profile.email) {
         $txtName = $script:wpfWindow.FindName("txtProfileName")
         $txtEmail = $script:wpfWindow.FindName("txtProfileEmail")
@@ -189,6 +191,8 @@ function Apply-GoogleProfile($profile) {
         if ($txtName) { $txtName.Text = if ($profile.name) { $profile.name } else { $profile.email } }
         if ($txtEmail) { $txtEmail.Text = $profile.email }
         if ($btnSignOut) { $btnSignOut.Visibility = 'Visible' }
+        if ($txtSub) { $txtSub.Text = if ($profile.name) { $profile.name } else { $profile.email } }
+        if ($txtGoogle) { $txtGoogle.Text = "Signed in as $($profile.email)" }
         if ($avatar -and $profile.picture) {
             try {
                 $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
@@ -203,6 +207,8 @@ function Apply-GoogleProfile($profile) {
     } else {
         $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
         if ($btnSignOut) { $btnSignOut.Visibility = 'Collapsed' }
+        if ($txtSub) { $txtSub.Text = "DeX" }
+        if ($txtGoogle) { $txtGoogle.Text = "Trust all devices signed in with your email" }
     }
 }
 

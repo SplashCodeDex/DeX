@@ -827,90 +827,6 @@
 
 
 
-                    <!-- User 1 -->
-                    <Button x:Name="btnUser1" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            
-                            <Grid Width="38" Height="38" Margin="0,0,12,0">
-                                <Ellipse>
-                                    <Ellipse.Fill>
-                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User1Avatar.png" Stretch="UniformToFill" AlignmentY="Top" />
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                            </Grid>
-                            
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Ama Serwaa" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                <TextBlock Text="user2@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            
-                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
-                            <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        </Grid>
-                    </Button>
-
-                    <!-- User 2 -->
-                    <Button x:Name="btnUser2" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            
-                            <Grid Width="38" Height="38" Margin="0,0,12,0">
-                                <Ellipse>
-                                    <Ellipse.Fill>
-                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User2Avatar.png" Stretch="UniformToFill" AlignmentY="Top" />
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                            </Grid>
-                            
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Akua Donkor" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                <TextBlock Text="user1@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            
-                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
-                            <TextBlock Grid.Column="2" Text="&#xE7F8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        </Grid>
-                    </Button>
-
-                    <!-- User 3 -->
-                    <Button x:Name="btnUser3" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            
-                            <Grid Width="38" Height="38" Margin="0,0,12,0">
-                                <Ellipse>
-                                    <Ellipse.Fill>
-                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User3Avatar.jpg" Stretch="UniformToFill" AlignmentY="Top" />
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                            </Grid>
-                            
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Kwame Asante" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                <TextBlock Text="user3@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            
-                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
-                            <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        </Grid>
-                    </Button>
-                    
                     <!-- Dynamic Live Peers (Spawns indefinitely as mDNS peers connect) -->
                     <ItemsControl x:Name="icLivePeers">
                         <ItemsControl.ItemTemplate>
@@ -980,7 +896,6 @@
                         <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
                             <StackPanel x:Name="pinCodeContent" Visibility="Visible">
                                 <TextBlock x:Name="txtPinCode" Text="123456" FontSize="42" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                <TextBox x:Name="txtPinInput" Visibility="Collapsed" Width="150" FontSize="36" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Background="Transparent" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0,0,0,2" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Margin="0,10,0,0" MaxLength="5" CaretBrush="{DynamicResource PrimaryTextBrush}"/>
                                 <TextBlock x:Name="txtPinStatus" Text="Waiting for acceptance..." FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                 <ProgressBar x:Name="pbPinTimeout" Value="100" Maximum="100" Height="4" Margin="20,12,20,0" Foreground="{DynamicResource SecondaryBrush}" Background="Transparent" BorderThickness="0" />
                             </StackPanel>
@@ -1022,41 +937,6 @@
         </Border>
         
 
-        <Popup x:Name="popAvatar" StaysOpen="False" AllowsTransparency="True" Placement="Mouse" PopupAnimation="Fade">
-            <Border Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Margin="10">
-                <StackPanel MinWidth="190">
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Ellipse Width="48" Height="48" Margin="0,0,12,0">
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/ProfileAvatar.jpg" Stretch="UniformToFill" AlignmentY="Top" />
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="DeXStudios" FontSize="16" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <TextBlock Text="dexstudios@dex.net" FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" />
-                        </StackPanel>
-                    </Grid>
-                    <Separator Background="{DynamicResource AccentBrush}" Height="1" Margin="0,4,0,8" />
-                    
-                    <Button Name="btnPopTheme" Style="{StaticResource SpatialListItem}" Margin="0,2">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE790;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                            <TextBlock Text="Toggle Theme" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Name="btnQAAuto" Style="{StaticResource SpatialListItem}" Margin="0,2">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Name="txtQAAuto" Text="&#xE895;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                            <TextBlock Text="Auto Connect ADB" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-        </Popup>
     </Grid>
     </Border>
 </Window>
