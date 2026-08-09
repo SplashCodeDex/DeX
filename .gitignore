@@ -3,7 +3,18 @@ DeXShareTarget/bin/
 DeXShareTarget/obj/
 *.appx
 
+# Generated C# build output copied into MSIX_Source by PackMSIX.ps1.
+# The engine source under MSIX_Source/bin (Connect-Engine.ps1, Modules/*.ps1,
+# adb.exe, thru.exe, *.ico) is NOT ignored - it is real source.
 MSIX_Source/win-x64/
+MSIX_Source/runtimes/
+MSIX_Source/bin/win-x64/
+MSIX_Source/bin/runtimes/
+MSIX_Source/*.dll
+MSIX_Source/*.exe
+MSIX_Source/*.pdb
+MSIX_Source/*.deps.json
+MSIX_Source/*.runtimeconfig.json
 
 # Android build junk
 DeX/.gradle/

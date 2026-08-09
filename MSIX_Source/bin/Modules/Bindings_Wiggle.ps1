@@ -19,9 +19,16 @@ $script:wiggleReversalsThreshold = 3
 $script:wiggleGraceTicks = 0
 $script:wiggleLastTick = [DateTime]::Now
 $script:wiggleTimer = New-Object System.Windows.Threading.DispatcherTimer
-$script:wiggleTimer.Interval = [TimeSpan]::FromMilliseconds(20)
+# 50ms = 20Hz sampling: the wiggle detector's history window is sized for 50ms
+# ticks (20 samples = 1s). 20ms ran at 50Hz on the UI thread forever, which
+# fought the spatial menu's PopIn/Expand tweens and made them jank.
+$script:wiggleTimer.Interval = [TimeSpan]::FromMilliseconds(50)
 
 $script:wiggleTimer.Add_Tick({
+    # Feature off: skip all Win32 polling / history work. When disabled there is no
+    # openedViaWiggle window to auto-close, so an early return is safe.
+    if (-not $script:wiggleEnabled) { return }
+
     if ($script:wpfWindow.IsVisible) {
         if ($script:openedViaWiggle) {
             $btn = if ([Win32Input]::GetSystemMetrics(23) -ne 0) { 0x02 } else { 0x01 }

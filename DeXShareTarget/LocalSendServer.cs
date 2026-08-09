@@ -91,21 +91,21 @@ namespace DeXShareTarget
                 // Endpoint 1: HTTP/1.1 on TCP 53317 (Does not block UDP 53317)
                 // HTTP/1.1 only: OkHttp WebSockets (the Android client) cannot run over HTTP/2,
                 // and every other client (Ktor CIO, PowerShell, .NET HttpClient) is HTTP/1.1 anyway.
-                options.ListenAnyIP(53317, listenOptions =>
+                options.ListenAnyIP(DeXConstants.HttpsPort, listenOptions =>
                 {
                     listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
                     listenOptions.UseHttps(ServerCert);
                 });
                 
                 // Endpoint 2: HTTP/3 (QUIC) on UDP 53316 (Exclusive QUIC socket)
-                options.ListenAnyIP(53316, listenOptions =>
+                options.ListenAnyIP(DeXConstants.QuicPort, listenOptions =>
                 {
                     listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http3;
                     listenOptions.UseHttps(ServerCert);
                 });
                 
                 // Add a local unencrypted port for PowerShell GUI to query discovered devices easily
-                options.ListenLocalhost(53318);
+                options.ListenLocalhost(DeXConstants.LocalApiPort);
             });
 
             builder.Services.AddHostedService<DiscoveryBackgroundService>();
@@ -117,7 +117,7 @@ namespace DeXShareTarget
             {
                 context.Response.OnStarting(() =>
                 {
-                    context.Response.Headers["Alt-Svc"] = "h3=\":53316\"; ma=86400";
+                    context.Response.Headers["Alt-Svc"] = $"h3=\":{DeXConstants.QuicPort}\"; ma=86400";
                     return Task.CompletedTask;
                 });
                 await next();
