@@ -119,14 +119,20 @@ class FileShareManager(
             put("type", "browse-reply")
             putJsonObject("data") {
                 put("requestId", requestId)
-                putJsonObject("entries") { entries.forEach { e ->
-                    putJsonObject(e.uri) {
-                        put("name", e.name)
-                        put("isDirectory", e.isDirectory)
-                        put("size", e.size)
-                        put("thumb", thumbnailFor(e) ?: "")
+                putJsonObject("entries") {
+                    var thumbCount = 0
+                    entries.forEach { e ->
+                        putJsonObject(e.uri) {
+                            put("name", e.name)
+                            put("isDirectory", e.isDirectory)
+                            put("size", e.size)
+                            val isImage = !e.isDirectory && e.size in 1..THUMB_MAX_BYTES &&
+                                e.name.substringAfterLast('.', "").lowercase() in IMAGE_EXTS
+                            val thumb = if (isImage && thumbCount < THUMB_CAP) { thumbCount++; thumbnailFor(e) } else null
+                            put("thumb", thumb ?: "")
+                        }
                     }
-                } }
+                }
             }
         }.toString())
     }
@@ -211,6 +217,9 @@ class FileShareManager(
         val failed = ConcurrentHashMap<String, String>()
         val semaphore = Semaphore(MAX_CONCURRENT_UPLOADS)
         var cancelled = false
+
+        // Hold a foreground service so Android doesn't kill the process mid-pull.
+        PullForegroundService.start(context, requestId, fileMeta.size)
 
         coroutineScope {
             val jobs = fileMeta.map { (key, m) ->
@@ -302,6 +311,9 @@ class FileShareManager(
     }
 
     private fun sendPullReply(requestId: String, saved: List<String>, failed: List<Pair<String, String>>, cancelled: Boolean) {
+        cancelledRequests.remove(requestId)
+        lastProgressReport.remove(requestId)
+        PullForegroundService.stop(context)
         // Final progress frame so the PC can close the dock with the terminal state.
         send(buildJsonObject {
             put("type", "pull-progress")
@@ -368,6 +380,7 @@ class FileShareManager(
         const val MAX_FILE_RETRIES = 2
         const val THUMB_SIZE = 128
         const val THUMB_MAX_BYTES = 512L * 1024L
+        const val THUMB_CAP = 30
         val IMAGE_EXTS = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
     }
 }

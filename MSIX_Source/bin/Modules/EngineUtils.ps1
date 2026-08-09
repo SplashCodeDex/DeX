@@ -308,7 +308,8 @@ function Load-Directory($dirPath) {
                             $name = $prop.Value.name
                             $isDir = [bool]$prop.Value.isDirectory
                             $size = [long]$prop.Value.size
-                            $script:phoneFileMeta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir }
+                            $thumb = if ($prop.Value.thumb) { $prop.Value.thumb } else { $null }
+                            $script:phoneFileMeta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir; Thumb = $thumb }
                             if ($isDir) { $lines += "$name/" } else { $lines += $name }
                         }
                     }
@@ -320,6 +321,11 @@ function Load-Directory($dirPath) {
         } else {
             # Unknown/non-SAF remote path (no longer used by File Explorer) — empty listing
             $lines = @()
+        }
+
+        # Sort phone listings: folders first, then files, alphabetically (SAF returns unsorted).
+        if ($dirPath.StartsWith("content://") -and $lines.Count -gt 0) {
+            $lines = @($lines | Sort-Object @{Expression = { $_ -notlike '*/' }}, @{Expression = { $_ }})
         }
         
         # Edge Case 5: Empty Folder State Toggle
@@ -358,8 +364,14 @@ function Load-Directory($dirPath) {
             } elseif ($phoneMeta -and -not $phoneMeta.IsDir) {
                 Format-FileSize $phoneMeta.Size
             } else { "" }
+            $thumb = $null
+            $noThumb = 'Visible'
+            if ($phoneMeta -and $phoneMeta.Thumb) {
+                $thumb = Convert-PhoneThumb $phoneMeta.Thumb
+                if ($thumb) { $noThumb = 'Collapsed' }
+            }
             $item = New-Object System.Windows.Controls.ListBoxItem
-            $item.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $null; NoThumb = 'Visible' }
+            $item.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $thumb; NoThumb = $noThumb }
             $item.ContentTemplate = $template
             $item.Tag = $full
             
@@ -411,6 +423,22 @@ function Format-FileSize([long]$bytes) {
     if ($bytes -ge 1MB) { return "{0:N1} MB" -f ($bytes / 1MB) }
     if ($bytes -ge 1KB) { return "{0:N0} KB" -f ($bytes / 1KB) }
     return "$bytes B"
+}
+
+# Decodes a phone-provided base64 JPEG thumbnail into a WPF BitmapSource for the file list.
+function Convert-PhoneThumb([string]$base64) {
+    try {
+        $bytes = [System.Convert]::FromBase64String($base64)
+        $ms = New-Object System.IO.MemoryStream(,$bytes)
+        $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+        $bmp.BeginInit()
+        $bmp.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $bmp.StreamSource = $ms
+        $bmp.EndInit()
+        $bmp.Freeze()
+        $ms.Dispose()
+        return $bmp
+    } catch { return $null }
 }
 
 # Resolves the connected phone's LAN IP without ADB: prefer the local engine's first

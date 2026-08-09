@@ -191,12 +191,8 @@ if ($btnSettingsAbout) {
 }
 
 # Google Sign-In button in settings (PC-side OAuth loopback flow)
-function Update-ProfileUI {
-    $profile = $null
-    try {
-        $profile = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-profile" -TimeoutSec 5
-    } catch {}
-
+# Applies a fetched profile to the settings UI. UI thread only.
+function Apply-GoogleProfile($profile) {
     if ($profile -and $profile.email) {
         $txtName = $script:wpfWindow.FindName("txtProfileName")
         $txtEmail = $script:wpfWindow.FindName("txtProfileEmail")
@@ -215,19 +211,31 @@ function Update-ProfileUI {
                 $avatar.Fill = New-Object System.Windows.Media.ImageBrush($bitmap)
             } catch {}
         }
-        return $true
+        $script:profileApplied = $true
     } else {
         $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
         if ($btnSignOut) { $btnSignOut.Visibility = 'Collapsed' }
-        return $false
     }
+}
+
+# Non-blocking profile refresh: fetch in a background job, apply on the next
+# retry-timer tick (UI thread). The old synchronous REST call (5s timeout)
+# could freeze the whole window — including the spatial menu.
+function Update-ProfileUI {
+    $null = Start-Job -Name "ProfileFetch" -ScriptBlock {
+        param($uri)
+        try {
+            $p = Invoke-RestMethod -Uri $uri -TimeoutSec 5 -ErrorAction Stop
+            [pscustomobject]@{ Email = $p.email; Name = $p.name; Picture = $p.picture }
+        } catch { $null }
+    } -ArgumentList "http://127.0.0.1:53318/local/settings/google-profile"
 }
 
 $btnSettingsSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
 if ($btnSettingsSignOut) {
     $btnSettingsSignOut.Add_Click({
         try {
-            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/signout" -Method Post | Out-Null
+            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/signout" -Method Post -TimeoutSec 5 | Out-Null
             Update-ProfileUI
             Show-Toast -Title "Signed Out" -Message "This PC no longer trusts same-email devices automatically."
         } catch {
@@ -239,22 +247,88 @@ if ($btnSettingsSignOut) {
 $btnSettingsGoogleSignIn = $script:wpfWindow.FindName("btnSettingsGoogleSignIn")
 if ($btnSettingsGoogleSignIn) {
     $btnSettingsGoogleSignIn.Add_Click({
-        try {
-            Show-Toast -Title "Google Sign-In" -Message "Opening browser — approve the account to trust all your devices."
-            Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/settings/google-signin" -TimeoutSec 240 | Out-Null
-            Update-ProfileUI
-        } catch {
-            Show-Toast -Title "Google Sign-In" -Message "Could not reach the local engine."
+        # Non-blocking: the OAuth flow can take minutes (browser approval), so it
+        # runs in a background job and a poll timer applies the outcome. The old
+        # synchronous call froze the whole window for up to 240s.
+        if (Get-Job -Name "GoogleSignIn" -ErrorAction SilentlyContinue) {
+            Show-Toast -Title "Google Sign-In" -Message "Sign-in already in progress — check your browser."
+            return
         }
+        Show-Toast -Title "Google Sign-In" -Message "Opening browser — approve the account to trust all your devices."
+        $null = Start-Job -Name "GoogleSignIn" -ScriptBlock {
+            param($uri)
+            try {
+                $html = Invoke-RestMethod -Uri $uri -TimeoutSec 240 -ErrorAction Stop
+                # The endpoint always answers 200 with an HTML page; the text tells
+                # us whether the user actually approved.
+                if ($html -match 'Signed in as') { 'signed-in' }
+                elseif ($html -match 'not configured') { 'not-configured' }
+                else { 'cancelled' }
+            } catch { $null }
+        } -ArgumentList "http://127.0.0.1:53318/local/settings/google-signin"
     })
 }
 
+# Polls the Google Sign-In job and applies the outcome on the UI thread.
+$script:googleSignInTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:googleSignInTimer.Interval = [TimeSpan]::FromSeconds(2)
+$script:googleSignInTimer.Add_Tick({
+    $job = Get-Job -Name "GoogleSignIn" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $job) { return }
+    if ($job.State -ne 'Completed') {
+        # Clean up failed/stopped jobs so a later click can start a fresh flow
+        if ($job.State -eq 'Failed' -or $job.State -eq 'Stopped') {
+            Remove-Job $job -Force
+            Show-Toast -Title "Google Sign-In" -Message "Could not reach the local engine."
+        }
+        return
+    }
+    $status = Receive-Job $job -ErrorAction SilentlyContinue
+    Remove-Job $job -Force
+    switch ($status) {
+        'signed-in' {
+            Show-Toast -Title "Google Sign-In" -Message "Signed in — same-email devices are now auto-trusted."
+            Update-ProfileUI
+        }
+        'not-configured' { Show-Toast -Title "Google Sign-In" -Message "Google Sign-In is not configured on this PC." }
+        'cancelled'      { Show-Toast -Title "Google Sign-In" -Message "Sign-in failed or was cancelled." }
+        default          { Show-Toast -Title "Google Sign-In" -Message "Could not reach the local engine." }
+    }
+})
+$script:googleSignInTimer.Start()
+
 # Populate the profile placeholder with the last signed-in Google account.
-# Retry: the local engine may still be starting when the bindings load.
-for ($i = 0; $i -lt 6; $i++) {
-    if (Update-ProfileUI) { break }
-    Start-Sleep -Seconds 2
-}
+# The engine may still be starting when the bindings load, so retry off the UI
+# thread — the old blocking loop (6 × (5s timeout + 2s sleep)) could freeze the
+# whole window for tens of seconds at startup.
+$script:profileApplied = $false
+$script:profileRetryCount = 0
+$script:profileRetryTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:profileRetryTimer.Interval = [TimeSpan]::FromSeconds(2)
+$script:profileRetryTimer.Add_Tick({
+    # Reap a finished fetch job (this tick runs on the UI thread, so applying
+    # the result here is safe).
+    $done = Get-Job -Name "ProfileFetch" -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Completed' } | Select-Object -First 1
+    if ($done) {
+        $profile = Receive-Job $done -ErrorAction SilentlyContinue
+        Remove-Job $done -Force
+        if ($null -ne $profile) { Apply-GoogleProfile $profile }
+    }
+    if ($script:profileApplied) {
+        $script:profileRetryTimer.Stop()
+        return
+    }
+    $script:profileRetryCount++
+    if ($script:profileRetryCount -gt 6) {
+        $script:profileRetryTimer.Stop()
+        return
+    }
+    if (-not (Get-Job -Name "ProfileFetch" -ErrorAction SilentlyContinue)) {
+        Update-ProfileUI
+    }
+})
+Update-ProfileUI
+$script:profileRetryTimer.Start()
 
 # Reset Identity & Trust button in settings
 $btnSettingsResetIdentity = $script:wpfWindow.FindName("btnSettingsResetIdentity")

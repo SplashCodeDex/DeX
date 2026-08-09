@@ -18,6 +18,163 @@ function Invoke-DexEndpoint([string]$Name, [string]$Ip, $Extra) {
         -Body ($body | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
 }
 
+# --- Pull progress dock (live progress + cancel for pulling files off the phone) ---
+# Multiple pulls can overlap safely: each requestId gets its own poll task; the dock shows
+# the most recently started pull, and Cancel targets that pull.
+$script:activePulls = @{}   # requestId -> @{ Task; Seq; OutDir; Pct; Status }
+$script:pullSeq = 0
+
+function Set-PullProgressUi([int]$Pct, [string]$Status) {
+    $dock = $script:wpfWindow.FindName("dockPullProgress")
+    $bar = $script:wpfWindow.FindName("prgPullProgress")
+    $txt = $script:wpfWindow.FindName("txtPullTitle")
+    if ($null -eq $dock) { return }
+    if ($dock.Visibility -eq 'Collapsed') {
+        $dock.Visibility = 'Visible'
+        $dock.Opacity = 0
+        $dock.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+        $da = New-Object System.Windows.Media.Animation.DoubleAnimation
+        $da.To = 1.0; $da.Duration = [TimeSpan]::FromMilliseconds(200)
+        $dock.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $da)
+    }
+    if ($null -ne $txt) { $txt.Text = $Status }
+    if ($null -ne $bar) { $bar.Value = $Pct }
+}
+
+function Hide-PullProgressDock {
+    $dock = $script:wpfWindow.FindName("dockPullProgress")
+    if ($null -eq $dock) { return }
+    $da = New-Object System.Windows.Media.Animation.DoubleAnimation
+    $da.To = 0.0; $da.Duration = [TimeSpan]::FromMilliseconds(250)
+    $da.Completed = { $dock.Visibility = 'Collapsed' }.GetNewClosure()
+    $dock.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $da)
+}
+
+# The requestId whose progress is shown in the shared dock (the most recently started one).
+function Get-ActivePullId {
+    $best = $null; $bestSeq = -1
+    foreach ($k in @($script:activePulls.Keys)) {
+        if ($script:activePulls[$k].Seq -gt $bestSeq) { $best = $k; $bestSeq = $script:activePulls[$k].Seq }
+    }
+    return $best
+}
+
+function Show-PullDockIfActive([string]$RequestId, [int]$Pct, [string]$Status) {
+    if ($RequestId -ne (Get-ActivePullId)) { return }
+    $wpf = $script:wpfWindow
+    if ($null -eq $wpf) { return }
+    $pctCopy = $Pct; $statusCopy = $Status
+    $wpf.Dispatcher.Invoke([Action]{ Set-PullProgressUi -Pct $pctCopy -Status $statusCopy }) | Out-Null
+}
+
+# Re-render the dock for the current active pull, or hide it when none are running.
+function Refresh-PullDock {
+    $active = Get-ActivePullId
+    if ($null -ne $active) {
+        $e = $script:activePulls[$active]
+        Show-PullDockIfActive $active ([int]$e.Pct) $e.Status
+    } else {
+        $wpf = $script:wpfWindow
+        if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Hide-PullProgressDock }) | Out-Null }
+    }
+}
+
+# Reads the phone's terminal reply and shows an accurate completion toast. The phone's own
+# cancelled flag wins over the local one so a cancel that races completion reports correctly.
+function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
+    $st = $null
+    try { $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-status?requestId=$RequestId" -TimeoutSec 3 -ErrorAction Stop } catch {}
+    if ($null -eq $st) { return }
+    $result = $st.result
+    $cancelled = $false; $savedN = 0; $failedN = 0
+    if ($result) {
+        $cancelled = [bool]$result.cancelled
+        if ($result.saved) { $savedN = @($result.saved.PSObject.Properties).Count }
+        if ($result.failed) { $failedN = @($result.failed.PSObject.Properties).Count }
+    } else {
+        $cancelled = [bool]$st.cancelled
+    }
+    $wpf = $script:wpfWindow
+    if ($null -eq $wpf) { return }
+    $cCopy = $cancelled; $sCopy = $savedN; $fCopy = $failedN; $oCopy = $OutDir
+    $wpf.Dispatcher.Invoke([Action]{
+        if ($cCopy) {
+            Show-Toast -Title "Pull Cancelled" -Message "The file pull was cancelled."
+        } elseif ($fCopy -gt 0) {
+            Show-Toast -Title "Pull Completed" -Message "$sCopy file(s) pulled, $fCopy failed."
+        } else {
+            Show-Toast -Title "Pull Complete" -Message "$sCopy file(s) pulled to Downloads\DeX"
+        }
+        try { Start-Process "explorer.exe" -ArgumentList "`"$oCopy`"" } catch {}
+    }) | Out-Null
+}
+
+# Polls one pull's status on a background thread. The deadline is activity-based: it only
+# gives up when the phone stops sending progress (or a hard cap is hit), never on a fixed cap.
+function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
+    $script:pullSeq++
+    $script:activePulls[$RequestId] = @{ Task = $null; Seq = $script:pullSeq; OutDir = $OutDir; Pct = 0; Status = "Pulling files from phone..." }
+    $script:activePulls[$RequestId].Task = [System.Threading.Tasks.Task]::Run([Action]{
+        $rid = $RequestId
+        $lastActivity = Get-Date
+        $hardDeadline = (Get-Date).AddMinutes(30)
+        $finished = $false
+        while ((Get-Date) -lt $hardDeadline) {
+            $st = $null
+            try { $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-status?requestId=$rid" -TimeoutSec 3 -ErrorAction Stop } catch {}
+            if ($null -eq $st) { Start-Sleep -Milliseconds 300; continue }
+
+            $done = [bool]$st.done
+            if (-not $done -and $st.progress) {
+                # Live progress extends the activity window and drives the dock.
+                $lastActivity = Get-Date
+                $total = [long]$st.progress.totalBytes
+                $pct = if ($total -gt 0) { [int]([long]$st.progress.sentBytes * 100 / $total) } else { 0 }
+                if ($pct -gt 99) { $pct = 99 }
+                $status = "Pulling {0} of {1} files..." -f [int]$st.progress.doneFiles, [int]$st.progress.totalFiles
+                $script:activePulls[$rid].Pct = $pct
+                $script:activePulls[$rid].Status = $status
+                Show-PullDockIfActive $rid $pct $status
+            } elseif ($done) {
+                $finished = $true
+                $script:activePulls[$rid].Pct = 100
+                $script:activePulls[$rid].Status = "Pull finished"
+                break
+            }
+
+            # Activity-based stall: the phone went quiet (disconnected/Doze) — stop and report.
+            if ((Get-Date) - $lastActivity -gt [TimeSpan]::FromSeconds(120)) { break }
+
+            Start-Sleep -Milliseconds 300
+        }
+
+        $outDir = $script:activePulls[$rid].OutDir
+        $script:activePulls.Remove($rid) | Out-Null
+
+        if ($finished) {
+            Show-PullCompleteToast $rid $outDir
+        } else {
+            $wpf = $script:wpfWindow
+            if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete." }) | Out-Null }
+        }
+        # Promote the next active pull into the dock, or hide it when all are done.
+        $wpf = $script:wpfWindow
+        if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Refresh-PullDock }) | Out-Null }
+    }.GetNewClosure())
+}
+
+$script:btnCancelPull = $script:wpfWindow.FindName("btnCancelPull")
+if ($script:btnCancelPull) {
+    $script:btnCancelPull.Add_Click({
+        $active = Get-ActivePullId
+        if ($active) {
+            try {
+                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull-cancel?requestId=$active" -Method Post -TimeoutSec 3 -ErrorAction SilentlyContinue | Out-Null
+            } catch {}
+        }
+    })
+}
+
 
 $script:btnUpDir.Add_Click({
     $curr = $script:currentDirPath
@@ -173,7 +330,8 @@ $script:lbFiles.Add_MouseDoubleClick({
         }
         
         # Pull selected phone files: ask the phone to push them back to the PC over the
-        # WebSocket (they land in Downloads\DeX via the standard upload path).
+        # WebSocket (they land in Downloads\DeX via the standard upload path). Async so we
+        # can show live progress and allow cancel.
         $pullIp = Get-FileExplorerTargetIp
         $pullFiles = @($fileItems | ForEach-Object {
             $n = $_.Content.Name
@@ -182,17 +340,16 @@ $script:lbFiles.Add_MouseDoubleClick({
             @{ name = $n; uri = $_.Content.FullPath; size = $sz }
         })
         
-        $actionPullBg = {
-            param($targetIp, $fileList, $out)
-            try {
-                $body = @{ ip = $targetIp; files = @($fileList) } | ConvertTo-Json -Depth 10
-                Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 200 -ErrorAction Stop | Out-Null
-                Start-Process "explorer.exe" -ArgumentList "`"$out`""
-            } catch {}
-        }
-        
         if ($pullIp) {
-            Start-Job -ScriptBlock $actionPullBg -ArgumentList $pullIp, $pullFiles, $outDir
+            try {
+                $body = @{ ip = $pullIp; files = @($pullFiles) } | ConvertTo-Json -Depth 10
+                $start = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/dex/pull" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10 -ErrorAction Stop
+                if ($start.requestId) {
+                    Start-PullProgressPoll -RequestId $start.requestId -OutDir $outDir
+                }
+            } catch {
+                Show-Toast -Title "Pull Failed" -Message "Could not start pulling from the phone."
+            }
         }
         
         $dispName = if ($script:customDownloadPath) { 

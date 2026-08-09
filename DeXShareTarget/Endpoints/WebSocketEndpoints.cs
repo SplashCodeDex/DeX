@@ -13,27 +13,6 @@ namespace DeXShareTarget.Endpoints
 {
     public static class WebSocketEndpoints
     {
-        /// <summary>Asks the local user to confirm an unverified device claiming this PC's identity.</summary>
-        private static async Task<bool> PromptIdentityChangeAsync(string? senderAlias, string email)
-        {
-            try
-            {
-                var tcs = new TaskCompletionSource<bool>();
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var result = System.Windows.MessageBox.Show(
-                        $"Device \"{senderAlias ?? "Unknown"}\" wants to sign this PC in as {email}.\n\nAllow it to become your trusted identity?",
-                        "DeX — Identity Change",
-                        System.Windows.MessageBoxButton.YesNo,
-                        System.Windows.MessageBoxImage.Question);
-                    tcs.TrySetResult(result == System.Windows.MessageBoxResult.Yes);
-                });
-                return await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(60))).ContinueWith(t =>
-                    t.Result == tcs.Task && tcs.Task.IsCompletedSuccessfully && tcs.Task.Result);
-            }
-            catch { return false; }
-        }
-
         // Mirrors Android's WifiInfo.RSSI_INVALID
         private const int WifiInfoRssiInvalid = -127;
 
@@ -252,43 +231,6 @@ namespace DeXShareTarget.Endpoints
 
                     var relayReply = JsonSerializer.Serialize(new { type = ok ? "relay-started" : "relay-error", data = new { pushed = ok, reason } }, options);
                     await WebSocketConnectionManager.SendAsync(fingerprint, relayReply);
-                }
-                else if (type == "set-email" && root.TryGetProperty("data", out var emailData))
-                {
-                    // A phone sign-in propagates identity + profile to this PC so every same-email
-                    // device becomes auto-trusted here too. SECURITY: an unverified device must be
-                    // confirmed locally before it may claim this PC's identity.
-                    var email = emailData.TryGetProperty("email", out var em) ? em.GetString() : "";
-                    var name = emailData.TryGetProperty("name", out var nm) ? nm.GetString() : "";
-                    var picture = emailData.TryGetProperty("picture", out var pc) ? pc.GetString() : "";
-                    var googleSub = emailData.TryGetProperty("sub", out var sb) ? sb.GetString() : "";
-
-                    if (!string.IsNullOrWhiteSpace(email))
-                    {
-                        var allowed = WebSocketConnectionManager.IsVerified(fingerprint);
-                        if (!allowed)
-                        {
-                            // Unverified device claiming this PC's identity: ask the local user
-                            allowed = await PromptIdentityChangeAsync(alias, email);
-                        }
-                        if (allowed)
-                        {
-                            IdentityManager.SetEmail(email.Trim());
-                            if (!string.IsNullOrEmpty(googleSub)) IdentityManager.SetGoogleSub(googleSub);
-                            if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(picture))
-                            {
-                                GoogleOAuth.SaveProfile(new GoogleOAuth.GoogleProfile(email.Trim(), name ?? "", picture ?? "", googleSub ?? ""));
-                            }
-                            Console.WriteLine($"[WS] Email identity set by {fingerprint}: {email}");
-                            await WebSocketConnectionManager.SendAsync(fingerprint,
-                                System.Text.Json.JsonSerializer.Serialize(new { type = "identity-accepted" },
-                                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[WS] Identity change rejected for {fingerprint}");
-                        }
-                    }
                 }
                 else if (type == "telemetry" && root.TryGetProperty("data", out var telemetryData))
                 {

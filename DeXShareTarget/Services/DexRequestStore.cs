@@ -21,14 +21,21 @@ namespace DeXShareTarget.Services
             public bool Done { get; private set; }
             public bool Cancelled { get; private set; }
             public DateTime CreatedAt { get; } = DateTime.UtcNow;
+            public DateTime? DoneAt { get; private set; }
             private readonly object _lock = new();
 
             public void SetProgress(JsonElement p) { lock (_lock) { Progress = p.Clone(); } }
-            public void Complete(JsonElement r) { lock (_lock) { Result = r.Clone(); Done = true; } }
+            public void Complete(JsonElement r) { lock (_lock) { Result = r.Clone(); Done = true; DoneAt = DateTime.UtcNow; } }
             public void Cancel() { lock (_lock) { Cancelled = true; } }
         }
 
         private static readonly ConcurrentDictionary<string, DexState> _states = new();
+
+        // Completed states live a little longer so the poller can read the final result,
+        // then are dropped. Abandoned (never-replied) requests are reaped on a long TTL so
+        // a crashed phone can't leak memory forever.
+        private static readonly TimeSpan CompletedTtl = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan PendingTtl = TimeSpan.FromMinutes(10);
 
         /// <summary>Registers a new pending request and returns its id.</summary>
         public static string NewPending(string type)
@@ -58,7 +65,21 @@ namespace DeXShareTarget.Services
 
         public static DexState? GetState(string id)
         {
-            _states.TryGetValue(id, out var s);
+            if (!_states.TryGetValue(id, out var s)) return null;
+            var now = DateTime.UtcNow;
+            if (s.Done)
+            {
+                if (s.DoneAt.HasValue && now - s.DoneAt.Value > CompletedTtl)
+                {
+                    _states.TryRemove(id, out _);
+                    return null;
+                }
+            }
+            else if (now - s.CreatedAt > PendingTtl)
+            {
+                _states.TryRemove(id, out _);
+                return null;
+            }
             return s;
         }
 

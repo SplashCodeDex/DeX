@@ -41,7 +41,6 @@ fun FloatingTopAppBar(
 
     // Signed-in Google profile: the avatar button becomes the live account picture
     val deviceConfig: DeviceConfig = koinInject()
-    val webSocketClientService: WebSocketClientService = koinInject()
     val profileName by deviceConfig.profileNameFlow.collectAsState()
     val profilePicture by deviceConfig.profilePictureFlow.collectAsState()
     val emailText by deviceConfig.emailFlow.collectAsState()
@@ -53,7 +52,6 @@ fun FloatingTopAppBar(
         val account = GoogleSignInManager.handleResult(result.data)
         val email = account?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
         if (email != null) {
-            GoogleSignInManager.pushIdentityToPc(webSocketClientService, deviceConfig)
             Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()

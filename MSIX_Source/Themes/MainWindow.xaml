@@ -201,6 +201,23 @@
                     <Button Name="btnChangeDownloadPath" Content="Change" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryBrush}" Background="Transparent" BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
+
+            <!-- Pull Progress Dock (PC File Explorer: pulling files off the phone) -->
+            <Border Name="dockPullProgress" Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,55" Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="16" Padding="14,10" Visibility="Collapsed" Opacity="0" Width="360" RenderTransformOrigin="0.5,1">
+                <Border.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="pullDockScale" ScaleX="0.85" ScaleY="0.85" />
+                        <TranslateTransform x:Name="pullDockTrans" Y="25" />
+                    </TransformGroup>
+                </Border.RenderTransform>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Name="txtPullTitle" Text="Pulling files from phone..." FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Name="btnCancelPull" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Background="Transparent" BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ProgressBar Name="prgPullProgress" Height="4" Minimum="0" Maximum="100" Value="0" Foreground="{DynamicResource SecondaryBrush}" Background="{DynamicResource PrimaryBrush}" BorderThickness="0" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Settings Panel (left side, hidden by default, toggled by avatar click) -->

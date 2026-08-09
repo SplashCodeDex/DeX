@@ -276,17 +276,6 @@ class WebSocketClientService(
         })
     }
 
-    /** Drops the current connection and immediately reconnects with the fresh identity token. */
-    fun reconnectNow() {
-        if (!isRunning) return
-        activeSocket?.close(1000, "Identity updated")
-        activeSocket = null
-        _connectedFingerprint = null
-        connectedViaWan = false
-        connectedIp = null
-        findTargetPc(discoveryEngine.devices.value.values)?.let { connectToPC(it) }
-    }
-
     private fun scheduleReconnect() {
         // Simple backoff before trying again; the collectLatest block also retries on new discovery
         serviceScope.launch {

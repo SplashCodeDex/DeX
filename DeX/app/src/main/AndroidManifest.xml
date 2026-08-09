@@ -44,6 +44,11 @@
             android:foregroundServiceType="connectedDevice|dataSync|mediaProjection" />
 
         <service
+            android:name=".network.PullForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false"

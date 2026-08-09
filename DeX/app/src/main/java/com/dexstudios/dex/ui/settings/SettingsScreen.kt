@@ -100,7 +100,8 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Google Sign-In: verified email identity, propagated to the PC over the WebSocket
+                    // Google Sign-In: verified email identity for THIS device only.
+                    // The PC signs in independently — no cross-platform auto sign-in.
                     val context = androidx.compose.ui.platform.LocalContext.current
                     val googleLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
                         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
@@ -108,7 +109,6 @@ fun SettingsScreen(
                         val account = com.dexstudios.dex.network.GoogleSignInManager.handleResult(result.data)
                         val email = account?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
                         if (email != null) {
-                            com.dexstudios.dex.network.GoogleSignInManager.pushIdentityToPc(webSocketClientService, deviceConfig)
                             Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
                         } else {
                             Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
