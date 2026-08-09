@@ -67,20 +67,30 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
-        }
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    // Trigger permissions from the UI flow
+    lifecycleScope.launch {
+        com.dexstudios.dex.network.PermissionManager.requestNearby.collect {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
         }
     }
-    
+    lifecycleScope.launch {
+        com.dexstudios.dex.network.PermissionManager.requestNotifications.collect {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+    lifecycleScope.launch {
+        com.dexstudios.dex.network.PermissionManager.requestFolder.collect {
+            downloadsDexGrantLauncher.launch(null)
+        }
+    }
+
     // Handle grant requests triggered from the network layer (incoming transfer)
     if (intent?.getBooleanExtra("REQUEST_DOWNLOADS_DEX_GRANT", false) == true) {
         downloadsDexGrantLauncher.launch(null)
@@ -88,7 +98,7 @@ class MainActivity : ComponentActivity() {
     if (intent?.getBooleanExtra("REQUEST_SHARED_FOLDER_GRANT", false) == true) {
         sharedFolderGrantLauncher.launch(null)
     }
-    
+
     // Start the DeX networking service
     val serviceIntent = android.content.Intent(this, com.dexstudios.dex.network.DexService::class.java)
     startForegroundService(serviceIntent)

@@ -11,19 +11,40 @@ namespace DeXShareTarget.Endpoints
 {
     public static partial class LocalSendEndpoints
     {
+        private static bool IsLanAddress(string ip)
+        {
+            // A phone on the same LAN reports a private-range address. WAN devices
+            // (same-email relay) expose their public address instead, so this cleanly
+            // separates LAN browsing from WAN-only history.
+            if (string.IsNullOrEmpty(ip)) return false;
+            if (ip == "127.0.0.1" || ip == "::1") return true;
+            if (!System.Net.IPAddress.TryParse(ip, out var addr)) return false;
+            if (System.Net.IPAddress.IsLoopback(addr)) return true;
+            if (addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+            var b = addr.GetAddressBytes();
+            return b[0] == 10
+                || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
+                || (b[0] == 192 && b[1] == 168)
+                || (b[0] == 169 && b[1] == 254); // link-local fallback
+        }
+
         /// <summary>Registers the device-discovery and pairing endpoints used by the PowerShell GUI.</summary>
         public static void MapLocalDeviceEndpoints(this WebApplication app)
         {
             // Local API for PowerShell to read discovered devices
             app.MapGet("/local/devices", () => 
             {
-                // Clean up stale
-                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                foreach (var k in DiscoveryBackgroundService.Devices.Keys)
-                {
-                    if (now - DiscoveryBackgroundService.Devices[k].LastSeen > 10000)
-                        DiscoveryBackgroundService.Devices.TryRemove(k, out _);
-                }
+            // Clean up stale
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            foreach (var k in DiscoveryBackgroundService.Devices.Keys)
+            {
+                // Keep devices with a live WebSocket (WAN same-email phones stay listed
+                // even though nothing re-discovers them over mDNS) — they must remain
+                // clickable for Transfer History.
+                if (now - DiscoveryBackgroundService.Devices[k].LastSeen > 10000 &&
+                    !WebSocketConnectionManager.HasConnection(k))
+                    DiscoveryBackgroundService.Devices.TryRemove(k, out _);
+            }
                 return Results.Json(DiscoveryBackgroundService.Devices.Values.Select(d =>
                 {
                     var wifi = TelemetryStore.GetWifi(d.Info.Fingerprint);
@@ -34,6 +55,11 @@ namespace DeXShareTarget.Endpoints
                         d.LastSeen,
                         d.IsPaired,
                         d.IsAutoTrusted,
+                        // File Explorer eligibility signals: the phone must have a live
+                        // WebSocket AND be on the LAN. WAN (same-email) devices get
+                        // Transfer History only — remote SAF browsing is LAN-scoped.
+                        IsOnline = WebSocketConnectionManager.HasConnection(d.Info.Fingerprint),
+                        IsLan = IsLanAddress(d.Ip),
                         Battery = TelemetryStore.GetBattery(d.Info.Fingerprint),
                         WifiSsid = wifi?.Ssid,
                         WifiRssi = wifi?.Rssi

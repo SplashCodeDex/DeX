@@ -40,6 +40,12 @@ public class ThumbHelper {
 $script:thumbCache = [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new()
 $script:thumbCacheMax = 200
 
+# Directory-navigation state (UI thread only): a monotonically increasing sequence number
+# so a stale async SAF browse completion can detect it was superseded, and a flag that
+# keeps the Load-Directory reentrancy guard armed while a phone browse is in flight.
+$script:dirLoadSeq = 0
+$script:asyncBrowsePending = $false
+
 function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr) {
     if ($isDir -or -not ("ThumbHelper" -as [type])) { return }
 
@@ -59,7 +65,7 @@ function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr
             $uiAction = [System.Action]{
                 $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $cached; NoThumb = 'Collapsed' }
             }
-            $script:wpfWindow.Dispatcher.Invoke($uiAction)
+            $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
         }
         return
     }
@@ -82,12 +88,18 @@ function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr
             if ($bs) {
                 if ($cacheKey -and -not $script:thumbCache.ContainsKey($cacheKey)) {
                     $script:thumbCache[$cacheKey] = $bs
-                    if ($script:thumbCache.Count -gt $script:thumbCacheMax) { $script:thumbCache.Clear() }
+                    # Evict a batch of oldest entries instead of nuking the whole cache, so
+                    # recently viewed folders keep their thumbs on re-entry.
+                    if ($script:thumbCache.Count -gt $script:thumbCacheMax) {
+                        foreach ($key in @($script:thumbCache.Keys | Select-Object -First 25)) {
+                            $script:thumbCache.TryRemove($key, [ref]$null) | Out-Null
+                        }
+                    }
                 }
                 $uiAction = [System.Action]{
                     $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $bs; NoThumb = 'Collapsed' }
                 }
-                $script:wpfWindow.Dispatcher.Invoke($uiAction)
+                $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
             }
         } catch {
             # Silently fail for unsupported files
@@ -128,8 +140,15 @@ function Get-DirectoryTransition($oldPath, $newPath) {
     if ([string]::IsNullOrEmpty($oldPath) -or $oldPath -eq $newPath) { return 'none' }
     if ($oldPath -eq 'Phone Folders') { return 'push' }
     if ($newPath -eq 'Phone Folders') { return 'pop' }
-    if ($newPath.StartsWith($oldPath, [System.StringComparison]::OrdinalIgnoreCase)) { return 'push' }
-    if ($oldPath.StartsWith($newPath, [System.StringComparison]::OrdinalIgnoreCase)) { return 'pop' }
+
+    # SAF convention: a tree URI and its document URI identify the SAME folder
+    # (tree/primary:DCIM == document/primary:DCIM). Normalize both so drill-down from a
+    # granted root pushes instead of crossfading, and pop matches the parent correctly.
+    $oldCmp = $oldPath -replace '/tree/', '/document/'
+    $newCmp = $newPath -replace '/tree/', '/document/'
+
+    if ($newCmp.StartsWith($oldCmp, [System.StringComparison]::OrdinalIgnoreCase)) { return 'push' }
+    if ($oldCmp.StartsWith($newCmp, [System.StringComparison]::OrdinalIgnoreCase)) { return 'pop' }
     return 'switch'
 }
 
@@ -262,26 +281,39 @@ function Start-ExplorerTransition($direction) {
 }
 
 function Load-Directory($dirPath) {
-    if ($script:isLoadingDir) { return }
+    # Re-entry during a pending async SAF browse is allowed — it supersedes the stale
+    # request (the older completion sees a bumped sequence and drops itself). Other
+    # concurrent loads stay guarded.
+    if ($script:isLoadingDir -and -not $script:asyncBrowsePending) { return }
+    $script:dirLoadSeq++
+    $mySeq = $script:dirLoadSeq
     $script:isLoadingDir = $true
+    $script:asyncBrowsePending = $false   # supersede any in-flight browse
     
     try {
         if ($null -ne $script:searchTimer) { $script:searchTimer.Stop() }
         
-        # Auto-reset search bar text so the new directory displays all items cleanly
-        if ($null -ne $script:txtSearch) {
-            $script:txtSearch.Text = "Search transfers..."
-            $script:txtSearch.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
-        }
-        
-        # Edge Case 27: Normalize and sanitize directory path
+        # Edge Case 27: Normalize and sanitize directory path.
+        # SAF content:// URIs are opaque document identifiers, NOT filesystem paths — they
+        # must be passed to the phone verbatim. Prefixing "/" here (the ADB-era fallback)
+        # made the SAF branch below never match, so phone browsing always came up empty.
+        $isSafUri = $dirPath -like 'content://*'
         $isLocal = [System.IO.Path]::IsPathRooted($dirPath) -and $dirPath -match '^[A-Za-z]:\\'
-        if (-not $isLocal) {
+        if ($isSafUri) {
+            # Leave untouched: scheme://authority/tree|document/<id> stays exactly as-is.
+        } elseif (-not $isLocal) {
             $dirPath = ($dirPath -replace '(?<!:)/+', '/').Trim()
             if (-not $dirPath.StartsWith("/")) { $dirPath = "/" + $dirPath }
             if (-not $dirPath.EndsWith("/")) { $dirPath = $dirPath + "/" }
         } else {
             if (-not $dirPath.EndsWith("\")) { $dirPath = $dirPath + "\" }
+        }
+
+        # Auto-reset search bar text so the new directory displays all items cleanly.
+        # Placeholder matches the active mode: local history vs. phone folders.
+        if ($null -ne $script:txtSearch) {
+            $script:txtSearch.Text = if ($isSafUri) { "Search files..." } else { "Search transfers..." }
+            $script:txtSearch.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
         }
         
         # iOS-style drill-down: snapshot the outgoing listing before clearing it
@@ -296,7 +328,19 @@ function Load-Directory($dirPath) {
         $script:phoneFileMeta = @{}
         
         if ($null -ne $script:btnUpDir) {
-            if ($dirPath -eq "/sdcard/" -or $dirPath -eq "/sdcard") {
+            # Show the Up button in every mode; disable it only at a hard root.
+            # Local history: root is the download folder itself, but subfolders are
+            # browsable (folder bundles) so Up must work while inside one.
+            $atRoot = $false
+            if ($isLocal) {
+                $atRoot = $dirPath.TrimEnd('\') -notmatch '\\'  # drive root like C:\
+            } elseif ($isSafUri) {
+                $atRoot = $false
+            } else {
+                $atRoot = $dirPath -eq "/sdcard/" -or $dirPath -eq "/sdcard"
+            }
+            $script:btnUpDir.Visibility = 'Visible'
+            if ($atRoot) {
                 $script:btnUpDir.Opacity = 0.4
                 $script:btnUpDir.Cursor = [System.Windows.Input.Cursors]::Arrow
             } else {
@@ -309,15 +353,26 @@ function Load-Directory($dirPath) {
             $lines = @()
             $script:localFileMeta = @{}
             if (Test-Path $dirPath) {
-                Get-ChildItem -Path $dirPath -File | Sort-Object LastWriteTime -Descending | Select-Object -First 50 | ForEach-Object {
-                    $lines += $_.Name
-                    $bytes = $_.Length
-                    if ($bytes -ge 1GB) { $sz = "{0:N1} GB" -f ($bytes / 1GB) }
-                    elseif ($bytes -ge 1MB) { $sz = "{0:N1} MB" -f ($bytes / 1MB) }
-                    elseif ($bytes -ge 1KB) { $sz = "{0:N0} KB" -f ($bytes / 1KB) }
-                    else { $sz = "$bytes B" }
-                    $dt = $_.LastWriteTime.ToString("MMM d, h:mm tt")
-                    $script:localFileMeta[$_.Name] = "$sz · $dt"
+                # Transfer History: newest files first, but also list subfolders so received
+                # folder bundles (which recreate their relative structure under Downloads\DeX)
+                # stay reachable and browsable. Directories sort after files, by name.
+                $dirs = @(Get-ChildItem -Path $dirPath -Directory | Sort-Object Name)
+                $files = @(Get-ChildItem -Path $dirPath -File | Sort-Object LastWriteTime -Descending | Select-Object -First 50)
+                foreach ($child in @($files) + @($dirs)) {
+                    if ($child.PSIsContainer) {
+                        $lines += $child.Name + "\"
+                        $dt = $child.LastWriteTime.ToString("MMM d, h:mm tt")
+                        $script:localFileMeta[$child.Name] = "Folder · $dt"
+                    } else {
+                        $lines += $child.Name
+                        $bytes = $child.Length
+                        if ($bytes -ge 1GB) { $sz = "{0:N1} GB" -f ($bytes / 1GB) }
+                        elseif ($bytes -ge 1MB) { $sz = "{0:N1} MB" -f ($bytes / 1MB) }
+                        elseif ($bytes -ge 1KB) { $sz = "{0:N0} KB" -f ($bytes / 1KB) }
+                        else { $sz = "$bytes B" }
+                        $dt = $child.LastWriteTime.ToString("MMM d, h:mm tt")
+                        $script:localFileMeta[$child.Name] = "$sz · $dt"
+                    }
                 }
             }
         } elseif ($script:isMockMode) {
@@ -327,132 +382,217 @@ function Load-Directory($dirPath) {
                 $lines += "dummy_file_$i$ext"
             }
         } elseif ($dirPath.StartsWith("content://")) {
-            # SAF File Explorer Mode: browse a granted phone folder over the WebSocket
-            $script:phoneFileMeta = @{}
-            $ip = Get-FileExplorerTargetIp
-            $lines = @()
-            if ($ip) {
-                try {
-                    $body = @{ ip = $ip; folderUri = $dirPath } | ConvertTo-Json
-                    $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
-                    if ($res.entries) {
-                        foreach ($prop in $res.entries.PSObject.Properties) {
-                            $name = $prop.Value.name
-                            $isDir = [bool]$prop.Value.isDirectory
-                            $size = [long]$prop.Value.size
-                            $thumb = if ($prop.Value.thumb) { $prop.Value.thumb } else { $null }
-                            $script:phoneFileMeta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir; Thumb = $thumb }
-                            if ($isDir) { $lines += "$name/" } else { $lines += $name }
-                        }
-                    }
-                } catch {
-                    Write-Trace "Browse Error: $_"
-                    $lines = @()
-                }
-            }
+            # SAF File Explorer Mode: browse a granted phone folder over the WebSocket.
+            # The HTTP round-trip can take up to 30s on a slow phone — run it on a
+            # background thread so the tray UI never freezes, then render on the UI
+            # thread when the phone answers. The async helper keeps isLoadingDir armed
+            # until it finishes, so the reentrancy guard still holds end-to-end.
+            Start-AsyncSafBrowse -DirPath $dirPath -Transition $transition -HadItems $hadItems -MySeq $mySeq
+            return
         } else {
             # Unknown/non-SAF remote path (no longer used by File Explorer) — empty listing
             $lines = @()
         }
 
-        # Sort phone listings: folders first, then files, alphabetically (SAF returns unsorted).
-        if ($dirPath.StartsWith("content://") -and $lines.Count -gt 0) {
-            $lines = @($lines | Sort-Object @{Expression = { $_ -notlike '*/' }}, @{Expression = { $_ }})
-        }
-        
-        # Edge Case 5: Empty Folder State Toggle
-        $emptyOverlay = $script:wpfWindow.FindName("emptyFolderState")
-        if ($null -ne $emptyOverlay) {
-            if (-not $lines -or $lines.Count -eq 0) {
-                $emptyOverlay.Visibility = 'Visible'
-                $emptyOverlay.Opacity = 1.0
-            } else {
-                $emptyOverlay.Visibility = 'Collapsed'
-                $emptyOverlay.Opacity = 0.0
-            }
-        }
-        
-        $idx = 0
-        foreach ($line in $lines) {
-            $isDir = $line.EndsWith("/") -or $line.EndsWith("\")
-            $name = $line.TrimEnd('/', '\', '*', '@', '=')
-            if ($isDir) {
-                $full = if ($isLocal) { $dirPath + $name + "\" } else { $dirPath + $name + "/" }
-                $template = $script:wpfWindow.Resources["FolderGridTemplate"]
-            } else {
-                $full = $dirPath + $name
-                $template = $script:wpfWindow.Resources["FileGridTemplate"]
-            }
-            
-            # SAF File Explorer mode: files/dirs are identified by their document URI, not a path
-            $phoneMeta = $null
-            if (-not $isLocal -and $script:phoneFileMeta -and $script:phoneFileMeta[$name]) {
-                $phoneMeta = $script:phoneFileMeta[$name]
-                $full = $phoneMeta.Uri
-            }
-            
-            $meta = if ($isLocal -and $script:localFileMeta[$name]) {
-                $script:localFileMeta[$name]
-            } elseif ($phoneMeta -and -not $phoneMeta.IsDir) {
-                Format-FileSize $phoneMeta.Size
-            } else { "" }
-            $thumb = $null
-            $noThumb = 'Visible'
-            $phoneThumbB64 = $null
-            if ($phoneMeta -and $phoneMeta.Thumb) { $phoneThumbB64 = $phoneMeta.Thumb }
-            $item = New-Object System.Windows.Controls.ListBoxItem
-            $item.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $thumb; NoThumb = $noThumb }
-            $item.ContentTemplate = $template
-            $item.Tag = $full
-            
-            if ($isLocal) {
-                $ctx = $script:wpfWindow.Resources["TransferContextMenu"]
-                if ($ctx) { $item.ContextMenu = $ctx }
-                
-                # Kick off async thumbnail generation
-                Load-ThumbnailAsync $item $full $name $isDir $meta
-            }
-            
-            # Staggered entrance for the first viewport of items; the rest appear instantly so
-            # a large folder load doesn't spawn dozens of concurrent entrance animations.
-            if ($idx -lt 12) {
-                $trans = New-Object System.Windows.Media.TranslateTransform
-                $trans.Y = 80
-                $item.RenderTransform = $trans
-                $item.Opacity = 0
-
-                $delay = [TimeSpan]::FromMilliseconds($idx * 35)
-
-                $daY = New-Object System.Windows.Media.Animation.DoubleAnimation
-                $daY.To = 0
-                $daY.Duration = [TimeSpan]::FromSeconds(0.6)
-                $daY.BeginTime = $delay
-                $daY.EasingFunction = $script:wpfWindow.Resources["HoverEase"]
-
-                $daOp = New-Object System.Windows.Media.Animation.DoubleAnimation
-                $daOp.To = 1
-                $daOp.Duration = [TimeSpan]::FromSeconds(0.4)
-                $daOp.BeginTime = $delay
-
-                $trans.BeginAnimation([System.Windows.Media.TranslateTransform]::YProperty, $daY)
-                $item.BeginAnimation([System.Windows.Controls.ListBoxItem]::OpacityProperty, $daOp)
-            }
-
-            $script:lbFiles.Items.Add($item)
-
-            # Phone (SAF) thumbnails decode off the UI thread, mirroring local thumbnails.
-            if ($phoneThumbB64) {
-                Load-PhoneThumbAsync $item $phoneThumbB64 $name $full $isDir $meta
-            }
-            $idx++
-        }
-
-        # New listing is ready — play the push/pop/switch motion (first load
-        # has no snapshot and just staggers in).
-        if ($transition -ne 'none' -and $hadItems) { Start-ExplorerTransition $transition }
+        # Render the listing on the UI thread (item building, empty state, stagger,
+        # transition). For SAF folders this runs from the async browse completion.
+        Show-DirectoryListing -DirPath $dirPath -Lines $lines -IsLocal $isLocal -IsSafUri $isSafUri -Transition $transition -HadItems $hadItems
     } finally {
-        $script:isLoadingDir = $false
+        # SAF browse keeps the guard armed until its background fetch completes —
+        # only the async completion (or a newer navigation) clears it.
+        if (-not $script:asyncBrowsePending) {
+            $script:isLoadingDir = $false
+        }
     }
+}
+
+# Renders a prepared directory listing into the file grid: sorts phone entries, manages
+# the empty-state overlay, builds ListBoxItems with staggered entrance, kicks off
+# thumbnails and plays the push/pop/switch motion. MUST run on the UI thread.
+function Show-DirectoryListing([string]$DirPath, $Lines, [bool]$IsLocal, [bool]$IsSafUri, [string]$Transition, [bool]$HadItems) {
+    # Sort phone listings: folders first, then files, alphabetically (SAF returns unsorted).
+    if ($IsSafUri -and $Lines.Count -gt 0) {
+        $Lines = @($Lines | Sort-Object @{Expression = { $_ -notlike '*/' }}, @{Expression = { $_ }})
+    }
+    
+    # Edge Case 5: Empty Folder State Toggle
+    $emptyOverlay = $script:wpfWindow.FindName("emptyFolderState")
+    if ($null -ne $emptyOverlay) {
+        # Localize the overlay copy to the active mode: history vs. phone folders.
+        $txtEmptyTitle = $script:wpfWindow.FindName("txtEmptyStateTitle")
+        $txtEmptySub = $script:wpfWindow.FindName("txtEmptyStateSub")
+        if ($null -ne $txtEmptyTitle -and $null -ne $txtEmptySub) {
+            if ($IsLocal) {
+                $txtEmptyTitle.Text = "No transfers yet"
+                $txtEmptySub.Text = "Received files appear here"
+            } elseif ($IsSafUri) {
+                $txtEmptyTitle.Text = "Folder is empty"
+                $txtEmptySub.Text = "This phone folder has no files"
+            } else {
+                $txtEmptyTitle.Text = "Nothing here"
+                $txtEmptySub.Text = "This directory is empty"
+            }
+        }
+        if (-not $Lines -or $Lines.Count -eq 0) {
+            $emptyOverlay.Visibility = 'Visible'
+            $emptyOverlay.Opacity = 1.0
+        } else {
+            $emptyOverlay.Visibility = 'Collapsed'
+            $emptyOverlay.Opacity = 0.0
+        }
+    }
+    
+    $idx = 0
+    foreach ($line in $Lines) {
+        $isDir = $line.EndsWith("/") -or $line.EndsWith("\")
+        $name = $line.TrimEnd('/', '\', '*', '@', '=')
+        if ($isDir) {
+            $full = if ($IsLocal) { $DirPath + $name + "\" } else { $DirPath + $name + "/" }
+            $template = $script:wpfWindow.Resources["FolderGridTemplate"]
+        } else {
+            $full = $DirPath + $name
+            $template = $script:wpfWindow.Resources["FileGridTemplate"]
+        }
+        
+        # SAF File Explorer mode: files/dirs are identified by their document URI, not a path
+        $phoneMeta = $null
+        if (-not $IsLocal -and $script:phoneFileMeta -and $script:phoneFileMeta[$name]) {
+            $phoneMeta = $script:phoneFileMeta[$name]
+            $full = $phoneMeta.Uri
+        }
+        
+        $meta = if ($IsLocal -and $script:localFileMeta[$name]) {
+            $script:localFileMeta[$name]
+        } elseif ($phoneMeta -and -not $phoneMeta.IsDir) {
+            Format-FileSize $phoneMeta.Size
+        } else { "" }
+        $thumb = $null
+        $noThumb = 'Visible'
+        $phoneThumbB64 = $null
+        if ($phoneMeta -and $phoneMeta.Thumb) { $phoneThumbB64 = $phoneMeta.Thumb }
+        $item = New-Object System.Windows.Controls.ListBoxItem
+        $item.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $thumb; NoThumb = $noThumb }
+        $item.ContentTemplate = $template
+        $item.Tag = $full
+        
+        if ($IsLocal -and -not $isDir) {
+            # History context menu is file-only: Delete/Open on a directory would be
+            # dangerous or useless, and folder bundles are navigated by double-click.
+            $ctx = $script:wpfWindow.Resources["TransferContextMenu"]
+            if ($ctx) { $item.ContextMenu = $ctx }
+            
+            # Kick off async thumbnail generation
+            Load-ThumbnailAsync $item $full $name $isDir $meta
+        }
+        
+        # Staggered entrance for the first viewport of items; the rest appear instantly so
+        # a large folder load doesn't spawn dozens of concurrent entrance animations.
+        if ($idx -lt 12) {
+            $trans = New-Object System.Windows.Media.TranslateTransform
+            $trans.Y = 80
+            $item.RenderTransform = $trans
+            $item.Opacity = 0
+
+            $delay = [TimeSpan]::FromMilliseconds($idx * 35)
+
+            $daY = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $daY.To = 0
+            $daY.Duration = [TimeSpan]::FromSeconds(0.6)
+            $daY.BeginTime = $delay
+            $daY.EasingFunction = $script:wpfWindow.Resources["HoverEase"]
+
+            $daOp = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $daOp.To = 1
+            $daOp.Duration = [TimeSpan]::FromSeconds(0.4)
+            $daOp.BeginTime = $delay
+
+            $trans.BeginAnimation([System.Windows.Media.TranslateTransform]::YProperty, $daY)
+            $item.BeginAnimation([System.Windows.Controls.ListBoxItem]::OpacityProperty, $daOp)
+        }
+
+        $script:lbFiles.Items.Add($item)
+
+        # Phone (SAF) thumbnails decode off the UI thread, mirroring local thumbnails.
+        if ($phoneThumbB64) {
+            Load-PhoneThumbAsync $item $phoneThumbB64 $name $full $isDir $meta
+        }
+        $idx++
+    }
+
+    # New listing is ready — play the push/pop/switch motion (first load
+    # has no snapshot and just staggers in).
+    if ($Transition -ne 'none' -and $HadItems) { Start-ExplorerTransition $Transition }
+}
+
+# Browsing a phone folder runs on a background thread (a slow phone can take up to 30s
+# to answer). The result is marshaled back to the UI thread where Show-DirectoryListing
+# renders it. A sequence token drops stale completions if the user navigates away while
+# the browse is in flight, and the reentrancy guard stays armed until we finish.
+# NOTE: closures created with GetNewClosure run in a detached module scope — $script:
+# variable REASSIGNMENT inside them is lost. State writes therefore go through
+# Complete-AsyncBrowse (a script-scope function, which owns the real script state);
+# the closure only mutates members of the shared $browse hashtable and passes values.
+function Start-AsyncSafBrowse([string]$DirPath, [string]$Transition, [bool]$HadItems, [int]$MySeq) {
+    $script:asyncBrowsePending = $true
+    $ip = Get-FileExplorerTargetIp
+    if (-not $ip) {
+        # No eligible device: fall through to an empty listing (History hint already shown
+        # by the toggle). Release the guard synchronously.
+        $script:asyncBrowsePending = $false
+        $script:isLoadingDir = $false
+        Show-DirectoryListing -DirPath $DirPath -Lines @() -IsLocal $false -IsSafUri $true -Transition $Transition -HadItems $HadItems
+        return
+    }
+
+    # Shared mutable result container: member writes propagate through the closure
+    # boundary (same object reference), unlike $script: reassignment.
+    $browse = @{ Lines = @(); Meta = @{} }
+
+    $action = [System.Action]{
+        try {
+            $body = @{ ip = $ip; folderUri = $DirPath } | ConvertTo-Json
+            $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
+            if ($res.entries) {
+                foreach ($prop in $res.entries.PSObject.Properties) {
+                    $name = $prop.Value.name
+                    $isDir = [bool]$prop.Value.isDirectory
+                    $size = [long]$prop.Value.size
+                    $thumb = if ($prop.Value.thumb) { $prop.Value.thumb } else { $null }
+                    $browse.Meta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir; Thumb = $thumb }
+                    if ($isDir) { $browse.Lines += "$name/" } else { $browse.Lines += $name }
+                }
+            }
+        } catch {
+            Write-Trace "Browse Error: $_"
+        }
+
+        $wpf = $script:wpfWindow
+        if ($null -ne $wpf) {
+            $linesCopy = $browse.Lines
+            $metaCopy = $browse.Meta
+            # Marshal back to the UI thread; Complete-AsyncBrowse performs the state writes
+            # there (script-scope function, so they land in the real script state).
+            $wpf.Dispatcher.Invoke([Action]{
+                Complete-AsyncBrowse -MySeq $MySeq -Meta $metaCopy -Lines $linesCopy -DirPath $DirPath -Transition $Transition -HadItems $HadItems
+            }.GetNewClosure()) | Out-Null
+        } else {
+            # Window gone (engine shutting down): nothing to render; release the guard.
+            $script:asyncBrowsePending = $false
+            $script:isLoadingDir = $false
+        }
+    }.GetNewClosure()
+    $null = $action.BeginInvoke($null, $null)
+}
+
+# Runs on the UI thread when an async SAF browse finishes. Drops stale results (the user
+# navigated on while we were fetching) and otherwise renders the listing and releases the
+# load guard. A script-scope function so its $script: writes hit the real state.
+function Complete-AsyncBrowse([int]$MySeq, $Meta, $Lines, [string]$DirPath, [string]$Transition, [bool]$HadItems) {
+    if ($MySeq -ne $script:dirLoadSeq) { return }   # stale — a newer navigation owns the view
+    $script:asyncBrowsePending = $false
+    $script:isLoadingDir = $false
+    $script:phoneFileMeta = $Meta
+    Show-DirectoryListing -DirPath $DirPath -Lines $Lines -IsLocal $false -IsSafUri $true -Transition $Transition -HadItems $HadItems
 }
 
 function Format-FileSize([long]$bytes) {
@@ -468,14 +608,19 @@ function Convert-PhoneThumb([string]$base64) {
     try {
         $bytes = [System.Convert]::FromBase64String($base64)
         $ms = New-Object System.IO.MemoryStream(,$bytes)
-        $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
-        $bmp.BeginInit()
-        $bmp.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-        $bmp.StreamSource = $ms
-        $bmp.EndInit()
-        $bmp.Freeze()
-        $ms.Dispose()
-        return $bmp
+        try {
+            $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bmp.BeginInit()
+            $bmp.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+            $bmp.StreamSource = $ms
+            $bmp.EndInit()
+            $bmp.Freeze()
+            return $bmp
+        } finally {
+            # BitmapCacheOption.OnLoad decodes eagerly, so the stream is safe to release
+            # even if EndInit throws (no leak on the failure path either).
+            $ms.Dispose()
+        }
     } catch { return $null }
 }
 
@@ -488,23 +633,46 @@ function Load-PhoneThumbAsync($targetItem, $base64, $name, $full, $isDir, $meta)
             $uiAction = [System.Action]{
                 $targetItem.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $bmp; NoThumb = 'Collapsed' }
             }
-            $script:wpfWindow.Dispatcher.Invoke($uiAction)
+            $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
         }
     }
     $null = $action.BeginInvoke($null, $null)
 }
 
-# Resolves the connected phone's LAN IP without ADB: prefer the local engine's first
-# paired/auto-trusted device, falling back to the last known IP.
+# Resolves the phone the File Explorer browses. Explorer is scoped to the SELECTED device
+# (the one the user tapped, which opened the panel in History mode). The device must be
+# online over the WebSocket AND on the LAN — WAN (same-email) devices are History-only.
+# Falls back to the first eligible LAN device so the toggle never silently targets nothing.
 function Get-FileExplorerTargetIp {
     try {
         $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
-        $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+
+        # Preferred: the selected device, when it is online + LAN + trusted.
+        if ($script:selectedDeviceIp) {
+            $sel = $devices | Where-Object { $_.ip -eq $script:selectedDeviceIp } | Select-Object -First 1
+            if ($sel -and $sel.isOnline -and $sel.isLan -and ($sel.isPaired -or $sel.isAutoTrusted)) {
+                return $sel.ip
+            }
+        }
+
+        # Fallback: first eligible LAN device (keeps direct open + mock flows working).
+        $target = $devices | Where-Object { $_.isOnline -and $_.isLan -and ($_.isPaired -or $_.isAutoTrusted) } | Select-Object -First 1
         if ($target -and $target.ip) { return $target.ip }
     } catch {}
     $lastIp = (Get-ItemProperty "HKCU:\Software\DeX" -Name "LastIp" -ErrorAction SilentlyContinue).LastIp
     if ($lastIp) { return $lastIp }
     return $null
+}
+
+# True when the File Explorer toggle may activate: a device was selected AND it is
+# online + LAN + trusted. WAN-only (same-email) devices never qualify — History only.
+function Test-ExplorerEligibleDevice {
+    if (-not $script:selectedDeviceIp) { return $false }
+    try {
+        $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
+        $sel = $devices | Where-Object { $_.ip -eq $script:selectedDeviceIp } | Select-Object -First 1
+        return ($null -ne $sel -and $sel.isOnline -and $sel.isLan -and ($sel.isPaired -or $sel.isAutoTrusted))
+    } catch { return $false }
 }
 
 function global:Write-Trace($msg) {    # Rotate: keep the log forensically useful by capping it at ~200KB (retains last 500 lines)

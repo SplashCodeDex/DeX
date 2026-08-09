@@ -149,8 +149,10 @@ $script:wpfWindow.Add_KeyDown({
         Reset-SpatialPanels
         $e.Handled = $true
     } elseif (($e.Key -eq [System.Windows.Input.Key]::Up -and ($e.KeyboardDevice.Modifiers -band [System.Windows.Input.ModifierKeys]::Alt)) -or ($e.Key -eq [System.Windows.Input.Key]::Back)) {
-        # Edge Case 25: Alt + Up Arrow / Backspace navigates Up Directory (remote mode only)
-        if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible' -and $null -ne $script:btnUpDir -and $script:currentDirPath -notmatch '^[A-Za-z]:\\') {
+        # Edge Case 25: Alt + Up Arrow / Backspace navigates Up Directory. Fires in both
+        # File Explorer (SAF) and local history modes; the click handler itself no-ops at
+        # roots (Phone Folders, drive root), so raising it unconditionally is safe.
+        if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible' -and $null -ne $script:btnUpDir -and -not [string]::IsNullOrEmpty($script:currentDirPath)) {
             $script:btnUpDir.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
             $e.Handled = $true
         }
@@ -389,11 +391,29 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                 }
             }
 
-            # If not a guest (already in Live Peers), connect ADB
-            $res = Invoke-AdbConnect -Target $ip
-            if ($res.Success) {
+            # Record the tapped device as the File Explorer target FIRST: tapping a device
+            # opens the panel in History mode, and the Explorer toggle then browses THIS
+            # device (online + LAN + trusted only; WAN devices stay History-only).
+            $icLivePeers = $script:wpfWindow.FindName("icLivePeers")
+            $livePeer = $null
+            if ($icLivePeers -and $icLivePeers.ItemsSource) {
+                $livePeer = $icLivePeers.ItemsSource | Where-Object { $_['IP'] -eq $ip } | Select-Object -First 1
+            }
+            $script:selectedDeviceIp = $ip
+            $script:selectedDeviceFp = if ($livePeer) { $livePeer['Fingerprint'] } else { "" }
+
+            # History always opens for a known peer — it works over the WebSocket even for
+            # WAN devices where ADB is unreachable. Only expand if not already visible
+            # (actionPull would otherwise contract the panel).
+            $fePanel = $script:wpfWindow.FindName("FileExplorer")
+            if ($fePanel -and $fePanel.Visibility -ne 'Visible') {
                 Invoke-MenuAction $actionPull
-            } else {
+            }
+
+            # Legacy ADB connect is best-effort: never block History on it, only surface
+            # a failure when the device isn't a known WebSocket peer.
+            $res = Invoke-AdbConnect -Target $ip
+            if (-not $res.Success -and -not $livePeer) {
                 Show-Toast -Title "Connection Failed" -Message $res.Message
             }
             

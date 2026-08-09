@@ -20,7 +20,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -85,6 +87,42 @@ fun NetworkErrorDialog(
 
 @Composable
 fun OnboardingDialog(onDismiss: () -> Unit) {
+    var currentStep by remember { mutableIntStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // State to trigger re-checks when returning to app
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                refreshTrigger++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Re-check permissions on resume/launch
+    val nearbyGranted = remember(refreshTrigger) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.NEARBY_WIFI_DEVICES) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true
+    }
+
+    val notificationsGranted = remember(refreshTrigger) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true
+    }
+
+    val folderGranted = remember(refreshTrigger) {
+        com.dexstudios.dex.network.SafStorage.getDownloadsDexUri(context) != null
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -92,7 +130,7 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onDismiss
+                onClick = {}
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -101,42 +139,228 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
             modifier = Modifier
                 .widthIn(max = 400.dp)
                 .fillMaxWidth(0.9f)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                )
+                .bubbleFluidity(targetScale = 0.98f)
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    stringResource(R.string.onboarding_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.onboarding_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(20.dp))
-                listOf(
-                    R.string.onboarding_step_1,
-                    R.string.onboarding_step_2,
-                    R.string.onboarding_step_3
-                ).forEach { step ->
-                    Row(modifier = Modifier.padding(vertical = 6.dp)) {
-                        Text("•  ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                        Text(stringResource(step), style = MaterialTheme.typography.bodyMedium)
+            AnimatedContent(
+                targetState = currentStep,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
+                    } else {
+                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(slideOutHorizontally { width -> width } + fadeOut())
+                    }.using(SizeTransform(clip = false))
+                },
+                label = "onboarding_steps"
+            ) { step ->
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    when (step) {
+                        0 -> OnboardingWelcome { currentStep++ }
+                        1 -> OnboardingConnectivity(nearbyGranted) {
+                            if (nearbyGranted) currentStep++
+                            else com.dexstudios.dex.network.PermissionManager.triggerNearby()
+                        }
+                        2 -> OnboardingNotifications(notificationsGranted) {
+                            if (notificationsGranted) currentStep++
+                            else com.dexstudios.dex.network.PermissionManager.triggerNotifications()
+                        }
+                        3 -> OnboardingStorage(folderGranted) {
+                            if (folderGranted) currentStep++
+                            else com.dexstudios.dex.network.PermissionManager.triggerFolder()
+                        }
+                        4 -> OnboardingCompletion(onDismiss)
                     }
                 }
-                Spacer(Modifier.height(24.dp))
-                DeXButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    Text(stringResource(R.string.onboarding_got_it), fontWeight = FontWeight.Bold)
-                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingWelcome(onNext: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_stat_dex),
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(R.string.onboarding_step_welcome_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.onboarding_step_welcome_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        DeXButton(onClick = onNext, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(stringResource(R.string.onboarding_next), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        OnboardingStepIcon(
+            icon = com.dexstudios.dex.ui.icons.MaterialSymbols.Wifi,
+            isGranted = isGranted
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(R.string.onboarding_step_connectivity_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.onboarding_step_connectivity_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(
+                if (isGranted) stringResource(R.string.onboarding_next)
+                else stringResource(R.string.onboarding_grant),
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnboardingNotifications(isGranted: Boolean, onAction: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        OnboardingStepIcon(
+            icon = com.dexstudios.dex.ui.icons.MaterialSymbols.Notifications,
+            isGranted = isGranted
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(R.string.onboarding_step_notifications_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.onboarding_step_notifications_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(
+                if (isGranted) stringResource(R.string.onboarding_next)
+                else stringResource(R.string.onboarding_grant),
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnboardingStorage(isGranted: Boolean, onAction: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        OnboardingStepIcon(
+            icon = ImageVector.vectorResource(R.drawable.ic_folder),
+            isGranted = isGranted
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(R.string.onboarding_step_storage_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.onboarding_step_storage_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(
+                if (isGranted) stringResource(R.string.onboarding_next)
+                else stringResource(R.string.onboarding_select_folder),
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnboardingCompletion(onFinish: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.CheckCircle,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = Color(0xFF4CAF50)
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "All Set!",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "You are ready to use DeX. Enjoy seamless file sharing!",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        DeXButton(onClick = onFinish, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(stringResource(R.string.onboarding_done), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun OnboardingStepIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, isGranted: Boolean) {
+    Box(contentAlignment = Alignment.Center) {
+        Surface(
+            shape = CircleShape,
+            color = if (isGranted) Color(0xFF4CAF50).copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.size(96.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(24.dp),
+                tint = if (isGranted) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+            )
+        }
+        if (isGranted) {
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF4CAF50),
+                modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
+            ) {
+                Icon(
+                    imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.Check,
+                    contentDescription = null,
+                    modifier = Modifier.padding(6.dp),
+                    tint = Color.White
+                )
             }
         }
     }

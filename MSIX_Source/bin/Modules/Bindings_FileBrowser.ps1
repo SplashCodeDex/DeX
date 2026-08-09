@@ -3,6 +3,11 @@ $script:btnUpDir = $script:wpfWindow.FindName("btnUpDir")
 $script:currentDirPath = ""
 $script:explorerMode = $false
 
+# The device the user tapped (which opened the panel in History mode). File Explorer is
+# scoped to THIS device; the toggle is disabled unless it is online + LAN + trusted.
+$script:selectedDeviceIp = ""
+$script:selectedDeviceFp = ""
+
 $script:isLoadingDir = $false
 $script:isShowingMenu = $false
 $script:showMenuGuardTimer = $null
@@ -20,8 +25,10 @@ function Invoke-DexEndpoint([string]$Name, [string]$Ip, $Extra) {
 
 # --- Pull progress dock (live progress + cancel for pulling files off the phone) ---
 # Multiple pulls can overlap safely: each requestId gets its own poll task; the dock shows
-# the most recently started pull, and Cancel targets that pull.
-$script:activePulls = @{}   # requestId -> @{ Task; Seq; OutDir; Pct; Status }
+# the most recently started pull, and Cancel targets that pull. A ConcurrentDictionary
+# keeps the map safe: the poll task runs on a threadpool thread while the UI thread reads
+# it. Only the UI thread mutates entries (via Dispatcher marshaling in Start-PullProgressPoll).
+$script:activePulls = [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new()
 $script:pullSeq = 0
 
 function Set-PullProgressUi([int]$Pct, [string]$Status) {
@@ -54,7 +61,8 @@ function Hide-PullProgressDock {
 function Get-ActivePullId {
     $best = $null; $bestSeq = -1
     foreach ($k in @($script:activePulls.Keys)) {
-        if ($script:activePulls[$k].Seq -gt $bestSeq) { $best = $k; $bestSeq = $script:activePulls[$k].Seq }
+        $entry = $script:activePulls[$k]
+        if ($null -ne $entry -and $entry.Seq -gt $bestSeq) { $best = $k; $bestSeq = $entry.Seq }
     }
     return $best
 }
@@ -104,16 +112,25 @@ function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
             Show-Toast -Title "Pull Completed" -Message "$sCopy file(s) pulled, $fCopy failed."
         } else {
             Show-Toast -Title "Pull Complete" -Message "$sCopy file(s) pulled to Downloads\DeX"
+            # Only surface the folder on a clean success — never after cancel/partial failure.
+            try { Start-Process "explorer.exe" -ArgumentList "`"$oCopy`"" } catch {}
         }
-        try { Start-Process "explorer.exe" -ArgumentList "`"$oCopy`"" } catch {}
+        # Pulled files land in the local history folder: refresh the list so they appear
+        # immediately instead of on the next manual reload.
+        if ($script:currentDirPath -match '^[A-Za-z]:\\') {
+            Load-Directory $script:currentDirPath
+        }
     }) | Out-Null
 }
 
 # Polls one pull's status on a background thread. The deadline is activity-based: it only
 # gives up when the phone stops sending progress (or a hard cap is hit), never on a fixed cap.
+# Thread-safety: the poll task only computes values; every mutation of $script:activePulls
+# is marshaled onto the UI thread so the ConcurrentDictionary entries are never torn.
 function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
     $script:pullSeq++
-    $script:activePulls[$RequestId] = @{ Task = $null; Seq = $script:pullSeq; OutDir = $OutDir; Pct = 0; Status = "Pulling files from phone..." }
+    $entry = @{ Task = $null; Seq = $script:pullSeq; OutDir = $OutDir; Pct = 0; Status = "Pulling files from phone..." }
+    $script:activePulls[$RequestId] = $entry
     $script:activePulls[$RequestId].Task = [System.Threading.Tasks.Task]::Run([Action]{
         $rid = $RequestId
         $lastActivity = Get-Date
@@ -125,6 +142,8 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
             if ($null -eq $st) { Start-Sleep -Milliseconds 300; continue }
 
             $done = [bool]$st.done
+            $pct = $null
+            $status = $null
             if (-not $done -and $st.progress) {
                 # Live progress extends the activity window and drives the dock.
                 $lastActivity = Get-Date
@@ -132,15 +151,27 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
                 $pct = if ($total -gt 0) { [int]([long]$st.progress.sentBytes * 100 / $total) } else { 0 }
                 if ($pct -gt 99) { $pct = 99 }
                 $status = "Pulling {0} of {1} files..." -f [int]$st.progress.doneFiles, [int]$st.progress.totalFiles
-                $script:activePulls[$rid].Pct = $pct
-                $script:activePulls[$rid].Status = $status
-                Show-PullDockIfActive $rid $pct $status
             } elseif ($done) {
                 $finished = $true
-                $script:activePulls[$rid].Pct = 100
-                $script:activePulls[$rid].Status = "Pull finished"
-                break
+                $pct = 100
+                $status = "Pull finished"
             }
+
+            # Marshal state updates to the UI thread — the map is UI-thread-owned.
+            if ($null -ne $pct) {
+                $pctCopy = $pct; $statusCopy = $status
+                $wpf = $script:wpfWindow
+                if ($null -ne $wpf) {
+                    $wpf.Dispatcher.Invoke([Action]{
+                        if ($script:activePulls.ContainsKey($rid)) {
+                            $script:activePulls[$rid].Pct = $pctCopy
+                            $script:activePulls[$rid].Status = $statusCopy
+                        }
+                        Show-PullDockIfActive $rid $pctCopy $statusCopy
+                    }.GetNewClosure()) | Out-Null
+                }
+            }
+            if ($finished) { break }
 
             # Activity-based stall: the phone went quiet (disconnected/Doze) — stop and report.
             if ((Get-Date) - $lastActivity -gt [TimeSpan]::FromSeconds(120)) { break }
@@ -148,18 +179,25 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
             Start-Sleep -Milliseconds 300
         }
 
-        $outDir = $script:activePulls[$rid].OutDir
-        $script:activePulls.Remove($rid) | Out-Null
-
-        if ($finished) {
-            Show-PullCompleteToast $rid $outDir
-        } else {
-            $wpf = $script:wpfWindow
-            if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete." }) | Out-Null }
-        }
-        # Promote the next active pull into the dock, or hide it when all are done.
+        $outDirCopy = $OutDir
         $wpf = $script:wpfWindow
-        if ($null -ne $wpf) { $wpf.Dispatcher.Invoke([Action]{ Refresh-PullDock }) | Out-Null }
+        if ($null -ne $wpf) {
+            # Terminal handling on the UI thread: read the entry, remove it, toast, promote next.
+            $wpf.Dispatcher.Invoke([Action]{
+                if ($script:activePulls.ContainsKey($rid)) {
+                    $entryCopy = $script:activePulls[$rid]
+                    $outDirCopy = $entryCopy.OutDir
+                    $script:activePulls.TryRemove($rid, [ref]$null) | Out-Null
+                }
+                if ($finished) {
+                    Show-PullCompleteToast $rid $outDirCopy
+                } else {
+                    Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete."
+                }
+                # Promote the next active pull into the dock, or hide it when all are done.
+                Refresh-PullDock
+            }.GetNewClosure()) | Out-Null
+        }
     }.GetNewClosure())
 }
 
@@ -178,15 +216,131 @@ if ($script:btnCancelPull) {
 
 $script:btnUpDir.Add_Click({
     $curr = $script:currentDirPath
-    if ($curr -ne "/sdcard/" -and $curr.Length -gt 1) {
-        $trimmed = $curr.TrimEnd('/')
-        $lastSlash = $trimmed.LastIndexOf('/')
-        if ($lastSlash -ge 0) {
-            $newDir = $trimmed.Substring(0, $lastSlash + 1)
+    if ([string]::IsNullOrEmpty($curr) -or $curr -eq "Phone Folders") { return }
+
+    # SAF File Explorer mode: content:// document URIs. The parent of a document URI is the
+    # same URI with the last %2F-encoded segment removed; at the granted root (tree URI)
+    # "up" returns to the Phone Folders root list.
+    if ($curr -like 'content://*') {
+        $docMarker = '/document/'
+        $idx = $curr.IndexOf($docMarker)
+        if ($idx -ge 0) {
+            $docId = $curr.Substring($idx + $docMarker.Length)
+            $lastSep = $docId.LastIndexOf('%2F', [System.StringComparison]::OrdinalIgnoreCase)
+            if ($lastSep -gt 0) {
+                $parent = $curr.Substring(0, $idx + $docMarker.Length + $lastSep)
+                Load-Directory $parent
+                return
+            }
+        }
+        # Tree URI or root document: back to the granted-folders list.
+        Show-PhoneFoldersRoot
+        return
+    }
+
+    # Local history mode: subfolders are browsable (folder bundles) — go one level up.
+    if ($curr -match '^[A-Za-z]:\\') {
+        $trimmed = $curr.TrimEnd('\')
+        if ($trimmed.Length -gt 3) {   # not at the drive root
+            $newDir = $trimmed.Substring(0, $trimmed.LastIndexOf('\') + 1)
             Load-Directory $newDir
         }
+        return
+    }
+
+    # Legacy remote path (/sdcard/...)
+    $trimmed = $curr.TrimEnd('/')
+    $lastSlash = $trimmed.LastIndexOf('/')
+    if ($lastSlash -ge 0) {
+        $newDir = $trimmed.Substring(0, $lastSlash + 1)
+        Load-Directory $newDir
     }
 })
+
+# E8B7 = folder glyph. XAML decodes "&#xE8B7;" at parse time, but assigning that literal
+# string from PowerShell renders the raw text — always set the actual character instead.
+function Set-ExplorerToggleGlyph($btn) {
+    if ($null -ne $btn) { $btn.Content = [string][char]0xE8B7 }
+}
+
+# Shows the File Explorer root: the phone's SAF-granted folders. Shared by the mode toggle
+# and by btnUpDir when "up" leaves a granted folder's root. Falls back to the async grant
+# flow when the phone has no granted folders yet.
+function Show-PhoneFoldersRoot {
+    $ip = Get-FileExplorerTargetIp
+    $folders = @()
+    if ($ip) {
+        try {
+            $res = Invoke-DexEndpoint "list-folders" $ip $null
+            $folders = @($res.folders.PSObject.Properties | ForEach-Object {
+                [PSCustomObject]@{ Name = $_.Value.name; Uri = $_.Value.uri }
+            })
+        } catch {
+            $folders = @()
+        }
+    }
+
+    if ($folders.Count -eq 0) {
+        # No folders granted yet — ask the phone to open its folder picker (async, non-blocking)
+        if ($ip) {
+            Start-GrantFolderFlow $ip
+            Show-Toast -Title "Folder Access" -Message "Grant a folder on your phone to enable File Explorer mode."
+        } else {
+            Show-Toast -Title "No Device" -Message "Open the DeX app on your phone and connect first."
+        }
+        $script:explorerMode = $false
+        Set-ExplorerToggleGlyph $script:btnToggleExplorerMode
+        return
+    }
+
+    # Show granted folders as the file list (crossfade from transfer history)
+    $hadItems = $script:lbFiles.Items.Count -gt 0
+    if ($hadItems) { New-ExplorerSnapshot }
+    $script:lbFiles.Items.Clear()
+    foreach ($folder in $folders) {
+        $item = New-Object System.Windows.Controls.ListBoxItem
+        $item.Content = [PSCustomObject]@{ Name = $folder.Name; FullPath = $folder.Uri; IsDir = $true; Meta = "Phone folder"; Thumb = $null; NoThumb = 'Visible' }
+        $item.ContentTemplate = $script:wpfWindow.Resources["FolderGridTemplate"]
+        $item.Tag = $folder.Uri
+        $script:lbFiles.Items.Add($item)
+    }
+    if ($hadItems) { Start-ExplorerTransition 'switch' }
+    $script:currentDirPath = "Phone Folders"
+    Set-ExplorerToggleGlyph $script:btnToggleExplorerMode
+    $up = $script:btnUpDir
+    if ($null -ne $up) { $up.Visibility = 'Visible'; $up.Opacity = 0.4; $up.Cursor = [System.Windows.Input.Cursors]::Arrow }
+}
+
+# Asks the phone to open its SAF folder picker. Runs the HTTP call on a background thread so
+# the WPF UI never freezes for the (up to 190s) grant window, and applies the result on the
+# UI thread. The phone's own picker result is surfaced; a failure just toasts.
+function Start-GrantFolderFlow([string]$Ip) {
+    $grantCopy = @{ granted = $false }
+    $action = [System.Action]{
+        try {
+            $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/grant-folder" -Method Post `
+                -Body (@{ ip = $Ip } | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 200 -ErrorAction Stop
+            $grantCopy.granted = [bool]$res.granted
+        } catch {
+            $grantCopy.granted = $false
+        }
+        $wpf = $script:wpfWindow
+        if ($null -ne $wpf) {
+            $wpf.Dispatcher.Invoke([Action]{
+                if ($grantCopy.granted) {
+                    Show-Toast -Title "Folder Granted" -Message "Your phone folder is now accessible from File Explorer."
+                    # Folders changed — reload the root so the fresh grant shows up immediately,
+                    # but only if the user is still looking at the File Explorer panel.
+                    $fe = $wpf.FindName("FileExplorer")
+                    if ($fe -and $fe.Visibility -eq 'Visible') { Show-PhoneFoldersRoot }
+                }
+                # A false result (user cancelled the picker) needs no extra toast: the
+                # "Grant a folder" prompt already told the user what to do.
+            }.GetNewClosure()) | Out-Null
+        }
+    }.GetNewClosure()
+    $null = $action.BeginInvoke($null, $null)
+}
 
 # Toggle between Transfer History (local Downloads\DeX) and File Explorer Mode (SAF-granted phone folders)
 $script:btnToggleExplorerMode = $script:wpfWindow.FindName("btnToggleExplorerMode")
@@ -194,54 +348,21 @@ if ($script:btnToggleExplorerMode) {
     $script:btnToggleExplorerMode.Add_Click({
         $script:explorerMode = -not $script:explorerMode
         if ($script:explorerMode) {
-            # File Explorer Mode: browse the phone's SAF-granted folders over the WebSocket
-            $ip = Get-FileExplorerTargetIp
-            $folders = @()
-            if ($ip) {
-                try {
-                    $res = Invoke-DexEndpoint "list-folders" $ip $null
-                    $folders = @($res.folders.PSObject.Properties | ForEach-Object {
-                        [PSCustomObject]@{ Name = $_.Value.name; Uri = $_.Value.uri }
-                    })
-                } catch {
-                    $folders = @()
-                }
-            }
-            
-            if ($folders.Count -eq 0) {
-                # No folders granted yet — ask the phone to open its folder picker
-                if ($ip) {
-                    try { Invoke-DexEndpoint "grant-folder" $ip $null | Out-Null } catch {}
-                    Show-Toast -Title "Folder Access" -Message "Grant a folder on your phone to enable File Explorer mode."
-                } else {
-                    Show-Toast -Title "No Device" -Message "Open the DeX app on your phone and connect first."
-                }
+            # File Explorer Mode: browse the SELECTED device's SAF-granted folders. The
+            # toggle is LAN+online+trusted only; WAN (same-email) devices stay History-only.
+            if (-not (Test-ExplorerEligibleDevice)) {
                 $script:explorerMode = $false
-                $script:btnToggleExplorerMode.Content = "&#xE8B7;"
+                Set-ExplorerToggleGlyph $script:btnToggleExplorerMode
+                Show-Toast -Title "Explorer Unavailable" -Message "Tap a phone connected on your network to browse its files."
                 return
             }
-            
-            # Show granted folders as the file list (crossfade from transfer history)
-            $hadItems = $script:lbFiles.Items.Count -gt 0
-            if ($hadItems) { New-ExplorerSnapshot }
-            $script:lbFiles.Items.Clear()
-            foreach ($folder in $folders) {
-                $item = New-Object System.Windows.Controls.ListBoxItem
-                $item.Content = [PSCustomObject]@{ Name = $folder.Name; FullPath = $folder.Uri; IsDir = $true; Meta = "Phone folder"; Thumb = $null; NoThumb = 'Visible' }
-                $item.ContentTemplate = $script:wpfWindow.Resources["FolderGridTemplate"]
-                $item.Tag = $folder.Uri
-                $script:lbFiles.Items.Add($item)
-            }
-            if ($hadItems) { Start-ExplorerTransition 'switch' }
-            $script:currentDirPath = "Phone Folders"
-            $script:btnToggleExplorerMode.Content = "&#xE8B7;"
-            $script:btnToggleExplorerMode.ToolTip = "Switch to Transfer History"
+            Show-PhoneFoldersRoot
         } else {
             # Transfer History Mode: show local Downloads\DeX
             $outDir = if ($script:customDownloadPath) { $script:customDownloadPath } else { Join-Path $env:USERPROFILE "Downloads\DeX" }
             if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
             Load-Directory $outDir
-            $script:btnToggleExplorerMode.Content = "&#xE8B7;"
+            Set-ExplorerToggleGlyph $script:btnToggleExplorerMode
             $script:btnToggleExplorerMode.ToolTip = "Toggle File Explorer Mode"
         }
     })

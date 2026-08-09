@@ -211,6 +211,102 @@ public object MaterialSymbols {
             }
         }.build().also { _batteryFull = it }
 
+    public val Notifications: ImageVector
+        get() = _notifications ?: ImageVector.Builder(
+            name = "notifications",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 22f)
+                quadToRelative(-0.82f, 0f, -1.41f, -0.59f)
+                reflectiveQuadTo(10f, 20f)
+                horizontalLineTo(14f)
+                quadToRelative(0f, 0.82f, -0.59f, 1.41f)
+                reflectiveQuadTo(12f, 22f)
+                close()
+                moveTo(5f, 19f)
+                verticalLineToRelative(-2f)
+                horizontalLineToRelative(1f)
+                verticalLineToRelative(-7f)
+                quadToRelative(0f, -2.05f, 1.29f, -3.7f)
+                reflectiveQuadTo(10.5f, 4.3f)
+                verticalLineTo(3.5f)
+                quadToRelative(0f, -0.63f, 0.44f, -1.07f)
+                reflectiveQuadTo(12f, 2f)
+                reflectiveQuadToRelative(1.07f, 0.44f)
+                reflectiveQuadTo(13.5f, 3.5f)
+                verticalLineToRelative(0.8f)
+                quadToRelative(1.96f, 0.35f, 3.23f, 2f)
+                reflectiveQuadTo(18f, 10f)
+                verticalLineToRelative(7f)
+                horizontalLineToRelative(1f)
+                verticalLineToRelative(2f)
+                horizontalLineTo(5f)
+                close()
+            }
+        }.build().also { _notifications = it }
+
+    public val Check: ImageVector
+        get() = _check ?: ImageVector.Builder(
+            name = "check",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(9.55f, 18f)
+                lineTo(3.85f, 12.3f)
+                lineTo(5.27f, 10.88f)
+                lineTo(9.55f, 15.15f)
+                lineTo(18.73f, 5.97f)
+                lineTo(20.15f, 7.38f)
+                lineTo(9.55f, 18f)
+                close()
+            }
+        }.build().also { _check = it }
+
+    public val CheckCircle: ImageVector
+        get() = _checkCircle ?: ImageVector.Builder(
+            name = "check_circle",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 22f)
+                quadToRelative(-2.07f, 0f, -3.91f, -0.79f)
+                reflectiveQuadToRelative(-3.21f, -2.13f)
+                reflectiveQuadToRelative(-2.13f, -3.21f)
+                reflectiveQuadTo(2f, 12f)
+                reflectiveQuadToRelative(0.79f, -3.91f)
+                reflectiveQuadToRelative(2.13f, -3.21f)
+                reflectiveQuadToRelative(3.21f, -2.13f)
+                reflectiveQuadTo(12f, 2f)
+                reflectiveQuadToRelative(3.91f, 0.79f)
+                reflectiveQuadToRelative(3.21f, 2.13f)
+                reflectiveQuadToRelative(2.13f, 3.21f)
+                reflectiveQuadTo(22f, 12f)
+                reflectiveQuadToRelative(-0.79f, 3.91f)
+                reflectiveQuadToRelative(-2.13f, 3.21f)
+                reflectiveQuadToRelative(-3.21f, -2.13f)
+                reflectiveQuadTo(12f, 22f)
+                close()
+                moveTo(10.5f, 16.15f)
+                lineTo(17.15f, 9.5f)
+                lineTo(15.75f, 8.1f)
+                lineTo(10.5f, 13.35f)
+                lineTo(8.25f, 11.1f)
+                lineTo(6.85f, 12.5f)
+                lineTo(10.5f, 16.15f)
+                close()
+            }
+        }.build().also { _checkCircle = it }
+
     private fun batteryFrameBuilder(name: String, fillPath: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector.Builder {
         return ImageVector.Builder(
             name = name,
@@ -271,4 +367,7 @@ public object MaterialSymbols {
     private var _battery5: ImageVector? = null
     private var _battery6: ImageVector? = null
     private var _batteryFull: ImageVector? = null
+    private var _notifications: ImageVector? = null
+    private var _check: ImageVector? = null
+    private var _checkCircle: ImageVector? = null
 }

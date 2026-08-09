@@ -29,6 +29,19 @@
     <string name="onboarding_step_2">Keep both devices on the same Wi-Fi; the PC appears here automatically.</string>
     <string name="onboarding_step_3">Tap a PC to pair, then send files both ways — even over the internet.</string>
     <string name="onboarding_got_it">Got it</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_grant">Grant Permission</string>
+    <string name="onboarding_select_folder">Select Folder</string>
+    <string name="onboarding_done">Start Using DeX</string>
+    <string name="onboarding_granted">Granted</string>
+    <string name="onboarding_step_connectivity_title">Stay Connected</string>
+    <string name="onboarding_step_connectivity_desc">DeX needs to scan for nearby devices to find your PC on the local network.</string>
+    <string name="onboarding_step_notifications_title">Never Miss a File</string>
+    <string name="onboarding_step_notifications_desc">Get notified when a PC wants to send you files or when transfers complete.</string>
+    <string name="onboarding_step_storage_title">File Storage</string>
+    <string name="onboarding_step_storage_desc">DeX needs a folder to save incoming files. We recommend selecting your Downloads folder.</string>
+    <string name="onboarding_step_welcome_title">Welcome to DeX</string>
+    <string name="onboarding_step_welcome_desc">Seamlessly share files and clipboard between your Android device and PC.</string>
     <string name="google_sign_in">Sign in with Google</string>
     <string name="google_sign_in_not_configured">Google Sign-In is not configured for this build.</string>
     <string name="google_signed_in_as">Signed in as %1$s</string>
@@ -67,6 +80,7 @@
     <string name="notif_action_reject">Reject</string>
     <string name="notif_file_received_title">File Received</string>
     <string name="notif_file_received_desc">Saved to Downloads/DeX/%1$s</string>
+    <string name="notif_pairing_tap">Tap to enter PIN and connect.</string>
 
     <!-- Workers -->
     <string name="upload_worker_preparing">Preparing upload…</string>

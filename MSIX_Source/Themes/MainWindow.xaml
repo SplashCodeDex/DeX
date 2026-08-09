@@ -165,7 +165,8 @@
             <!-- Empty Folder State Overlay -->
             <StackPanel Name="emptyFolderState" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" Opacity="0">
                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE8B7;" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="48" HorizontalAlignment="Center" Opacity="0.4" Margin="0,0,0,10"/>
-                <TextBlock Text="No transfers yet" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Medium" HorizontalAlignment="Center" Opacity="0.6"/>
+                <TextBlock x:Name="txtEmptyStateTitle" Text="No transfers yet" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Medium" HorizontalAlignment="Center" Opacity="0.6"/>
+                <TextBlock x:Name="txtEmptyStateSub" Text="Received files appear here" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Opacity="0.5" Margin="0,2,0,0"/>
             </StackPanel>
             
             <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,15,0,25">

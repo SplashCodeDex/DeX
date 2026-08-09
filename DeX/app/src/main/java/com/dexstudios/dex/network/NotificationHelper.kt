@@ -87,19 +87,23 @@ class NotificationHelper(private val context: Context) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
-            context, 
-            0, 
-            intent, 
+            context,
+            0,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val remoteViews = android.widget.RemoteViews(context.packageName, R.layout.notification_pairing).apply {
+            setTextViewText(R.id.notification_device_name, alias)
+        }
+
         val notification = NotificationCompat.Builder(context, channelId)
-            .setContentTitle("Pairing Request")
-            .setContentText("Pairing request from $alias. Tap to enter PIN.")
             .setSmallIcon(R.drawable.ic_stat_dex)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(remoteViews)
             .setAutoCancel(true)
             .build()
 

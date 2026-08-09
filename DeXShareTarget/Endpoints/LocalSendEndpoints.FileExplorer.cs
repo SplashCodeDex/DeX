@@ -19,7 +19,8 @@ namespace DeXShareTarget.Endpoints
                 var body = await request.ReadFromJsonAsync<JsonObject>();
                 var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
                 if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
-                if (!TrySendDexRequest(ip, "list-shared-folders", null, out var requestId)) return Results.NotFound();
+                var (ok, requestId) = await TrySendDexRequestAsync(ip, "list-shared-folders", null);
+                if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 25);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
             });
@@ -31,7 +32,8 @@ namespace DeXShareTarget.Endpoints
                 var folderUri = body?["folderUri"]?.GetValue<string>() ?? request.Query["folderUri"].ToString();
                 if (string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(folderUri)) return Results.BadRequest();
                 var extra = new JsonObject { ["folderUri"] = folderUri };
-                if (!TrySendDexRequest(ip, "browse-folder", extra, out var requestId)) return Results.NotFound();
+                var (ok, requestId) = await TrySendDexRequestAsync(ip, "browse-folder", extra);
+                if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 25);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
             });
@@ -44,7 +46,8 @@ namespace DeXShareTarget.Endpoints
                 var files = body?["files"];
                 if (string.IsNullOrEmpty(ip) || files == null) return Results.BadRequest();
                 var extra = new JsonObject { ["files"] = files.DeepClone() };
-                if (!TrySendDexRequest(ip, "pull-files", extra, out var requestId)) return Results.NotFound();
+                var (ok, requestId) = await TrySendDexRequestAsync(ip, "pull-files", extra);
+                if (!ok) return Results.NotFound();
                 return Results.Json(new { requestId });
             });
 
@@ -66,7 +69,7 @@ namespace DeXShareTarget.Endpoints
             });
 
             // Ask the phone to abort an in-flight pull.
-            app.MapPost("/local/dex/pull-cancel", (HttpRequest request) =>
+            app.MapPost("/local/dex/pull-cancel", async (HttpRequest request) =>
             {
                 var requestId = request.Query["requestId"].ToString();
                 if (string.IsNullOrEmpty(requestId)) return Results.BadRequest();
@@ -77,7 +80,7 @@ namespace DeXShareTarget.Endpoints
                 {
                     var cancel = JsonSerializer.Serialize(new { type = "pull-cancel", data = new { requestId } },
                         new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                    _ = WebSocketConnectionManager.SendAsync(state.Fingerprint, cancel, requireVerified: false);
+                    await WebSocketConnectionManager.SendAsync(state.Fingerprint, cancel, requireVerified: false);
                 }
                 return Results.Ok();
             });
@@ -87,7 +90,8 @@ namespace DeXShareTarget.Endpoints
                 var body = await request.ReadFromJsonAsync<JsonObject>();
                 var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
                 if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
-                if (!TrySendDexRequest(ip, "grant-shared-folder", null, out var requestId)) return Results.NotFound();
+                var (ok, requestId) = await TrySendDexRequestAsync(ip, "grant-shared-folder", null);
+                if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 190);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
             });
@@ -99,14 +103,13 @@ namespace DeXShareTarget.Endpoints
         /// its requestId. Only verified (paired / same-email) phones are eligible — file browsing
         /// must never reach an untrusted device.
         /// </summary>
-        private static bool TrySendDexRequest(string ip, string type, JsonObject? extra, out string requestId)
+        private static async Task<(bool Ok, string RequestId)> TrySendDexRequestAsync(string ip, string type, JsonObject? extra)
         {
-            requestId = "";
             var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
-            if (dev == null || dev.Info == null) return false;
+            if (dev == null || dev.Info == null) return (false, "");
             var fp = dev.Info.Fingerprint;
 
-            requestId = DexRequestStore.NewPending(type);
+            var requestId = DexRequestStore.NewPending(type);
             var state = DexRequestStore.GetState(requestId);
             if (state != null) state.Fingerprint = fp;
 
@@ -121,7 +124,8 @@ namespace DeXShareTarget.Endpoints
             var payload = new JsonObject { ["type"] = type, ["data"] = data };
             var json = payload.ToJsonString();
 
-            return WebSocketConnectionManager.SendAsync(fp, json, requireVerified: true).GetAwaiter().GetResult();
+            var sent = await WebSocketConnectionManager.SendAsync(fp, json, requireVerified: true);
+            return sent ? (true, requestId) : (false, "");
         }
     }
 }

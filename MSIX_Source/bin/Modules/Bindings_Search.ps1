@@ -1,14 +1,20 @@
 ﻿$script:txtSearch = $script:wpfWindow.FindName("txtSearch")
 if ($script:txtSearch) {
+    # The placeholder text varies by mode ("Search transfers..." / "Search files...").
+    function Test-SearchPlaceholder([string]$Text) {
+        return $Text -eq "Search transfers..." -or $Text -eq "Search files..."
+    }
     $script:txtSearch.Add_GotFocus({
-        if ($script:txtSearch.Text -eq "Search transfers...") {
+        if (Test-SearchPlaceholder $script:txtSearch.Text) {
             $script:txtSearch.Text = ""
             $script:txtSearch.Foreground = $script:wpfWindow.FindResource("PrimaryTextBrush")
         }
     })
     $script:txtSearch.Add_LostFocus({
         if ([string]::IsNullOrWhiteSpace($script:txtSearch.Text)) {
-            $script:txtSearch.Text = "Search transfers..."
+            # Restore the mode-appropriate placeholder.
+            $isSaf = $script:currentDirPath -like 'content://*'
+            $script:txtSearch.Text = if ($isSaf) { "Search files..." } else { "Search transfers..." }
             $script:txtSearch.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
         }
     })
@@ -17,7 +23,7 @@ if ($script:txtSearch) {
     $script:searchTimer.Add_Tick({
         $script:searchTimer.Stop()
         $query = $script:txtSearch.Text.ToLower()
-        if ($query -eq "search transfers...") { $query = "" }
+        if (Test-SearchPlaceholder $script:txtSearch.Text) { $query = "" }
         foreach ($item in $script:lbFiles.Items) {
             $name = if ($item.Content -and $item.Content.Name) { $item.Content.Name.ToLower() } else { "" }
             if ([string]::IsNullOrWhiteSpace($query) -or $name.Contains($query)) {
