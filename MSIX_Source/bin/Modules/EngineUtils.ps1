@@ -34,8 +34,36 @@ public class ThumbHelper {
     } catch {}
 }
 
+# Bounded decode cache for local file thumbnails, so re-entering a folder reuses frozen
+# bitmaps instead of re-decoding every visit. Keyed by path + length + last-write time to
+# stay fresh. Thread-safe: read/written by both the UI thread and thumbnail threadpool.
+$script:thumbCache = [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new()
+$script:thumbCacheMax = 200
+
 function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr) {
     if ($isDir -or -not ("ThumbHelper" -as [type])) { return }
+
+    # Local files only (the cache key needs the file's path + mtime). Phone thumbs are fresh per browse.
+    $cacheKey = $null
+    if ($fullPath -match '^[A-Za-z]:\\') {
+        try {
+            $fi = Get-Item -LiteralPath $fullPath -ErrorAction Stop
+            $cacheKey = "$fullPath|$($fi.Length)|$($fi.LastWriteTime.Ticks)"
+        } catch { }
+    }
+
+    # Already decoded for this key — reuse the frozen bitmap on the UI thread (cheap, no re-decode).
+    if ($cacheKey -and $script:thumbCache.ContainsKey($cacheKey)) {
+        $cached = $script:thumbCache[$cacheKey]
+        if ($cached) {
+            $uiAction = [System.Action]{
+                $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $cached; NoThumb = 'Collapsed' }
+            }
+            $script:wpfWindow.Dispatcher.Invoke($uiAction)
+        }
+        return
+    }
+
     $action = [System.Action]{
         try {
             $bs = $null
@@ -52,6 +80,10 @@ function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr
                 $bs = [ThumbHelper]::GetThumb($fullPath, 100)
             }
             if ($bs) {
+                if ($cacheKey -and -not $script:thumbCache.ContainsKey($cacheKey)) {
+                    $script:thumbCache[$cacheKey] = $bs
+                    if ($script:thumbCache.Count -gt $script:thumbCacheMax) { $script:thumbCache.Clear() }
+                }
                 $uiAction = [System.Action]{
                     $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $bs; NoThumb = 'Collapsed' }
                 }
@@ -366,10 +398,8 @@ function Load-Directory($dirPath) {
             } else { "" }
             $thumb = $null
             $noThumb = 'Visible'
-            if ($phoneMeta -and $phoneMeta.Thumb) {
-                $thumb = Convert-PhoneThumb $phoneMeta.Thumb
-                if ($thumb) { $noThumb = 'Collapsed' }
-            }
+            $phoneThumbB64 = $null
+            if ($phoneMeta -and $phoneMeta.Thumb) { $phoneThumbB64 = $phoneMeta.Thumb }
             $item = New-Object System.Windows.Controls.ListBoxItem
             $item.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $thumb; NoThumb = $noThumb }
             $item.ContentTemplate = $template
@@ -383,29 +413,37 @@ function Load-Directory($dirPath) {
                 Load-ThumbnailAsync $item $full $name $isDir $meta
             }
             
-            # Staggered Entrance Animation
-            $trans = New-Object System.Windows.Media.TranslateTransform
-            $trans.Y = 80
-            $item.RenderTransform = $trans
-            $item.Opacity = 0
-            
-            $delay = [TimeSpan]::FromMilliseconds($idx * 35)
-            
-            $daY = New-Object System.Windows.Media.Animation.DoubleAnimation
-            $daY.To = 0
-            $daY.Duration = [TimeSpan]::FromSeconds(0.6)
-            $daY.BeginTime = $delay
-            $daY.EasingFunction = $script:wpfWindow.Resources["HoverEase"]
-            
-            $daOp = New-Object System.Windows.Media.Animation.DoubleAnimation
-            $daOp.To = 1
-            $daOp.Duration = [TimeSpan]::FromSeconds(0.4)
-            $daOp.BeginTime = $delay
-            
-            $trans.BeginAnimation([System.Windows.Media.TranslateTransform]::YProperty, $daY)
-            $item.BeginAnimation([System.Windows.Controls.ListBoxItem]::OpacityProperty, $daOp)
-            
+            # Staggered entrance for the first viewport of items; the rest appear instantly so
+            # a large folder load doesn't spawn dozens of concurrent entrance animations.
+            if ($idx -lt 12) {
+                $trans = New-Object System.Windows.Media.TranslateTransform
+                $trans.Y = 80
+                $item.RenderTransform = $trans
+                $item.Opacity = 0
+
+                $delay = [TimeSpan]::FromMilliseconds($idx * 35)
+
+                $daY = New-Object System.Windows.Media.Animation.DoubleAnimation
+                $daY.To = 0
+                $daY.Duration = [TimeSpan]::FromSeconds(0.6)
+                $daY.BeginTime = $delay
+                $daY.EasingFunction = $script:wpfWindow.Resources["HoverEase"]
+
+                $daOp = New-Object System.Windows.Media.Animation.DoubleAnimation
+                $daOp.To = 1
+                $daOp.Duration = [TimeSpan]::FromSeconds(0.4)
+                $daOp.BeginTime = $delay
+
+                $trans.BeginAnimation([System.Windows.Media.TranslateTransform]::YProperty, $daY)
+                $item.BeginAnimation([System.Windows.Controls.ListBoxItem]::OpacityProperty, $daOp)
+            }
+
             $script:lbFiles.Items.Add($item)
+
+            # Phone (SAF) thumbnails decode off the UI thread, mirroring local thumbnails.
+            if ($phoneThumbB64) {
+                Load-PhoneThumbAsync $item $phoneThumbB64 $name $full $isDir $meta
+            }
             $idx++
         }
 
@@ -439,6 +477,21 @@ function Convert-PhoneThumb([string]$base64) {
         $ms.Dispose()
         return $bmp
     } catch { return $null }
+}
+
+# Async decode of a phone (SAF) base64 thumbnail, mirroring Load-ThumbnailAsync so the
+# base64 decode + BitmapImage construction never blocks the UI thread during a browse.
+function Load-PhoneThumbAsync($targetItem, $base64, $name, $full, $isDir, $meta) {
+    $action = [System.Action]{
+        $bmp = Convert-PhoneThumb $base64
+        if ($bmp) {
+            $uiAction = [System.Action]{
+                $targetItem.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $bmp; NoThumb = 'Collapsed' }
+            }
+            $script:wpfWindow.Dispatcher.Invoke($uiAction)
+        }
+    }
+    $null = $action.BeginInvoke($null, $null)
 }
 
 # Resolves the connected phone's LAN IP without ADB: prefer the local engine's first
