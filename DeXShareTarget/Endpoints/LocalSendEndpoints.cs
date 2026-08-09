@@ -21,6 +21,8 @@ namespace DeXShareTarget.Endpoints
     public static class LocalSendEndpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
+        // Per-file pull tokens: the phone must present the token to download a hosted file
+        public static ConcurrentDictionary<string, string> HostedFileTokens = new();
         // Last time each hosted file was served, used for sliding expiry so slow pulls don't 404
         public static ConcurrentDictionary<string, DateTime> HostedFileLastAccess = new();
         public static bool IsDndEnabled { get; set; } = false;
@@ -155,8 +157,17 @@ namespace DeXShareTarget.Endpoints
                     counter++;
                 }
 
-                using var fs = new FileStream(destPath, FileMode.CreateNew);
-                await request.Body.CopyToAsync(fs);
+                try
+                {
+                    using var fs = new FileStream(destPath, FileMode.CreateNew);
+                    await request.Body.CopyToAsync(fs);
+                }
+                catch
+                {
+                    // Never leave a partial file behind on a failed upload
+                    try { if (File.Exists(destPath)) File.Delete(destPath); } catch { }
+                    return Results.StatusCode(500);
+                }
 
                 try
                 {
@@ -241,15 +252,20 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok();
             });
 
-            app.MapGet("/download/{fileId}", (string fileId) =>
+            app.MapGet("/download/{fileId}", (string fileId, HttpRequest request) =>
             {
-                if (HostedFiles.TryGetValue(fileId, out string? path) && File.Exists(path))
+                // Pulls are authenticated with the per-file token delivered in the prepare-upload message
+                if (!HostedFiles.TryGetValue(fileId, out string? path) ||
+                    !HostedFileTokens.TryGetValue(fileId, out var expectedToken) ||
+                    request.Query["token"].ToString() != expectedToken)
                 {
-                    HostedFileLastAccess[fileId] = DateTime.UtcNow;
-                    // Range processing enables resumable downloads over flaky WAN connections
-                    return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
+                    return Results.NotFound();
                 }
-                return Results.NotFound();
+                if (!File.Exists(path)) return Results.NotFound();
+
+                HostedFileLastAccess[fileId] = DateTime.UtcNow;
+                // Range processing enables resumable downloads over flaky WAN connections
+                return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
             });
 
             var rateLimits = new ConcurrentDictionary<string, DateTime>();

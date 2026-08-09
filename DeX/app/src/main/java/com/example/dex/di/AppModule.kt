@@ -18,7 +18,7 @@ val appModule = module {
     single { QuicClient(androidContext()) }
     single { ClientEngine(quicClient = get()) }
     single { DiscoveryEngine(get(), androidContext()) }
-    single { MessageHandler(androidContext(), get()) }
+    single { MessageHandler(get(), androidContext(), get()) }
     single { WebSocketClientService(get(), get(), get(), androidContext()) }
     
     viewModelOf(::MainScreenViewModel)

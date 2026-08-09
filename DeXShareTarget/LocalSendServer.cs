@@ -29,6 +29,14 @@ namespace DeXShareTarget
             // Silence Kestrel verbose logs
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
+            // Load the persisted public address so the phone can be told about it even before UPnP probes
+            try
+            {
+                var persisted = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX", "public_address.txt");
+                if (File.Exists(persisted)) PublicAddress = File.ReadAllText(persisted).Trim();
+            }
+            catch { }
+
             // Auto-configure the router (UPnP) so WAN works without manual port forwarding.
             // The public IP must be known BEFORE the certificate is created so its SAN covers
             // it; the probe is hard-capped so startup is never blocked by a slow router.
@@ -45,7 +53,16 @@ namespace DeXShareTarget
             ServerCert = GetOrCreateServerCertificate();
 
             // Port mappings are not needed for the certificate, so run them in the background
-            _ = Task.Run(() => UpnpPortForward.ConfigureAsync(CancellationToken.None));
+            // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try { await UpnpPortForward.ConfigureAsync(CancellationToken.None); }
+                    catch (Exception ex) { Console.WriteLine($"[UPNP] Auto-config failed: {ex.Message}"); }
+                    await Task.Delay(TimeSpan.FromHours(1));
+                }
+            });
 
             builder.WebHost.ConfigureKestrel(options =>
             {
@@ -92,14 +109,18 @@ namespace DeXShareTarget
             await App.StartAsync();
         }
 
+        /// <summary>The public (WAN) address the phone should reach this PC at; pushed to phones on connect.</summary>
+        public static string? PublicAddress { get; private set; }
+
         /// <summary>Persists the phone-configured public address so the next certificate covers it.</summary>
         public static void SetPublicAddress(string address)
         {
             try
             {
+                PublicAddress = address.Trim();
                 var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX");
                 Directory.CreateDirectory(dir);
-                File.WriteAllText(Path.Combine(dir, "public_address.txt"), address);
+                File.WriteAllText(Path.Combine(dir, "public_address.txt"), PublicAddress);
             }
             catch (Exception ex)
             {

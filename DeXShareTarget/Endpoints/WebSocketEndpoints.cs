@@ -59,6 +59,19 @@ namespace DeXShareTarget.Endpoints
                     DiscoveryBackgroundService.Devices[fingerprint].LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 }
 
+                // Push our known public IP so the phone can auto-configure WAN (no manual entry needed)
+                var publicAddress = LocalSendServer.PublicAddress;
+                if (!string.IsNullOrEmpty(publicAddress))
+                {
+                    try
+                    {
+                        var push = JsonSerializer.Serialize(new { type = "public-address", data = new { address = publicAddress } },
+                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        await WebSocketConnectionManager.SendAsync(fingerprint, push, requireVerified: false);
+                    }
+                    catch { }
+                }
+
                 try
                 {
                     var buffer = new byte[1024 * 4];

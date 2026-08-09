@@ -41,22 +41,13 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
     private val _uploadState = MutableStateFlow(UploadState())
     val uploadState = _uploadState.asStateFlow()
 
-    // Speed tracking for the transfer status display (sequential uploads, single-writer)
-    private var lastUploadBytes = 0L
-    private var lastUploadTime = 0L
-    private var smoothedUploadSpeed = 0L
-
-    private fun trackUploadSpeed(bytes: Long): Long {
-        val now = System.currentTimeMillis()
-        val dt = now - lastUploadTime
-        if (dt > 50) {
-            val instant = ((bytes - lastUploadBytes) * 1000L) / dt
-            smoothedUploadSpeed = if (smoothedUploadSpeed == 0L) instant else (smoothedUploadSpeed * 7 + instant * 3) / 10
-            lastUploadBytes = bytes
-            lastUploadTime = now
-        }
-        return smoothedUploadSpeed
+    /** Progress/final state updates from transfer workers (parallel uploads own the math). */
+    fun updateUploadState(state: UploadState) {
+        _uploadState.value = state
     }
+
+    /** Negotiated protocol ("h3", "http/1.1", ...) of the last completed QUIC upload. */
+    fun lastUploadProtocol(): String = quicClient?.lastUploadProtocol ?: ""
 
     var activeWorkId: java.util.UUID? = null
 
@@ -109,22 +100,9 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
     suspend fun uploadFile(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        fileIndex: Int = 1, totalFiles: Int = 1,
-        previousBatchBytes: Long = 0L, totalBatchSize: Long = fileSize,
-        onProgress: suspend (Float) -> Unit = {}
-    ): Boolean = withContext(Dispatchers.IO) {
+        onProgress: suspend (Long) -> Unit = {}
+    ): UploadOutcome = withContext(Dispatchers.IO) {
         try {
-            lastUploadBytes = 0L
-            lastUploadTime = 0L
-            smoothedUploadSpeed = 0L
-            val startAggregate = if (totalBatchSize > 0) previousBatchBytes.toFloat() / totalBatchSize else 0f
-            _uploadState.value = UploadState(
-                fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
-                progress = 0f, aggregateProgress = startAggregate,
-                isUploading = true, protocol = "http/1.1"
-            )
-            onProgress(startAggregate)
-            
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
@@ -132,21 +110,7 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                     parameters.append("token", token)
                 }
                 onUpload { bytesSentTotal, _ ->
-                    val currentProgress = if (fileSize > 0) bytesSentTotal.toFloat() / fileSize else 0f
-                    val aggregate = if (totalBatchSize > 0) (previousBatchBytes + bytesSentTotal).toFloat() / totalBatchSize else 0f
-                    val speed = trackUploadSpeed(bytesSentTotal)
-                    
-                    _uploadState.value = UploadState(
-                        fileName = fileName,
-                        currentFileIndex = fileIndex,
-                        totalFiles = totalFiles,
-                        progress = currentProgress,
-                        aggregateProgress = aggregate,
-                        isUploading = true,
-                        protocol = "http/1.1",
-                        speedBps = speed
-                    )
-                    onProgress(aggregate)
+                    kotlinx.coroutines.runBlocking { onProgress(bytesSentTotal) }
                 }
                 setBody(object : io.ktor.http.content.OutgoingContent.WriteChannelContent() {
                     override val contentType = io.ktor.http.ContentType.Application.OctetStream
@@ -165,17 +129,12 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
                     }
                 })
             }
-            val success = response.status.isSuccess()
-            if (!success) {
-                _uploadState.value = _uploadState.value.copy(error = "HTTP ${response.status.value}")
-            }
-            success
+            UploadOutcome(response.status.isSuccess(), response.status.value)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e // Let the cancellation bubble up
         } catch (e: Exception) {
             e.printStackTrace()
-            _uploadState.value = _uploadState.value.copy(error = e.message)
-            false
+            UploadOutcome(false, -1)
         }
     }
 
@@ -183,49 +142,27 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
 
     /**
      * HTTP/3 (QUIC) upload via Cronet, with the same contract and progress semantics as
-     * [uploadFile]. Falls back to the caller when QUIC is not available.
+     * [uploadFile]. httpStatus of -1 means the transport failed.
      */
     suspend fun uploadFileQuic(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        fileIndex: Int = 1, totalFiles: Int = 1,
-        previousBatchBytes: Long = 0L, totalBatchSize: Long = fileSize,
-        onProgress: suspend (Float) -> Unit = {}
-    ): Boolean {
-        val qc = quicClient ?: return false
-        lastUploadBytes = 0L
-        lastUploadTime = 0L
-        smoothedUploadSpeed = 0L
-        val startAggregate = if (totalBatchSize > 0) previousBatchBytes.toFloat() / totalBatchSize else 0f
-        _uploadState.value = UploadState(
-            fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
-            progress = 0f, aggregateProgress = startAggregate, isUploading = true,
-            protocol = qc.lastUploadProtocol
-        )
-        onProgress(startAggregate)
-
+        onProgress: suspend (Long) -> Unit = {}
+    ): UploadOutcome {
+        val qc = quicClient ?: return UploadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-            qc.uploadFile(
+            val request = qc.uploadFile(
                 ip, port, sessionId, fileId, fileName, token, stream, fileSize,
-                fileIndex, totalFiles, previousBatchBytes, totalBatchSize,
-                onProgress = { current, aggregate, bytes ->
-                    val speed = trackUploadSpeed(bytes)
-                    _uploadState.value = UploadState(
-                        fileName = fileName, currentFileIndex = fileIndex, totalFiles = totalFiles,
-                        progress = current, aggregateProgress = aggregate, isUploading = true,
-                        protocol = qc.lastUploadProtocol, speedBps = speed
-                    )
-                    kotlinx.coroutines.runBlocking { onProgress(aggregate) }
-                },
-                onResult = { ok ->
-                    _uploadState.value = _uploadState.value.copy(
-                        isUploading = false, isSuccess = ok,
-                        protocol = qc.lastUploadProtocol,
-                        error = if (ok) null else "QUIC upload failed"
-                    )
-                    if (!cont.isCancelled) cont.resume(ok, null)
+                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onResult = { ok, status ->
+                    if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status), null)
                 }
             )
+            if (request == null) {
+                if (!cont.isCancelled) cont.resume(UploadOutcome(false, -1), null)
+            } else {
+                cont.invokeOnCancellation { request.cancel() }
+            }
         }
     }
 
@@ -239,13 +176,14 @@ class ClientEngine(engine: HttpClientEngine? = null, private val quicClient: Qui
         ip: String,
         port: Int,
         fileId: String,
+        token: String?,
         output: java.io.OutputStream,
         onProgress: suspend (Long) -> Unit = {}
     ): DownloadOutcome {
         val qc = quicClient ?: return DownloadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.downloadFile(
-                ip, port, fileId, output,
+                ip, port, fileId, token, output,
                 onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
                 onResult = { ok, status, protocol ->
                     if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol), null)
@@ -291,4 +229,9 @@ data class DownloadOutcome(
     val ok: Boolean,
     val httpStatus: Int = 0,
     val protocol: String = ""
+)
+
+data class UploadOutcome(
+    val ok: Boolean,
+    val httpStatus: Int = 0
 )

@@ -29,7 +29,8 @@ data class FileDto(
     val fileType: String,
     val sha256: String? = null,
     val preview: String? = null,
-    val partialHash: String? = null
+    val partialHash: String? = null,
+    val token: String? = null
 )
 
 @Serializable
@@ -63,5 +64,11 @@ data class PairRequestDto(
 data class PullFileDto(
     val fileId: String,
     val fileName: String,
-    val size: Long
+    val size: Long,
+    val token: String? = null
+)
+
+@Serializable
+data class PublicAddressDto(
+    val address: String
 )

@@ -45,8 +45,11 @@ object TcpDownloadService {
      * Enqueues one work item for the whole transfer session. The worker downloads all
      * [files] concurrently (QUIC streams) and reports aggregate progress, so a cancel
      * stops the entire session instead of just the last file.
+     *
+     * @param httpsPort the PC's advertised HTTPS port (serves /download over HTTP/1.1 and, via Alt-Svc, HTTP/3)
+     * @param tcpPort the legacy raw-TCP pull server port used as fallback
      */
-    fun downloadBatch(context: Context, ip: String, port: Int, files: List<PullFileDto>, destDirUri: Uri) {
+    fun downloadBatch(context: Context, ip: String, httpsPort: Int, tcpPort: Int, files: List<PullFileDto>, destDirUri: Uri) {
         val totalBytes = files.sumOf { it.size }
         _downloadState.value = DownloadState(
             fileName = if (files.isNotEmpty()) files.first().fileName else "",
@@ -57,7 +60,8 @@ object TcpDownloadService {
 
         val inputData = Data.Builder()
             .putString("ip", ip)
-            .putInt("port", port)
+            .putInt("httpsPort", httpsPort)
+            .putInt("port", tcpPort)
             .putString("files", Json.encodeToString(files))
             .putLong("totalBytes", totalBytes)
             .putString("destDirUri", destDirUri.toString())

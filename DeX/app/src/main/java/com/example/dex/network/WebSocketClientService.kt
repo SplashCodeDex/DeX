@@ -47,6 +47,9 @@ class WebSocketClientService(
     /** Reconnect to a known PC without waiting for a new discovery event (background keep-alive). */
     fun ensureConnected() {
         if (!isRunning || activeSocket != null) return
+        // Probe the last-known PC so a killed process reconnects in seconds, not on the
+        // next discovery broadcast or keep-alive cycle
+        PcMemory.ip(context)?.let { discoveryEngine.sendManualDiscovery(it) }
         findTargetPc(discoveryEngine.devices.value.values)?.let { connectToPC(it) }
     }
 
@@ -69,19 +72,17 @@ class WebSocketClientService(
     }
 
     private fun findTargetPc(devices: Collection<DiscoveredDevice>): DiscoveredDevice? {
-        // WAN override: when a public address is configured, connect there instead of the LAN
-        wanTarget()?.let { return it }
-
         val desktops = devices.filter { it.info.deviceType.equals("desktop", ignoreCase = true) }
-        if (desktops.isEmpty()) return null
-        // 1. Prefer the PC used last time (persistent memory across restarts)
+        // 1. Prefer a PC discovered on the LAN (last-used, then paired, then any desktop).
+        //    LAN traffic must never route through the internet — WAN is only a fallback.
         val lastFingerprint = PcMemory.fingerprint(context)
         if (lastFingerprint != null) {
             desktops.firstOrNull { it.info.fingerprint == lastFingerprint }?.let { return it }
         }
-        // 2. Fall back to an already-paired PC
-        return desktops.firstOrNull { AuthState.pairedTokens.containsKey(it.info.fingerprint) }
-            ?: desktops.firstOrNull()
+        desktops.firstOrNull { AuthState.pairedTokens.containsKey(it.info.fingerprint) }?.let { return it }
+        desktops.firstOrNull()?.let { return it }
+        // 2. WAN override: only when no PC is visible on the LAN
+        return wanTarget()
     }
 
     /** Synthetic target for the configured public (WAN) address. */

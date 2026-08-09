@@ -69,7 +69,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt with matching pin sends accepted response and saves fingerprint and token`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -91,7 +91,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt with empty pin sends rejected response and does not save`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -108,7 +108,7 @@ class MessageHandlerTest {
 
     @Test
     fun `pair-prompt times out after 60 seconds and sends rejected response`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
@@ -124,7 +124,7 @@ class MessageHandlerTest {
 
     @Test
     fun `duplicate pair-prompt while one is pending is ignored`() = runTest(testDispatcher) {
-        val handler = MessageHandler(mockContext, notificationHelper)
+        val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
 
         handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
         handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
@@ -137,11 +137,11 @@ class MessageHandlerTest {
     fun `prepare-upload accepted enqueues one batch download for all files from the PC pull server`() = runTest(testDispatcher) {
         mockkObject(TcpDownloadService)
         mockkObject(SafStorage)
-        every { TcpDownloadService.downloadBatch(any(), any(), any(), any(), any()) } returns Unit
+        every { TcpDownloadService.downloadBatch(any(), any(), any(), any(), any(), any()) } returns Unit
         every { SafStorage.getDownloadsDexUri(any()) } returns mockk<android.net.Uri>()
 
         try {
-            val handler = MessageHandler(mockContext, notificationHelper)
+            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper)
             val uploadJson = """
                 {"type":"prepare-upload","data":{"info":{"alias":"PC-1","version":"2.0","deviceModel":"Windows PC","deviceType":"desktop","fingerprint":"pc_fp","port":53317,"protocol":"https","download":false},"files":{"f1":{"id":"f1","fileName":"photo.jpg","size":1024,"fileType":"image/jpeg"},"f2":{"id":"f2","fileName":"doc.pdf","size":2048,"fileType":"application/pdf"}}}}
             """.trimIndent()
@@ -162,9 +162,7 @@ class MessageHandlerTest {
             assertTrue("coroutine should have consumed the pending prompt", TransferState.pendingPrompts.isEmpty())
 
             verify(timeout = 10_000, exactly = 1) {
-                TcpDownloadService.downloadBatch(
-                    any(), "192.168.1.10", 53319,
-                    match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+                TcpDownloadService.downloadBatch(any(), "192.168.1.10", 53317, 53319, match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
                     any()
                 )
             }

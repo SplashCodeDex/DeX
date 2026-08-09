@@ -62,8 +62,11 @@ class QuicClient(private val context: Context) {
     }
 
     /**
-     * Uploads a file to the PC over HTTP/3 (QUIC). Mirrors ClientEngine.uploadFile's contract:
-     * streams [stream] to /api/localsend/v2/upload and reports per-file and aggregate progress.
+     * Uploads a file to the PC over HTTP/3 (QUIC). Streams [stream] to
+     * /api/localsend/v2/upload and reports sent bytes (cumulative per request).
+     *
+     * Returns the started [UrlRequest] so callers can cancel it, or null when the engine
+     * is unavailable. [onResult] receives (success, httpStatusCode); -1 means transport failure.
      */
     fun uploadFile(
         ip: String,
@@ -74,22 +77,24 @@ class QuicClient(private val context: Context) {
         token: String,
         stream: InputStream,
         fileSize: Long,
-        fileIndex: Int = 1,
-        totalFiles: Int = 1,
-        previousBatchBytes: Long = 0L,
-        totalBatchSize: Long = fileSize,
-        onProgress: (current: Float, aggregate: Float, bytesSent: Long) -> Unit = { _, _, _ -> },
-        onResult: (Boolean) -> Unit
-    ) {
+        onProgress: (bytesSent: Long) -> Unit = {},
+        onResult: (Boolean, Int) -> Unit
+    ): UrlRequest? {
         val engine = engine
-        if (engine == null) {
-            onResult(false)
-            return
-        }
+        if (engine == null) return null
         val url = "https://$ip:$port/api/localsend/v2/upload" +
             "?sessionId=${enc(sessionId)}&fileId=${enc(fileId)}&token=${enc(token)}"
 
         var sentBytes = 0L
+        var reported = false
+
+        fun report(ok: Boolean, status: Int) {
+            if (!reported) {
+                reported = true
+                onResult(ok, status)
+            }
+        }
+
         val provider = object : UploadDataProvider() {
             override fun getLength(): Long = fileSize
 
@@ -112,9 +117,7 @@ class QuicClient(private val context: Context) {
                 }
                 buffer.put(chunk, 0, read)
                 sentBytes += read
-                val current = if (fileSize > 0) sentBytes.toFloat() / fileSize else 0f
-                val aggregate = if (totalBatchSize > 0) (previousBatchBytes + sentBytes).toFloat() / totalBatchSize else 0f
-                onProgress(current, aggregate, sentBytes)
+                onProgress(sentBytes)
                 sink.onReadSucceeded(sentBytes >= fileSize || read == chunk.size)
             }
 
@@ -142,17 +145,17 @@ class QuicClient(private val context: Context) {
                 lastUploadProtocol = info.negotiatedProtocol ?: ""
                 val ok = info.httpStatusCode in 200..299
                 if (!ok) Timber.w("QUIC upload failed with HTTP ${info.httpStatusCode}")
-                onResult(ok)
+                report(ok, info.httpStatusCode)
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
                 lastUploadProtocol = info?.negotiatedProtocol ?: ""
                 Timber.e(error, "QUIC upload failed")
-                onResult(false)
+                report(false, -1)
             }
 
             override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
-                onResult(false)
+                report(false, -1)
             }
         }
 
@@ -162,6 +165,7 @@ class QuicClient(private val context: Context) {
             .setUploadDataProvider(provider, executor)
             .build()
         request.start()
+        return request
     }
 
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
@@ -179,13 +183,15 @@ class QuicClient(private val context: Context) {
         ip: String,
         port: Int,
         fileId: String,
+        token: String?,
         output: OutputStream,
         onProgress: (bytesReceived: Long) -> Unit = {},
         onResult: (Boolean, Int, String) -> Unit
     ): UrlRequest? {
         val engine = engine
         if (engine == null) return null
-        val url = "https://$ip:$port/download/${enc(fileId)}"
+        val tokenQuery = if (!token.isNullOrEmpty()) "?token=${enc(token)}" else ""
+        val url = "https://$ip:$port/download/${enc(fileId)}$tokenQuery"
 
         var receivedBytes = 0L
         var reported = false

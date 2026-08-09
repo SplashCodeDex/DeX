@@ -54,7 +54,10 @@ namespace DeXShareTarget.Services
                 return;
             }
 
+            // Delete any stale mapping first (e.g. from an old LAN IP) so a DHCP change never conflicts
+            await DeletePortMappingAsync(igd, DeXHttpsPort, "TCP", ct);
             await AddPortMappingAsync(igd, DeXHttpsPort, "TCP", ct);
+            await DeletePortMappingAsync(igd, DeXQuicPort, "UDP", ct);
             await AddPortMappingAsync(igd, DeXQuicPort, "UDP", ct);
 
             var publicIp = await GetExternalIpAsync(igd, ct);
@@ -123,6 +126,31 @@ namespace DeXShareTarget.Services
                 }
             }
             return null;
+        }
+
+        private static async Task DeletePortMappingAsync(IgdInfo igd, int port, string protocol, CancellationToken ct)
+        {
+            var body = $@"<?xml version=""1.0""?>
+<s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"" s:encodingStyle=""http://schemas.xmlsoap.org/soap/encoding/"">
+<s:Body>
+<u:DeletePortMapping xmlns:u=""{igd.ServiceType}"">
+<NewRemoteHost></NewRemoteHost>
+<NewExternalPort>{port}</NewExternalPort>
+<NewProtocol>{protocol}</NewProtocol>
+</u:DeletePortMapping>
+</s:Body>
+</s:Envelope>";
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, igd.ControlUrl);
+            request.Headers.Add("SOAPACTION", $"\"{igd.ServiceType}#DeletePortMapping\"");
+            request.Content = new StringContent(body, Encoding.UTF8, "text/xml");
+            try
+            {
+                await http.SendAsync(request, ct);
+                // 714 (NoSuchEntry) means there was nothing to delete — both outcomes are fine
+            }
+            catch { }
         }
 
         private static async Task AddPortMappingAsync(IgdInfo igd, int port, string protocol, CancellationToken ct)

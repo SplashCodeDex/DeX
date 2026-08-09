@@ -81,6 +81,7 @@ class BatchDownloadWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
+        val httpsPort = inputData.getInt("httpsPort", -1)
         val tcpPort = inputData.getInt("port", -1)
         val filesJson = inputData.getString("files") ?: return@withContext Result.failure()
         val totalBytes = inputData.getLong("totalBytes", 0L)
@@ -91,7 +92,7 @@ class BatchDownloadWorker(
         } catch (e: Exception) {
             return@withContext Result.failure()
         }
-        if (files.isEmpty() || tcpPort == -1) return@withContext Result.failure()
+        if (files.isEmpty() || httpsPort == -1 || tcpPort == -1) return@withContext Result.failure()
         val dirUri = destDirUri.toUri()
 
         setForeground(createForegroundInfo(0, "Preparing download..."))
@@ -109,7 +110,7 @@ class BatchDownloadWorker(
                         semaphore.acquire()
                         try {
                             val outcome = downloadOne(
-                                file, ip, tcpPort, dirUri,
+                                file, ip, httpsPort, tcpPort, dirUri,
                                 totalReceived, doneCount, files.size, totalBytes, createdDocs
                             )
                             outcomes.add(outcome)
@@ -173,6 +174,7 @@ class BatchDownloadWorker(
     private suspend fun downloadOne(
         file: PullFileDto,
         ip: String,
+        httpsPort: Int,
         tcpPort: Int,
         dirUri: Uri,
         totalReceived: AtomicLong,
@@ -203,7 +205,7 @@ class BatchDownloadWorker(
             }
 
             val result = if (client.quicAvailable()) {
-                quicDownload(ip, file, out, onBytes)
+                quicDownload(ip, httpsPort, file, out, onBytes)
             } else {
                 tcpDownload(ip, tcpPort, file, out, onBytes)
             }
@@ -221,11 +223,12 @@ class BatchDownloadWorker(
 
     private suspend fun quicDownload(
         ip: String,
+        httpsPort: Int,
         file: PullFileDto,
         out: java.io.OutputStream,
         onBytes: suspend (Long) -> Unit
     ): DownloadResult {
-        val result = client.downloadFileQuic(ip, httpsPort, file.fileId, out, onProgress = { bytes ->
+        val result = client.downloadFileQuic(ip, httpsPort, file.fileId, file.token, out, onProgress = { bytes ->
             onBytes(bytes)
         })
 

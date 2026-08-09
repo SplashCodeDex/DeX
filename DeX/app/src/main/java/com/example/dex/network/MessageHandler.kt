@@ -19,6 +19,7 @@ import timber.log.Timber
 import java.util.UUID
 
 class MessageHandler(
+    private val deviceConfig: DeviceConfig,
     private val context: Context,
     private val notificationHelper: NotificationHelper
 ) {
@@ -35,6 +36,7 @@ class MessageHandler(
             when (type) {
                 "pair-prompt" -> handlePairPrompt(dataElement)
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
+                "public-address" -> handlePublicAddress(dataElement)
                 else -> {
                     Timber.w("Unknown message type received: $type")
                 }
@@ -112,9 +114,19 @@ class MessageHandler(
                 }
             }
 
-            // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress)
-            val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size) }
-            TcpDownloadService.downloadBatch(context, senderIp, PULL_PORT, files, dirUri)
+            // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress).
+            // The HTTPS port comes from the PC's advertised info; the TCP port is the legacy fallback.
+            val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size, file.token) }
+            TcpDownloadService.downloadBatch(context, senderIp, uploadReq.info.port, PULL_PORT, files, dirUri)
+        }
+    }
+
+    /** The PC tells us its public IP so WAN transfers work without manual configuration. */
+    private fun handlePublicAddress(dataElement: JsonElement) {
+        val address = json.decodeFromJsonElement<PublicAddressDto>(dataElement).address.trim()
+        if (address.isNotBlank()) {
+            deviceConfig.setPublicAddress(address)
+            Timber.i("Auto-configured public address from PC: $address")
         }
     }
 

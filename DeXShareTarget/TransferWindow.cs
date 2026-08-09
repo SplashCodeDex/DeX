@@ -147,9 +147,11 @@ namespace DeXShareTarget
             {
                 var fi = new FileInfo(f);
                 var fileId = Guid.NewGuid().ToString();
+                var pullToken = Guid.NewGuid().ToString();
                 
-                // 1. Host the file in Kestrel
+                // 1. Host the file in Kestrel (pulls are authenticated with the per-file token)
                 LocalSendEndpoints.HostedFiles[fileId] = f;
+                LocalSendEndpoints.HostedFileTokens[fileId] = pullToken;
                 LocalSendEndpoints.HostedFileLastAccess[fileId] = DateTime.UtcNow;
                 hostedIds.Add(fileId);
 
@@ -158,7 +160,8 @@ namespace DeXShareTarget
                     id = fileId,
                     fileName = fi.Name,
                     size = fi.Length,
-                    fileType = "application/octet-stream"
+                    fileType = "application/octet-stream",
+                    token = pullToken
                 };
             }
 
@@ -209,6 +212,7 @@ namespace DeXShareTarget
                     foreach (var id in stale)
                     {
                         LocalSendEndpoints.HostedFiles.TryRemove(id, out _);
+                        LocalSendEndpoints.HostedFileTokens.TryRemove(id, out _);
                         LocalSendEndpoints.HostedFileLastAccess.TryRemove(id, out _);
                     }
                     if (!hostedIds.Any(id => LocalSendEndpoints.HostedFiles.ContainsKey(id))) break;

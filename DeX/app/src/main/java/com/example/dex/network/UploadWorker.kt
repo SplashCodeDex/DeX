@@ -9,21 +9,50 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Semaphore
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import com.example.dex.R
 
+/**
+ * Uploads one transfer session (all shared files) to the PC. Files are sent concurrently
+ * over HTTP/3 (QUIC) via Cronet — QUIC multiplexes them on one connection — with the
+ * HTTP/1.1 path as fallback when the Cronet engine is unavailable.
+ *
+ * Aggregate progress is computed from a shared byte counter. The work retries with
+ * exponential backoff (capped) when the WHOLE session failed at transport level, so a
+ * retried session never leaves duplicate files on the PC.
+ */
 class UploadWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams), KoinComponent {
 
+    private val client by inject<ClientEngine>()
+
     private val notificationId = 1001
     private val channelId = "upload_channel"
+
+    // Cap of concurrent QUIC streams per session
+    private val maxConcurrentUploads = 3
+
+    // Transient transport failures are retried with exponential backoff, capped attempts
+    private val maxRetryAttempts = 3
+
+    private val lastUiUpdate = AtomicLong(0L)
+    private val speedBytes = AtomicLong(0L)
+    private val speedTime = AtomicLong(0L)
+    private val smoothedSpeed = AtomicLong(0L)
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
@@ -31,7 +60,6 @@ class UploadWorker(
         if (port == -1) return@withContext Result.failure()
         val urisJson = inputData.getString("uris") ?: return@withContext Result.failure()
 
-        val client by inject<ClientEngine>()
         val deviceConfig by inject<DeviceConfig>()
 
         val uriStrings = try {
@@ -49,7 +77,7 @@ class UploadWorker(
             try {
                 applicationContext.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (e: SecurityException) { /* Ignored */ }
-            
+
             var name = "shared_file"
             var size = 0L
             applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -72,9 +100,9 @@ class UploadWorker(
                 port = 53317, protocol = "https", download = false,
                 identityHash = deviceConfig.identityHash
             ),
-            files = fileData.mapValues { (id, d) -> 
+            files = fileData.mapValues { (id, d) ->
                 val partial = HashUtils.computePartialHash(applicationContext, d.first, d.third)
-                FileDto(id, d.second, d.third, applicationContext.contentResolver.getType(d.first) ?: "application/octet-stream", partialHash = partial) 
+                FileDto(id, d.second, d.third, applicationContext.contentResolver.getType(d.first) ?: "application/octet-stream", partialHash = partial)
             }
         )
 
@@ -83,56 +111,127 @@ class UploadWorker(
         val targetFingerprint = inputData.getString("targetFingerprint")
         val token = targetFingerprint?.let { AuthState.pairedTokens[it] }
         val response = client.prepareUpload(ip, port, prepareRequest, token)
-        if (response != null) {
-            
-            var successCount = 0
-            var previousBytes = 0L
-            var index = 1
+        if (response == null) {
+            return@withContext Result.failure()
+        }
 
-            fileData.forEach { (id, d) ->
-                if (isStopped) return@withContext Result.failure()
-                
-                val token = response.files[id] ?: return@forEach
-                if (token == "[SKIP]") {
-                    successCount++
-                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
-                } else {
-                    applicationContext.contentResolver.openInputStream(d.first)?.use { stream ->
-                        val useQuic = client.quicAvailable()
-                        val success = if (useQuic) {
-                            client.uploadFileQuic(
-                                ip, port, response.sessionId, id, d.second, token, stream, d.third,
-                                fileIndex = index, totalFiles = fileData.size, previousBatchBytes = previousBytes, totalBatchSize = totalBatchSize
-                            ) { aggregateProgress ->
-                                val progressInt = (aggregateProgress * 100).toInt()
-                                setForeground(createForegroundInfo(progressInt, applicationContext.getString(R.string.upload_worker_progress, index, fileData.size, d.second)))
+        val totalSent = AtomicLong(0L)
+        val doneCount = AtomicInteger(0)
+        val outcomes = CopyOnWriteArrayList<Pair<String, UploadOutcome>>()
+        val semaphore = Semaphore(maxConcurrentUploads)
+
+        try {
+            coroutineScope {
+                fileData.forEach { (id, d) ->
+                    launch(Dispatchers.IO) {
+                        semaphore.acquire()
+                        try {
+                            if (isStopped) return@launch
+
+                            val fileToken = response.files[id] ?: run {
+                                outcomes.add(id to UploadOutcome(false, 403))
+                                return@launch
                             }
-                        } else {
-                            client.uploadFile(
-                                ip, port, response.sessionId, id, d.second, token, stream, d.third,
-                                fileIndex = index, totalFiles = fileData.size, previousBatchBytes = previousBytes, totalBatchSize = totalBatchSize
-                            ) { aggregateProgress ->
-                                val progressInt = (aggregateProgress * 100).toInt()
-                                setForeground(createForegroundInfo(progressInt, applicationContext.getString(R.string.upload_worker_progress, index, fileData.size, d.second)))
+                            if (fileToken == "[SKIP]") {
+                                doneCount.incrementAndGet()
+                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                                outcomes.add(id to UploadOutcome(true))
+                                return@launch
                             }
-                        }
-                        if (success) {
-                            successCount++
-                            TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+
+                            val stream = applicationContext.contentResolver.openInputStream(d.first)
+                            if (stream == null) {
+                                outcomes.add(id to UploadOutcome(false, -1))
+                                return@launch
+                            }
+
+                            stream.use { input ->
+                                val useQuic = client.quicAvailable()
+                                val perFile = AtomicLong(0L)
+                                val onBytes: suspend (Long) -> Unit = { bytes ->
+                                    val delta = bytes - perFile.getAndSet(bytes)
+                                    reportProgress(doneCount.get(), fileData.size, totalSent.addAndGet(delta), totalBatchSize, d.second, useQuic)
+                                }
+
+                                val outcome = if (useQuic) {
+                                    client.uploadFileQuic(ip, port, response.sessionId, id, d.second, fileToken, input, d.third, onProgress = onBytes)
+                                } else {
+                                    client.uploadFile(ip, port, response.sessionId, id, d.second, fileToken, input, d.third, onProgress = onBytes)
+                                }
+
+                                if (outcome.ok) {
+                                    doneCount.incrementAndGet()
+                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                                }
+                                outcomes.add(id to outcome)
+                            }
+                        } finally {
+                            semaphore.release()
                         }
                     }
                 }
-                previousBytes += d.third
-                index++
             }
-            client.finishUpload(successCount, fileData.size)
-            if (successCount > 0) {
-                return@withContext Result.success()
-            } else {
-                return@withContext Result.failure()
-            }
-        } else {
-            return@withContext Result.failure()
+        } catch (e: CancellationException) {
+            throw e
+        }
+
+        client.finishUpload(doneCount.get(), fileData.size)
+
+        val failed = outcomes.filter { !it.second.ok }
+        val anyHttpError = failed.any { it.second.httpStatus > 0 }
+        val retrying = failed.isNotEmpty() &&
+            failed.size == outcomes.size &&
+            !anyHttpError &&
+            !isStopped &&
+            runAttemptCount < maxRetryAttempts
+
+        when {
+            failed.isEmpty() -> Result.success()
+            retrying -> Result.retry()
+            else -> Result.failure()
+        }
+    }
+
+    private suspend fun reportProgress(
+        doneFiles: Int,
+        totalFiles: Int,
+        sentBytes: Long,
+        totalBytes: Long,
+        currentFile: String,
+        useQuic: Boolean
+    ) {
+        val now = System.currentTimeMillis()
+        if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
+        lastUiUpdate.set(now)
+
+        val lastBytes = speedBytes.get()
+        val lastTime = speedTime.get()
+        if (lastTime != 0L && now - lastTime > 200) {
+            val instant = ((sentBytes - lastBytes) * 1000L) / (now - lastTime)
+            val prev = smoothedSpeed.get()
+            smoothedSpeed.set(if (prev == 0L) instant else (prev * 7 + instant * 3) / 10)
+        }
+        speedBytes.set(sentBytes)
+        speedTime.set(now)
+
+        val aggregate = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else 0f
+        val displayName = if (totalFiles == 1) currentFile else "$doneFiles of $totalFiles files"
+        try {
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    currentFileIndex = doneFiles + 1,
+                    totalFiles = totalFiles,
+                    progress = aggregate,
+                    aggregateProgress = aggregate,
+                    isUploading = true,
+                    protocol = if (useQuic) client.lastUploadProtocol() else "http/1.1",
+                    speedBps = smoothedSpeed.get()
+                )
+            )
+            setForeground(createForegroundInfo((aggregate * 100).toInt(), applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)))
+        } catch (e: Exception) {
+            // UI updates must never kill the transfer
         }
     }
 
