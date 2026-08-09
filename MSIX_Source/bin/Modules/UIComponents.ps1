@@ -244,4 +244,95 @@ function Update-WpfUI {
 }
 #Export-ModuleMember -Function Update-WpfUI
 
+# Resolves the PC's LAN IP and loads the pairing QR code into the panel, showing the QR
+# view (hiding the PIN view) and arming the "Request PIN" button. Returns $true when the
+# QR is shown, or $false when no LAN IP could be resolved (caller decides how to react).
+function Show-QrCode {
+    $localIp = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
+        Where-Object { $_.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_) } |
+        Select-Object -First 1 -ExpandProperty IPAddressToString
+    if (-not $localIp) { return $false }
+
+    $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
+    if ($imgQrCode) {
+        $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+        $bitmap.BeginInit()
+        $bitmap.UriSource = New-Object Uri("http://127.0.0.1:53318/local/qr?ip=$localIp")
+        $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $bitmap.EndInit()
+        $imgQrCode.Source = $bitmap
+    }
+    $script:wpfWindow.FindName("pinCodeContent").Visibility = 'Collapsed'
+    $script:wpfWindow.FindName("qrCodeContent").Visibility = 'Visible'
+    $txtQrBtnIcon = $script:wpfWindow.FindName("txtQrBtnIcon")
+    if ($txtQrBtnIcon) { $txtQrBtnIcon.Visibility = 'Collapsed' }
+    $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")
+    if ($txtQrBtnText) { $txtQrBtnText.Text = "Request PIN" }
+    return $true
+}
+
+# Shows the PIN pairing panel, runs the 60s progress animation, and starts the 1s status
+# poll until the pairing is accepted, rejected, or times out. Centralizes the PIN display +
+# poll timer shared by the outbound (Start-PinPairing) and phone-initiated (Connect-Engine)
+# flows. Callers must set $script:activeOutboundPairIp / $script:activeOutboundPairFp first.
+# Behavior switches preserve each flow's exact button/layout/toast differences.
+function Show-PinPanel {
+    param(
+        [string]$Title,
+        [string]$Code,
+        [string]$Status,
+        # Show the QR-toggle button (btnSettingsQrCode). Outbound pairing shows it; phone-initiated hides it.
+        [switch]$ShowQrToggle,
+        # Collapse btnPinAccept/btnPinAcceptOnce. Outbound pairing hides them.
+        [switch]$HideAcceptButtons,
+        # Collapse pinViewPanel when the pairing completes. Phone-initiated flow does this;
+        # the outbound flow relies on the slide-out animation only.
+        [switch]$HidePanelOnTerminal,
+        [string]$SuccessMessage,
+        [string]$FailureMessage
+    )
+    $w = $script:wpfWindow
+    $w.FindName("txtPinTitle").Text = $Title
+    $w.FindName("txtPinCode").Text = $Code
+    $w.FindName("txtPinStatus").Text = $Status
+    $w.FindName("qrCodeContent").Visibility = 'Collapsed'
+    $w.FindName("pinCodeContent").Visibility = 'Visible'
+    if ($HideAcceptButtons) {
+        $w.FindName("btnPinAccept").Visibility = 'Collapsed'
+        $w.FindName("btnPinAcceptOnce").Visibility = 'Collapsed'
+    }
+    $w.FindName("btnSettingsQrCode").Visibility = if ($ShowQrToggle) { 'Visible' } else { 'Collapsed' }
+    $w.FindName("btnPinCancel").Visibility = 'Visible'
+    $w.FindName("txtQrBtnIcon").Visibility = 'Visible'
+    $w.FindName("txtQrBtnText").Text = "QR CODE"
+    $w.FindName("pinViewPanel").Visibility = 'Visible'
+    try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
+
+    $pb = $w.FindName("pbPinTimeout")
+    if ($pb) {
+        $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
+        $anim.From = 100; $anim.To = 0; $anim.Duration = [TimeSpan]::FromSeconds(60)
+        $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $anim)
+    }
+
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
+    $script:pairWaitTimer.Add_Tick({
+        try {
+            $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
+            if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
+                $script:pairWaitTimer.Stop()
+                if ($HidePanelOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+                $script:activeOutboundPairIp = $null
+                $script:activeOutboundPairFp = $null
+                if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message $SuccessMessage }
+                else { Show-Toast -Title "Pairing Failed" -Message $FailureMessage }
+            }
+        } catch {}
+    }.GetNewClosure())
+    $script:pairWaitTimer.Start()
+}
+
 

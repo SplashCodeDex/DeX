@@ -126,44 +126,8 @@ function Start-PinPairing {
         } catch {}
     }
 
-    $w = $script:wpfWindow
-    $w.FindName("txtPinTitle").Text = "Pairing with $alias"
-    $w.FindName("txtPinCode").Text = $pin
-    $w.FindName("txtPinStatus").Text = "Waiting for remote acceptance..."
-
-    $w.FindName("qrCodeContent").Visibility = 'Collapsed'
-    $w.FindName("pinCodeContent").Visibility = 'Visible'
-    $w.FindName("btnPinAccept").Visibility = 'Collapsed'
-    $w.FindName("btnPinAcceptOnce").Visibility = 'Collapsed'
-    $w.FindName("btnSettingsQrCode").Visibility = 'Visible'
-    $w.FindName("btnPinCancel").Visibility = 'Visible'
-    $w.FindName("txtQrBtnIcon").Visibility = 'Visible'
-    $w.FindName("txtQrBtnText").Text = "QR CODE"
-    $w.FindName("pinViewPanel").Visibility = 'Visible'
-    try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
-
-    $pb = $w.FindName("pbPinTimeout")
-    if ($pb) {
-        $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
-        $anim.From = 100; $anim.To = 0; $anim.Duration = [TimeSpan]::FromSeconds(60)
-        $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $anim)
-    }
-
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
-    $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
-    $script:pairWaitTimer.Add_Tick({
-        try {
-            $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
-            if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
-                $script:pairWaitTimer.Stop()
-                try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                $script:activeOutboundPairIp = $null
-                $script:activeOutboundPairFp = $null
-                if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message "Device trusted and added to Your Devices." }
-                else { Show-Toast -Title "Pairing Failed" -Message "The remote device rejected or timed out." }
-            }
-        } catch {}
-    }.GetNewClosure())
-    $script:pairWaitTimer.Start()
+    Show-PinPanel -Title "Pairing with $alias" -Code $pin -Status "Waiting for remote acceptance..." `
+        -ShowQrToggle -HideAcceptButtons `
+        -SuccessMessage "Device trusted and added to Your Devices." `
+        -FailureMessage "The remote device rejected or timed out."
 }

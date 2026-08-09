@@ -92,22 +92,7 @@ if ($btnSettingsQrCode) {
                 $pb.Value = 100 
             }
 
-            $localIp = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { $_.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_) } | Select-Object -First 1 -ExpandProperty IPAddressToString
-            if ($localIp) {
-                $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
-                if ($imgQrCode) {
-                    $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
-                    $bitmap.BeginInit()
-                    $bitmap.UriSource = New-Object Uri("http://127.0.0.1:53318/local/qr?ip=$localIp")
-                    $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-                    $bitmap.EndInit()
-                    $imgQrCode.Source = $bitmap
-                }
-                $pinCodeContent.Visibility = 'Collapsed'
-                $qrCodeContent.Visibility = 'Visible'
-                $txtQrBtnIcon.Visibility = 'Collapsed'
-                $txtQrBtnText.Text = "Request PIN"
-            } else {
+            if (-not (Show-QrCode)) {
                 Show-Toast -Title "Network Error" -Message "Could not determine local IP address."
             }
         }

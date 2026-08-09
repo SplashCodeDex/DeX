@@ -306,42 +306,10 @@ $mdnsTimer.Add_Tick({
                     if ($pp -and $pp.pin) {
                         $script:activeOutboundPairIp = $pp.ip
                         $script:activeOutboundPairFp = $pp.fingerprint
-                        $script:wpfWindow.FindName("txtPinTitle").Text = "Pairing with $($pp.alias)"
-                        $script:wpfWindow.FindName("txtPinCode").Text = $pp.pin
-                        $script:wpfWindow.FindName("txtPinStatus").Text = "Waiting for remote acceptance..."
-                        $script:wpfWindow.FindName("qrCodeContent").Visibility = 'Collapsed'
-                        $script:wpfWindow.FindName("pinCodeContent").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("txtQrBtnIcon").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("txtQrBtnText").Text = "QR CODE"
-                        $script:wpfWindow.FindName("btnPinCancel").Visibility = 'Visible'
-                        $script:wpfWindow.FindName("btnSettingsQrCode").Visibility = 'Collapsed'
-                        $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Visible'
-                        try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($script:wpfWindow) } catch {}
-                        
-                        $pb = $script:wpfWindow.FindName("pbPinTimeout")
-                        if ($pb) {
-                            $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
-                            $anim.From = 100; $anim.To = 0; $anim.Duration = [TimeSpan]::FromSeconds(60)
-                            $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $anim)
-                        }
-                        if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-                        $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
-                        $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
-                        $script:pairWaitTimer.Add_Tick({
-                            try {
-                                $st = Invoke-RestMethod -Uri "http://127.0.0.1:53318/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
-                                if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
-                                    $script:pairWaitTimer.Stop()
-                                    $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed'
-                                    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                                    $script:activeOutboundPairIp = $null
-                                    $script:activeOutboundPairFp = $null
-                                    if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message "Device has been paired." }
-                                    else { Show-Toast -Title "Pairing Failed" -Message "Request was declined or timed out." }
-                                }
-                            } catch {}
-                        }.GetNewClosure())
-                        $script:pairWaitTimer.Start()
+                        Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for remote acceptance..." `
+                            -HidePanelOnTerminal `
+                            -SuccessMessage "Device has been paired." `
+                            -FailureMessage "Request was declined or timed out."
                     }
                 } catch { }
             }
