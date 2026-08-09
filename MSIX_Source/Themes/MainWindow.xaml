@@ -825,8 +825,99 @@
                 <StackPanel x:Name="NearbyExpandPanel" Visibility="Collapsed" Opacity="0">
                     <Separator Background="{DynamicResource AccentBrush}" Height="1" Margin="16,6" />
 
+                    <!-- ====================================================================
+                         Static "Nearby" profile placeholders (btnUser1/2/3).
+                         INTENTIONAL SCAFFOLDING - DO NOT REMOVE. These render sample remote
+                         profiles as visual scaffolding for the upcoming CROSS-EMAIL (WAN)
+                         transfer feature. They have no handlers yet; they exist purely to
+                         shape the WAN device-list layout until that feature is implemented,
+                         at which point they will be replaced by real remote profiles or removed.
+                         ==================================================================== -->
 
+                    <!-- User 1 -->
+                    <Button x:Name="btnUser1" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <Grid Width="38" Height="38" Margin="0,0,12,0">
+                                <Ellipse>
+                                    <Ellipse.Fill>
+                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User1Avatar.png" Stretch="UniformToFill" AlignmentY="Top" />
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Ama Serwaa" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock Text="user2@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                            </StackPanel>
+                            
+                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
+                            <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        </Grid>
+                    </Button>
 
+                    <!-- User 2 -->
+                    <Button x:Name="btnUser2" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <Grid Width="38" Height="38" Margin="0,0,12,0">
+                                <Ellipse>
+                                    <Ellipse.Fill>
+                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User2Avatar.png" Stretch="UniformToFill" AlignmentY="Top" />
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Akua Donkor" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock Text="user1@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                            </StackPanel>
+                            
+                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
+                            <TextBlock Grid.Column="2" Text="&#xE7F8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        </Grid>
+                    </Button>
+
+                    <!-- User 3 -->
+                    <Button x:Name="btnUser3" Style="{StaticResource SpatialListItem}" Margin="0,2,0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <Grid Width="38" Height="38" Margin="0,0,12,0">
+                                <Ellipse>
+                                    <Ellipse.Fill>
+                                        <ImageBrush ImageSource="file:///$($PSScriptRoot -replace '\\', '/')/../Assets/User3Avatar.jpg" Stretch="UniformToFill" AlignmentY="Top" />
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Kwame Asante" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock Text="user3@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                            </StackPanel>
+                            
+                            <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
+                            <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        </Grid>
+                    </Button>
+                    
                     <!-- Dynamic Live Peers (Spawns indefinitely as mDNS peers connect) -->
                     <ItemsControl x:Name="icLivePeers">
                         <ItemsControl.ItemTemplate>
