@@ -1,5 +1,15 @@
 # Changelog
 
+## [7.0.0.0] - 2026-08-09
+### Added
+- **[minor] iOS-style navigation transitions (Android)**: Centralized motion language (`NavigationTransitions.kt`) — tab switches crossfade with a subtle scale, push/pop slides (400ms/350ms with UIKit cubic-bezier curves, 1/3 parallax, 96% scale, 70% dim) are wired for future detail screens. Tabs are siblings on one `AnimatedContent` (no back-stack traversal), and each tab's UI state (scroll position) survives switching via `SaveableStateHolder`.
+- **[minor] File Explorer drill-down push/pop (Desktop)**: Entering/leaving folders now animates with the same iOS curves (`KeySpline`-driven), with a snapshot layer for the outgoing listing; Transfer History ↔ Phone Folders mode toggle crossfades.
+- **[minor] Cross-platform auto sign-in removed**: The phone's Google sign-in no longer propagates to the PC (`set-email` handler and `pushIdentityToPc` removed on both sides). Each platform signs in manually — the PC profile only ever shows the PC's own account.
+### Fixed
+- **[fix] Spatial menu lag (Desktop)**: Wiggle detector timer corrected from 20ms to the intended 50ms sampling (removes constant 50Hz UI-thread load that fought PopIn/Expand tweens).
+- **[fix] Startup freeze (Desktop)**: Google profile fetch + startup retry moved off the UI thread (was up to 42s of blocked window); profile/sign-out/sign-in clicks are non-blocking; sign-out POST hardened with a 5s timeout.
+- **[fix] Avatar/settings load chain hardening (Desktop)**: All 12 unguarded `FindName(...).Add_Click()` call sites across the binding chain now null-guarded — a missing button can no longer abort module load and silently kill the avatar → settings wiring.
+
 ## [1.1.0.0] - 2026-08-08
 ### Added
 - **[minor] Trusted Devices Manager**: In-layout dialog with unpairing support (`DeviceManager.removePairedFingerprint`).

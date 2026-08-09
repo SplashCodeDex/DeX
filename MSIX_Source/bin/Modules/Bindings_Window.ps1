@@ -1,5 +1,7 @@
 
-$script:wpfWindow.FindName("btnExit").Add_Click({
+$btnExit = $script:wpfWindow.FindName("btnExit")
+if ($btnExit) {
+    $btnExit.Add_Click({
     $txtExitBtn = $script:wpfWindow.FindName("txtExitBtn")
     $btnProfileBottom = $script:wpfWindow.FindName("btnProfileBottom")
     $isShift = [System.Windows.Input.Keyboard]::Modifiers -match 'Shift'
@@ -97,7 +99,8 @@ $script:wpfWindow.FindName("btnExit").Add_Click({
     
     if ($null -ne $script:exitTimer) { $script:exitTimer.Stop() }
     Invoke-ExitEngine
-})
+    })
+}
 
 $script:wpfWindow.Add_KeyDown({
     param($sender, $e)
@@ -297,7 +300,9 @@ $script:wpfWindow.Add_Deactivated({
 })
 
 # Close button handler (only visible when expanded)
-$script:wpfWindow.FindName("btnCloseMenu").Add_Click({
+$btnCloseMenu = $script:wpfWindow.FindName("btnCloseMenu")
+if ($btnCloseMenu) {
+    $btnCloseMenu.Add_Click({
     $settingsPanel = $script:wpfWindow.FindName("SettingsPanel")
     $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
     
@@ -325,7 +330,8 @@ $script:wpfWindow.FindName("btnCloseMenu").Add_Click({
     $script:wpfWindow.Hide()
     $script:lastDeactivated = [DateTime]::Now
     Reset-SpatialPanels
-})
+    })
+}
 $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
     param($sender, $e)
     $element = $e.OriginalSource

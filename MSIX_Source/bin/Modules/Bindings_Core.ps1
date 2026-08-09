@@ -46,13 +46,19 @@ if ($ctxMenu) {
     })
 }
 
-$script:wpfWindow.FindName("btnQAConnect").Add_Click({
-    if ($this.IsChecked) {
-        Invoke-MenuAction $actionConnect
-    } else {
-        Invoke-MenuAction $actionDisconnect
-    }
-})
-$script:wpfWindow.FindName("btnQAMirror").Add_Click({ Invoke-MenuAction $actionMirror })
-$script:wpfWindow.FindName("btnQAPull").Add_Click({ Invoke-MenuAction $actionPull })
-$script:wpfWindow.FindName("btnQAClipboard").Add_Click({ Invoke-MenuAction $actionClipboard })
+$btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
+if ($btnQAConnect) {
+    $btnQAConnect.Add_Click({
+        if ($this.IsChecked) {
+            Invoke-MenuAction $actionConnect
+        } else {
+            Invoke-MenuAction $actionDisconnect
+        }
+    })
+}
+$btnQAMirror = $script:wpfWindow.FindName("btnQAMirror")
+if ($btnQAMirror) { $btnQAMirror.Add_Click({ Invoke-MenuAction $actionMirror }) }
+$btnQAPull = $script:wpfWindow.FindName("btnQAPull")
+if ($btnQAPull) { $btnQAPull.Add_Click({ Invoke-MenuAction $actionPull }) }
+$btnQAClipboard = $script:wpfWindow.FindName("btnQAClipboard")
+if ($btnQAClipboard) { $btnQAClipboard.Add_Click({ Invoke-MenuAction $actionClipboard }) }

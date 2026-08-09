@@ -120,5 +120,7 @@ $script:notifyIcon.Add_MouseUp({
     }
 })
 
-$script:wpfWindow.FindName("btnDeviceGalaxy").Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull })
-$script:wpfWindow.FindName("btnDeviceWindows").Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull })
+$btnDeviceGalaxy = $script:wpfWindow.FindName("btnDeviceGalaxy")
+if ($btnDeviceGalaxy) { $btnDeviceGalaxy.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }
+$btnDeviceWindows = $script:wpfWindow.FindName("btnDeviceWindows")
+if ($btnDeviceWindows) { $btnDeviceWindows.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }

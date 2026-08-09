@@ -1,5 +1,7 @@
 # --- PIN Pairing Handlers ---
-$script:wpfWindow.FindName("btnPinCancel").Add_Click({
+$btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
+if ($btnPinCancel) {
+    $btnPinCancel.Add_Click({
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
     
     if ($script:activeOutboundPairIp) {
@@ -7,7 +9,8 @@ $script:wpfWindow.FindName("btnPinCancel").Add_Click({
     }
     
     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-})
+    })
+}
 
 
 $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [System.Windows.RoutedEventHandler]{

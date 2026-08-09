@@ -1,32 +1,35 @@
 
-$script:wpfWindow.FindName("btnCopyIP").Add_Click({
-    if (-not [string]::IsNullOrWhiteSpace($script:currentTarget)) {
-        try {
-            Set-Clipboard -Value $script:currentTarget -ErrorAction Stop
-            Show-Toast -Title "Copied" -Message "IP Address copied to clipboard: $($script:currentTarget)"
-            
-            $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
-            if ($null -ne $btnCopyIP) {
-                $tb = $btnCopyIP.Content
-                if ($tb -is [System.Windows.Controls.TextBlock]) {
-                    $tb.Text = [char]0x2713
-                    $tb.Foreground = $script:wpfWindow.FindResource("SuccessBrush")
-                    
-                    $timer = New-Object System.Windows.Threading.DispatcherTimer
-                    $timer.Interval = [TimeSpan]::FromSeconds(1.5)
-                    $timer.Add_Tick({
-                        $tb.Text = [char]0xE8C8
-                        $tb.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "SecondaryTextBrush")
-                        $timer.Stop()
-                    })
-                    $timer.Start()
+$btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
+if ($btnCopyIP) {
+    $btnCopyIP.Add_Click({
+        if (-not [string]::IsNullOrWhiteSpace($script:currentTarget)) {
+            try {
+                Set-Clipboard -Value $script:currentTarget -ErrorAction Stop
+                Show-Toast -Title "Copied" -Message "IP Address copied to clipboard: $($script:currentTarget)"
+                
+                $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
+                if ($null -ne $btnCopyIP) {
+                    $tb = $btnCopyIP.Content
+                    if ($tb -is [System.Windows.Controls.TextBlock]) {
+                        $tb.Text = [char]0x2713
+                        $tb.Foreground = $script:wpfWindow.FindResource("SuccessBrush")
+                        
+                        $timer = New-Object System.Windows.Threading.DispatcherTimer
+                        $timer.Interval = [TimeSpan]::FromSeconds(1.5)
+                        $timer.Add_Tick({
+                            $tb.Text = [char]0xE8C8
+                            $tb.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "SecondaryTextBrush")
+                            $timer.Stop()
+                        })
+                        $timer.Start()
+                    }
                 }
+            } catch {
+                Show-Toast -Title "Clipboard Error" -Message "Could not copy IP. Your clipboard is locked by another app."
             }
-        } catch {
-            Show-Toast -Title "Clipboard Error" -Message "Could not copy IP. Your clipboard is locked by another app."
         }
-    }
-})
+    })
+}
 
 # Settings Panel Button Handlers
 # Auto-Connect toggle in settings
@@ -207,13 +210,18 @@ function Apply-GoogleProfile($profile) {
 # retry-timer tick (UI thread). The old synchronous REST call (5s timeout)
 # could freeze the whole window — including the spatial menu.
 function Update-ProfileUI {
-    $null = Start-Job -Name "ProfileFetch" -ScriptBlock {
-        param($uri)
-        try {
-            $p = Invoke-RestMethod -Uri $uri -TimeoutSec 5 -ErrorAction Stop
-            [pscustomobject]@{ Email = $p.email; Name = $p.name; Picture = $p.picture }
-        } catch { $null }
-    } -ArgumentList "$global:DeXLocalApi/local/settings/google-profile"
+    try {
+        $null = Start-Job -Name "ProfileFetch" -ScriptBlock {
+            param($uri)
+            try {
+                $p = Invoke-RestMethod -Uri $uri -TimeoutSec 5 -ErrorAction Stop
+                [pscustomobject]@{ Email = $p.email; Name = $p.name; Picture = $p.picture }
+            } catch { $null }
+        } -ArgumentList "http://127.0.0.1:53318/local/settings/google-profile"
+    } catch {
+        # Never let a job-spawn failure break this module's load — the avatar
+        # click wiring at the bottom of this file must always attach.
+    }
 }
 
 $btnSettingsSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")

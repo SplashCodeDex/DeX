@@ -383,8 +383,10 @@ $script:lbFiles.Add_KeyDown({
         $e.Handled = $true
     }
 })
-$script:wpfWindow.FindName("btnPushFiles").Add_Click({ Invoke-MenuAction $actionPushFiles })
-$script:wpfWindow.FindName("btnPushFolder").Add_Click({ Invoke-MenuAction $actionPushFolder })
+$btnPushFiles = $script:wpfWindow.FindName("btnPushFiles")
+if ($btnPushFiles) { $btnPushFiles.Add_Click({ Invoke-MenuAction $actionPushFiles }) }
+$btnPushFolder = $script:wpfWindow.FindName("btnPushFolder")
+if ($btnPushFolder) { $btnPushFolder.Add_Click({ Invoke-MenuAction $actionPushFolder }) }
     $fileExplorerPanel.Add_PreviewDragOver({
         $e = $args[1]
         if ($e.Data.GetDataPresent([System.Windows.DataFormats]::FileDrop)) {
