@@ -1,4 +1,4 @@
-
+﻿
 $btnExit = $script:wpfWindow.FindName("btnExit")
 if ($btnExit) {
     $btnExit.Add_Click({

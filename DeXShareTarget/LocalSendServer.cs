@@ -209,13 +209,18 @@ namespace DeXShareTarget
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
             request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, false));
 
-            // Signed by the bundled DeX root CA so Android's Cronet trusts it automatically
+            // Signed by the bundled DeX root CA so Android's Cronet trusts it automatically.
+            // NOTE: CertificateRequest.Create(issuer, ...) returns a cert WITHOUT the private
+            // key attached — exporting it directly would produce a keyless PFX and Kestrel
+            // would refuse to start ("server mode SSL must use a certificate with the
+            // associated private key"). CopyWithPrivateKey reattaches the request's RSA key.
             using var ca = LoadEmbeddedCa();
-            var leaf = request.Create(
+            var signed = request.Create(
                 ca,
                 DateTimeOffset.UtcNow.AddDays(-1),
                 DateTimeOffset.UtcNow.AddYears(1),
                 Guid.NewGuid().ToByteArray());
+            var leaf = signed.CopyWithPrivateKey(rsa);
             File.WriteAllBytes(certPath, leaf.Export(X509ContentType.Pfx, "dex-local"));
             return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
         }

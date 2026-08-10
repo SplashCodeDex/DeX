@@ -1,4 +1,4 @@
-
+﻿
 $script:btnUpDir = $script:wpfWindow.FindName("btnUpDir")
 $script:currentDirPath = ""
 $script:explorerMode = $false

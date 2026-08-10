@@ -1,4 +1,4 @@
-
+﻿
 function adb { & $global:AdbExePath @args }
 Export-ModuleMember -Function adb
 

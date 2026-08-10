@@ -1,4 +1,4 @@
-
+﻿
 $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
