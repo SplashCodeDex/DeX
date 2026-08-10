@@ -21,23 +21,27 @@ function Reset-SpatialPanels {
     $script:wpfWindow.FindName("btnCloseMenu").Opacity = 0
     $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Collapsed'
     $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 0
-    # Pairing PIN/QR panel: force-collapse so a stale pairing state can never wedge the
-    # window open (the Deactivated handler keeps the window up while pinViewPanel is
-    # visible) or leave the panel offscreen (pinViewTrans slides it out to X=300).
-    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
-    if ($pinViewPanel) {
-        $pinViewPanel.Visibility = 'Collapsed'
-        $pinViewPanel.Opacity = 0
+    # Pairing PIN/QR panel: only collapse/clear when NO pairing session is live. An active
+    # session must survive window dismissal (click-away): the pairWaitTimer keeps polling
+    # in the background, the completion toast still fires, and re-opening the window shows
+    # the pairing screen again. The SlideIn/SlideOut holds are the panel's state in that
+    # case, so Release-PinAnimations must not run either (it would snap the menu back
+    # under the visible panel).
+    if (-not $script:activeOutboundPairIp) {
+        Release-PinAnimations
+        $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+        if ($pinViewPanel) {
+            $pinViewPanel.Visibility = 'Collapsed'
+            $pinViewPanel.Opacity = 0
+        }
+        $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+        if ($pinViewTrans) { $pinViewTrans.X = 300 }
+        $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
+        if ($menuContentTrans) { $menuContentTrans.X = 0 }
+        $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
+        if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
+        Clear-PairingState
     }
-    $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
-    if ($pinViewTrans) { $pinViewTrans.X = 300 }
-    $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
-    if ($menuContentTrans) { $menuContentTrans.X = 0 }
-    $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
-    if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    $script:activeOutboundPairIp = $null
-    $script:activeOutboundPairFp = $null
     $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Visible'

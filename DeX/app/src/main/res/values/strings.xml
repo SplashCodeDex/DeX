@@ -1,12 +1,8 @@
 <resources>
     <string name="app_name">DeX</string>
     <string name="settings_title">Settings</string>
-    <string name="back">Back</string>
     <string name="trust_identity_title">Trust &amp; Identity</string>
-    <string name="trust_identity_desc">Devices sharing the same email address will automatically trust each other. Leave blank to use a random per-device UUID.</string>
-    <string name="email_address">Email Address</string>
-    <string name="email_placeholder">you@example.com</string>
-    <string name="current_identity_hash">Current Identity Hash:</string>
+    <string name="trust_identity_desc">Devices signed in with the same Google account will automatically trust each other.</string>
     <!-- Share Target -->
     <string name="share_no_files">No files to share</string>
     <string name="share_pc_offline">PC offline. Saved to Sandbox instead.</string>
@@ -23,17 +19,10 @@
     <string name="error_transfer_folder">Cannot save to Downloads/DeX. Open the app and grant folder access.</string>
     <string name="error_transfer_cancelled">Transfer cancelled.</string>
     <string name="error_upload_all">Upload failed. Check the PC is on and reachable.</string>
-    <string name="onboarding_title">Welcome to DeX</string>
-    <string name="onboarding_subtitle">Send and receive files between your PC and phone — no cables, no cloud.</string>
-    <string name="onboarding_step_1">Install &amp; open DeX on your PC — it lives in the system tray.</string>
-    <string name="onboarding_step_2">Keep both devices on the same Wi-Fi; the PC appears here automatically.</string>
-    <string name="onboarding_step_3">Tap a PC to pair, then send files both ways — even over the internet.</string>
-    <string name="onboarding_got_it">Got it</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_grant">Grant Permission</string>
     <string name="onboarding_select_folder">Select Folder</string>
     <string name="onboarding_done">Start Using DeX</string>
-    <string name="onboarding_granted">Granted</string>
     <string name="onboarding_step_connectivity_title">Stay Connected</string>
     <string name="onboarding_step_connectivity_desc">DeX needs to scan for nearby devices to find your PC on the local network.</string>
     <string name="onboarding_step_notifications_title">Never Miss a File</string>
@@ -52,13 +41,7 @@
     </plurals>
     <string name="upload_success">Successfully Uploaded %1$s</string>
     <string name="upload_failed">Upload Failed: %1$s</string>
-    <string name="clipboard_sent_success">Clipboard sent!</string>
-    <string name="clipboard_sent_failed">Failed to send clipboard</string>
-    <string name="clipboard_empty">Clipboard is empty</string>
     <string name="pairing_request">Pairing Request</string>
-    <string name="device_icon">Device</string>
-    <string name="send_clipboard">Send Clipboard</string>
-    <string name="send_file">Send File</string>
     <string name="toast_scanned_ip">Scanned PC IP: %1$s, searching…</string>
     <string name="toast_scan_failed">Scan failed: %1$s</string>
     <plurals name="toast_sending_files">
@@ -92,11 +75,9 @@
     <string name="accept">Accept</string>
 
     <!-- Pairing Toasts & Dialogs -->
-    <string name="pairing_with">Pairing with %1$s...</string>
+    <string name="pairing_with">Pairing with %1$s…</string>
     <string name="paired_successfully">Paired successfully!</string>
     <string name="pairing_failed">Pairing failed!</string>
-    <string name="pairing_from">From: %1$s</string>
-    <string name="pairing_enter_pin">Enter the PIN shown on the device</string>
     <string name="pairing_enter_pin_on_device">Enter the PIN shown on %1$s</string>
     <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
     <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN on your PC</string>
@@ -123,10 +104,4 @@
     <string name="device_protocol">Protocol</string>
     <string name="device_version">Version</string>
     <string name="device_fingerprint">Fingerprint</string>
-
-    <!-- Settings: WAN -->
-    <string name="settings_public_address">Public Address (WAN)</string>
-    <string name="settings_public_address_label">Public address</string>
-    <string name="settings_public_address_hint">mypc.ddns.net or 203.0.113.5</string>
-    <string name="settings_public_address_note">Lets the phone reach your PC from anywhere. Requires the PC\'s QUIC port (UDP 48423) to be forwarded, and a PC app restart after changing.</string>
 </resources>

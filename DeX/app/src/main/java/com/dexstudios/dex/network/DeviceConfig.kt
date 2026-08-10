@@ -58,10 +58,8 @@ class DeviceConfig(private val context: Context) {
     val fingerprintFlow: StateFlow<String> = _fingerprintFlow.asStateFlow()
 
     private val _identityHashFlow = MutableStateFlow("")
-    val identityHashFlow: StateFlow<String> = _identityHashFlow.asStateFlow()
 
     private val _publicAddressFlow = MutableStateFlow("")
-    val publicAddressFlow: StateFlow<String> = _publicAddressFlow.asStateFlow()
 
     /** Single combined flow — replacing three individual collectAsState() reads in the UI. */
     val googleProfileFlow: StateFlow<GoogleProfile> = combine(

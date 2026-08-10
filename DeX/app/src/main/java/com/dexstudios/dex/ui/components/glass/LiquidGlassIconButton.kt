@@ -41,7 +41,8 @@ import com.kyant.backdrop.shadow.Shadow
  * so it never draws "empty" glass.
  *
  * @param onClick invoked when the button is tapped.
- * @param size the bounding diameter of the circular button.
+ * @param width the bounding width of the button.
+ * @param height the bounding height of the button.
  * @param config all glass styling knobs (shape, blur, lens, tint, highlights).
  * @param backdrop the content the glass samples; null renders a plain surface.
  */
@@ -49,7 +50,8 @@ import com.kyant.backdrop.shadow.Shadow
 fun LiquidGlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 56.dp,
+    width: Dp = 56.dp,
+    height: Dp = 56.dp,
     config: LiquidGlassConfig = LiquidGlassConfig(),
     backdrop: Backdrop? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -64,6 +66,7 @@ fun LiquidGlassIconButton(
 
     val glassModifier = if (backdrop != null) {
         Modifier
+            .size(width, height)
             .bubbleFluidity()
             .drawBackdrop(
                 backdrop = backdrop,
@@ -91,11 +94,10 @@ fun LiquidGlassIconButton(
                     }
                 }
             )
-            .size(size)
     } else {
         Modifier
+            .size(width, height)
             .bubbleFluidity()
-            .size(size)
             .clip(config.shape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
             .border(1.dp, Color.White.copy(alpha = 0.2f), config.shape)

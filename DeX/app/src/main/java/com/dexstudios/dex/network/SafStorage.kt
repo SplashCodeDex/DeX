@@ -103,7 +103,7 @@ object SafStorage {
         val asString = uri.toString()
         val documentMarker = "/document/"
         return if (asString.contains(documentMarker)) {
-            val treeUri = Uri.parse(asString.substringBefore(documentMarker))
+            val treeUri = asString.substringBefore(documentMarker).toUri()
             val parentDocId = asString.substringAfter(documentMarker)
             treeUri to parentDocId
         } else {

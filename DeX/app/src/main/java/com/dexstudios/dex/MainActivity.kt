@@ -19,6 +19,7 @@ import android.os.Build
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -134,8 +135,8 @@ class MainActivity : ComponentActivity() {
     super.onResume()
     // Refresh the keep-alive window: the phone stays reachable for 6h after the last app use
     getSharedPreferences(com.dexstudios.dex.network.KeepAliveWorker.PREFS, MODE_PRIVATE)
-        .edit()
-        .putLong(com.dexstudios.dex.network.KeepAliveWorker.KEY_LAST_ACTIVE, System.currentTimeMillis())
-        .apply()
+        .edit {
+            putLong(com.dexstudios.dex.network.KeepAliveWorker.KEY_LAST_ACTIVE, System.currentTimeMillis())
+        }
   }
 }

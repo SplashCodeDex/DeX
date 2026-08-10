@@ -106,28 +106,58 @@ function Start-PinPairing {
     $script:activeOutboundPairIp = $Ip
     $script:activeOutboundPairFp = $Fingerprint
 
-    try {
-        $initRes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-initiate?ip=${Ip}&fingerprint=${Fingerprint}" -Method Post -TimeoutSec 5 -ErrorAction Stop
-        $pin = $initRes.pin
-        if (-not $pin) {
+    # PS 5.1: scriptblock delegates cannot run on threadpool threads, so the pair-initiate
+    # POST (which waits on the phone's WebSocket and can stall on a half-dead connection)
+    # runs in a background Job; a poll timer applies the result on the UI thread.
+    if ($script:pairInitJob) { Remove-Job $script:pairInitJob -Force -ErrorAction SilentlyContinue }
+    if ($script:pairInitTimer) { $script:pairInitTimer.Stop() }
+    $api = $global:DeXLocalApi
+    $job = Start-Job -ScriptBlock {
+        param($apiBase, $targetIp, $targetFp, $targetAlias)
+        $pin = $null
+        $alias = $targetAlias
+        try {
+            $initRes = Invoke-RestMethod -Uri "$apiBase/local/pair-initiate?ip=${targetIp}&fingerprint=${targetFp}" -Method Post -TimeoutSec 5 -ErrorAction Stop
+            $pin = $initRes.pin
+        } catch {}
+        if (-not $alias) {
+            try {
+                $devices = Invoke-RestMethod -Uri "$apiBase/local/devices" -TimeoutSec 2 -ErrorAction SilentlyContinue
+                $t = $devices | Where-Object { $_.info.fingerprint -eq $targetFp } | Select-Object -First 1
+                if ($t) { $alias = $t.info.alias }
+            } catch {}
+        }
+        return @{ Pin = $pin; Alias = $alias }
+    } -ArgumentList $api, $Ip, $Fingerprint, $alias
+    $script:pairInitJob = $job
+    # Plain tick (NO GetNewClosure): closures cannot resolve functions from later
+    # dot-sourced files (Test-PairingActive/Show-PinPanel failed here), and $script:
+    # writes are lost in them. A plain scriptblock runs in the real engine scope.
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(150)
+    $script:pairInitTimer = $timer
+    $timer.Add_Tick({
+        $job = $script:pairInitJob
+        if (-not $job) { $script:pairInitTimer.Stop(); return }
+        # A freshly spawned job starts in NotStarted — keep polling until it reaches a terminal state.
+        if ($job.State -notin @('Completed','Failed','Stopped')) { return }
+        $script:pairInitTimer.Stop()
+        $script:pairInitJob = $null
+        $result = $null
+        if ($job.State -eq 'Completed') { $result = Receive-Job $job -ErrorAction SilentlyContinue }
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        # The user cancelled (Escape/Cancel) while the POST was in flight — don't
+        # resurrect the panel over the dismissed menu.
+        if (-not $script:activeOutboundPairIp) { return }
+        if (-not $result -or -not $result.Pin) {
+            Clear-PairingState
             Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."
             return
         }
-    } catch {
-        Show-Toast -Title "Request Failed" -Message $_.Exception.Message
-        return
-    }
-
-    if (-not $alias) {
-        try {
-            $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction SilentlyContinue
-            $t = $devices | Where-Object { $_.info.fingerprint -eq $Fingerprint } | Select-Object -First 1
-            if ($t) { $alias = $t.info.alias }
-        } catch {}
-    }
-
-    Show-PinPanel -Title "Pairing with $alias" -Code $pin -Status "Waiting for remote acceptance..." `
-        -ShowQrToggle -HideAcceptButtons `
-        -SuccessMessage "Device trusted and added to Your Devices." `
-        -FailureMessage "The remote device rejected or timed out."
+        Show-PinPanel -Title "Pairing with $($result.Alias)" -Code $result.Pin -Status "Waiting for remote acceptance..." `
+            -ShowQrToggle -HideAcceptButtons `
+            -SuccessMessage "Device trusted and added to Your Devices." `
+            -FailureMessage "The remote device rejected or timed out."
+    })
+    $timer.Start()
 }

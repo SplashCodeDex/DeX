@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.dexstudios.dex.BuildConfig
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -37,13 +38,10 @@ object GoogleSignInManager {
 
         return try {
             val result = credentialManager.getCredential(activity, request)
-            when (val credential = result.credential) {
-                is GoogleIdTokenCredential -> credential
-                else -> {
-                    Timber.w("Unexpected credential type: ${credential.type}")
-                    null
-                }
-            }
+            GoogleIdTokenCredential.createFrom(result.credential.data)
+        } catch (e: NoCredentialException) {
+            Timber.i("Google Sign-In cancelled by user")
+            null
         } catch (e: GetCredentialException) {
             Timber.e(e, "Google Sign-In failed: ${e.message}")
             null

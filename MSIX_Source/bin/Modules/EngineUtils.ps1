@@ -1,4 +1,4 @@
-﻿if (-not ("ThumbHelper" -as [type])) {
+if (-not ("ThumbHelper" -as [type])) {
     $thumbCode = @"
 using System;
 using System.Runtime.InteropServices;
@@ -182,7 +182,13 @@ function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr
         return
     }
 
-    $action = [System.Action]{
+    # PS 5.1 cannot run scriptblock delegates on threadpool threads ("no runspace
+    # available") — the old BeginInvoke threw here and aborted the whole listing loop.
+    # Decode on the UI thread at Background priority instead: 100px decodes are fast and
+    # run between input events (the UI thread is the one place scriptblocks can run).
+    # ponytail: UI-thread decode; if video/PDF-heavy folders jank, move GetThumb onto a
+    # method-group Task (real CLR delegates DO run on threadpool threads).
+    $script:wpfWindow.Dispatcher.InvokeAsync([System.Windows.Threading.DispatcherPriority]::Background, [System.Action]{
         try {
             $bs = $null
             if ($fileName -match '\.(jpg|jpeg|png|webp|bmp)$') {
@@ -208,16 +214,12 @@ function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr
                         }
                     }
                 }
-                $uiAction = [System.Action]{
-                    $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $bs; NoThumb = 'Collapsed' }
-                }
-                $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
+                $targetItem.Content = [PSCustomObject]@{ Name = $fileName; FullPath = $fullPath; IsDir = $isDir; Meta = $metaStr; Thumb = $bs; NoThumb = 'Collapsed' }
             }
         } catch {
             # Silently fail for unsupported files
         }
-    }
-    $null = $action.BeginInvoke($null, $null)
+    }) | Out-Null
 }
 
 # ============================================================================
@@ -660,40 +662,63 @@ function Start-AsyncSafBrowse([string]$DirPath, [string]$Transition, [bool]$HadI
     # boundary (same object reference), unlike $script: reassignment.
     $browse = @{ Lines = @(); Meta = @{} }
 
-    $action = [System.Action]{
+    # PS 5.1 cannot run scriptblock delegates on threadpool threads — the old
+    # BeginInvoke threw here, breaking every phone folder navigation. The browse POST
+    # (up to 30s on a slow device) runs in a background Job; a poll timer completes it.
+    if ($script:safBrowseJob) { Remove-Job $script:safBrowseJob -Force -ErrorAction SilentlyContinue }
+    if ($script:safBrowseTimer) { $script:safBrowseTimer.Stop() }
+    $api = $global:DeXLocalApi
+    $browseIp = $ip
+    $job = Start-Job -ScriptBlock {
+        param($apiBase, $targetIp, $folderUri)
+        $lines = @()
+        $meta = @{}
         try {
-            $body = @{ ip = $ip; folderUri = $DirPath } | ConvertTo-Json
-            $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
+            $body = @{ ip = $targetIp; folderUri = $folderUri } | ConvertTo-Json
+            $res = Invoke-RestMethod -Uri "$apiBase/local/dex/browse" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
             if ($res.entries) {
                 foreach ($prop in $res.entries.PSObject.Properties) {
                     $name = $prop.Value.name
                     $isDir = [bool]$prop.Value.isDirectory
                     $size = [long]$prop.Value.size
                     $thumb = if ($prop.Value.thumb) { $prop.Value.thumb } else { $null }
-                    $browse.Meta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir; Thumb = $thumb }
-                    if ($isDir) { $browse.Lines += "$name/" } else { $browse.Lines += $name }
+                    $meta[$name] = @{ Uri = $prop.Name; Size = $size; IsDir = $isDir; Thumb = $thumb }
+                    if ($isDir) { $lines += "$name/" } else { $lines += $name }
                 }
             }
         } catch {
             Write-Trace "Browse Error: $_"
         }
-
-        $wpf = $script:wpfWindow
-        if ($null -ne $wpf) {
-            $linesCopy = $browse.Lines
-            $metaCopy = $browse.Meta
-            # Marshal back to the UI thread; Complete-AsyncBrowse performs the state writes
-            # there (script-scope function, so they land in the real script state).
-            $wpf.Dispatcher.Invoke([Action]{
-                Complete-AsyncBrowse -MySeq $MySeq -Meta $metaCopy -Lines $linesCopy -DirPath $DirPath -Transition $Transition -HadItems $HadItems
-            }.GetNewClosure()) | Out-Null
+        return @{ Lines = $lines; Meta = $meta }
+    } -ArgumentList $api, $browseIp, $DirPath
+    $script:safBrowseJob = $job
+    # Plain tick (NO GetNewClosure): closures cannot resolve functions from later
+    # dot-sourced files — Complete-AsyncBrowse failed from a detached closure. A plain
+    # scriptblock runs in the real engine scope; the call context rides in script state.
+    $script:safBrowseContext = @{ MySeq = $MySeq; DirPath = $DirPath; Transition = $Transition; HadItems = $HadItems }
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(250)
+    $script:safBrowseTimer = $timer
+    $timer.Add_Tick({
+        $job = $script:safBrowseJob
+        if (-not $job) { $script:safBrowseTimer.Stop(); return }
+        # A freshly spawned job starts in NotStarted — keep polling until it reaches a terminal state.
+        if ($job.State -notin @('Completed','Failed','Stopped')) { return }
+        $script:safBrowseTimer.Stop()
+        $script:safBrowseJob = $null
+        $result = $null
+        if ($job.State -eq 'Completed') { $result = Receive-Job $job -ErrorAction SilentlyContinue }
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        $ctx = $script:safBrowseContext
+        # Complete-AsyncBrowse drops stale results (sequence token), releases the load
+        # guard and renders — all real script-state writes live in that function.
+        if ($result -and $result.Meta) {
+            Complete-AsyncBrowse -MySeq $ctx.MySeq -Meta $result.Meta -Lines $result.Lines -DirPath $ctx.DirPath -Transition $ctx.Transition -HadItems $ctx.HadItems
         } else {
-            # Window gone (engine shutting down): nothing to render; release the guard.
-            $script:asyncBrowsePending = $false
-            $script:isLoadingDir = $false
+            Complete-AsyncBrowse -MySeq $ctx.MySeq -Meta @{} -Lines @() -DirPath $ctx.DirPath -Transition $ctx.Transition -HadItems $ctx.HadItems
         }
-    }.GetNewClosure()
-    $null = $action.BeginInvoke($null, $null)
+    })
+    $timer.Start()
 }
 
 # Runs on the UI thread when an async SAF browse finishes. Drops stale results (the user
@@ -738,17 +763,15 @@ function Convert-PhoneThumb([string]$base64) {
 
 # Async decode of a phone (SAF) base64 thumbnail, mirroring Load-ThumbnailAsync so the
 # base64 decode + BitmapImage construction never blocks the UI thread during a browse.
+# PS 5.1 note: scriptblock delegates cannot run on threadpool threads, so the decode runs
+# on the UI thread at Background priority (idle time), same as Load-ThumbnailAsync.
 function Load-PhoneThumbAsync($targetItem, $base64, $name, $full, $isDir, $meta) {
-    $action = [System.Action]{
+    $script:wpfWindow.Dispatcher.InvokeAsync([System.Windows.Threading.DispatcherPriority]::Background, [System.Action]{
         $bmp = Convert-PhoneThumb $base64
         if ($bmp) {
-            $uiAction = [System.Action]{
-                $targetItem.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $bmp; NoThumb = 'Collapsed' }
-            }
-            $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
+            $targetItem.Content = [PSCustomObject]@{ Name = $name; FullPath = $full; IsDir = $isDir; Meta = $meta; Thumb = $bmp; NoThumb = 'Collapsed' }
         }
-    }
-    $null = $action.BeginInvoke($null, $null)
+    }) | Out-Null
 }
 
 # Resolves the phone the File Explorer browses. Explorer is scoped to the SELECTED device

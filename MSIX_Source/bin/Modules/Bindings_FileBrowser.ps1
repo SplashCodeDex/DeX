@@ -1,4 +1,4 @@
-﻿
+
 $script:btnUpDir = $script:wpfWindow.FindName("btnUpDir")
 $script:currentDirPath = ""
 $script:explorerMode = $false
@@ -318,32 +318,49 @@ function Show-PhoneFoldersRoot {
 # Asks the phone to open its SAF folder picker. Runs the HTTP call on a background thread so
 # the WPF UI never freezes for the (up to 190s) grant window, and applies the result on the
 # UI thread. The phone's own picker result is surfaced; a failure just toasts.
+# PS 5.1 note: scriptblock delegates cannot run on threadpool threads, so the grant POST
+# runs in a background Job; a poll timer applies the result on the UI thread.
 function Start-GrantFolderFlow([string]$Ip) {
-    $grantCopy = @{ granted = $false }
-    $action = [System.Action]{
+    if ($script:grantJob) { Remove-Job $script:grantJob -Force -ErrorAction SilentlyContinue }
+    if ($script:grantTimer) { $script:grantTimer.Stop() }
+    $api = $global:DeXLocalApi
+    $job = Start-Job -ScriptBlock {
+        param($apiBase, $targetIp)
         try {
-            $res = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/grant-folder" -Method Post `
-                -Body (@{ ip = $Ip } | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 200 -ErrorAction Stop
-            $grantCopy.granted = [bool]$res.granted
+            $res = Invoke-RestMethod -Uri "$apiBase/local/dex/grant-folder" -Method Post `
+                -Body (@{ ip = $targetIp } | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 200 -ErrorAction Stop
+            return [bool]$res.granted
         } catch {
-            $grantCopy.granted = $false
+            return $false
         }
-        $wpf = $script:wpfWindow
-        if ($null -ne $wpf) {
-            $wpf.Dispatcher.InvokeAsync([Action]{
-                if ($grantCopy.granted) {
-                    Show-Toast -Title "Folder Granted" -Message "Your phone folder is now accessible from File Explorer."
-                    # Folders changed — reload the root so the fresh grant shows up immediately,
-                    # but only if the user is still looking at the File Explorer panel.
-                    $fe = $wpf.FindName("FileExplorer")
-                    if ($fe -and $fe.Visibility -eq 'Visible') { Show-PhoneFoldersRoot }
-                }
-                # A false result (user cancelled the picker) needs no extra toast: the
-                # "Grant a folder" prompt already told the user what to do.
-            }.GetNewClosure()) | Out-Null
+    } -ArgumentList $api, $Ip
+    $script:grantJob = $job
+    # Plain tick (NO GetNewClosure): closures cannot resolve functions from later
+    # dot-sourced files — a plain scriptblock runs in the real engine scope.
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(250)
+    $script:grantTimer = $timer
+    $timer.Add_Tick({
+        $job = $script:grantJob
+        if (-not $job) { $script:grantTimer.Stop(); return }
+        # A freshly spawned job starts in NotStarted — keep polling until it reaches a terminal state.
+        if ($job.State -notin @('Completed','Failed','Stopped')) { return }
+        $script:grantTimer.Stop()
+        $script:grantJob = $null
+        $granted = $false
+        if ($job.State -eq 'Completed') { $granted = [bool](Receive-Job $job -ErrorAction SilentlyContinue) }
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        if ($granted) {
+            Show-Toast -Title "Folder Granted" -Message "Your phone folder is now accessible from File Explorer."
+            # Folders changed — reload the root so the fresh grant shows up immediately,
+            # but only if the user is still looking at the File Explorer panel.
+            $fe = $script:wpfWindow.FindName("FileExplorer")
+            if ($fe -and $fe.Visibility -eq 'Visible') { Show-PhoneFoldersRoot }
         }
-    }.GetNewClosure()
-    $null = $action.BeginInvoke($null, $null)
+        # A false result (user cancelled the picker) needs no extra toast: the
+        # "Grant a folder" prompt already told the user what to do.
+    })
+    $timer.Start()
 }
 
 # Toggle between Transfer History (local Downloads\DeX) and File Explorer Mode (SAF-granted phone folders)

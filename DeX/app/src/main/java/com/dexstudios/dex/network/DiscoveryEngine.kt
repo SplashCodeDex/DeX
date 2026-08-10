@@ -8,6 +8,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -24,6 +27,7 @@ class DiscoveryEngine(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var cleanupJob: Job? = null
+    private var identityWatchJob: Job? = null
     
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
@@ -77,6 +81,20 @@ class DiscoveryEngine(
                 seenDevices.entries.removeIf { it.key !in _devices.value }
             }
         }
+
+        // Re-advertise whenever the trusted identity changes (Google sign-in/sign-out)
+        // so the LAN advertisement always carries the current identityHash/googleSub.
+        identityWatchJob = scope.launch {
+            combine(deviceConfig.emailFlow, deviceConfig.googleSubFlow) { email, sub -> email to sub }
+                .drop(1)
+                .collectLatest {
+                    Timber.i("Trusted identity changed; re-advertising NSD + UDP")
+                    nsdManagerHelper?.stop()
+                    nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
+                    udpManager?.stop()
+                    udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
+                }
+        }
     }
 
     fun addDevice(device: DiscoveredDevice) {
@@ -103,6 +121,7 @@ class DiscoveryEngine(
         nsdManagerHelper?.stop()
         udpManager?.stop()
         cleanupJob?.cancel()
+        identityWatchJob?.cancel()
     }
 
     fun sendManualDiscovery(ip: String) {

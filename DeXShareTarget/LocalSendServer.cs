@@ -134,7 +134,7 @@ namespace DeXShareTarget
         /// <summary>The public (WAN) address the phone should reach this PC at; pushed to phones on connect.</summary>
         public static string? PublicAddress { get; private set; }
 
-        /// <summary>Persists the phone-configured public address so the next certificate covers it.</summary>
+        /// <summary>Persists the UPnP-detected public address so the next certificate covers it.</summary>
         public static void SetPublicAddress(string address)
         {
             try

@@ -1,6 +1,7 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import androidx.core.content.edit
 
 object PcMemory {
     private const val PREFS = "dex_pc_prefs"
@@ -8,11 +9,10 @@ object PcMemory {
     private const val KEY_IP = "last_pc_ip"
 
     fun save(context: Context, fingerprint: String, ip: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_FINGERPRINT, fingerprint)
-            .putString(KEY_IP, ip)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putString(KEY_FINGERPRINT, fingerprint)
+            putString(KEY_IP, ip)
+        }
     }
 
     fun fingerprint(context: Context): String? {

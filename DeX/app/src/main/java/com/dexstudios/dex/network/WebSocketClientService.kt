@@ -305,10 +305,4 @@ class WebSocketClientService(
         }
         return socket.send("""{"type":"pair-request"}""")
     }
-
-    /** Tells the PC the phone's configured public address so it can add it to its certificate. */
-    fun sendPublicAddress(address: String) {
-        val safe = address.trim().replace("\"", "")
-        sendMessage("""{"type":"set-public-address","data":{"address":"$safe"}}""")
-    }
 }

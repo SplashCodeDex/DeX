@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.TransferHistory
@@ -214,10 +215,10 @@ private fun openRecord(context: Context, record: TransferRecord) {
     }
     try {
         val type = runCatching {
-            context.contentResolver.getType(Uri.parse(uri))
+            context.contentResolver.getType(uri.toUri())
         }.getOrNull() ?: "application/octet-stream"
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.parse(uri), type)
+            setDataAndType(uri.toUri(), type)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(intent)

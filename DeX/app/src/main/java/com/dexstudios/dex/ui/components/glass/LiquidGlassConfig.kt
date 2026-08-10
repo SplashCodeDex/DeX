@@ -129,4 +129,23 @@ object LiquidGlassPresets {
         shadowColor = Color.Black.copy(alpha = 0.25f),
         innerShadow = InnerShadow(radius = 4.dp),
     )
+
+    /**
+     * Dark, high-contrast glass for the expanded Dynamic Island look.
+     * Overlaps content with a prominent dark tint and heavy blur.
+     */
+    val DynamicIsland: LiquidGlassConfig = LiquidGlassConfig(
+        shape = RoundedCornerShape(32.dp),
+        blurRadius = 16.dp,
+        lensHeight = 20.dp,
+        lensAmount = 40.dp,
+        vibrancyEnabled = true,
+        chromaticAberration = true,
+        depthEffect = true,
+        surfaceTint = Color.Black,
+        surfaceTintAlpha = 0.85f,
+        highlight = Highlight.Ambient,
+        shadowRadius = 24.dp,
+        shadowColor = Color.Black.copy(alpha = 0.5f),
+    )
 }

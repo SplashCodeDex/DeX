@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DownloadState
 import com.dexstudios.dex.network.UploadState
+import java.util.Locale
 
 @Composable
 fun TransferProgressOverlay(
@@ -139,8 +140,8 @@ private fun transferStatus(protocol: String, speedBps: Long): String {
 }
 
 private fun formatSpeed(bps: Long): String = when {
-    bps >= 1024L * 1024 * 1024 -> String.format("%.1f GB/s", bps / (1024f * 1024 * 1024))
-    bps >= 1024L * 1024 -> String.format("%.1f MB/s", bps / (1024f * 1024))
-    bps >= 1024L -> String.format("%.0f KB/s", bps / 1024f)
+    bps >= 1024L * 1024 * 1024 -> String.format(Locale.ROOT, "%.1f GB/s", bps / (1024f * 1024 * 1024))
+    bps >= 1024L * 1024 -> String.format(Locale.ROOT, "%.1f MB/s", bps / (1024f * 1024))
+    bps >= 1024L -> String.format(Locale.ROOT, "%.0f KB/s", bps / 1024f)
     else -> "$bps B/s"
 }

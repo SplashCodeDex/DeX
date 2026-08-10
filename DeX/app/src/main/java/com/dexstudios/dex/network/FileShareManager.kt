@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
+import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -156,7 +157,7 @@ class FileShareManager(
             val bmp = context.contentResolver.openInputStream(e.uri.toUri())?.use {
                 BitmapFactory.decodeStream(it, null, opts)
             } ?: return null
-            val scaled = android.graphics.Bitmap.createScaledBitmap(bmp, THUMB_SIZE, THUMB_SIZE, true)
+            val scaled = bmp.scale(THUMB_SIZE, THUMB_SIZE, true)
             if (bmp !== scaled) bmp.recycle()
             val out = ByteArrayOutputStream()
             scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, out)

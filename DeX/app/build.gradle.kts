@@ -14,8 +14,11 @@ android {
         versionCode = 2
         versionName = "1.1"
 
-        // Google Sign-In OAuth client ID (Android type). Configure via
-        // -PGOOGLE_SIGN_IN_CLIENT_ID="..." or gradle.properties; blank = sign-in hidden.
+        // Google Sign-In server (OAuth "Web application") client ID used as the
+        // Credential Manager serverClientId / ID-token audience. The Android OAuth
+        // client is matched automatically via package + SHA-1 — do NOT put the
+        // Android client ID here. Configure via -PGOOGLE_SIGN_IN_CLIENT_ID="..."
+        // or gradle.properties; blank = sign-in hidden.
         val googleClientId = providers.gradleProperty("GOOGLE_SIGN_IN_CLIENT_ID").orNull ?: ""
         buildConfigField("String", "GOOGLE_SIGN_IN_CLIENT_ID", "\"$googleClientId\"")
     }

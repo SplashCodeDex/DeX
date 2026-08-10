@@ -6,6 +6,7 @@ import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -149,7 +150,7 @@ object MirrorSession {
             val bmpWidth = width + rowPadding / pixelStride
             if (cachedBitmap == null || cachedBitmapWidth != bmpWidth || cachedBitmapHeight != height) {
                 cachedBitmap?.recycle()
-                cachedBitmap = Bitmap.createBitmap(bmpWidth, height, Bitmap.Config.ARGB_8888)
+                cachedBitmap = createBitmap(bmpWidth, height)
                 cachedBitmapWidth = bmpWidth
                 cachedBitmapHeight = height
             }

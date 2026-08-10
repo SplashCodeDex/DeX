@@ -1,6 +1,7 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,9 +89,8 @@ object TransferHistory {
             r.uri?.let { o.put("uri", it) }
             arr.put(o)
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY, arr.toString())
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putString(KEY, arr.toString())
+        }
     }
 }

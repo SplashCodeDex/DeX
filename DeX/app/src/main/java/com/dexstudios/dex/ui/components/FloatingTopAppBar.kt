@@ -1,5 +1,8 @@
 package com.dexstudios.dex.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
@@ -15,21 +18,36 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DeviceConfig
+import com.dexstudios.dex.network.GoogleProfile
 import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.kyant.backdrop.Backdrop
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @Composable
@@ -38,160 +56,410 @@ fun FloatingTopAppBar(
     backdrop: Backdrop? = null,
     showSearch: Boolean = true,
 ) {
-    var showProfileDialog by remember { mutableStateOf(false) }
+    var isProfileExpanded by remember { mutableStateOf(false) }
+    var isSearchExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val expandedWidth = screenWidth - 32.dp
+
+    // Dynamic Island bouncy expansion (Avatar)
+    val islandWidth by animateDpAsState(
+        targetValue = if (isProfileExpanded) expandedWidth else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "islandWidth"
+    )
+    val islandHeight by animateDpAsState(
+        targetValue = if (isProfileExpanded) 180.dp else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "islandHeight"
+    )
+
+    // Dynamic Island bouncy expansion (Search)
+    val searchWidth by animateDpAsState(
+        targetValue = if (isSearchExpanded) expandedWidth else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "searchWidth"
+    )
+    val searchHeight by animateDpAsState(
+        targetValue = if (isSearchExpanded) 180.dp else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "searchHeight"
+    )
 
     // Signed-in Google profile: single combined flow — one recomposition instead of three
     val deviceConfig: DeviceConfig = koinInject()
     val profile by deviceConfig.googleProfileFlow.collectAsState()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val searchFocusRequester = remember { FocusRequester() }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, start = 16.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // User Avatar — Google picture when signed in; tap to sign in otherwise
-        LiquidGlassIconButton(
-            onClick = {
-                if (profile.picture.isNotBlank()) {
-                    showProfileDialog = true
-                } else {
-                    val activity = context as? android.app.Activity
-                    if (activity != null) {
-                        scope.launch {
-                            val credential = GoogleSignInManager.signIn(activity)
-                            val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-                            if (email != null) {
-                                Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+    // Celebration flow: stay expanded for 3s after successful sign-in
+    var lastProfileEmail by remember { mutableStateOf(profile.email) }
+    LaunchedEffect(profile.email) {
+        if (lastProfileEmail.isBlank() && profile.email.isNotBlank()) {
+            isProfileExpanded = true
+            delay(3000)
+            isProfileExpanded = false
+        }
+        lastProfileEmail = profile.email
+    }
+
+    LaunchedEffect(isSearchExpanded) {
+        if (isSearchExpanded) {
+            delay(100) // Wait for animation to start
+            searchFocusRequester.requestFocus()
+        } else {
+            keyboardController?.hide()
+        }
+    }
+
+    val anyExpanded = isProfileExpanded || isSearchExpanded
+    val focusAlpha by animateFloatAsState(
+        targetValue = if (anyExpanded) 1f else 0f,
+        animationSpec = tween(500),
+        label = "focusAlpha"
+    )
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (anyExpanded) 0f else 1f,
+        animationSpec = tween(400),
+        label = "contentAlpha"
+    )
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Outside tap dismissal & Focus Blur layer
+        if (focusAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(0.5f)
+                    .graphicsLayer { alpha = focusAlpha }
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .then(
+                        if (android.os.Build.VERSION.SDK_INT >= 31) {
+                            Modifier.blur(12.dp)
+                        } else Modifier
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            isProfileExpanded = false
+                            isSearchExpanded = false
+                        }
+                    )
+            )
+        }
+
+        // The Top Bar Layout
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                .height(80.dp)
+        ) {
+            // Brand Logo (Fades out when expanded) with interactive Bubble Fluidity physics
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .graphicsLayer { alpha = contentAlpha },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.dex_logo),
+                    contentDescription = "DeX Logo",
+                    modifier = Modifier
+                        .height(80.dp)
+                        .bubbleFluidity(targetScale = 0.85f, pullFactor = 0.25f),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Action Buttons Group / Search Island (Right side)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .height(80.dp)
+                    .zIndex(if (isSearchExpanded) 2f else 1f),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                if (showSearch) {
+                    LiquidGlassIconButton(
+                        onClick = {
+                            isSearchExpanded = !isSearchExpanded
+                            if (isSearchExpanded) isProfileExpanded = false
+                        },
+                        width = searchWidth,
+                        height = searchHeight,
+                        backdrop = backdrop,
+                        config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                    ) {
+                        AnimatedContent(
+                            targetState = isSearchExpanded,
+                            transitionSpec = {
+                                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                            },
+                            label = "searchContent"
+                        ) { expanded ->
+                            if (expanded) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.ic_search),
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    androidx.compose.foundation.text.BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .focusRequester(searchFocusRequester),
+                                        textStyle = TextStyle(
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        cursorBrush = SolidColor(Color.White),
+                                        decorationBox = { innerTextField ->
+                                            if (searchQuery.isEmpty()) {
+                                                Text(
+                                                    "Search devices...",
+                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    fontSize = 16.sp
+                                                )
+                                            }
+                                            innerTextField()
+                                        }
+                                    )
+                                }
                             } else {
-                                Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.ic_search),
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(32.dp)
+                                )
                             }
                         }
                     }
+                } else {
+                    Spacer(modifier = Modifier.size(56.dp))
                 }
-            },
-            size = 56.dp,
-            backdrop = backdrop,
-            config = LiquidGlassPresets.IconButton
+            }
+
+            // User Avatar / Dynamic Island (Left side, overlaps Logo/Search when expanded)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .height(80.dp)
+                    .zIndex(if (isProfileExpanded) 10f else 1f),
+                contentAlignment = Alignment.TopStart
+            ) {
+                LiquidGlassIconButton(
+                    onClick = {
+                        isProfileExpanded = !isProfileExpanded
+                        if (isProfileExpanded) isSearchExpanded = false
+                    },
+                    width = islandWidth,
+                    height = islandHeight,
+                    backdrop = backdrop,
+                    config = if (isProfileExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                ) {
+                    AnimatedContent(
+                        targetState = isProfileExpanded,
+                        transitionSpec = {
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                        },
+                        label = "islandContent"
+                    ) { expanded ->
+                        if (expanded) {
+                            ExpandedProfileContent(
+                                profile = profile,
+                                onSignOut = {
+                                    deviceConfig.signOut()
+                                    isProfileExpanded = false
+                                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
+                                },
+                                onSignIn = {
+                                    val activity = context as? android.app.Activity
+                                    if (activity != null) {
+                                        scope.launch {
+                                            val credential = GoogleSignInManager.signIn(activity)
+                                            val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                            if (email != null) {
+                                                Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            CollapsedProfileContent(profile = profile)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CollapsedProfileContent(profile: GoogleProfile) {
+    if (profile.picture.isNotBlank()) {
+        AsyncImage(
+            model = profile.picture,
+            contentDescription = "Profile",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+        )
+    } else if (profile.email.isNotBlank()) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
         ) {
+            Text(
+                text = (profile.name.ifBlank { profile.email }).first().uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    } else {
+        Icon(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_account_circle),
+            contentDescription = "Profile",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(32.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExpandedProfileContent(
+    profile: GoogleProfile,
+    onSignOut: () -> Unit,
+    onSignIn: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (profile.email.isBlank()) {
+            // Guest State
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Sign in to sync your devices",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                DeXButton(
+                    onClick = onSignIn,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
             if (profile.picture.isNotBlank()) {
                 AsyncImage(
                     model = profile.picture,
                     contentDescription = "Profile",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                 )
-            } else if (profile.email.isNotBlank()) {
-                // Signed in but no avatar: show the account's initial
+            } else {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = (profile.name.ifBlank { profile.email }).first().uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-            } else {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_account_circle),
-                    contentDescription = "Profile",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp)
-                )
             }
-        }
 
-        // Brand Logo
-        Box(
-            modifier = Modifier.height(56.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.dex_logo),
-                contentDescription = "DeX Logo",
-                modifier = Modifier.fillMaxHeight(),
-                contentScale = ContentScale.Fit
-            )
-        }
+            Spacer(modifier = Modifier.width(16.dp))
 
-        // Action Buttons Group
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (showSearch) {
-                // Search Button — liquid glass samples the real backdrop behind the top bar
-                LiquidGlassIconButton(
-                    onClick = { /* Search action placeholder */ },
-                    size = 56.dp,
-                    backdrop = backdrop,
-                    config = LiquidGlassPresets.IconButton
-                ) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_search),
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(32.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = profile.name.ifBlank { "DeX User" },
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                }
-            } else {
-                // Balancing placeholder so the centered logo stays centered
-                Spacer(modifier = Modifier.size(56.dp))
-            }
-        }
-    }
-
-    if (showProfileDialog) {
-        AlertDialog(
-            onDismissRequest = { showProfileDialog = false },
-            title = { Text(text = profile.name.ifBlank { profile.email }) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    if (profile.picture.isNotBlank()) {
-                        AsyncImage(
-                            model = profile.picture,
-                            contentDescription = "Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFF10B981).copy(alpha = 0.25f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Active",
+                            color = Color(0xFF10B981),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Signed in with Google — your devices trust each other automatically.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                Text(
+                    text = profile.email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                DeXButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
-                }
-            },
-            confirmButton = {
-                DeXTextButton(onClick = { showProfileDialog = false }) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                DeXTextButton(onClick = {
-                    deviceConfig.signOut()
-                    showProfileDialog = false
-                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
-                }) {
-                    Text("Sign out")
+                ) {
+                    Text("Sign out", fontWeight = FontWeight.Bold)
                 }
             }
-        )
+        }
     }
 }

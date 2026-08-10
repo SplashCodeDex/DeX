@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,6 +84,7 @@ fun MainNavigation() {
     val contentBackdrop = rememberLayerBackdrop()
     val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     Box(
       modifier = Modifier
@@ -141,7 +143,7 @@ fun MainNavigation() {
             onAccept = { enteredPin ->
                 req.deferred.complete(enteredPin)
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
-                Toast.makeText(context, context.getString(R.string.paired_successfully), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.paired_successfully), Toast.LENGTH_SHORT).show()
             },
             onReject = {
                 req.deferred.complete("")

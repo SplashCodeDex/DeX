@@ -7,9 +7,7 @@ if ($btnPinCancel) {
     if ($script:activeOutboundPairIp) {
         try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue } catch {}
     }
-    $script:activeOutboundPairIp = $null
-    $script:activeOutboundPairFp = $null
-    
+    Clear-PairingState
     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
     })
 }

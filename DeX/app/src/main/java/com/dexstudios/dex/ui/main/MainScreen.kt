@@ -25,8 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
@@ -63,6 +65,7 @@ fun MainScreen(
     viewModel: MainScreenViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val wsService: WebSocketClientService = koinInject()
                     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
@@ -114,7 +117,7 @@ fun MainScreen(
         val rosterTarget = selectedRosterDevice
         if (rosterTarget != null) {
             selectedRosterDevice = null
-            Toast.makeText(context, context.resources.getQuantityString(R.plurals.toast_sending_files, uris.size, uris.size, rosterTarget.info.alias), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getQuantityString(R.plurals.toast_sending_files, uris.size, uris.size, rosterTarget.info.alias), Toast.LENGTH_SHORT).show()
 
             val urisJson = try {
                 Json.encodeToString(uris.map { it.toString() })
@@ -138,7 +141,7 @@ fun MainScreen(
         }
 
         selectedDevice?.let { device ->
-            Toast.makeText(context, context.resources.getQuantityString(R.plurals.toast_sending_files, uris.size, uris.size, device.info.alias), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getQuantityString(R.plurals.toast_sending_files, uris.size, uris.size, device.info.alias), Toast.LENGTH_SHORT).show()
 
             viewModel.clientEngine.resetUploadState()
 
@@ -541,7 +544,7 @@ fun MainScreen(
     if (showOnboarding) {
         OnboardingDialog(
             onDismiss = {
-                onboardingPrefs.edit().putBoolean("onboarding_done", true).apply()
+                onboardingPrefs.edit { putBoolean("onboarding_done", true) }
                 showOnboarding = false
             }
         )

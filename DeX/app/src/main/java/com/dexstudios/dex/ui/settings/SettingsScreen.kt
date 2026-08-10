@@ -4,25 +4,17 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DeviceConfig
-import com.dexstudios.dex.network.DiscoveryEngine
-import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.ui.components.*
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -32,17 +24,11 @@ import org.koin.compose.koinInject
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    deviceConfig: DeviceConfig = koinInject(),
-    discoveryEngine: DiscoveryEngine = koinInject(),
-    webSocketClientService: WebSocketClientService = koinInject()
+    deviceConfig: DeviceConfig = koinInject()
 ) {
     val emailText by deviceConfig.emailFlow.collectAsState()
-    val hashPreview by deviceConfig.identityHashFlow.collectAsState()
-    val publicAddress by deviceConfig.publicAddressFlow.collectAsState()
 
     val scope = rememberCoroutineScope()
-    var emailRestartJob by remember { mutableStateOf<Job?>(null) }
-    var addressSendJob by remember { mutableStateOf<Job?>(null) }
 
     // Screen-owned backdrop: captures this screen's content so the glass header
     // samples it. Separate from the navbar's backdrop (which captures this whole
@@ -75,132 +61,54 @@ fun SettingsScreen(
                     .padding(top = 0.dp, bottom = 88.dp - navBarInset),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                    Text(
-                        stringResource(R.string.trust_identity_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                Text(
+                    stringResource(R.string.trust_identity_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
-                    Text(
-                        stringResource(R.string.trust_identity_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Text(
+                    stringResource(R.string.trust_identity_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                    OutlinedTextField(
-                        value = emailText,
-                        onValueChange = { newValue ->
-                            deviceConfig.email = newValue
-                            emailRestartJob?.cancel()
-                            emailRestartJob = scope.launch {
-                                delay(500)
-                                discoveryEngine.stopDiscovery()
-                                discoveryEngine.startDiscovery()
-                            }
-                        },
-                        label = { Text(stringResource(R.string.email_address)) },
-                        placeholder = { Text(stringResource(R.string.email_placeholder)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
-                            focusedContainerColor = Color.White.copy(alpha = 0.2f)
-                        )
-                    )
+                // Google Sign-In: verified email identity for THIS device only.
+                // The PC signs in independently — no cross-platform auto sign-in.
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val resources = androidx.compose.ui.platform.LocalResources.current
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Google Sign-In: verified email identity for THIS device only.
-                    // The PC signs in independently — no cross-platform auto sign-in.
-                    val context = androidx.compose.ui.platform.LocalContext.current
-
-                    if (com.dexstudios.dex.network.GoogleSignInManager.isConfigured()) {
-                        DeXButton(
-                            onClick = {
-                                val activity = context as? android.app.Activity
-                                if (activity != null) {
-                                    scope.launch {
-                                        val credential = com.dexstudios.dex.network.GoogleSignInManager.signIn(activity)
-                                        val email = credential?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-                                        if (email != null) {
-                                            Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
-                                        } else {
-                                            Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
-                                        }
+                if (com.dexstudios.dex.network.GoogleSignInManager.isConfigured()) {
+                    DeXButton(
+                        onClick = {
+                            val activity = context as? android.app.Activity
+                            if (activity != null) {
+                                scope.launch {
+                                    val credential = com.dexstudios.dex.network.GoogleSignInManager.signIn(activity)
+                                    val email = credential?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                    if (email != null) {
+                                        Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                    } else {
+                                        Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                if (emailText.isBlank()) stringResource(R.string.google_sign_in)
-                                else stringResource(R.string.google_signed_in_as, emailText),
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    } else {
-                        Text(
-                            stringResource(R.string.google_sign_in_not_configured),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        stringResource(R.string.current_identity_hash),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.05f),
-                        shape = RoundedCornerShape(12.dp),
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = hashPreview,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(12.dp)
+                            if (emailText.isBlank()) stringResource(R.string.google_sign_in)
+                            else stringResource(R.string.google_signed_in_as, emailText),
+                            fontWeight = FontWeight.Bold
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
+                } else {
                     Text(
-                        stringResource(R.string.settings_public_address),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    OutlinedTextField(
-                        value = publicAddress,
-                        onValueChange = { newValue ->
-                            deviceConfig.setPublicAddress(newValue)
-                            addressSendJob?.cancel()
-                            addressSendJob = scope.launch {
-                                delay(500)
-                                webSocketClientService.sendPublicAddress(newValue)
-                            }
-                        },
-                        label = { Text(stringResource(R.string.settings_public_address_label)) },
-                        placeholder = { Text(stringResource(R.string.settings_public_address_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
-                            focusedContainerColor = Color.White.copy(alpha = 0.2f)
-                        )
-                    )
-
-                    Text(
-                        stringResource(R.string.settings_public_address_note),
+                        stringResource(R.string.google_sign_in_not_configured),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
             }
         }
 
