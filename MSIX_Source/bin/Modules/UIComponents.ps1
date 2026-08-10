@@ -1,4 +1,3 @@
-﻿
 function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
@@ -8,6 +7,15 @@ function Load-TrayIcon([string]$FileName) {
     return $null
 }
 #Export-ModuleMember -Function Load-TrayIcon
+
+function Release-PinAnimations {
+    $w = $script:wpfWindow
+    $c = $w.FindName("menuViewsContainer")
+    try { $c.FindResource("SlideInPinAnim").Stop($w) } catch {}
+    try { $c.FindResource("SlideOutPinAnim").Stop($w) } catch {}
+    try { $c.FindResource("SwitchQrToPinAnim").Stop($w) } catch {}
+    try { $c.FindResource("SwitchPinToQrAnim").Stop($w) } catch {}
+}
 
 function Show-Toast {
     param([string]$Title, [string]$Message)
@@ -376,6 +384,7 @@ function Show-PinPanel {
         [string]$SuccessMessage,
         [string]$FailureMessage
     )
+    Release-PinAnimations
     $w = $script:wpfWindow
     $w.FindName("txtPinTitle").Text = $Title
 

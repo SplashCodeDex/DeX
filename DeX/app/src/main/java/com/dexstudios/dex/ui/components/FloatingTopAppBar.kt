@@ -129,7 +129,7 @@ fun FloatingTopAppBar(
         label = "contentAlpha"
     )
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.then(if (anyExpanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth())) {
         // Outside tap dismissal & Focus Blur layer
         if (focusAlpha > 0f) {
             Box(
@@ -157,6 +157,7 @@ fun FloatingTopAppBar(
         // The Top Bar Layout
         Box(
             modifier = Modifier
+                .statusBarsPadding()
                 .fillMaxWidth()
                 .padding(top = 8.dp, start = 16.dp, end = 16.dp)
                 .height(80.dp)
@@ -263,6 +264,7 @@ fun FloatingTopAppBar(
         // User Avatar / Dynamic Island (overlaps Logo & Search when expanded)
         Box(
             modifier = Modifier
+                .statusBarsPadding()
                 .align(Alignment.TopStart)
                 .padding(top = 8.dp, start = 16.dp)
                 .zIndex(if (isProfileExpanded) 2f else 1f),

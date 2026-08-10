@@ -518,8 +518,7 @@ fun MainScreen(
 
                 FloatingTopAppBar(
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding(),
+                        .align(Alignment.TopCenter),
                     backdrop = contentBackdrop
                 )
         }
