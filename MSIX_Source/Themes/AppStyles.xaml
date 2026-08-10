@@ -732,7 +732,7 @@
 
         <Style x:Key="AnimatedActionBtn" TargetType="Button">
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0,10"/>
+            <Setter Property="Padding" Value="16,10"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="14"/>

@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.4.2.13] - 2026-08-10
+### Fixed
+- **[fix] Button alignment and padding (Desktop)**: Corrected the alignment of the text inside the QR Code/Request PIN button when the icon is hidden, and added standard horizontal padding to `AnimatedActionBtn` so text doesn't touch the edges of the button.
+
 ## [7.4.2.12] - 2026-08-10
 ### Fixed
 - **[fix] Spatial menu layout deformation (Desktop)**: The spatial menu content panel is now hidden with `Visibility.Hidden` instead of `Visibility.Collapsed` when opening the QR Code or PIN screens. This preserves the layout constraints and prevents the main container from abruptly shrinking and compacting the UI.
