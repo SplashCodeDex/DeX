@@ -334,7 +334,7 @@
     "C:\\Users\\NicoDex\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "7.4.0",
     "restore": {
       "projectUniqueName": "W:\\CodeDeX\\DeX\\DeXShareTarget\\DeXShareTarget.csproj",
       "projectName": "DeXShareTarget",
