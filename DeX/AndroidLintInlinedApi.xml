@@ -1,0 +1,44 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt</file>
+  <line>87</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt" />
+  <problem_class id="AndroidLintInlinedApi" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Using inlined constants on older versions</problem_class>
+  <hints />
+  <description>&lt;html&gt;Field requires API level 29 (current min is 26): &lt;code&gt;android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE&lt;/code&gt;&lt;/html&gt;</description>
+  <highlighted_element>ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>52</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt</file>
+  <line>88</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt" />
+  <problem_class id="AndroidLintInlinedApi" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Using inlined constants on older versions</problem_class>
+  <hints />
+  <description>&lt;html&gt;Field requires API level 29 (current min is 26): &lt;code&gt;android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_DATA_SYNC&lt;/code&gt;&lt;/html&gt;</description>
+  <highlighted_element>ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>45</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt</file>
+  <line>89</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt" />
+  <problem_class id="AndroidLintInlinedApi" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Using inlined constants on older versions</problem_class>
+  <hints />
+  <description>&lt;html&gt;Field requires API level 29 (current min is 26): &lt;code&gt;android.content.pm.ServiceInfo#FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION&lt;/code&gt;&lt;/html&gt;</description>
+  <highlighted_element>ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION</highlighted_element>
+  <language>kotlin</language>
+  <offset>31</offset>
+  <length>52</length>
+</problem>
+</problems>

@@ -1,0 +1,41 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>134</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object doWork(kotlin.coroutines.Continuation&lt;? super androidx.work.ListenableWorker.Result&gt; $completion)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English does not double '-l-' in suffixes</description>
+  <highlighted_element>cancelled</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>400</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.SharedFolderGrantState void complete(android.net.Uri uri, java.lang.String name)" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English does not double '-l-' in suffixes</description>
+  <highlighted_element>cancelled</highlighted_element>
+  <language>kotlin</language>
+  <offset>73</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PullForegroundService.kt</file>
+  <line>18</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.PullForegroundService" />
+  <problem_class id="GrazieStyle" severity="STYLE_SUGGESTION" attribute_key="TEXT_STYLE_SUGGESTION">Style</problem_class>
+  <description>American English does not double '-l-' in suffixes</description>
+  <highlighted_element>cancelled</highlighted_element>
+  <language>kotlin</language>
+  <offset>73</offset>
+  <length>9</length>
+</problem>
+</problems>

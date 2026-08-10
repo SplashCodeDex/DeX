@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>154</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object relayViaPc(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="ReplaceIsEmptyWithIfEmpty" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">'if' condition can be replaced with lambda call</problem_class>
+  <description>Replace with 'ifEmpty {...}'</description>
+  <highlighted_element>if</highlighted_element>
+  <language>kotlin</language>
+  <offset>73</offset>
+  <length>2</length>
+</problem>
+</problems>

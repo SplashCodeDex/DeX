@@ -136,6 +136,7 @@ class WebSocketClientService(
     /** Current WiFi network: (SSID, RSSI dBm). SSID is null and RSSI -127 when not connected. */
     private fun wifiInfo(): Pair<String?, Int> {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return null to RSSI_INVALID
+        @Suppress("DEPRECATION")
         val info = wifiManager.connectionInfo ?: return null to RSSI_INVALID
         val ssid = info.ssid?.trim()?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
         return ssid to info.rssi
@@ -177,7 +178,7 @@ class WebSocketClientService(
                 deviceModel = "PC",
                 deviceType = "desktop",
                 fingerprint = fingerprint,
-                port = 53317,
+                port = DeXPorts.HTTPS,
                 protocol = "https",
                 download = false,
                 identityHash = null
@@ -212,7 +213,7 @@ class WebSocketClientService(
         }
         val tokenParam = if (!token.isNullOrEmpty()) "&token=${java.net.URLEncoder.encode(token, "UTF-8")}" else ""
 
-        // The PC serves TLS on port 53317, so we must use wss:// (plain ws:// fails TLS negotiation)
+        // The PC serves TLS on port 48424, so we must use wss:// (plain ws:// fails TLS negotiation)
         val url = "wss://${pcDevice.ip}:${pcDevice.info.port}/ws?fingerprint=$fingerprint&alias=$alias$tokenParam"
         Timber.i("Connecting to PC via WebSocket: ${pcDevice.ip}:${pcDevice.info.port}")
 

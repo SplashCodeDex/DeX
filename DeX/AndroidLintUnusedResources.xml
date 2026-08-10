@@ -1,0 +1,275 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/bg_notification_card.xml</file>
+  <line>2</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/bg_notification_card.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.drawable.bg_notification_card&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&gt; &lt;solid android:color=&quot;#0D0000...</highlighted_element>
+  <language>XML</language>
+  <offset>0</offset>
+  <length>153</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/ic_arrow_back.xml</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_arrow_back.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.drawable.ic_arrow_back&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot; android:width=&quot;24dp&quot; andr...</highlighted_element>
+  <language>XML</language>
+  <offset>0</offset>
+  <length>594</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/ic_content_paste.xml</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_content_paste.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.drawable.ic_content_paste&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot; android:width=&quot;24dp&quot; andr...</highlighted_element>
+  <language>XML</language>
+  <offset>0</offset>
+  <length>744</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.settings_title&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;settings_title&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>4</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.back&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;back&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>26</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_title&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_title&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>27</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_subtitle&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_subtitle&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>28</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_step_1&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_step_1&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>29</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_step_2&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_step_2&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>30</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_step_3&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_step_3&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>31</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_got_it&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_got_it&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>36</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.onboarding_granted&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;onboarding_granted&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>25</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>55</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.clipboard_sent_success&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;clipboard_sent_success&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>56</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.clipboard_sent_failed&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;clipboard_sent_failed&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>28</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>57</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.clipboard_empty&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;clipboard_empty&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>22</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>60</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.send_clipboard&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;send_clipboard&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>61</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.send_file&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;send_file&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>92</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.accept&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;accept&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>98</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.pairing_from&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;pairing_from&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>99</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.pairing_enter_pin&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;pairing_enter_pin&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>113</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="AndroidLintUnusedResources" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;The resource &lt;code&gt;R.string.device_not_paired&lt;/code&gt; appears to be unused&lt;/html&gt;</description>
+  <highlighted_element>name=&quot;device_not_paired&quot;</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>24</length>
+</problem>
+</problems>

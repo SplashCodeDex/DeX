@@ -49,6 +49,16 @@ class UploadWorker(
     // Transient transport failures are retried with exponential backoff, capped attempts
     private val maxRetryAttempts = 3
 
+    init {
+        val channel = android.app.NotificationChannel(
+            channelId,
+            applicationContext.getString(R.string.upload_worker_channel),
+            android.app.NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        manager.createNotificationChannel(channel)
+    }
+
     private val lastUiUpdate = AtomicLong(0L)
     private val speedBytes = AtomicLong(0L)
     private val speedTime = AtomicLong(0L)
@@ -113,7 +123,7 @@ class UploadWorker(
             info = RegisterDto(
                 alias = getDeviceName(applicationContext), version = "2.0", deviceModel = android.os.Build.MODEL ?: "Android",
                 deviceType = "mobile", fingerprint = deviceConfig.fingerprint,
-                port = 53317, protocol = "https", download = false,
+                port = DeXPorts.HTTPS, protocol = "https", download = false,
                 identityHash = deviceConfig.identityHash
             ),
             files = fileData.mapValues { (id, d) ->
@@ -270,14 +280,6 @@ class UploadWorker(
 
     private fun createForegroundInfo(progress: Int, text: String): ForegroundInfo {
         val cancelIntent = androidx.work.WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
-
-        val channel = android.app.NotificationChannel(
-            channelId,
-            applicationContext.getString(R.string.upload_worker_channel),
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Sending Files")

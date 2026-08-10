@@ -273,7 +273,15 @@ $mdnsTimer.Add_Tick({
                         $pin = Show-PairingPrompt -IPPort $pt
                         if ($pin) {
                             $success = Invoke-AdbPair -Target $pt -Pin $pin
-                            if ($success) { $script:pairedHistory[$pt] = $true }
+                            # Mark the target regardless of the outcome: an unreachable pairing
+                            # service (e.g. "Unable to start pairing client") otherwise re-prompts
+                            # this modal dialog every 2s tick, locking the whole UI.
+                            $script:pairedHistory[$pt] = $true
+                            if ($success) {
+                                Show-Toast -Title "ADB Paired" -Message "Device paired successfully."
+                            } else {
+                                Show-Toast -Title "Pairing Failed" -Message "Could not pair with $pt. The phone may not be in pairing mode."
+                            }
                         } else {
                             $script:pairedHistory[$pt] = $true
                         }
@@ -303,26 +311,14 @@ $mdnsTimer.Add_Tick({
                 elseif ($qMsg.Type -eq 'PendingPair') { $pendingPair = $qMsg }
             }
 
-            # Poll Outbound Pairing Status. Runs during an active pairing session only
-            # (short, user-initiated); kept synchronous so the flow matches the shipped
-            # behavior exactly.
-            if ($script:activeOutboundPairIp) {
-                try {
-                    $outStatus = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
-                    if ($outStatus.status -eq 'Accepted') {
-                        $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed'
-                        $script:activeOutboundPairIp = $null
-                        Show-Toast -Title "Pairing Successful" -Message "Device has been paired."
-                    } elseif ($outStatus.status -eq 'Failed' -or $outStatus.status -eq 'Rejected') {
-                        $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed'
-                        $script:activeOutboundPairIp = $null
-                        Show-Toast -Title "Pairing Failed" -Message "Request was declined or timed out."
-                    }
-                } catch { }
-            }
             # Phone-initiated pairing: no button was clicked, so surface the pending PIN here.
-            # The pending-pair fetch itself runs in the background poller; $pendingPair holds the result.
-            else {
+            # The pending-pair fetch itself runs in the background poller; $pendingPair holds
+            # the result. Status polling for BOTH pairing directions is owned by Show-PinPanel's
+            # pairWaitTimer (1s, started when the panel opens) — the old inline /local/pair-status
+            # poll here duplicated it, and worse, polled forever (404, swallowed) after a
+            # discovered-device click that never sent pair-initiate, blocking the UI thread
+            # ~1s every 2s.
+            if (-not $script:activeOutboundPairIp) {
                 $pp = $pendingPair
                 if ($pp -and $pp.pin) {
                     $script:activeOutboundPairIp = $pp.ip

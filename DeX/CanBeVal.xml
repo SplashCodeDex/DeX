@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>152</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.FileShareManager java.lang.String thumbnailFor(com.dexstudios.dex.network.FolderEntryDto e)" />
+  <problem_class id="CanBeVal" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Local 'var' is never modified and can be declared as 'val'</problem_class>
+  <description>Variable is never modified, so it can be declared using 'val'</description>
+  <highlighted_element>var</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>153</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.FileShareManager java.lang.String thumbnailFor(com.dexstudios.dex.network.FolderEntryDto e)" />
+  <problem_class id="CanBeVal" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Local 'var' is never modified and can be declared as 'val'</problem_class>
+  <description>Variable is never modified, so it can be declared using 'val'</description>
+  <highlighted_element>var</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>3</length>
+</problem>
+</problems>

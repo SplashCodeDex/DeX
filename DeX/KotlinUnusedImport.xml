@@ -1,0 +1,665 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/DeXApplication.kt</file>
+  <line>11</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/DeXApplication.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.BuildConfig</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>37</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import android.content.Intent</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt</file>
+  <line>20</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import android.content.pm.PackageManager</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>40</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt</file>
+  <line>21</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.core.content.ContextCompat</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>42</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/Navigation.kt</file>
+  <line>27</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/Navigation.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.R</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>27</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>23</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.graphics.Color</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>41</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>36</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import java.util.UUID</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>43</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.serialization.encodeToString</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>43</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>44</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.work.Data</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>25</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>50</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.R</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>27</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>18</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.Job</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt</file>
+  <line>7</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.CompletableDeferred</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>45</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt</file>
+  <line>8</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import java.util.concurrent.ConcurrentHashMap</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>45</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/NotificationHelper.kt</file>
+  <line>9</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/NotificationHelper.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import android.os.Build</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>16</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.serialization.json.buildJsonObject</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>49</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/SafStorage.kt</file>
+  <line>10</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/SafStorage.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import java.io.OutputStream</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>27</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.animation.core.animateFloatAsState</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>58</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>4</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.animation.core.tween</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>44</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>5</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.interaction.InteractionSource</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>64</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>7</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.interaction.collectIsPressedAsState</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>70</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>11</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.runtime.getValue</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>40</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>14</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.graphics.graphicsLayer</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>49</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>15</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.unit.dp</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>34</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>16</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.ui.theme.HoverEase</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>44</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>17</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.ui.theme.SpatialPhysics</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>49</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeviceListItem.kt</file>
+  <line>14</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeviceListItem.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.draw.alpha</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>37</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt</file>
+  <line>31</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.tooling.preview.Preview</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>50</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt</file>
+  <line>35</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.ui.components.DeXPanel</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>48</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt</file>
+  <line>36</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.ui.components.bubbleFluidity</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>54</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt</file>
+  <line>40</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.delay</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.animation.core.animateFloatAsState</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>58</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt</file>
+  <line>10</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.shape.RoundedCornerShape</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>59</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt</file>
+  <line>20</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.draw.scale</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>37</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt</file>
+  <line>24</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.zIndex</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>33</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt</file>
+  <line>5</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.LocalIndication</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>50</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt</file>
+  <line>7</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.border</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>41</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt</file>
+  <line>8</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.clickable</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>44</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt</file>
+  <line>19</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.graphics.Color</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>41</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt</file>
+  <line>29</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingTopAppBar.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.dexstudios.dex.network.WebSocketClientService</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>56</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassConfig.kt</file>
+  <line>11</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassConfig.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import com.kyant.backdrop.shadow.Shadow</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>39</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassIconButton.kt</file>
+  <line>14</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassIconButton.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.shape.CircleShape</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>52</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>15</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.foundation.lazy.items</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>45</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>26</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.draw.clip</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>36</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>33</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.launch</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>32</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>39</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.serialization.encodeToString</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>43</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt</file>
+  <line>17</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.settings</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.graphics.vector.ImageVector</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>54</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt</file>
+  <line>19</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.settings</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import androidx.compose.ui.res.vectorResource</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>45</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>15</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.launch</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>32</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>17</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import kotlinx.coroutines.test.advanceTimeBy</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>44</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>10</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import io.mockk.coEvery</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>11</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt" />
+  <problem_class id="KotlinUnusedImport" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused import directive</problem_class>
+  <description>Unused import directive</description>
+  <highlighted_element>import io.mockk.coVerify</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>24</length>
+</problem>
+</problems>

@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +39,10 @@ fun SettingsScreen(
     val emailText by deviceConfig.emailFlow.collectAsState()
     val hashPreview by deviceConfig.identityHashFlow.collectAsState()
     val publicAddress by deviceConfig.publicAddressFlow.collectAsState()
+
+    val scope = rememberCoroutineScope()
+    var emailRestartJob by remember { mutableStateOf<Job?>(null) }
+    var addressSendJob by remember { mutableStateOf<Job?>(null) }
 
     // Screen-owned backdrop: captures this screen's content so the glass header
     // samples it. Separate from the navbar's backdrop (which captures this whole
@@ -73,19 +80,23 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    
+
                     Text(
                         stringResource(R.string.trust_identity_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-        
+
                     OutlinedTextField(
                         value = emailText,
-                        onValueChange = { 
-                            deviceConfig.email = it
-                            discoveryEngine.stopDiscovery()
-                            discoveryEngine.startDiscovery()
+                        onValueChange = { newValue ->
+                            deviceConfig.email = newValue
+                            emailRestartJob?.cancel()
+                            emailRestartJob = scope.launch {
+                                delay(500)
+                                discoveryEngine.stopDiscovery()
+                                discoveryEngine.startDiscovery()
+                            }
                         },
                         label = { Text(stringResource(R.string.email_address)) },
                         placeholder = { Text(stringResource(R.string.email_placeholder)) },
@@ -103,21 +114,23 @@ fun SettingsScreen(
                     // Google Sign-In: verified email identity for THIS device only.
                     // The PC signs in independently — no cross-platform auto sign-in.
                     val context = androidx.compose.ui.platform.LocalContext.current
-                    val googleLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-                        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-                    ) { result ->
-                        val account = com.dexstudios.dex.network.GoogleSignInManager.handleResult(result.data)
-                        val email = account?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-                        if (email != null) {
-                            Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
-                        }
-                    }
 
                     if (com.dexstudios.dex.network.GoogleSignInManager.isConfigured()) {
                         DeXButton(
-                            onClick = { com.dexstudios.dex.network.GoogleSignInManager.signInIntent(context)?.let { googleLauncher.launch(it) } },
+                            onClick = {
+                                val activity = context as? android.app.Activity
+                                if (activity != null) {
+                                    scope.launch {
+                                        val credential = com.dexstudios.dex.network.GoogleSignInManager.signIn(activity)
+                                        val email = credential?.let { com.dexstudios.dex.network.GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                        if (email != null) {
+                                            Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                        } else {
+                                            Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
@@ -135,13 +148,13 @@ fun SettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-        
+
                     Text(
                         stringResource(R.string.current_identity_hash),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold
                     )
-                    
+
                     Surface(
                         color = Color.Black.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(12.dp),
@@ -164,9 +177,13 @@ fun SettingsScreen(
 
                     OutlinedTextField(
                         value = publicAddress,
-                        onValueChange = {
-                            deviceConfig.setPublicAddress(it)
-                            webSocketClientService.sendPublicAddress(it)
+                        onValueChange = { newValue ->
+                            deviceConfig.setPublicAddress(newValue)
+                            addressSendJob?.cancel()
+                            addressSendJob = scope.launch {
+                                delay(500)
+                                webSocketClientService.sendPublicAddress(newValue)
+                            }
                         },
                         label = { Text(stringResource(R.string.settings_public_address_label)) },
                         placeholder = { Text(stringResource(R.string.settings_public_address_hint)) },

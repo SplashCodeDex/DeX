@@ -1,0 +1,67 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/BubbleFluidity.kt</file>
+  <line>44</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.BubbleFluidityKt androidx.compose.ui.Modifier bubbleFluidity(androidx.compose.ui.Modifier $this$bubbleFluidity, float targetScale, float pullFactor)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>down</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/FloatingPillNavBar.kt</file>
+  <line>82</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.FloatingPillNavBarKt void NavBarIcon(com.dexstudios.dex.ui.components.NavBarItem item, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>isPressed</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>67</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>wsService</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>183</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>folderPickerLauncher</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>20</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>255</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="UnusedVariable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused variable</problem_class>
+  <description>Unused variable</description>
+  <highlighted_element>devices</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>7</length>
+</problem>
+</problems>

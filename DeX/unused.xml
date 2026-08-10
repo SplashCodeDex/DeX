@@ -1,0 +1,82 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>334</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void sendUrisToDevice(com.dexstudios.dex.network.DiscoveredDevice device, java.util.List&lt;? extends android.net.Uri&gt; uris)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="uris" />
+  </hints>
+  <description>Parameter &lt;code&gt;uris&lt;/code&gt; is not used</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>86</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>128</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngine java.lang.Object uploadFile(java.lang.String ip, int port, java.lang.String sessionId, java.lang.String fileId, java.lang.String fileName, java.lang.String token, java.io.InputStream stream, long fileSize, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.UploadOutcome&gt; $completion)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="fileName" />
+  </hints>
+  <description>Parameter &lt;code&gt;fileName&lt;/code&gt; is not used</description>
+  <highlighted_element>fileName</highlighted_element>
+  <language>kotlin</language>
+  <offset>66</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MessageHandler.kt</file>
+  <line>33</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandler void handleMessage(java.lang.String text, java.lang.String senderIp, int senderPort)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="senderPort" />
+  </hints>
+  <description>Parameter &lt;code&gt;senderPort&lt;/code&gt; is not used</description>
+  <highlighted_element>senderPort</highlighted_element>
+  <language>kotlin</language>
+  <offset>54</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>80</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.QuicClient org.chromium.net.UrlRequest uploadFile(java.lang.String ip, int port, java.lang.String sessionId, java.lang.String fileId, java.lang.String fileName, java.lang.String token, java.io.InputStream stream, long fileSize, kotlin.jvm.functions.Function1&lt;? super java.lang.Long,kotlin.Unit&gt; onProgress, kotlin.jvm.functions.Function2&lt;? super java.lang.Boolean,? super java.lang.Integer,kotlin.Unit&gt; onResult)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="fileName" />
+  </hints>
+  <description>Parameter &lt;code&gt;fileName&lt;/code&gt; is not used</description>
+  <highlighted_element>fileName</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassIconButton.kt</file>
+  <line>51</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.glass.LiquidGlassIconButtonKt void LiquidGlassIconButton(kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, float size, com.dexstudios.dex.ui.components.glass.LiquidGlassConfig config, com.kyant.backdrop.Backdrop backdrop, androidx.compose.foundation.interaction.MutableInteractionSource interactionSource, androidx.compose.runtime.internal.ComposableFunction1&lt;? super androidx.compose.foundation.layout.BoxScope,kotlin.Unit&gt; content)" />
+  <problem_class id="unused" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused declaration</problem_class>
+  <hints>
+    <hint value="modifier" />
+  </hints>
+  <description>Parameter &lt;code&gt;modifier&lt;/code&gt; is not used</description>
+  <highlighted_element>modifier</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>8</length>
+</problem>
+</problems>

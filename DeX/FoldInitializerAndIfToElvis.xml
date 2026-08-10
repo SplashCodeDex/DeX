@@ -1,0 +1,54 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>393</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="FoldInitializerAndIfToElvis" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">If-Null return/break/... foldable to '?:'</problem_class>
+  <description>If-Null return/break/... foldable to '?:'</description>
+  <highlighted_element>if (afd == null)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>412</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="FoldInitializerAndIfToElvis" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">If-Null return/break/... foldable to '?:'</problem_class>
+  <description>If-Null return/break/... foldable to '?:'</description>
+  <highlighted_element>if (stream == null)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>88</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.QuicClient org.chromium.net.UrlRequest uploadFile(java.lang.String ip, int port, java.lang.String sessionId, java.lang.String fileId, java.lang.String fileName, java.lang.String token, java.io.InputStream stream, long fileSize, kotlin.jvm.functions.Function1&lt;? super java.lang.Long,kotlin.Unit&gt; onProgress, kotlin.jvm.functions.Function2&lt;? super java.lang.Boolean,? super java.lang.Integer,kotlin.Unit&gt; onResult)" />
+  <problem_class id="FoldInitializerAndIfToElvis" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">If-Null return/break/... foldable to '?:'</problem_class>
+  <description>If-Null return/break/... foldable to '?:'</description>
+  <highlighted_element>if (engine == null)</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>196</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.QuicClient org.chromium.net.UrlRequest downloadFile(java.lang.String ip, int port, java.lang.String fileId, java.lang.String token, java.io.OutputStream output, kotlin.jvm.functions.Function1&lt;? super java.lang.Long,kotlin.Unit&gt; onProgress, kotlin.jvm.functions.Function3&lt;? super java.lang.Boolean,? super java.lang.Integer,? super java.lang.String,kotlin.Unit&gt; onResult)" />
+  <problem_class id="FoldInitializerAndIfToElvis" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">If-Null return/break/... foldable to '?:'</problem_class>
+  <description>If-Null return/break/... foldable to '?:'</description>
+  <highlighted_element>if (engine == null)</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>19</length>
+</problem>
+</problems>

@@ -1,0 +1,57 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/ic_stat_dex.png</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_stat_dex.png" />
+  <problem_class id="AndroidLintIconLocation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Image defined in density-independent drawable folder</problem_class>
+  <hints />
+  <description>&lt;html&gt;Found bitmap drawable &lt;code&gt;res/drawable/ic_stat_dex.png&lt;/code&gt; in densityless folder&lt;/html&gt;</description>
+  <highlighted_element />
+  <language />
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_fortress.webp</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_fortress.webp" />
+  <problem_class id="AndroidLintIconLocation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Image defined in density-independent drawable folder</problem_class>
+  <hints />
+  <description>&lt;html&gt;Found bitmap drawable &lt;code&gt;res/drawable/wallpaper_fortress.webp&lt;/code&gt; in densityless folder&lt;/html&gt;</description>
+  <highlighted_element />
+  <language />
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_gaming.webp</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_gaming.webp" />
+  <problem_class id="AndroidLintIconLocation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Image defined in density-independent drawable folder</problem_class>
+  <hints />
+  <description>&lt;html&gt;Found bitmap drawable &lt;code&gt;res/drawable/wallpaper_gaming.webp&lt;/code&gt; in densityless folder&lt;/html&gt;</description>
+  <highlighted_element />
+  <language />
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_laptop.webp</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_laptop.webp" />
+  <problem_class id="AndroidLintIconLocation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Image defined in density-independent drawable folder</problem_class>
+  <hints />
+  <description>&lt;html&gt;Found bitmap drawable &lt;code&gt;res/drawable/wallpaper_laptop.webp&lt;/code&gt; in densityless folder&lt;/html&gt;</description>
+  <highlighted_element />
+  <language />
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_server.webp</file>
+  <line>1</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/drawable/wallpaper_server.webp" />
+  <problem_class id="AndroidLintIconLocation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Image defined in density-independent drawable folder</problem_class>
+  <hints />
+  <description>&lt;html&gt;Found bitmap drawable &lt;code&gt;res/drawable/wallpaper_server.webp&lt;/code&gt; in densityless folder&lt;/html&gt;</description>
+  <highlighted_element />
+  <language />
+</problem>
+</problems>

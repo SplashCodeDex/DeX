@@ -1,0 +1,158 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>13</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>14</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getWifi()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>72</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery1()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>88</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery2()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>106</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery3()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>124</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery4()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>142</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery5()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>160</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBattery6()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>178</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getBatteryFull()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>214</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getNotifications()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>252</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getCheck()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/icons/MaterialSymbols.kt</file>
+  <line>272</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.icons</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.icons.MaterialSymbols androidx.compose.ui.graphics.vector.ImageVector getCheckCircle()" />
+  <problem_class id="RedundantVisibilityModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant visibility modifier</problem_class>
+  <description>Redundant 'public' modifier</description>
+  <highlighted_element>public</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+</problem>
+</problems>

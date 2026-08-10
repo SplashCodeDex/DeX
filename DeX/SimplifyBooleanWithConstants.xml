@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>182</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object relayViaPc(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="SimplifyBooleanWithConstants" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Boolean expression can be simplified</problem_class>
+  <description>Boolean expression can be simplified</description>
+  <highlighted_element>pushed != true</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>420</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="SimplifyBooleanWithConstants" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Boolean expression can be simplified</problem_class>
+  <description>Boolean expression can be simplified</description>
+  <highlighted_element>streamed != true</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>16</length>
+</problem>
+</problems>

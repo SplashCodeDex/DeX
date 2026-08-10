@@ -1,0 +1,223 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>235</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object downloadOne(com.dexstudios.dex.network.PullFileDto file, java.lang.String ip, int httpsPort, int tcpPort, android.net.Uri dirUri, java.util.concurrent.atomic.AtomicLong totalReceived, java.util.concurrent.atomic.AtomicInteger doneCount, int totalFiles, long totalBytes, java.util.List&lt;android.net.Uri&gt; createdDocs, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.FileOutcome&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>close</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>277</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>open</highlighted_element>
+  <language>kotlin</language>
+  <offset>46</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>282</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>close</highlighted_element>
+  <language>kotlin</language>
+  <offset>34</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>285</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>write</highlighted_element>
+  <language>kotlin</language>
+  <offset>30</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>289</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>read</highlighted_element>
+  <language>kotlin</language>
+  <offset>33</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>291</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>close</highlighted_element>
+  <language>kotlin</language>
+  <offset>34</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>300</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>write</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>306</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object tcpDownload(java.lang.String ip, int port, com.dexstudios.dex.network.PullFileDto file, java.io.OutputStream out, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onBytes, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.DownloadResult&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>close</highlighted_element>
+  <language>kotlin</language>
+  <offset>26</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>141</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>getInputStream</highlighted_element>
+  <language>kotlin</language>
+  <offset>31</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>142</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>getOutputStream</highlighted_element>
+  <language>kotlin</language>
+  <offset>32</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>220</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>read</highlighted_element>
+  <language>kotlin</language>
+  <offset>38</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>222</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>write</highlighted_element>
+  <language>kotlin</language>
+  <offset>28</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>243</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>close</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>355</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>getOutputStream</highlighted_element>
+  <language>kotlin</language>
+  <offset>28</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>356</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>getInputStream</highlighted_element>
+  <language>kotlin</language>
+  <offset>27</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>434</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object streamBytes(java.io.InputStream input, java.io.OutputStream output, long length, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onDelta, kotlin.coroutines.Continuation&lt;? super java.lang.Boolean&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>read</highlighted_element>
+  <language>kotlin</language>
+  <offset>26</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>436</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object streamBytes(java.io.InputStream input, java.io.OutputStream output, long length, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onDelta, kotlin.coroutines.Continuation&lt;? super java.lang.Boolean&gt; $completion)" />
+  <problem_class id="BlockingMethodInNonBlockingContext" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Possibly blocking call in non-blocking context</problem_class>
+  <description>Possibly blocking call in non-blocking context could lead to thread starvation</description>
+  <highlighted_element>write</highlighted_element>
+  <language>kotlin</language>
+  <offset>19</offset>
+  <length>5</length>
+</problem>
+</problems>

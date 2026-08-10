@@ -10,9 +10,12 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
@@ -60,6 +63,13 @@ class DeviceConfig(private val context: Context) {
     private val _publicAddressFlow = MutableStateFlow("")
     val publicAddressFlow: StateFlow<String> = _publicAddressFlow.asStateFlow()
 
+    /** Single combined flow — replacing three individual collectAsState() reads in the UI. */
+    val googleProfileFlow: StateFlow<GoogleProfile> = combine(
+        _profileNameFlow, _profilePictureFlow, _emailFlow
+    ) { name, picture, email ->
+        GoogleProfile(name, picture, email)
+    }.stateIn(scope, SharingStarted.Eagerly, GoogleProfile())
+
     val publicAddress: String
         get() = _publicAddressFlow.value
 
@@ -85,8 +95,19 @@ class DeviceConfig(private val context: Context) {
             }
         }
 
+    /** Fingerprint, computed once. First access during cold start blocks until DataStore loads. */
     val fingerprint: String
-        get() = _fingerprintFlow.value
+        get() {
+            if (_fingerprintFlow.value.isEmpty()) {
+                _fingerprintFlow.value = runBlocking(Dispatchers.IO) {
+                    val prefs = context.dataStore.data.first()
+                    prefs[FINGERPRINT_KEY] ?: UUID.randomUUID().toString().also { fp ->
+                        context.dataStore.edit { it[FINGERPRINT_KEY] = fp }
+                    }
+                }
+            }
+            return _fingerprintFlow.value
+        }
 
     val identityHash: String
         get() = _identityHashFlow.value
@@ -130,11 +151,11 @@ class DeviceConfig(private val context: Context) {
     }
 
     init {
-        // Run blocking just for the very first initialization to ensure memory cache is primed 
-        // before Ktor tries to read the fingerprint and binds to ports.
-        // It's IO dispatched so it doesn't hard-block the UI strictly if we do it cleanly,
-        // but here we just block the Koin initialization momentarily.
-        runBlocking(Dispatchers.IO) {
+        // DataStore is loaded asynchronously — non-critical UI fields start with
+        // empty defaults and populate in under one frame. Fingerprint reads are
+        // guarded on first access (see the getter below) so the discovery engine
+        // never sees a blank id, even during cold start.
+        scope.launch {
             Timber.i("Initializing DeviceConfig from DataStore...")
             val prefs = context.dataStore.data.first()
 
@@ -184,3 +205,10 @@ class DeviceConfig(private val context: Context) {
         }
     }
 }
+
+/** Combined profile snapshot — prevents triple-recomposition on Google sign-in. */
+data class GoogleProfile(
+    val name: String = "",
+    val picture: String = "",
+    val email: String = ""
+)

@@ -1,0 +1,29 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/build.gradle.kts</file>
+  <line>108</line>
+  <module>DeX.app</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/build.gradle.kts" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of org.json:json than 20240303 is available: 20260719&lt;/html&gt;</description>
+  <highlighted_element>&quot;org.json:json:20240303&quot;</highlighted_element>
+  <language>kotlin</language>
+  <offset>21</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>27</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="AndroidLintNewerVersionAvailable" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Newer Library Versions Available</problem_class>
+  <hints />
+  <description>&lt;html&gt;A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.4.0&lt;/html&gt;</description>
+  <highlighted_element>&quot;4.12.0&quot;</highlighted_element>
+  <language>TOML</language>
+  <offset>9</offset>
+  <length>8</length>
+</problem>
+</problems>

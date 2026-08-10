@@ -15,6 +15,7 @@ import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
 
 class DiscoveryEngine(
@@ -26,6 +27,10 @@ class DiscoveryEngine(
     
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
+
+    // Side-map: always holds the latest seen payload + timestamp per fingerprint so the
+    // TTL cleanup stays accurate even when we skip a StateFlow emission for duplicate payloads.
+    private val seenDevices = ConcurrentHashMap<String, DiscoveredDevice>()
     
     private var nsdManagerHelper: NsdManagerHelper? = null
     private var udpManager: UdpMulticastManager? = null
@@ -44,7 +49,7 @@ class DiscoveryEngine(
             deviceModel = android.os.Build.MODEL ?: "Android",
             deviceType = "mobile",
             fingerprint = deviceConfig.fingerprint,
-            port = 53317,
+            port = DeXPorts.HTTPS,
             protocol = "https",
             // This device no longer hosts a LocalSend receiver; pushes arrive via the PC's WebSocket
             download = false,
@@ -62,13 +67,32 @@ class DiscoveryEngine(
                 delay(10000)
                 val now = System.currentTimeMillis()
                 _devices.update { map ->
-                    map.filterValues { now - it.lastSeenTimestamp < 20000 }
+                    map.filterKeys { fp ->
+                        // Read timestamp from the side-map — it stays accurate even for
+                        // deduplicated broadcasts that skipped a _devices emission.
+                        (seenDevices[fp]?.lastSeenTimestamp ?: 0L).let { now - it < 20000 }
+                    }
                 }
+                // Prune side-map entries that have been evicted from _devices
+                seenDevices.entries.removeIf { it.key !in _devices.value }
             }
         }
     }
 
     fun addDevice(device: DiscoveredDevice) {
+        val existing = seenDevices[device.info.fingerprint]
+        // Always bump the timestamp in the side-map so the TTL cleanup stays accurate
+        seenDevices[device.info.fingerprint] = device
+
+        // Skip StateFlow emission when the payload is identical — periodic rebroadcasts
+        // from the same device were causing a full-screen recomposition storm.
+        val changed = existing == null ||
+            existing.ip != device.ip ||
+            existing.info != device.info ||
+            existing.viaWan != device.viaWan ||
+            existing.viaRoster != device.viaRoster
+        if (!changed) return
+
         _devices.update { map ->
             map + (device.info.fingerprint to device)
         }
@@ -98,7 +122,7 @@ class DiscoveryEngine(
                 }
                 val data = replyJson.toString().toByteArray(Charsets.UTF_8)
                 DatagramSocket().use { ds ->
-                    ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), 53317))
+                    ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), DeXPorts.HTTPS))
                 }
             }
         }

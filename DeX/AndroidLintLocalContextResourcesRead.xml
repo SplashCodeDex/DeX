@@ -1,0 +1,30 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>117</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="AndroidLintLocalContextResourcesRead" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Reading Resources using LocalContext.current.resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;Reading Resources using LocalContext.current.resources&lt;/html&gt;</description>
+  <highlighted_element>context.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>36</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>141</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt" />
+  <problem_class id="AndroidLintLocalContextResourcesRead" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Reading Resources using LocalContext.current.resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;Reading Resources using LocalContext.current.resources&lt;/html&gt;</description>
+  <highlighted_element>context.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>36</offset>
+  <length>17</length>
+</problem>
+</problems>

@@ -57,7 +57,7 @@ class ClientEngineTest {
         val clientEngine = ClientEngine(mockEngine)
 
         // Act
-        val result = clientEngine.sendClipboard("192.168.1.5", 53317, "Hello World")
+        val result = clientEngine.sendClipboard("192.168.1.5", DeXPorts.HTTPS, "Hello World")
 
         // Assert
         assertTrue(result)
@@ -76,7 +76,7 @@ class ClientEngineTest {
         val clientEngine = ClientEngine(mockEngine)
 
         // Act
-        val result = clientEngine.sendClipboard("192.168.1.5", 53317, "Hello World")
+        val result = clientEngine.sendClipboard("192.168.1.5", DeXPorts.HTTPS, "Hello World")
 
         // Assert
         assertFalse(result)

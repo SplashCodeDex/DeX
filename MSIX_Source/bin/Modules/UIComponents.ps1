@@ -240,26 +240,31 @@ function Update-WpfUI {
 # layered (AllowsTransparency) window it re-rasterizes the full card region on every
 # repaint. Suspending it around size/scale transitions AND around bulk list swaps (which
 # repaint the card) keeps the visuals identical while removing the re-blur cost on each.
-# A depth counter lets overlapping suspenders (transition + refresh) share one restore.
-$script:cardShadowSuspendDepth = 0
+# Idempotent flag (not a counter): overlapping suspenders (a transition + a refresh) share
+# one suspend, and the FIRST restorer re-applies the shadow — so rapid double transitions
+# can never leave the shadow permanently off.
+$script:cardShadowSuspended = $false
 function Suspend-CardEffect {
+    if ($script:cardShadowSuspended) { return }
     $mb = $script:wpfWindow.FindName("mainBorder")
     if ($mb -and $null -ne $mb.Effect) { $mb.Effect = $null }
-    $script:cardShadowSuspendDepth++
+    $script:cardShadowSuspended = $true
 }
 function Restore-CardEffect {
-    $script:cardShadowSuspendDepth = [Math]::Max(0, $script:cardShadowSuspendDepth - 1)
-    if ($script:cardShadowSuspendDepth -eq 0) {
-        $mb = $script:wpfWindow.FindName("mainBorder")
-        if ($mb -and $null -eq $mb.Effect) {
-            try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
-        }
+    if (-not $script:cardShadowSuspended) { return }
+    $script:cardShadowSuspended = $false
+    $mb = $script:wpfWindow.FindName("mainBorder")
+    if ($mb -and $null -eq $mb.Effect) {
+        try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
     }
 }
 
 # Begins a card resize/scale transition (Expand/Contract/PopIn) with the software drop shadow
 # suspended for its duration. The DropShadowEffect is the priciest per-frame cost while
 # mainBorder animates its size/scale, so we clear it up front and restore it ~0.95s later.
+# NOTE: the restore is inlined (not a Restore-CardEffect call) because GetNewClosure()
+# creates an isolated scope that cannot reliably resolve functions from the dot-sourced
+# parent script — a call here threw "not recognized" at runtime.
 $script:cardShadowRestoreTimer = $null
 function Start-CardTransition($storyboard) {
     Suspend-CardEffect
@@ -270,7 +275,13 @@ function Start-CardTransition($storyboard) {
     $timer.Add_Tick({
         param($s, $e)
         $s.Stop()
-        Restore-CardEffect
+        if ($script:cardShadowSuspended) {
+            $script:cardShadowSuspended = $false
+            $mb = $script:wpfWindow.FindName("mainBorder")
+            if ($mb -and $null -eq $mb.Effect) {
+                try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
+            }
+        }
     }.GetNewClosure())
     $script:cardShadowRestoreTimer = $timer
     $timer.Start()
@@ -281,27 +292,58 @@ function Start-CardTransition($storyboard) {
 # Resolves the PC's LAN IP and loads the pairing QR code into the panel, showing the QR
 # view (hiding the PIN view) and arming the "Request PIN" button. Returns $true when the
 # QR is shown, or $false when no LAN IP could be resolved (caller decides how to react).
+# The QR bitmap is fetched OFF the UI thread: the old code built a BitmapImage with
+# CacheOption=OnLoad + an HTTP UriSource, which downloads synchronously on the calling
+# thread (the engine runs on Windows PowerShell 5.1 / .NET Framework, where that WebRequest
+# has a 100-second default timeout) — any stall froze the whole tray UI on every
+# discovered-device click.
 function Show-QrCode {
-    $localIp = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
-        Where-Object { $_.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_) } |
-        Select-Object -First 1 -ExpandProperty IPAddressToString
+    $localIp = $null
+    try {
+        $dnsTask = [System.Net.Dns]::GetHostAddressesAsync([System.Net.Dns]::GetHostName())
+        if (-not $dnsTask.Wait(2000)) { return $false }
+        $localIp = $dnsTask.Result |
+            Where-Object { $_.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_) } |
+            Select-Object -First 1 -ExpandProperty IPAddressToString
+    } catch { return $false }
     if (-not $localIp) { return $false }
 
-    $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
-    if ($imgQrCode) {
-        $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
-        $bitmap.BeginInit()
-        $bitmap.UriSource = New-Object Uri("$global:DeXLocalApi/local/qr?ip=$localIp")
-        $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-        $bitmap.EndInit()
-        $imgQrCode.Source = $bitmap
-    }
     $script:wpfWindow.FindName("pinCodeContent").Visibility = 'Collapsed'
     $script:wpfWindow.FindName("qrCodeContent").Visibility = 'Visible'
     $txtQrBtnIcon = $script:wpfWindow.FindName("txtQrBtnIcon")
     if ($txtQrBtnIcon) { $txtQrBtnIcon.Visibility = 'Collapsed' }
     $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")
     if ($txtQrBtnText) { $txtQrBtnText.Text = "Request PIN" }
+
+    # Fetch the PNG over HTTP on a background thread (bounded 3s), then set the image on
+    # the UI thread from the byte stream. The QR view is already shown; a slow/failed
+    # fetch degrades to an empty QR frame instead of freezing the app.
+    $action = [System.Action]{
+        try {
+            $bytes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/qr?ip=$localIp" -TimeoutSec 3 -ErrorAction Stop
+            if ($bytes -is [byte[]] -and $bytes.Length -gt 0) {
+                $ms = New-Object System.IO.MemoryStream(,$bytes)
+                $uiAction = [System.Action]{
+                    try {
+                        $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
+                        if ($imgQrCode) {
+                            $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+                            $bitmap.BeginInit()
+                            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+                            $bitmap.StreamSource = $ms
+                            $bitmap.EndInit()
+                            $bitmap.Freeze()
+                            $imgQrCode.Source = $bitmap
+                        }
+                    } catch {} finally {
+                        if ($ms) { $ms.Dispose() }
+                    }
+                }
+                $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
+            }
+        } catch {}
+    }
+    $null = $action.BeginInvoke($null, $null)
     return $true
 }
 

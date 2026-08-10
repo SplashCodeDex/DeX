@@ -1,0 +1,16 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/build.gradle.kts</file>
+  <line>25</line>
+  <module>DeX.app</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/build.gradle.kts" />
+  <problem_class id="AndroidLintNotShrinkingResources" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES">Use resource shrinking to optimize your resources</problem_class>
+  <hints />
+  <description>&lt;html&gt;If enabling minification, also set isShrinkResources = true&lt;/html&gt;</description>
+  <highlighted_element>isMinifyEnabled = true</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>22</length>
+</problem>
+</problems>

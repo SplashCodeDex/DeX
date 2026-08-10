@@ -1,56 +1,78 @@
 package com.dexstudios.dex.network
 
-import android.content.Context
-import android.content.Intent
+import android.app.Activity
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import com.dexstudios.dex.BuildConfig
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import timber.log.Timber
 
 /**
- * Google Sign-In for the verified email identity. The sign-in happens once per device;
- * the verified email becomes the shared identity hash (same-email auto-trust) for
- * THIS device only — the PC has its own independent sign-in and is never auto-signed-in.
- *
- * Requires a Google Cloud OAuth client ID (Android type) — provide it at build time via
- * -PGOOGLE_SIGN_IN_CLIENT_ID. Until then the feature is gracefully hidden.
+ * Google Sign-In for the verified email identity.
+ * Migrated to Credential Manager API.
  */
 object GoogleSignInManager {
     fun isConfigured(): Boolean = BuildConfig.GOOGLE_SIGN_IN_CLIENT_ID.isNotBlank()
 
-    fun client(context: Context): GoogleSignInClient? {
+    /**
+     * Starts the Google Sign-In flow using Credential Manager.
+     * Returns the credential on success, or null on failure.
+     */
+    suspend fun signIn(activity: Activity): GoogleIdTokenCredential? {
         if (!isConfigured()) return null
-        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestId()
+
+        val credentialManager = CredentialManager.create(activity)
+
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(BuildConfig.GOOGLE_SIGN_IN_CLIENT_ID)
+            .setAutoSelectEnabled(true)
             .build()
-        return GoogleSignIn.getClient(context, options)
-    }
 
-    fun signInIntent(context: Context): Intent? = client(context)?.signInIntent
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
 
-    /** Extracts the signed-in account from the activity result, or null on failure. */
-    fun handleResult(data: Intent?): GoogleSignInAccount? = try {
-        GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException::class.java)
-    } catch (e: ApiException) {
-        Timber.e(e, "Google Sign-In failed: ${e.statusCode}")
-        null
+        return try {
+            val result = credentialManager.getCredential(activity, request)
+            when (val credential = result.credential) {
+                is GoogleIdTokenCredential -> credential
+                else -> {
+                    Timber.w("Unexpected credential type: ${credential.type}")
+                    null
+                }
+            }
+        } catch (e: GetCredentialException) {
+            Timber.e(e, "Google Sign-In failed: ${e.message}")
+            null
+        } catch (e: Exception) {
+            Timber.e(e, "Google Sign-In error: ${e.message}")
+            null
+        }
     }
 
     /**
-     * Applies a verified account to the device identity: email (drives the shared identity
-     * hash), the Google account ID (the unguessable trust key), plus the profile name and
-     * avatar used by the UI. Returns the verified email, or null when the account is invalid.
+     * Applies a verified account to the device identity.
      */
-    fun applyToDeviceConfig(account: GoogleSignInAccount, deviceConfig: DeviceConfig): String? {
-        val email = account.email
-        if (email.isNullOrBlank()) return null
+    fun applyToDeviceConfig(credential: GoogleIdTokenCredential, deviceConfig: DeviceConfig): String? {
+        val email = credential.id
+        if (email.isBlank()) return null
         deviceConfig.email = email
-        deviceConfig.setGoogleSub(account.id ?: "")
-        deviceConfig.setGoogleProfile(account.displayName ?: "", account.photoUrl?.toString() ?: "")
+
+        val sub = try {
+            val parts = credential.idToken.split(".")
+            if (parts.size >= 2) {
+                val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE))
+                org.json.JSONObject(payload).getString("sub")
+            } else ""
+        } catch (e: Exception) {
+            ""
+        }
+
+        deviceConfig.setGoogleSub(sub)
+        deviceConfig.setGoogleProfile(credential.displayName ?: "", credential.profilePictureUri?.toString() ?: "")
         return email
     }
 }

@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>180</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void pairing_with string resource format produces expected string()" />
+  <problem_class id="CanConvertToMultiDollarString" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Multi-dollar interpolation can be used in string literals</problem_class>
+  <description>An interpolation prefix can simplify the string</description>
+  <highlighted_element>\$</highlighted_element>
+  <language>kotlin</language>
+  <offset>54</offset>
+  <length>2</length>
+</problem>
+</problems>

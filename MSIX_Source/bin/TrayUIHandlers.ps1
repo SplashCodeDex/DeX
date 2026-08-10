@@ -21,6 +21,23 @@ function Reset-SpatialPanels {
     $script:wpfWindow.FindName("btnCloseMenu").Opacity = 0
     $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Collapsed'
     $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 0
+    # Pairing PIN/QR panel: force-collapse so a stale pairing state can never wedge the
+    # window open (the Deactivated handler keeps the window up while pinViewPanel is
+    # visible) or leave the panel offscreen (pinViewTrans slides it out to X=300).
+    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+    if ($pinViewPanel) {
+        $pinViewPanel.Visibility = 'Collapsed'
+        $pinViewPanel.Opacity = 0
+    }
+    $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+    if ($pinViewTrans) { $pinViewTrans.X = 300 }
+    $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
+    if ($menuContentTrans) { $menuContentTrans.X = 0 }
+    $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
+    if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    $script:activeOutboundPairIp = $null
+    $script:activeOutboundPairFp = $null
     $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Visible'
@@ -370,7 +387,10 @@ function Show-PairingPrompt {
     $btnCancel = $win.FindName("btnCancel")
     $btnPair = $win.FindName("btnPair")
     
-    $resultPin = $null
+    # Reset the out-param BEFORE showing the dialog. The function returns the script-scope
+    # variable, so a stale value from a previous attempt would otherwise be returned when
+    # the user cancels (re-pairing with an old PIN and re-prompting on every tick).
+    $script:resultPin = $null
     
     $btnCancel.Add_Click({
         $win.DialogResult = $false

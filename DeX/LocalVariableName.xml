@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/NsdManagerHelper.kt</file>
+  <line>37</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.NsdManagerHelper$-1 void onServiceRegistered(android.net.nsd.NsdServiceInfo NsdServiceInfo)" />
+  <problem_class id="LocalVariableName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Local variable naming convention</problem_class>
+  <description>Local variable name &lt;code&gt;NsdServiceInfo&lt;/code&gt; should start with a lowercase letter</description>
+  <highlighted_element>NsdServiceInfo</highlighted_element>
+  <language>kotlin</language>
+  <offset>45</offset>
+  <length>14</length>
+</problem>
+</problems>

@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>76</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void onCreate(android.os.Bundle savedInstanceState)" />
+  <problem_class id="RemoveExplicitTypeArguments" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unnecessary type argument</problem_class>
+  <description>Explicit type arguments can be inferred</description>
+  <highlighted_element>&lt;Uri&gt;</highlighted_element>
+  <language>kotlin</language>
+  <offset>45</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>85</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void onCreate(android.os.Bundle savedInstanceState)" />
+  <problem_class id="RemoveExplicitTypeArguments" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unnecessary type argument</problem_class>
+  <description>Explicit type arguments can be inferred</description>
+  <highlighted_element>&lt;Uri&gt;</highlighted_element>
+  <language>kotlin</language>
+  <offset>54</offset>
+  <length>5</length>
+</problem>
+</problems>

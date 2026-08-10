@@ -38,6 +38,16 @@ class PunchSendWorker(
     private val notificationId = 1004
     private val channelId = "punch_channel"
 
+    init {
+        val channel = android.app.NotificationChannel(
+            channelId,
+            "Direct transfer progress",
+            android.app.NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        manager.createNotificationChannel(channel)
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val targetFingerprint = inputData.getString("targetFingerprint") ?: return@withContext Result.failure()
         val urisJson = inputData.getString("uris") ?: return@withContext Result.failure()
@@ -51,13 +61,14 @@ class PunchSendWorker(
         // Folder bundles: enumerate a picked tree into (uri, relativePath) pairs
         val folderTreeUri = inputData.getString("folderTreeUri")?.toUri()
         if (folderTreeUri == null && uris.isEmpty()) return@withContext Result.failure()
-        val relativePaths: List<String>? = folderTreeUri?.let { tree ->
-            SafStorage.listTreeFiles(applicationContext, tree).map { it.second }.ifEmpty {
-                client.updateUploadState(UploadState(fileName = "Folder", error = "The folder is empty", isUploading = false))
-                return@withContext Result.failure()
-            }
+        // Enumerate the folder tree once — listTreeFiles walks recursively.
+        val treeEntries = folderTreeUri?.let { tree -> SafStorage.listTreeFiles(applicationContext, tree) }
+        if (treeEntries != null && treeEntries.isEmpty()) {
+            client.updateUploadState(UploadState(fileName = "Folder", error = "The folder is empty", isUploading = false))
+            return@withContext Result.failure()
         }
-        val sendUris = folderTreeUri?.let { tree -> SafStorage.listTreeFiles(applicationContext, tree).map { it.first } } ?: uris
+        val relativePaths: List<String>? = treeEntries?.map { it.second }
+        val sendUris = treeEntries?.map { it.first } ?: uris
 
         setForeground(createForegroundInfo(0, "Connecting directly..."))
         client.updateUploadState(UploadState(fileName = "Connecting directly...", isUploading = true, totalFiles = sendUris.size))
@@ -109,7 +120,7 @@ class PunchSendWorker(
             info = RegisterDto(
                 alias = getDeviceName(applicationContext), version = "2.0",
                 deviceModel = android.os.Build.MODEL ?: "Android", deviceType = "mobile",
-                fingerprint = deviceConfig.fingerprint, port = 53317, protocol = "https",
+                fingerprint = deviceConfig.fingerprint, port = DeXPorts.HTTPS, protocol = "https",
                 download = false, identityHash = identityHash
             ),
             files = fileData.mapIndexed { index, d ->
@@ -121,7 +132,7 @@ class PunchSendWorker(
             }.toMap()
         )
 
-        val prepared = client.prepareUpload(pcIp, 53317, prepareRequest, token = googleSub.ifBlank { identityHash })
+        val prepared = client.prepareUpload(pcIp, DeXPorts.HTTPS, prepareRequest, token = googleSub.ifBlank { identityHash })
         val response = prepared.response ?: return@withContext "The PC rejected the upload (HTTP ${prepared.httpStatus})"
 
         var sent = 0L
@@ -137,13 +148,13 @@ class PunchSendWorker(
             stream.use { input ->
                 val perFile = java.util.concurrent.atomic.AtomicLong(0L)
                 val outcome = if (client.quicAvailable()) {
-                    client.uploadFileQuic(pcIp, 53317, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
+                    client.uploadFileQuic(pcIp, DeXPorts.HTTPS, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
                         val delta = bytes - perFile.getAndSet(bytes)
                         sent += delta
                         reportProgress(sent.toFloat() / total, d.second, if (client.lastUploadProtocol().isNotEmpty()) client.lastUploadProtocol() else "quic", fileData.size)
                     }
                 } else {
-                    client.uploadFile(pcIp, 53317, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
+                    client.uploadFile(pcIp, DeXPorts.HTTPS, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
                         val delta = bytes - perFile.getAndSet(bytes)
                         sent += delta
                         reportProgress(sent.toFloat() / total, d.second, "http/1.1", fileData.size)
@@ -192,14 +203,6 @@ class PunchSendWorker(
 
     private fun createForegroundInfo(progress: Int, text: String): ForegroundInfo {
         val cancelIntent = androidx.work.WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
-
-        val channel = android.app.NotificationChannel(
-            channelId,
-            "Direct transfer progress",
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Direct Transfer")

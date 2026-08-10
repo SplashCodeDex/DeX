@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>278</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.FileShareManager java.lang.Object replyPull(java.lang.String requestId, kotlinx.serialization.json.JsonObject data, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ForEachJoinOnCollectionOfJob" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">'forEach { it.join() }' call on 'Collection&lt;Job&gt;' instead of single 'joinAll()'</problem_class>
+  <description>Usage of 'forEach { it.join() }' on 'Collection&lt;Job&gt;' instead of single 'joinAll()'</description>
+  <highlighted_element>forEach { it.join() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>17</offset>
+  <length>21</length>
+</problem>
+</problems>

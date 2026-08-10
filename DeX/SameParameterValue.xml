@@ -1,0 +1,44 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MirrorSession.kt</file>
+  <line>139</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MirrorSession byte[] imageToJpeg(android.media.Image image, int width, int height)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;width&lt;/code&gt; is always '720'</description>
+  <highlighted_element>width</highlighted_element>
+  <language>kotlin</language>
+  <offset>56</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/DeXButtons.kt</file>
+  <line>108</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.DeXButtonsKt void DeXFloatingActionButton(kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onClick, androidx.compose.ui.Modifier modifier, androidx.compose.ui.graphics.Shape shape, long containerColor, long contentColor, androidx.compose.foundation.interaction.MutableInteractionSource interactionSource, androidx.compose.runtime.internal.ComposableFunction0&lt;kotlin.Unit&gt; content)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;shape&lt;/code&gt; is always 'RoundedCornerShapeKt.CircleShape'</description>
+  <highlighted_element>shape</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/GlassScrollEdge.kt</file>
+  <line>32</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.glass.GlassScrollEdgeKt void GlassScrollEdge(com.kyant.backdrop.Backdrop backdrop, com.dexstudios.dex.ui.components.glass.GlassEdge edge, androidx.compose.ui.Modifier modifier, float blurRadius, long tint, float tintIntensity)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;edge&lt;/code&gt; is always 'GlassEdge.Top'</description>
+  <highlighted_element>edge</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>4</length>
+</problem>
+</problems>

@@ -1,0 +1,288 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DiscoveryEngine.kt</file>
+  <line>67</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DiscoveryEngine void startDiscovery()" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(10000)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>359</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.FileShareManager java.lang.Object replyGrant(java.lang.String requestId, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(GRANT_WAIT_MS) { deferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>53</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MessageHandler.kt</file>
+  <line>80</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandler void handlePairPrompt(kotlinx.serialization.json.JsonElement dataElement)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS) { info.deferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>29</offset>
+  <length>67</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MessageHandler.kt</file>
+  <line>106</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandler void handlePrepareUpload(kotlinx.serialization.json.JsonElement dataElement, java.lang.String senderIp)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(PROMPT_TIMEOUT_MS) { deferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>27</offset>
+  <length>57</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MessageHandler.kt</file>
+  <line>120</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandler void handlePrepareUpload(kotlinx.serialization.json.JsonElement dataElement, java.lang.String senderIp)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(500)</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MirrorSession.kt</file>
+  <line>108</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MirrorSession void start(android.media.projection.MediaProjection projection, int width, int height, int densityDpi)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(frameIntervalMs)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>22</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>180</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object relayViaPc(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(10_000) { relayDeferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>21</offset>
+  <length>51</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>79</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession void start()" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(120_000)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>85</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession void start()" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(60_000)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>144</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(10_000) { withContext(Dispatchers.IO) { readLine(input) } }</highlighted_element>
+  <language>kotlin</language>
+  <offset>31</offset>
+  <length>77</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>165</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(60_000) { deferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>31</offset>
+  <length>46</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>186</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(500)</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>195</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(30_000) { withContext(Dispatchers.IO) { readLine(input) } }</highlighted_element>
+  <language>kotlin</language>
+  <offset>33</offset>
+  <length>77</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>248</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object handleIncoming(java.net.Socket socket, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(10_000) { withContext(Dispatchers.IO) { readLine(input) } }</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>77</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>297</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object sendTo(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(1500)</highlighted_element>
+  <language>kotlin</language>
+  <offset>29</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>310</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object sendTo(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(15_000) { deferred.await() }</highlighted_element>
+  <language>kotlin</language>
+  <offset>23</offset>
+  <length>46</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>368</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object runTransfer(java.net.Socket socket, java.lang.String sessionId, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;com.dexstudios.dex.network.PunchFileDto&gt; files, long totalSize, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.jvm.functions.Function3&lt;? super java.lang.Float,? super java.lang.String,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.PunchSession.TransferOutcome&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>withTimeoutOrNull(60_000) { withContext(Dispatchers.IO) { readLine(input) } }</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>77</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSession.kt</file>
+  <line>476</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSession java.lang.Object punch(java.lang.String ip, int port, kotlin.jvm.functions.Function0&lt;java.lang.Boolean&gt; isCancelled, kotlin.coroutines.Continuation&lt;? super java.net.Socket&gt; $completion)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(250)</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/WebSocketClientService.kt</file>
+  <line>120</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.WebSocketClientService void start()" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(60_000)</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/WebSocketClientService.kt</file>
+  <line>283</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.WebSocketClientService void scheduleReconnect()" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(5000)</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt</file>
+  <line>96</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.settings</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.settings.SettingsScreenKt void SettingsScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.network.DeviceConfig deviceConfig, com.dexstudios.dex.network.DiscoveryEngine discoveryEngine, com.dexstudios.dex.network.WebSocketClientService webSocketClientService)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(500)</highlighted_element>
+  <language>kotlin</language>
+  <offset>32</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/settings/SettingsScreen.kt</file>
+  <line>184</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.settings</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.settings.SettingsScreenKt void SettingsScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.network.DeviceConfig deviceConfig, com.dexstudios.dex.network.DiscoveryEngine discoveryEngine, com.dexstudios.dex.network.WebSocketClientService webSocketClientService)" />
+  <problem_class id="ConvertLongToDuration" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Long overload to Duration conversion</problem_class>
+  <description>Legacy Long overload can be converted to Duration</description>
+  <highlighted_element>delay(500)</highlighted_element>
+  <language>kotlin</language>
+  <offset>32</offset>
+  <length>10</length>
+</problem>
+</problems>

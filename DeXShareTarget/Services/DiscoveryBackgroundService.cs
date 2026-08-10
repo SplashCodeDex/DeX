@@ -90,7 +90,7 @@ namespace DeXShareTarget.Services
             }
 
             using var mdns = new Makaretu.Dns.MulticastService();
-            var service = new Makaretu.Dns.ServiceProfile(myInfo.Alias, "_dex._udp", (ushort)53317);
+            var service = new Makaretu.Dns.ServiceProfile(myInfo.Alias, "_dex._udp", (ushort)DeXConstants.HttpsPort);
             service.AddProperty("alias", myInfo.Alias);
             service.AddProperty("fingerprint", myInfo.Fingerprint);
             service.AddProperty("identityHash", myInfo.IdentityHash);
@@ -111,7 +111,8 @@ namespace DeXShareTarget.Services
                     {
                         var srv = e.Message.Answers.OfType<Makaretu.Dns.SRVRecord>().FirstOrDefault();
                         var txt = e.Message.Answers.OfType<Makaretu.Dns.TXTRecord>().FirstOrDefault();
-                        var a = e.Message.Answers.OfType<Makaretu.Dns.ARecord>().FirstOrDefault();
+                        var a = e.Message.Answers.OfType<Makaretu.Dns.ARecord>().FirstOrDefault(r => r.Name == srv?.Target)
+                            ?? e.Message.AdditionalRecords.OfType<Makaretu.Dns.ARecord>().FirstOrDefault(r => r.Name == srv?.Target);
                         
                         if (srv != null && txt != null && a != null)
                         {
@@ -141,9 +142,22 @@ namespace DeXShareTarget.Services
             };
 
             mdns.Start();
+
+            _ = Task.Run(async () =>
+            {
+                var rng = new Random();
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        sd.QueryServiceInstances(new Makaretu.Dns.DomainName("_dex._udp"));
+                    } catch { }
+                    try { await Task.Delay(TimeSpan.FromSeconds(15 + rng.Next(16)), stoppingToken); } catch (OperationCanceledException) { break; }
+                }
+            }, stoppingToken);
             
             var multicastAddress = IPAddress.Parse("224.0.0.167");
-            var endPoint = new IPEndPoint(IPAddress.Any, 53317);
+            var endPoint = new IPEndPoint(IPAddress.Any, DeXConstants.HttpsPort);
             using var udp = new UdpClient();
             udp.EnableBroadcast = true;
             udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -172,7 +186,7 @@ namespace DeXShareTarget.Services
                             {
                                 Fingerprint = fp,
                                 Alias = alias ?? "Unknown",
-                                Port = root.TryGetProperty("port", out var p) ? p.GetInt32() : 53317,
+                                Port = root.TryGetProperty("port", out var p) ? p.GetInt32() : DeXConstants.HttpsPort,
                                 DeviceModel = root.TryGetProperty("deviceModel", out var dm) ? (dm.GetString() ?? "Unknown") : "Unknown",
                                 DeviceType = root.TryGetProperty("deviceType", out var dt) ? (dt.GetString() ?? "unknown") : "unknown",
                                 IdentityHash = root.TryGetProperty("identityHash", out var ih) ? ih.GetString() : null
@@ -200,8 +214,8 @@ namespace DeXShareTarget.Services
                     var dynamicJson = JsonSerializer.Serialize(myInfo);
                     var dynamicBytes = Encoding.UTF8.GetBytes(dynamicJson);
 
-                    try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, new IPEndPoint(multicastAddress, 53317)); } catch { }
-                    foreach (var ep in GetDirectedBroadcasts(53317))
+                    try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, new IPEndPoint(multicastAddress, DeXConstants.HttpsPort)); } catch { }
+                    foreach (var ep in GetDirectedBroadcasts(DeXConstants.HttpsPort))
                     {
                         try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, ep); } catch { }
                     }

@@ -46,7 +46,7 @@ namespace DeXShareTarget.Services
 
             var prepareReq = new
             {
-                info = new { alias = senderAlias, deviceModel = "PC", deviceType = "desktop", fingerprint = IdentityManager.Fingerprint, port = 53317, protocol = "localsend", download = false },
+                info = new { alias = senderAlias, deviceModel = "PC", deviceType = "desktop", fingerprint = IdentityManager.Fingerprint, port = DeXConstants.HttpsPort, protocol = "localsend", download = false },
                 files = fileMap
             };
             var json = JsonSerializer.Serialize(new { type = "prepare-upload", data = prepareReq },

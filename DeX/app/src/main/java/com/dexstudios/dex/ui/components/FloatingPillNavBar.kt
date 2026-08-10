@@ -80,7 +80,7 @@ fun FloatingPillNavBar(
 private fun NavBarIcon(item: NavBarItem, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
+
     val containerColor = if (item.isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
     val contentColor = if (item.isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     val currentIcon = if (item.isSelected) item.selectedIcon else item.unselectedIcon
@@ -92,7 +92,7 @@ private fun NavBarIcon(item: NavBarItem, modifier: Modifier = Modifier) {
             .clip(CircleShape)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null, 
+                indication = null,
                 onClick = item.onClick
             )
             .background(containerColor),

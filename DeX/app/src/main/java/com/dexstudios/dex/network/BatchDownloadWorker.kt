@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
  * Downloads one transfer session (all files the PC pushed) in a single work item.
  *
  * Files are pulled concurrently over HTTP/3 (QUIC) via Cronet — QUIC multiplexes them
- * on one connection — with the raw TCP pull server (port 53319) as fallback when the
+ * on one connection — with the raw TCP pull server (port 48426) as fallback when the
  * Cronet engine is unavailable. Aggregate progress is reported, one notification covers
  * the whole session, and a cancel stops every stream, not just the last file.
  */
@@ -45,14 +45,24 @@ class BatchDownloadWorker(
     private val channelId = "download_channel"
     private val completeNotificationId = 1003
 
-    // PC's HTTPS host port: serves /download over HTTP/1.1 (TCP 53317) and, via Alt-Svc, HTTP/3 (UDP 53316)
-    private val httpsPort = 53317
+    // PC's HTTPS host port: serves /download over HTTP/1.1 (TCP 48424) and, via Alt-Svc, HTTP/3 (UDP 48423)
+    private val httpsPort = DeXPorts.HTTPS
 
     // Cap of concurrent QUIC streams per session
     private val maxConcurrent = 3
 
     // Transient transport failures are retried with exponential backoff, capped attempts
     private val maxRetryAttempts = 3
+
+    init {
+        val channel = android.app.NotificationChannel(
+            channelId,
+            "Download progress",
+            android.app.NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        manager.createNotificationChannel(channel)
+    }
 
     private data class DownloadResult(
         val ok: Boolean,
@@ -362,14 +372,6 @@ class BatchDownloadWorker(
 
     private fun createForegroundInfo(progress: Int, text: String): ForegroundInfo {
         val cancelIntent = androidx.work.WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
-
-        val channel = android.app.NotificationChannel(
-            channelId,
-            "Download progress",
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Receiving File")

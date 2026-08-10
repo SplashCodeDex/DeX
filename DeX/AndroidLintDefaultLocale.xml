@@ -1,0 +1,44 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt</file>
+  <line>142</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt" />
+  <problem_class id="AndroidLintDefaultLocale" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Implied default locale in case conversion</problem_class>
+  <hints />
+  <description>&lt;html&gt;Implicitly using the default locale is a common source of bugs: Use &lt;code&gt;String.format(Locale, ...)&lt;/code&gt; instead&lt;/html&gt;</description>
+  <highlighted_element>String.format(&quot;%.1f GB/s&quot;, bps / (1024f * 1024 * 1024))</highlighted_element>
+  <language>kotlin</language>
+  <offset>34</offset>
+  <length>55</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt</file>
+  <line>143</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt" />
+  <problem_class id="AndroidLintDefaultLocale" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Implied default locale in case conversion</problem_class>
+  <hints />
+  <description>&lt;html&gt;Implicitly using the default locale is a common source of bugs: Use &lt;code&gt;String.format(Locale, ...)&lt;/code&gt; instead&lt;/html&gt;</description>
+  <highlighted_element>String.format(&quot;%.1f MB/s&quot;, bps / (1024f * 1024))</highlighted_element>
+  <language>kotlin</language>
+  <offset>27</offset>
+  <length>48</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt</file>
+  <line>144</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/TransferProgressOverlay.kt" />
+  <problem_class id="AndroidLintDefaultLocale" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Implied default locale in case conversion</problem_class>
+  <hints />
+  <description>&lt;html&gt;Implicitly using the default locale is a common source of bugs: Use &lt;code&gt;String.format(Locale, ...)&lt;/code&gt; instead&lt;/html&gt;</description>
+  <highlighted_element>String.format(&quot;%.0f KB/s&quot;, bps / 1024f)</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>39</length>
+</problem>
+</problems>

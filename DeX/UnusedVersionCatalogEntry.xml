@@ -1,0 +1,50 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>57</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="UnusedVersionCatalogEntry" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused version catalog entry</problem_class>
+  <description>Dependency alias 'ktor-server-core' is not used in build scripts</description>
+  <highlighted_element>ktor-server-core</highlighted_element>
+  <language>TOML</language>
+  <offset>0</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>58</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="UnusedVersionCatalogEntry" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused version catalog entry</problem_class>
+  <description>Dependency alias 'ktor-server-netty' is not used in build scripts</description>
+  <highlighted_element>ktor-server-netty</highlighted_element>
+  <language>TOML</language>
+  <offset>0</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>59</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="UnusedVersionCatalogEntry" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused version catalog entry</problem_class>
+  <description>Dependency alias 'ktor-server-cio' is not used in build scripts</description>
+  <highlighted_element>ktor-server-cio</highlighted_element>
+  <language>TOML</language>
+  <offset>0</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/libs.versions.toml</file>
+  <line>60</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/libs.versions.toml" />
+  <problem_class id="UnusedVersionCatalogEntry" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Unused version catalog entry</problem_class>
+  <description>Dependency alias 'ktor-server-content-negotiation' is not used in build scripts</description>
+  <highlighted_element>ktor-server-content-negotiation</highlighted_element>
+  <language>TOML</language>
+  <offset>0</offset>
+  <length>31</length>
+</problem>
+</problems>

@@ -158,7 +158,7 @@ namespace DeXShareTarget.Endpoints
                 var ip = request.Query["ip"].ToString();
                 if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
 
-                string payload = $"http://{ip}:53317";
+                string payload = $"http://{ip}:{DeXConstants.HttpsPort}";
                 using var qrGenerator = new QRCoder.QRCodeGenerator();
                 using var qrCodeData = qrGenerator.CreateQrCode(payload, QRCoder.QRCodeGenerator.ECCLevel.M);
                 using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);

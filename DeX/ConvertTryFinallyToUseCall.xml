@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>215</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker java.lang.Object downloadOne(com.dexstudios.dex.network.PullFileDto file, java.lang.String ip, int httpsPort, int tcpPort, android.net.Uri dirUri, java.util.concurrent.atomic.AtomicLong totalReceived, java.util.concurrent.atomic.AtomicInteger doneCount, int totalFiles, long totalBytes, java.util.List&lt;android.net.Uri&gt; createdDocs, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.BatchDownloadWorker.FileOutcome&gt; $completion)" />
+  <problem_class id="ConvertTryFinallyToUseCall" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Convert try / finally to use() call</problem_class>
+  <description>try-finally can be replaced with 'use()'</description>
+  <highlighted_element>try {</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MirrorSession.kt</file>
+  <line>101</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MirrorSession void start(android.media.projection.MediaProjection projection, int width, int height, int densityDpi)" />
+  <problem_class id="ConvertTryFinallyToUseCall" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Convert try / finally to use() call</problem_class>
+  <description>try-finally can be replaced with 'use()'</description>
+  <highlighted_element>try {</highlighted_element>
+  <language>kotlin</language>
+  <offset>20</offset>
+  <length>5</length>
+</problem>
+</problems>

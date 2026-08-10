@@ -1,0 +1,158 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt</file>
+  <line>103</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.MainActivity void onCreate(android.os.Bundle savedInstanceState)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>android.content</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>334</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void sendUrisToDevice(com.dexstudios.dex.network.DiscoveredDevice device, java.util.List&lt;? extends android.net.Uri&gt; uris)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.dexstudios.dex.network</highlighted_element>
+  <language>kotlin</language>
+  <offset>41</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>351</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void sendUrisToDevice(com.dexstudios.dex.network.DiscoveredDevice device, java.util.List&lt;? extends android.net.Uri&gt; uris)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.dexstudios.dex.network</highlighted_element>
+  <language>kotlin</language>
+  <offset>52</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>143</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="field" FQNAME="com.dexstudios.dex.network.ClientEngine$-1 contentType" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>io.ktor.http</highlighted_element>
+  <language>kotlin</language>
+  <offset>47</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>145</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngine$-1 java.lang.Object writeTo(io.ktor.utils.io.ByteWriteChannel channel, kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt; $completion)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>io.ktor.utils.io</highlighted_element>
+  <language>kotlin</language>
+  <offset>58</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DeviceManager.kt</file>
+  <line>31</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManager void loadPairedTokens()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.dexstudios.dex.network</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DeviceManager.kt</file>
+  <line>44</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManager void savePairedToken(java.lang.String fingerprint, java.lang.String token)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.dexstudios.dex.network</highlighted_element>
+  <language>kotlin</language>
+  <offset>50</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DeviceManager.kt</file>
+  <line>52</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManager void removePairedFingerprint(java.lang.String fingerprint)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.dexstudios.dex.network</highlighted_element>
+  <language>kotlin</language>
+  <offset>41</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt</file>
+  <line>35</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DexService void onCreate()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>Context</highlighted_element>
+  <language>kotlin</language>
+  <offset>62</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PullForegroundService.kt</file>
+  <line>33</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PullForegroundService void startForegroundNotification(java.lang.String requestId, int count)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>Context</highlighted_element>
+  <language>kotlin</language>
+  <offset>39</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>172</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object relayViaPc(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>kotlinx.serialization.json</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/ErrorDialogs.kt</file>
+  <line>339</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.ErrorDialogsKt void OnboardingStepIcon(androidx.compose.ui.graphics.vector.ImageVector icon, boolean isGranted)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>androidx.compose.ui.graphics.vector</highlighted_element>
+  <language>kotlin</language>
+  <offset>37</offset>
+  <length>35</length>
+</problem>
+</problems>

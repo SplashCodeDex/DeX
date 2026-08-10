@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/GlassScrollEdge.kt</file>
+  <line>62</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="field" FQNAME="file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/GlassScrollEdge.kt GlassEdgeShader" />
+  <problem_class id="MayBeConstant" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Might be 'const'</problem_class>
+  <description>Might be 'const'</description>
+  <highlighted_element>GlassEdgeShader</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>15</length>
+</problem>
+</problems>

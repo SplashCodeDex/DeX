@@ -179,10 +179,6 @@ fun MainScreen(
         }
     }
 
-    val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
-    val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
-    val rosterDevices by com.dexstudios.dex.network.PunchState.devices.collectAsStateWithLifecycle()
-
     // Folder bundles: long-press a device to pick a folder, sent without zipping
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -246,6 +242,8 @@ fun MainScreen(
             }
         },
         bottomBar = {
+            val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
+            val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
             TransferProgressOverlay(
                 downloadState = downloadState,
                 uploadState = uploadState,
@@ -255,6 +253,7 @@ fun MainScreen(
         }
     ) { padding ->
         val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
+        val rosterDevices by com.dexstudios.dex.network.PunchState.devices.collectAsStateWithLifecycle()
         // Screen-owned backdrop for the top bar glass buttons. It is separate
         // from the navbar's backdrop (which captures this whole screen) so the
         // buttons never sample a backdrop that captures them.
@@ -362,7 +361,6 @@ fun MainScreen(
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             DeviceListItem(
                                 modifier = Modifier
-                                    .animateItem()
                                     .padding(horizontal = 16.dp)
                                     .width(300.dp), // Narrower width as requested
                                 device = device,
@@ -415,7 +413,6 @@ fun MainScreen(
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 DeviceListItem(
                                     modifier = Modifier
-                                        .animateItem()
                                         .padding(horizontal = 16.dp)
                                         .width(300.dp),
                                     device = device,
@@ -503,9 +500,10 @@ fun MainScreen(
             }
 
                 // ===== Glass overlays: drawn AFTER the captured content, sample it =====
-                // Frosted edge fades — content progressively blurs as it approaches
-                // the native status bar / glass header (top) and the navbar /
-                // native nav bar (bottom).
+                // Frosted edge fade — content progressively blurs as it approaches
+                // the native status bar / glass header (top).
+                // The bottom edge is covered by the glass nav bar already — no
+                // separate bottom fade needed.
                 GlassScrollEdge(
                     backdrop = contentBackdrop,
                     edge = GlassEdge.Top,
@@ -513,14 +511,6 @@ fun MainScreen(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .height(statusBarHeight + 64.dp)
-                )
-                GlassScrollEdge(
-                    backdrop = contentBackdrop,
-                    edge = GlassEdge.Bottom,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(96.dp)
                 )
 
                 FloatingTopAppBar(
@@ -532,6 +522,7 @@ fun MainScreen(
         }
     }
 
+    val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
     if (uploadState.error != null) {
         NetworkErrorDialog(
             error = stringResource(R.string.upload_failed, humanizeTransferError(uploadState.error ?: "")),
@@ -539,6 +530,7 @@ fun MainScreen(
         )
     }
 
+    val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
     if (downloadState.error != null) {
         NetworkErrorDialog(
             error = stringResource(R.string.download_failed, humanizeTransferError(downloadState.error ?: "")),

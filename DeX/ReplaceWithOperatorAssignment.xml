@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MessageHandler.kt</file>
+  <line>161</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandler void handlePeerEndpoint(kotlinx.serialization.json.JsonElement dataElement)" />
+  <problem_class id="ReplaceWithOperatorAssignment" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Assignment can be replaced with operator assignment</problem_class>
+  <description>Replaceable with operator-assignment</description>
+  <highlighted_element>PunchState.incomingPeerEndpoints.value = PunchState.incomingPeerEndpoints.value + (peer.peerFingerpr...</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>141</length>
+</problem>
+</problems>

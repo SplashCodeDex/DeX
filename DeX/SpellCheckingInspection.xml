@@ -1,0 +1,680 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/implementation_plan.artifact.md</file>
+  <line>9</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/implementation_plan.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>81</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/implementation_plan.artifact.md</file>
+  <line>12</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/implementation_plan.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Subtlely'</description>
+  <highlighted_element>Subtlely</highlighted_element>
+  <language>TEXT</language>
+  <offset>29</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/walkthrough.artifact.md</file>
+  <line>9</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/35d1f866-6ab1-4295-980b-cc18c03ad18b/walkthrough.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>72</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/4d8204da-58f7-4b58-bc17-98bd67fb9832/implementation_plan.artifact.md</file>
+  <line>23</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/4d8204da-58f7-4b58-bc17-98bd67fb9832/implementation_plan.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>81</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/4d8204da-58f7-4b58-bc17-98bd67fb9832/walkthrough.artifact.md</file>
+  <line>14</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/4d8204da-58f7-4b58-bc17-98bd67fb9832/walkthrough.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>71</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/767cffcb-ba70-4918-ba49-23250689aa0c/implementation_plan.artifact.md</file>
+  <line>14</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/767cffcb-ba70-4918-ba49-23250689aa0c/implementation_plan.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>90</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.artifacts/767cffcb-ba70-4918-ba49-23250689aa0c/walkthrough.artifact.md</file>
+  <line>9</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.artifacts/767cffcb-ba70-4918-ba49-23250689aa0c/walkthrough.artifact.md" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>TEXT</language>
+  <offset>81</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/dexstudios/dex/ui/main/MainScreenTest.kt</file>
+  <line>10</line>
+  <module>DeX.app.androidTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.ui.main.MainScreenTest" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>347</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ShareTargetActivity void sendUrisToDevice(com.dexstudios.dex.network.DiscoveredDevice device, java.util.List&lt;? extends android.net.Uri&gt; uris)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>13</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>32</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>56</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/BatchDownloadWorker.kt</file>
+  <line>34</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.BatchDownloadWorker" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>3</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>171</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngine java.lang.Object uploadFileQuic(java.lang.String ip, int port, java.lang.String sessionId, java.lang.String fileId, java.lang.String fileName, java.lang.String token, java.io.InputStream stream, long fileSize, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.UploadOutcome&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>32</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>197</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngine java.lang.Object downloadFileQuic(java.lang.String ip, int port, java.lang.String fileId, java.lang.String token, java.io.OutputStream output, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.DownloadOutcome&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>46</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClientEngine.kt</file>
+  <line>199</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngine java.lang.Object downloadFileQuic(java.lang.String ip, int port, java.lang.String fileId, java.lang.String token, java.io.OutputStream output, kotlin.jvm.functions.Function2&lt;? super java.lang.Long,? super kotlin.coroutines.Continuation&lt;? super kotlin.Unit&gt;,? extends java.lang.Object&gt; onProgress, kotlin.coroutines.Continuation&lt;? super com.dexstudios.dex.network.DownloadOutcome&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>40</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileShareManager.kt</file>
+  <line>384</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="field" FQNAME="com.dexstudios.dex.network.FileShareManager IMAGE_EXTS" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'EXTS'</description>
+  <highlighted_element>EXTS</highlighted_element>
+  <language>kotlin</language>
+  <offset>18</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/MirrorSession.kt</file>
+  <line>148</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MirrorSession byte[] imageToJpeg(android.media.Image image, int width, int height)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'allocs'</description>
+  <highlighted_element>allocs</highlighted_element>
+  <language>kotlin</language>
+  <offset>49</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>53</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object doWork(kotlin.coroutines.Continuation&lt;? super androidx.work.ListenableWorker.Result&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>44</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PunchSendWorker.kt</file>
+  <line>154</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.PunchSendWorker java.lang.Object relayViaPc(java.lang.String targetFingerprint, java.util.List&lt;? extends android.net.Uri&gt; uris, java.util.List&lt;java.lang.String&gt; relativePaths, kotlin.coroutines.Continuation&lt;? super java.lang.String&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'quic'</description>
+  <highlighted_element>quic</highlighted_element>
+  <language>kotlin</language>
+  <offset>153</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>19</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.QuicClient" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>50</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>22</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.QuicClient" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>21</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/QuicClient.kt</file>
+  <line>58</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.QuicClient void init()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>25</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UdpMulticastManager.kt</file>
+  <line>40</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.UdpMulticastManager void start()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Addr'</description>
+  <highlighted_element>Addr</highlighted_element>
+  <language>kotlin</language>
+  <offset>29</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UdpMulticastManager.kt</file>
+  <line>103</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.UdpMulticastManager void sendReply(java.net.DatagramPacket packet)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'mcast'</description>
+  <highlighted_element>mcast</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UdpMulticastManager.kt</file>
+  <line>104</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.UdpMulticastManager void sendReply(java.net.DatagramPacket packet)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ucast'</description>
+  <highlighted_element>ucast</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UploadWorker.kt</file>
+  <line>29</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.UploadWorker" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>26</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UploadWorker.kt</file>
+  <line>30</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.UploadWorker" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>38</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/UploadWorker.kt</file>
+  <line>71</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.UploadWorker java.lang.Object doWork(kotlin.coroutines.Continuation&lt;? super androidx.work.ListenableWorker.Result&gt; $completion)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>44</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/WebSocketClientService.kt</file>
+  <line>141</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.WebSocketClientService kotlin.Pair&lt;java.lang.String,java.lang.Integer&gt; wifiInfo()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ssid'</description>
+  <highlighted_element>ssid</highlighted_element>
+  <language>kotlin</language>
+  <offset>93</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/components/glass/LiquidGlassPanel.kt</file>
+  <line>18</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.components.glass</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.components.glass.LiquidGlassPanelKt void LiquidGlassPanel(com.kyant.backdrop.Backdrop backdrop, androidx.compose.ui.Modifier modifier, androidx.compose.ui.graphics.Shape shape, com.dexstudios.dex.ui.components.glass.LiquidGlassConfig config, androidx.compose.runtime.internal.ComposableFunction1&lt;? super androidx.compose.foundation.layout.BoxScope,kotlin.Unit&gt; content)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>kotlin</language>
+  <offset>56</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>130</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>25</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>155</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>17</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>194</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>25</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>209</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt void MainScreen(androidx.compose.ui.Modifier modifier, com.dexstudios.dex.ui.main.MainScreenViewModel viewModel)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'uris'</description>
+  <highlighted_element>uris</highlighted_element>
+  <language>kotlin</language>
+  <offset>25</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ui/main/MainScreen.kt</file>
+  <line>636</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenKt java.lang.String humanizeTransferError(java.lang.String raw)" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>110</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Couldn'</description>
+  <highlighted_element>Couldn</highlighted_element>
+  <language>XML</language>
+  <offset>39</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>130</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'mypc'</description>
+  <highlighted_element>mypc</highlighted_element>
+  <language>XML</language>
+  <offset>48</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/values/strings.xml</file>
+  <line>130</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ddns'</description>
+  <highlighted_element>ddns</highlighted_element>
+  <language>XML</language>
+  <offset>53</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/xml/network_security_config.xml</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/xml/network_security_config.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Cronet'</description>
+  <highlighted_element>Cronet</highlighted_element>
+  <language>XML</language>
+  <offset>77</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/xml/shortcuts.xml</file>
+  <line>3</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/xml/shortcuts.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>XML</language>
+  <offset>43</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/res/xml/shortcuts.xml</file>
+  <line>5</line>
+  <module>DeX.app.main</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/app/src/main/res/xml/shortcuts.xml" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'dexstudios'</description>
+  <highlighted_element>dexstudios</highlighted_element>
+  <language>XML</language>
+  <offset>36</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>32</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken falls back to pairing token for different identity()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'pairtok'</description>
+  <highlighted_element>pairtok</highlighted_element>
+  <language>kotlin</language>
+  <offset>45</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>34</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken falls back to pairing token for different identity()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'pairtok'</description>
+  <highlighted_element>pairtok</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>35</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken falls back to pairing token for different identity()" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'pairtok'</description>
+  <highlighted_element>pairtok</highlighted_element>
+  <language>kotlin</language>
+  <offset>22</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/compose_stability.conf</file>
+  <line>7</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/compose_stability.conf" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'kyant'</description>
+  <highlighted_element>kyant</highlighted_element>
+  <language>textmate</language>
+  <offset>4</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties</file>
+  <line>2</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'AARCH'</description>
+  <highlighted_element>AARCH</highlighted_element>
+  <language>Properties</language>
+  <offset>22</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties</file>
+  <line>4</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'AARCH'</description>
+  <highlighted_element>AARCH</highlighted_element>
+  <language>Properties</language>
+  <offset>19</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties</file>
+  <line>6</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'AARCH'</description>
+  <highlighted_element>AARCH</highlighted_element>
+  <language>Properties</language>
+  <offset>20</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties</file>
+  <line>8</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'AARCH'</description>
+  <highlighted_element>AARCH</highlighted_element>
+  <language>Properties</language>
+  <offset>18</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties</file>
+  <line>10</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradle/gradle-daemon-jvm.properties" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'AARCH'</description>
+  <highlighted_element>AARCH</highlighted_element>
+  <language>Properties</language>
+  <offset>21</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>9</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'setlocal'</description>
+  <highlighted_element>setlocal</highlighted_element>
+  <language>textmate</language>
+  <offset>24</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>24</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'ERRORLEVEL'</description>
+  <highlighted_element>ERRORLEVEL</highlighted_element>
+  <language>textmate</language>
+  <offset>5</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>69</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'Dorg'</description>
+  <highlighted_element>Dorg</highlighted_element>
+  <language>textmate</language>
+  <offset>60</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>69</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'appname'</description>
+  <highlighted_element>appname</highlighted_element>
+  <language>textmate</language>
+  <offset>72</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/gradlew.bat</file>
+  <line>82</line>
+  <module>DeX</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/gradlew.bat" />
+  <problem_class id="SpellCheckingInspection" severity="TYPO" attribute_key="TYPO">Spelling</problem_class>
+  <description>Typo: In word 'endlocal'</description>
+  <highlighted_element>endlocal</highlighted_element>
+  <language>textmate</language>
+  <offset>24</offset>
+  <length>8</length>
+</problem>
+</problems>

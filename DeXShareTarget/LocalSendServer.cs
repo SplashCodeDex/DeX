@@ -88,7 +88,7 @@ namespace DeXShareTarget
 
             builder.WebHost.ConfigureKestrel(options =>
             {
-                // Endpoint 1: HTTP/1.1 on TCP 53317 (Does not block UDP 53317)
+                // Endpoint 1: HTTP/1.1 on TCP 48424 (Does not block UDP 48424)
                 // HTTP/1.1 only: OkHttp WebSockets (the Android client) cannot run over HTTP/2,
                 // and every other client (Ktor CIO, PowerShell, .NET HttpClient) is HTTP/1.1 anyway.
                 options.ListenAnyIP(DeXConstants.HttpsPort, listenOptions =>
@@ -97,7 +97,7 @@ namespace DeXShareTarget
                     listenOptions.UseHttps(ServerCert);
                 });
                 
-                // Endpoint 2: HTTP/3 (QUIC) on UDP 53316 (Exclusive QUIC socket)
+                // Endpoint 2: HTTP/3 (QUIC) on UDP 48423 (Exclusive QUIC socket)
                 options.ListenAnyIP(DeXConstants.QuicPort, listenOptions =>
                 {
                     listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http3;
@@ -112,7 +112,7 @@ namespace DeXShareTarget
 
             App = builder.Build();
 
-            // Custom Middleware to rewrite Alt-Svc to point to the dedicated HTTP/3 port (53316)
+            // Custom Middleware to rewrite Alt-Svc to point to the dedicated HTTP/3 port (48423)
             App.Use(async (context, next) =>
             {
                 context.Response.OnStarting(() =>

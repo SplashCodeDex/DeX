@@ -1,0 +1,937 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/dexstudios/dex/ui/main/MainScreenTest.kt</file>
+  <line>10</line>
+  <module>DeX.app.androidTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.ui.main.MainScreenTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>60</length>
+  <highlighted_element>/** UI tests for [com.dexstudios.dex.ui.main.MainScreen]. */</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/dexstudios/dex/ui/main/MainScreenTest.kt</file>
+  <line>15</line>
+  <module>DeX.app.androidTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenTest void setup()" />
+  <language>kotlin</language>
+  <offset>2</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/androidTest/java/com/dexstudios/dex/ui/main/MainScreenTest.kt</file>
+  <line>20</line>
+  <module>DeX.app.androidTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenTest void recentHeader_exists()" />
+  <language>kotlin</language>
+  <offset>2</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/DeXApplication.kt</file>
+  <line>13</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.DeXApplication" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>38</length>
+  <highlighted_element>class DeXApplication : Application() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/MainActivity.kt</file>
+  <line>25</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.MainActivity" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>42</length>
+  <highlighted_element>class MainActivity : ComponentActivity() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/ShareTargetActivity.kt</file>
+  <line>52</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.ShareTargetActivity" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>49</length>
+  <highlighted_element>class ShareTargetActivity : ComponentActivity() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/ClipboardReceiver.kt</file>
+  <line>10</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.ClipboardReceiver" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>47</length>
+  <highlighted_element>class ClipboardReceiver : BroadcastReceiver() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/DexService.kt</file>
+  <line>12</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.DexService" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>30</length>
+  <highlighted_element>class DexService : Service() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt</file>
+  <line>12</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.FileTransferReceiver" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>50</length>
+  <highlighted_element>class FileTransferReceiver : BroadcastReceiver() {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/PullForegroundService.kt</file>
+  <line>13</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.PullForegroundService" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>3</length>
+  <highlighted_element>/**</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>16</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.ClientEngineTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>24</length>
+  <highlighted_element>class ClientEngineTest {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>18</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken uses identity hash when target shares the email()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>27</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken falls back to pairing token for different identity()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>38</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void authToken returns null without email or pairing()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>47</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void sendClipboard returns true when response is 200 OK()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/ClientEngineTest.kt</file>
+  <line>66</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.ClientEngineTest void sendClipboard returns false when response is not 200 OK()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>18</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.DeviceManagerTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>25</length>
+  <highlighted_element>class DeviceManagerTest {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>24</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void setUp()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>41</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>48</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void savePairedFingerprint adds fingerprint to AuthState and persists to SharedPreferences()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>61</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void removePairedFingerprint removes fingerprint and paired token from AuthState and SharedPreferences()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>82</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void savePairedToken adds token to AuthState and updates SharedPreferences()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/DeviceManagerTest.kt</file>
+  <line>95</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.DeviceManagerTest void init loads pre-existing fingerprints from SharedPreferences()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>33</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.MessageHandlerTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>40</length>
+  <highlighted_element>@OptIn(ExperimentalCoroutinesApi::class)</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>47</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void setUp()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>64</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>73</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void pair-prompt with matching pin sends accepted response and saves fingerprint and token()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>95</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void pair-prompt with empty pin sends rejected response and does not save()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>112</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void pair-prompt times out after 60 seconds and sends rejected response()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>128</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void duplicate pair-prompt while one is pending is ignored()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>139</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void public-address message auto-fills blank WAN config()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>149</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void public-address message never overwrites manual WAN config()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>160</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void set-clipboard writes text to the phone clipboard()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>183</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void set-clipboard with blank text is ignored()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/MessageHandlerTest.kt</file>
+  <line>194</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.MessageHandlerTest void prepare-upload accepted enqueues one batch download for all files from the PC pull server()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/SafStorageTest.kt</file>
+  <line>15</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.SafStorageTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>22</length>
+  <highlighted_element>class SafStorageTest {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/SafStorageTest.kt</file>
+  <line>22</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.SafStorageTest void setUp()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/SafStorageTest.kt</file>
+  <line>30</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.SafStorageTest void getDownloadsDexUri returns null when preference is empty()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/SafStorageTest.kt</file>
+  <line>37</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.SafStorageTest void setDownloadsDexUri persists the tree uri string()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/TelemetryPayloadTest.kt</file>
+  <line>10</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.network.TelemetryPayloadTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>28</length>
+  <highlighted_element>class TelemetryPayloadTest {</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/TelemetryPayloadTest.kt</file>
+  <line>12</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.TelemetryPayloadTest void payload includes battery ssid and rssi()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/TelemetryPayloadTest.kt</file>
+  <line>22</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.TelemetryPayloadTest void payload omits wifi fields when unavailable()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/TelemetryPayloadTest.kt</file>
+  <line>31</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.TelemetryPayloadTest void payload reports ssid when rssi is unavailable()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/network/TelemetryPayloadTest.kt</file>
+  <line>39</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.TelemetryPayloadTest void payload is null when nothing to report()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>29</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="class" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest" />
+  <language>kotlin</language>
+  <offset>0</offset>
+  <length>40</length>
+  <highlighted_element>@OptIn(ExperimentalCoroutinesApi::class)</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Class is not instantiated.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>51</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void setUp()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+  <highlighted_element>@Before</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>59</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void tearDown()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>6</length>
+  <highlighted_element>@After</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>66</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void uiState initially loading()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>73</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void untrusted device detection correctly identifies untrusted vs trusted state()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>82</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void requestPairing sends pair request when connected to the PC()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>97</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void requestPairing reports failure when not connected to the PC()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>112</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void pairingDeviceFingerprint guards against concurrent duplicate handshake requests()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>144</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void mutableStateSetOf pairedFingerprints triggers state changes on add and remove()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>157</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void requestPairing failure callback resets pairingDeviceFingerprint to null()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/test/java/com/dexstudios/dex/ui/main/MainScreenViewModelTest.kt</file>
+  <line>177</line>
+  <module>DeX.app.unitTest</module>
+  <package>com.dexstudios.dex.ui.main</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.ui.main.MainScreenViewModelTest void pairing_with string resource format produces expected string()" />
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>5</length>
+  <highlighted_element>@Test</highlighted_element>
+  <problem_class id="" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">unused declaration</problem_class>
+  <hints>
+    <hint value="comment" />
+    <hint value="delete" />
+  </hints>
+  <description>Method is never used.</description>
+</problem>
+</problems>

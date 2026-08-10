@@ -32,6 +32,12 @@ object MirrorSession {
     @Volatile
     private var active = false
 
+    // Per-frame allocations cached to avoid ~4MB of bitmap churn per 15fps frame
+    private var cachedBitmap: Bitmap? = null
+    private var cachedBitmapWidth = 0
+    private var cachedBitmapHeight = 0
+    private val jpegOut = java.io.ByteArrayOutputStream(65536)
+
     @Volatile
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
@@ -114,6 +120,10 @@ object MirrorSession {
         virtualDisplay = null
         imageReader?.close()
         imageReader = null
+        cachedBitmap?.recycle()
+        cachedBitmap = null
+        cachedBitmapWidth = 0
+        cachedBitmapHeight = 0
         projection?.stop()
         projection = null
         DexService.setMirroring(false)
@@ -134,18 +144,27 @@ object MirrorSession {
             val rowStride = plane.rowStride
             val rowPadding = rowStride - pixelStride * width
 
-            // The buffer may be padded; create a wider bitmap and crop afterwards
-            val bitmap = Bitmap.createBitmap(
-                width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888
-            )
-            bitmap.copyPixelsFromBuffer(buffer)
+            // Reuse the full-width bitmap across frames — only re-allocate when
+            // dimensions change. Cuts per-frame allocs from ~4MB to near zero.
+            val bmpWidth = width + rowPadding / pixelStride
+            if (cachedBitmap == null || cachedBitmapWidth != bmpWidth || cachedBitmapHeight != height) {
+                cachedBitmap?.recycle()
+                cachedBitmap = Bitmap.createBitmap(bmpWidth, height, Bitmap.Config.ARGB_8888)
+                cachedBitmapWidth = bmpWidth
+                cachedBitmapHeight = height
+            }
+            cachedBitmap?.copyPixelsFromBuffer(buffer)
 
-            val cropped = if (rowPadding > 0) Bitmap.createBitmap(bitmap, 0, 0, width, height) else bitmap
-            val out = java.io.ByteArrayOutputStream()
-            cropped.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
-            if (cropped !== bitmap) cropped.recycle()
-            bitmap.recycle()
-            return out.toByteArray()
+            val cropped = if (rowPadding > 0) {
+                Bitmap.createBitmap(cachedBitmap!!, 0, 0, width, height)
+            } else {
+                cachedBitmap!! // safe: we just assigned it above if null
+            }
+            jpegOut.reset()
+            cropped.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, jpegOut)
+            if (rowPadding > 0) cropped.recycle()
+            // cachedBitmap stays around for the next frame — do not recycle
+            return jpegOut.toByteArray()
         } catch (e: Exception) {
             Timber.e(e, "JPEG encode failed")
             return null

@@ -269,7 +269,7 @@ namespace DeXShareTarget
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(2);
-                var res = await http.GetStringAsync("http://127.0.0.1:53318/local/devices");
+                var res = await http.GetStringAsync($"{DeXConstants.LocalApiBase}/local/devices");
                 var list = JsonSerializer.Deserialize<List<DiscoveredDevice>>(res, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 // Prefer the mobile DeX client over other desktops on the LAN
                 return list?.FirstOrDefault(d => string.Equals(d.Info.DeviceType, "mobile", StringComparison.OrdinalIgnoreCase))

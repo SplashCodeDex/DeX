@@ -178,7 +178,32 @@ function Invoke-AdbPair {
     }
 
     $null = adb start-server 2>&1
-    $result = adb pair $Target $Pin 2>&1
+
+    # Bounded adb pair: the pairing client can stall for tens of seconds against an
+    # unreachable/busy pairing service, and this runs on the engine's UI tick. Spawn it
+    # and kill it past 10s so the tray UI can never freeze on a hung pairing attempt.
+    $result = ""
+    try {
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo.FileName = $global:AdbExePath
+        $proc.StartInfo.Arguments = "pair `"$Target`" `"$Pin`""
+        $proc.StartInfo.UseShellExecute = $false
+        $proc.StartInfo.RedirectStandardOutput = $true
+        $proc.StartInfo.RedirectStandardError = $true
+        $proc.StartInfo.CreateNoWindow = $true
+        $proc.Start() | Out-Null
+        if (-not $proc.WaitForExit(10000)) {
+            try { $proc.Kill() } catch {}
+            Write-Trace "Pairing failed: adb pair timed out (10s)."
+            return $false
+        }
+        $result = $proc.StandardOutput.ReadToEnd()
+        if (-not $result) { $result = $proc.StandardError.ReadToEnd() }
+        $proc.Dispose()
+    } catch {
+        Write-Trace "Pairing failed: $($_.Exception.Message)"
+        return $false
+    }
     
     if ($result -match 'Successfully paired to') {
         return $true
@@ -200,7 +225,7 @@ function Start-UiDataPolling {
     .PARAMETER Queue
         ConcurrentQueue the runspace enqueues @{Type='Devices'|'Mirror'|'PendingPair'; ...} messages into.
     .PARAMETER LocalApi
-        Base URL of the local control API (e.g. http://127.0.0.1:53318).
+        Base URL of the local control API (e.g. http://127.0.0.1:48425).
     #>
     param(
         [Parameter(Mandatory=$true)]

@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/NsdManagerHelper.kt</file>
+  <line>8</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.NsdManagerHelper NsdManagerHelper(android.content.Context context, com.dexstudios.dex.network.RegisterDto localInfo)" />
+  <problem_class id="CanBeParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Constructor parameter is never used as a property</problem_class>
+  <description>Constructor parameter is never used as a property</description>
+  <highlighted_element>val</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>3</length>
+</problem>
+</problems>

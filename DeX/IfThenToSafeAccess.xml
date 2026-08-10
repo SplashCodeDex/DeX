@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/app/src/main/java/com/dexstudios/dex/network/FileTransferReceiver.kt</file>
+  <line>18</line>
+  <module>DeX.app.main</module>
+  <package>com.dexstudios.dex.network</package>
+  <entry_point TYPE="method" FQNAME="com.dexstudios.dex.network.FileTransferReceiver void onReceive(android.content.Context context, android.content.Intent intent)" />
+  <problem_class id="IfThenToSafeAccess" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">If-Then foldable to '?.'</problem_class>
+  <description>Foldable if-then</description>
+  <highlighted_element>if (deferred != null)</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>21</length>
+</problem>
+</problems>

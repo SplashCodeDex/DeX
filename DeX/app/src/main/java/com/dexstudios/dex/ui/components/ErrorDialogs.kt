@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
@@ -182,7 +183,7 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
 private fun OnboardingWelcome(onNext: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_stat_dex),
+            painter = painterResource(R.drawable.ic_stat_dex),
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
@@ -662,4 +663,3 @@ fun PinInputField(
         }
     )
 }
-

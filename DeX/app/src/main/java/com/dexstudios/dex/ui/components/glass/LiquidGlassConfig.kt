@@ -77,17 +77,17 @@ object LiquidGlassPresets {
 
     /**
      * Frosted pill glass for the floating bottom navigation bar, which sits over
-     * scrolling content. Always-on lens/aberration over a scrolling backdrop is
-     * the heaviest per-frame shader load — dial back if the navbar ever janks.
+     * scrolling content. Dialed-back shader load: blur halved, lens-only refraction
+     * (no chromatic aberration or depth effect), tint for readability.
      */
     val NavBar: LiquidGlassConfig = LiquidGlassConfig(
         shape = CircleShape,
-        blurRadius = 12.dp,
+        blurRadius = 6.dp,
         lensHeight = 10.dp,
         lensAmount = 20.dp,
         vibrancyEnabled = false,
-        chromaticAberration = true,
-        depthEffect = true,
+        chromaticAberration = false,
+        depthEffect = false,
         surfaceTint = Color.White,
         surfaceTintAlpha = 0.12f,
         highlight = Highlight.Plain,

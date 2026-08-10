@@ -1,4 +1,4 @@
-if (-not ("ThumbHelper" -as [type])) {
+﻿if (-not ("ThumbHelper" -as [type])) {
     $thumbCode = @"
 using System;
 using System.Runtime.InteropServices;
@@ -55,6 +55,7 @@ $script:asyncBrowsePending = $false
 $script:clipWorkerControl = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 $script:clipWorkerPs = $null
 $script:clipWorkerRs = $null
+$script:clipWorkerAsync = $null
 
 function Start-ClipboardSyncWorker {
     if ($null -ne $script:clipWorkerPs) { return }
@@ -128,7 +129,7 @@ function Start-ClipboardSyncWorker {
 
         $script:clipWorkerPs = $ps
         $script:clipWorkerRs = $rs
-        $ps.BeginInvoke() | Out-Null
+        $script:clipWorkerAsync = $ps.BeginInvoke()
     } catch {
         Write-Trace "Clipboard STA worker failed to start: $($_.Exception.Message)"
     }
@@ -138,12 +139,23 @@ function Stop-ClipboardSyncWorker {
     if ($null -eq $script:clipWorkerPs) { return }
     try {
         $script:clipWorkerControl.Enqueue(@{ Stop = $true })
-        $script:clipWorkerPs.Stop() | Out-Null
-        $script:clipWorkerPs.Dispose()
-        if ($null -ne $script:clipWorkerRs) { $script:clipWorkerRs.Dispose() }
+        # Let the loop notice the Stop (bounded), then force-stop before disposing the
+        # runspace — disposing a runspace with a running pipeline BLOCKS until it ends.
+        if ($null -ne $script:clipWorkerAsync) {
+            try { $script:clipWorkerAsync.AsyncWaitHandle.WaitOne(2000) | Out-Null } catch {}
+        }
+        try { $script:clipWorkerPs.Stop() } catch {}
+        if ($null -ne $script:clipWorkerAsync) {
+            try { $script:clipWorkerPs.EndInvoke($script:clipWorkerAsync) } catch {}
+        }
+        try { $script:clipWorkerPs.Dispose() } catch {}
+        if ($null -ne $script:clipWorkerRs) {
+            try { $script:clipWorkerRs.Dispose() } catch {}
+        }
     } catch {}
     $script:clipWorkerPs = $null
     $script:clipWorkerRs = $null
+    $script:clipWorkerAsync = $null
 }
 
 function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr) {

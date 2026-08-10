@@ -12,6 +12,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,24 +40,11 @@ fun FloatingTopAppBar(
 ) {
     var showProfileDialog by remember { mutableStateOf(false) }
 
-    // Signed-in Google profile: the avatar button becomes the live account picture
+    // Signed-in Google profile: single combined flow — one recomposition instead of three
     val deviceConfig: DeviceConfig = koinInject()
-    val profileName by deviceConfig.profileNameFlow.collectAsState()
-    val profilePicture by deviceConfig.profilePictureFlow.collectAsState()
-    val emailText by deviceConfig.emailFlow.collectAsState()
+    val profile by deviceConfig.googleProfileFlow.collectAsState()
     val context = LocalContext.current
-
-    val googleLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val account = GoogleSignInManager.handleResult(result.data)
-        val email = account?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-        if (email != null) {
-            Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
-        }
-    }
+    val scope = rememberCoroutineScope()
 
     Row(
         modifier = modifier
@@ -68,26 +56,37 @@ fun FloatingTopAppBar(
         // User Avatar — Google picture when signed in; tap to sign in otherwise
         LiquidGlassIconButton(
             onClick = {
-                if (profilePicture.isNotBlank()) {
+                if (profile.picture.isNotBlank()) {
                     showProfileDialog = true
                 } else {
-                    GoogleSignInManager.signInIntent(context)?.let { googleLauncher.launch(it) }
+                    val activity = context as? android.app.Activity
+                    if (activity != null) {
+                        scope.launch {
+                            val credential = GoogleSignInManager.signIn(activity)
+                            val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                            if (email != null) {
+                                Toast.makeText(context, context.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 }
             },
             size = 56.dp,
             backdrop = backdrop,
             config = LiquidGlassPresets.IconButton
         ) {
-            if (profilePicture.isNotBlank()) {
+            if (profile.picture.isNotBlank()) {
                 AsyncImage(
-                    model = profilePicture,
+                    model = profile.picture,
                     contentDescription = "Profile",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                 )
-            } else if (emailText.isNotBlank()) {
+            } else if (profile.email.isNotBlank()) {
                 // Signed in but no avatar: show the account's initial
                 Box(
                     modifier = Modifier
@@ -97,7 +96,7 @@ fun FloatingTopAppBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = (profileName.ifBlank { emailText }).first().uppercase(),
+                        text = (profile.name.ifBlank { profile.email }).first().uppercase(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -156,12 +155,12 @@ fun FloatingTopAppBar(
     if (showProfileDialog) {
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
-            title = { Text(text = profileName.ifBlank { emailText }) },
+            title = { Text(text = profile.name.ifBlank { profile.email }) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    if (profilePicture.isNotBlank()) {
+                    if (profile.picture.isNotBlank()) {
                         AsyncImage(
-                            model = profilePicture,
+                            model = profile.picture,
                             contentDescription = "Profile",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -170,7 +169,7 @@ fun FloatingTopAppBar(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(emailText, style = MaterialTheme.typography.bodyMedium)
+                    Text(profile.email, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "Signed in with Google — your devices trust each other automatically.",
