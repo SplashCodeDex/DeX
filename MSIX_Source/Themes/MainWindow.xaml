@@ -993,9 +993,35 @@
                                         <TranslateTransform x:Name="pinContentTrans" X="140" />
                                     </TransformGroup>
                                 </StackPanel.RenderTransform>
-                                <TextBlock x:Name="txtPinCode" Text="123456" FontSize="42" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                <TextBlock x:Name="txtPinStatus" Text="Waiting for acceptance..." FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
-                                <ProgressBar x:Name="pbPinTimeout" Value="100" Maximum="100" Height="4" Margin="20,12,20,0" Foreground="{DynamicResource SecondaryBrush}" Background="Transparent" BorderThickness="0" />
+                                <ItemsControl x:Name="icPinDigits" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="6" MinWidth="44" MinHeight="56" Margin="4,0" Padding="8,4">
+                                                <TextBlock Text="{Binding}" FontSize="32" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SecondaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Ellipse.Triggers>
+                                            <EventTrigger RoutedEvent="Loaded">
+                                                <BeginStoryboard>
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.2" Duration="0:0:0.8" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </EventTrigger>
+                                        </Ellipse.Triggers>
+                                    </Ellipse>
+                                    <TextBlock x:Name="txtPinStatus" Text="Waiting for acceptance..." FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock x:Name="txtPinTimeout" Text="" FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" Opacity="0.7" />
                             </StackPanel>
                             <Border x:Name="qrCodeContent" Visibility="Collapsed" Background="White" CornerRadius="8" Padding="12" Margin="16,0" RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>

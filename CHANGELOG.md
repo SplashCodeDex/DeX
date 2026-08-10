@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.4.2.14] - 2026-08-10
+### Added
+- **[minor] PIN screen UI/UX redesign (Desktop)**: Revamped the Pairing PIN screen to use OTP-style segmented digit boxes, a pulsing dot for the "Waiting for acceptance" status, and a modern "Expires in (X)s" text display replacing the old flat progress bar.
+
 ## [7.4.2.13] - 2026-08-10
 ### Fixed
 - **[fix] Button alignment and padding (Desktop)**: Corrected the alignment of the text inside the QR Code/Request PIN button when the icon is hidden, and added standard horizontal padding to `AnimatedActionBtn` so text doesn't touch the edges of the button.

@@ -1,4 +1,4 @@
-﻿
+
 $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -88,16 +88,14 @@ if ($btnSettingsQrCode) {
             } catch {}
 
             if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+            $script:activeOutboundPairIp = $null
+            $script:activeOutboundPairFp = $null
             
-            $pb = $script:wpfWindow.FindName("pbPinTimeout")
-            if ($pb) { 
-                $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $null)
-                $pb.Value = 100 
-            }
-
-            if (-not (Show-QrCode)) {
-                Show-Toast -Title "Network Error" -Message "Could not determine local IP address."
-            }
+            $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
+            if ($txtTimeout) { $txtTimeout.Text = "" }
+            $null = Show-QrCode
+            # Slide the QR view back in over the PIN view (mirror of the Request PIN switch).
+            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
         }
     })
 }

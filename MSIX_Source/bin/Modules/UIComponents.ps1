@@ -1,4 +1,4 @@
-﻿
+
 function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
@@ -352,6 +352,18 @@ function Show-QrCode {
 # poll timer shared by the outbound (Start-PinPairing) and phone-initiated (Connect-Engine)
 # flows. Callers must set $script:activeOutboundPairIp / $script:activeOutboundPairFp first.
 # Behavior switches preserve each flow's exact button/layout/toast differences.
+function Set-PinContentView {
+    param([switch]$ShowQr)
+    $w = $script:wpfWindow
+    if ($ShowQr) {
+        $w.FindName("pinCodeContent").Visibility = 'Collapsed'
+        $w.FindName("qrCodeContent").Visibility = 'Visible'
+    } else {
+        $w.FindName("pinCodeContent").Visibility = 'Visible'
+        $w.FindName("qrCodeContent").Visibility = 'Collapsed'
+    }
+}
+
 function Show-PinPanel {
     param(
         [string]$Title,
@@ -369,10 +381,16 @@ function Show-PinPanel {
     )
     $w = $script:wpfWindow
     $w.FindName("txtPinTitle").Text = $Title
-    $w.FindName("txtPinCode").Text = $Code
+
+    $ic = $w.FindName("icPinDigits")
+    if ($ic) {
+        $digits = [System.Collections.ArrayList]::new()
+        foreach ($c in $Code.ToCharArray()) { $null = $digits.Add($c.ToString()) }
+        $ic.ItemsSource = $digits
+    }
+
     $w.FindName("txtPinStatus").Text = $Status
-    $w.FindName("qrCodeContent").Visibility = 'Collapsed'
-    $w.FindName("pinCodeContent").Visibility = 'Visible'
+    Set-PinContentView -ShowQr:$false
     if ($HideAcceptButtons) {
         $w.FindName("btnPinAccept").Visibility = 'Collapsed'
         $w.FindName("btnPinAcceptOnce").Visibility = 'Collapsed'
@@ -381,20 +399,36 @@ function Show-PinPanel {
     $w.FindName("btnPinCancel").Visibility = 'Visible'
     $w.FindName("txtQrBtnIcon").Visibility = 'Visible'
     $w.FindName("txtQrBtnText").Text = "QR CODE"
-    $w.FindName("pinViewPanel").Visibility = 'Visible'
-    try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
 
-    $pb = $w.FindName("pbPinTimeout")
-    if ($pb) {
-        $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
-        $anim.From = 100; $anim.To = 0; $anim.Duration = [TimeSpan]::FromSeconds(60)
-        $pb.BeginAnimation([System.Windows.Controls.Primitives.RangeBase]::ValueProperty, $anim)
+    if ($w.FindName("pinViewPanel").Visibility -eq 'Visible') {
+        $pinT = $w.FindName("pinContentTrans")
+        if ($pinT) {
+            $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+            $pinT.X = 140
+        }
+        try { $w.FindName("menuViewsContainer").FindResource("SwitchQrToPinAnim").Begin($w) } catch {}
+    } else {
+        $w.FindName("pinViewPanel").Visibility = 'Visible'
+        $pinT = $w.FindName("pinContentTrans")
+        if ($pinT) {
+            $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+            $pinT.X = 0
+        }
+        try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
     }
+
+    $txtTimeout = $w.FindName("txtPinTimeout")
+    $script:pinTimeoutSeconds = 60
+    if ($txtTimeout) { $txtTimeout.Text = "Expires in $($script:pinTimeoutSeconds)s" }
 
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
     $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
     $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
     $script:pairWaitTimer.Add_Tick({
+        $script:pinTimeoutSeconds--
+        if ($txtTimeout -and $script:pinTimeoutSeconds -ge 0) {
+            $txtTimeout.Text = "Expires in $($script:pinTimeoutSeconds)s"
+        }
         try {
             $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
