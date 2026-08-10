@@ -71,7 +71,7 @@ fun FloatingTopAppBar(
         label = "islandWidth"
     )
     val islandHeight by animateDpAsState(
-        targetValue = if (isProfileExpanded) 180.dp else 56.dp,
+        targetValue = if (isProfileExpanded) 140.dp else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "islandHeight"
     )
@@ -258,57 +258,61 @@ fun FloatingTopAppBar(
                 }
             }
 
-            // User Avatar / Dynamic Island (Left side, overlaps Logo/Search when expanded)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .height(80.dp)
-                    .zIndex(if (isProfileExpanded) 10f else 1f),
-                contentAlignment = Alignment.TopStart
-            ) {
-                LiquidGlassIconButton(
-                    onClick = {
+        }
+
+        // User Avatar / Dynamic Island (overlaps Logo & Search when expanded)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 8.dp, start = 16.dp)
+                .zIndex(if (isProfileExpanded) 2f else 1f),
+            contentAlignment = Alignment.TopStart
+        ) {
+            LiquidGlassIconButton(
+                onClick = {
+                    // Expansion strictly for Google accounts or Guests
+                    if (profile.email.isBlank() || profile.picture.isNotBlank()) {
                         isProfileExpanded = !isProfileExpanded
                         if (isProfileExpanded) isSearchExpanded = false
+                    }
+                },
+                width = islandWidth,
+                height = islandHeight,
+                backdrop = backdrop,
+                config = if (isProfileExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+            ) {
+                AnimatedContent(
+                    targetState = isProfileExpanded,
+                    transitionSpec = {
+                        fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                     },
-                    width = islandWidth,
-                    height = islandHeight,
-                    backdrop = backdrop,
-                    config = if (isProfileExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
-                ) {
-                    AnimatedContent(
-                        targetState = isProfileExpanded,
-                        transitionSpec = {
-                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
-                        },
-                        label = "islandContent"
-                    ) { expanded ->
-                        if (expanded) {
-                            ExpandedProfileContent(
-                                profile = profile,
-                                onSignOut = {
-                                    deviceConfig.signOut()
-                                    isProfileExpanded = false
-                                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
-                                },
-                                onSignIn = {
-                                    val activity = context as? android.app.Activity
-                                    if (activity != null) {
-                                        scope.launch {
-                                            val credential = GoogleSignInManager.signIn(activity)
-                                            val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-                                            if (email != null) {
-                                                Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
-                                            }
+                    label = "islandContent"
+                ) { expanded ->
+                    if (expanded) {
+                        ExpandedProfileContent(
+                            profile = profile,
+                            onSignOut = {
+                                deviceConfig.signOut()
+                                isProfileExpanded = false
+                                Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
+                            },
+                            onSignIn = {
+                                val activity = context as? android.app.Activity
+                                if (activity != null) {
+                                    scope.launch {
+                                        val credential = GoogleSignInManager.signIn(activity)
+                                        val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                        if (email != null) {
+                                            Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                        } else {
+                                            Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
-                            )
-                        } else {
-                            CollapsedProfileContent(profile = profile)
-                        }
+                            }
+                        )
+                    } else {
+                        CollapsedProfileContent(profile = profile)
                     }
                 }
             }
@@ -375,7 +379,6 @@ private fun ExpandedProfileContent(
                     "Sign in to sync your devices",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -387,60 +390,26 @@ private fun ExpandedProfileContent(
                 }
             }
         } else {
-            if (profile.picture.isNotBlank()) {
-                AsyncImage(
-                    model = profile.picture,
-                    contentDescription = "Profile",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = (profile.name.ifBlank { profile.email }).first().uppercase(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
+            AsyncImage(
+                model = profile.picture,
+                contentDescription = "Profile",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = profile.name.ifBlank { "DeX User" },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color(0xFF10B981).copy(alpha = 0.25f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "Active",
-                            color = Color(0xFF10B981),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                Text(
+                    text = profile.name.ifBlank { "User" },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     text = profile.email,
                     style = MaterialTheme.typography.bodyMedium,

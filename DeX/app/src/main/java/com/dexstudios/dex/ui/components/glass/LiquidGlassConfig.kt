@@ -135,7 +135,7 @@ object LiquidGlassPresets {
      * Overlaps content with a prominent dark tint and heavy blur.
      */
     val DynamicIsland: LiquidGlassConfig = LiquidGlassConfig(
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(40.dp),
         blurRadius = 16.dp,
         lensHeight = 20.dp,
         lensAmount = 40.dp,
@@ -143,9 +143,9 @@ object LiquidGlassPresets {
         chromaticAberration = true,
         depthEffect = true,
         surfaceTint = Color.Black,
-        surfaceTintAlpha = 0.85f,
+        surfaceTintAlpha = 0.6f,
         highlight = Highlight.Ambient,
         shadowRadius = 24.dp,
-        shadowColor = Color.Black.copy(alpha = 0.5f),
+        shadowColor = Color.Black.copy(alpha = 0.4f),
     )
 }

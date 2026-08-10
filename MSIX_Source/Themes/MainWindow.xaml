@@ -531,8 +531,38 @@
                 </StackPanel>
                 
                 <!-- Main content holding all views -->
-                <Grid x:Name="menuViewsContainer" ClipToBounds="True">
-                    <Grid.Style>
+                  <Grid x:Name="menuViewsContainer" ClipToBounds="True">
+                      <Grid.Resources>
+                          <Storyboard x:Key="SlideInPinAnim">
+                              <DoubleAnimation Storyboard.TargetName="menuContentTrans" Storyboard.TargetProperty="X" To="-300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                              <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                          </Storyboard>
+                          <Storyboard x:Key="SlideOutPinAnim">
+                              <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                              <DoubleAnimation Storyboard.TargetName="menuContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                          </Storyboard>
+                          <Storyboard x:Key="SwitchQrToPinAnim">
+                              <DoubleAnimation Storyboard.TargetName="qrContentTrans" Storyboard.TargetProperty="X" To="-140" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="qrCodeContent" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                              <DoubleAnimation Storyboard.TargetName="pinContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinCodeContent" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                              <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                          </Storyboard>
+                          <Storyboard x:Key="SwitchPinToQrAnim">
+                              <DoubleAnimation Storyboard.TargetName="pinContentTrans" Storyboard.TargetProperty="X" To="140" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinCodeContent" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                              <DoubleAnimation Storyboard.TargetName="qrContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="qrCodeContent" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                              <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                          </Storyboard>
+                      </Grid.Resources>
+                      <Grid.Style>
                         <Style TargetType="Grid">
                             <Setter Property="MaxHeight" Value="352" />
                             <Style.Triggers>

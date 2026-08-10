@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.5.2.15] - 2026-08-10
+### Fixed
+- **[fix] Missing Pairing UI Transitions (Desktop)**: Fixed a regression where closing the PIN or QR pairing screen caused the main "Discovered Devices" spatial menu content to permanently disappear. Restored the missing `SlideOutPinAnim`, `SlideInPinAnim`, and `Switch` storyboards in XAML so the menus reliably slide and crossfade back into view.
+
 ## [7.4.2.14] - 2026-08-10
 ### Added
 - **[minor] PIN screen UI/UX redesign (Desktop)**: Revamped the Pairing PIN screen to use OTP-style segmented digit boxes, a pulsing dot for the "Waiting for acceptance" status, and a modern "Expires in (X)s" text display replacing the old flat progress bar.
