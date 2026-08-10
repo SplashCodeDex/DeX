@@ -1,4 +1,4 @@
-
+﻿
 function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
@@ -352,6 +352,7 @@ function Show-QrCode {
 # poll timer shared by the outbound (Start-PinPairing) and phone-initiated (Connect-Engine)
 # flows. Callers must set $script:activeOutboundPairIp / $script:activeOutboundPairFp first.
 # Behavior switches preserve each flow's exact button/layout/toast differences.
+
 function Set-PinContentView {
     param([switch]$ShowQr)
     $w = $script:wpfWindow
@@ -369,12 +370,8 @@ function Show-PinPanel {
         [string]$Title,
         [string]$Code,
         [string]$Status,
-        # Show the QR-toggle button (btnSettingsQrCode). Outbound pairing shows it; phone-initiated hides it.
         [switch]$ShowQrToggle,
-        # Collapse btnPinAccept/btnPinAcceptOnce. Outbound pairing hides them.
         [switch]$HideAcceptButtons,
-        # Collapse pinViewPanel when the pairing completes. Phone-initiated flow does this;
-        # the outbound flow relies on the slide-out animation only.
         [switch]$HidePanelOnTerminal,
         [string]$SuccessMessage,
         [string]$FailureMessage
@@ -444,5 +441,14 @@ function Show-PinPanel {
     }.GetNewClosure())
     $script:pairWaitTimer.Start()
 }
+
+function Clear-PairingState {
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    $script:activeOutboundPairIp = $null
+    $script:activeOutboundPairFp = $null
+    $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
+    if ($txtTimeout) { $txtTimeout.Text = "" }
+}
+
 
 

@@ -1,4 +1,4 @@
-
+﻿
 $btnExit = $script:wpfWindow.FindName("btnExit")
 if ($btnExit) {
     $btnExit.Add_Click({
@@ -127,15 +127,8 @@ $script:wpfWindow.Add_KeyDown({
         $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
         $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
         
-        # While the QR/PIN request screen is shown, Escape cancels the pairing (same as the
-        # Cancel button) instead of being a swallowed no-op — otherwise the expanded pairing
-        # card can never be dismissed from the keyboard and the window won't close on
-        # click-outside while the panel is up.
+        # While the QR/PIN request screen is shown, Escape must not hide the window
         if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) {
-            $btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
-            if ($btnPinCancel) {
-                $btnPinCancel.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
-            }
             $e.Handled = $true
             return
         }
@@ -294,11 +287,9 @@ $script:wpfWindow.Add_Deactivated({
         # If menu is expanded, do NOT close on click-outside (use Close button instead)
         if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible') { return }
         if ($script:wpfWindow.FindName("SettingsPanel").Visibility -eq 'Visible') { return }
-        # NOTE: the pairing QR/PIN screen deliberately has NO click-outside guard here —
-        # pinning the window open while it was up made the app feel frozen (every outside
-        # click was swallowed). Click-away dismisses like every other view; an active
-        # pairing session survives dismissal (Reset-SpatialPanels preserves it) and the
-        # status poll + completion toast keep running in the background.
+        # Keep the QR/PIN request screen visible on click-outside; only Cancel dismisses it
+        $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
+        if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) { return }
         $now = [DateTime]::Now
         Write-Trace "Deactivated - Ms since last: $(($now - $script:lastDeactivated).TotalMilliseconds)"
         if (($now - $script:lastDeactivated).TotalMilliseconds -gt 200) {
@@ -306,7 +297,6 @@ $script:wpfWindow.Add_Deactivated({
             try { $script:wpfWindow.FindResource("PopIn").Stop($script:wpfWindow) } catch {}
             $script:wpfWindow.Hide()
             $script:lastDeactivated = $now
-            Reset-SpatialPanels
         }
     }
 })
@@ -377,18 +367,23 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     $script:wpfWindow.FindName("btnSettingsQrCode").Visibility = 'Visible'
                     $script:wpfWindow.FindName("btnPinCancel").Visibility = 'Visible'
                     
-                    # Reveal the pairing panel: SlideInPinAnim pushes the spatial menu out to
-                    # the left while the QR view slides in from the right — all within the
-                    # contracted card dimensions (no window resize).
+                    # Reveal the pairing panel (it starts Collapsed and translated to X=300;
+                    # the SlideInPinAnim storyboard then animates it into view).
                     $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
-                    if ($pinViewPanel) { $pinViewPanel.Visibility = 'Visible' }
+                    if ($pinViewPanel) {
+                        $pinViewPanel.Visibility = 'Visible'
+                        $pinViewPanel.Opacity = 1
+                    }
+                    $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+                    if ($pinViewTrans) { $pinViewTrans.X = 0 }
                     
                     # Show QR Code initially instead of PIN
                     $null = Show-QrCode
                     
                     # Stop any running timer from previous sessions
                     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-
+                    $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
+                    if ($txtTimeout) { $txtTimeout.Text = "" }
                     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($script:wpfWindow) } catch {}
                     
                     $e.Handled = $true
