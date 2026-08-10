@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.4.2.12] - 2026-08-10
+### Fixed
+- **[fix] Spatial menu layout deformation (Desktop)**: The spatial menu content panel is now hidden with `Visibility.Hidden` instead of `Visibility.Collapsed` when opening the QR Code or PIN screens. This preserves the layout constraints and prevents the main container from abruptly shrinking and compacting the UI.
+### Added
+- **[minor] Pairing Request micro-animations (Desktop)**: Added subtle scale-in animations (95% to 100%) for both the QR Code and PIN displays when transitioning between them or opening the screens, providing a more physical and polished feel without relying on heavy gradients or glow effects.
+
 ## [7.0.0.0] - 2026-08-09
 ### Added
 - **[minor] iOS-style navigation transitions (Android)**: Centralized motion language (`NavigationTransitions.kt`) — tab switches crossfade with a subtle scale, push/pop slides (400ms/350ms with UIKit cubic-bezier curves, 1/3 parallax, 96% scale, 70% dim) are wired for future detail screens. Tabs are siblings on one `AnimatedContent` (no back-stack traversal), and each tab's UI state (scroll position) survives switching via `SaveableStateHolder`.

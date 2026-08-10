@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
         <!-- Pairing PIN/QR view transitions. Referenced by Show-PinPanel (UIComponents.ps1),
@@ -13,7 +13,7 @@
             <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Hidden}" /></ObjectAnimationUsingKeyFrames>
         </Storyboard>
         <Storyboard x:Key="SlideOutPinAnim">
             <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>
@@ -22,6 +22,28 @@
             <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
+        </Storyboard>
+
+        <!-- QR <-> PIN content swap inside the pairing panel (Request PIN / QR CODE toggle).
+             Opacity + slide only — no Visibility keyframes, so callers can force the end
+             state with plain property sets (a held Visibility animation would override them). -->
+        <Storyboard x:Key="SwitchQrToPinAnim">
+            <DoubleAnimation Storyboard.TargetName="qrContentTrans" Storyboard.TargetProperty="X" To="-140" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="qrCodeContent" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+            
+            <DoubleAnimation Storyboard.TargetName="pinContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="pinCodeContent" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+            <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+        </Storyboard>
+        <Storyboard x:Key="SwitchPinToQrAnim">
+            <DoubleAnimation Storyboard.TargetName="pinContentTrans" Storyboard.TargetProperty="X" To="140" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="pinCodeContent" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+            
+            <DoubleAnimation Storyboard.TargetName="qrContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="qrCodeContent" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+            <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
         </Storyboard>
 
             <!-- Minimal Spatial ScrollBar Style -->
