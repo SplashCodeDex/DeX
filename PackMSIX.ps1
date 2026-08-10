@@ -49,6 +49,22 @@ try {
     Write-Host "Copying build output to MSIX_Source..." -ForegroundColor Cyan
     Copy-Item -Path "$SourceDir\*" -Destination (Join-Path $PSScriptRoot "MSIX_Source") -Force -Recurse
 
+    # Prune stale payload so the package never ships duplicate/old-protocol binaries:
+    # only the freshly copied root DeXShareTarget.* may exist (nothing references bin\DeXShareTarget.*
+    # or the win-x64 publish trees, and they can drift to old builds over time).
+    Write-Host "Pruning stale payload from MSIX_Source..." -ForegroundColor Cyan
+    foreach ($stale in @(
+        (Join-Path $PSScriptRoot "MSIX_Source\win-x64"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\win-x64"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\DeXShareTarget.exe"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\DeXShareTarget.dll"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\DeXShareTarget.pdb"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\DeXShareTarget.deps.json"),
+        (Join-Path $PSScriptRoot "MSIX_Source\bin\DeXShareTarget.runtimeconfig.json")
+    )) {
+        if (Test-Path $stale) { Remove-Item -LiteralPath $stale -Recurse -Force }
+    }
+
     # Sync Version from AppxManifest to AppInstaller
     $ManifestPath = Join-Path $PSScriptRoot "MSIX_Source\AppxManifest.xml"
     $InstallerPath = Join-Path $PSScriptRoot "DeX.appinstaller"

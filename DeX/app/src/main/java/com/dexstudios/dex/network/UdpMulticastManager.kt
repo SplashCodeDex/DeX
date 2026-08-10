@@ -35,9 +35,9 @@ class UdpMulticastManager(
                     acquire()
                 }
 
-                udpSocket = MulticastSocket(53317).apply {
+                udpSocket = MulticastSocket(DeXPorts.HTTPS).apply {
                     reuseAddress = true
-                    val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), 53317)
+                    val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
                     NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                         runCatching {
                             if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
@@ -73,7 +73,7 @@ class UdpMulticastManager(
                         deviceModel = json.optString("deviceModel", "Unknown"),
                         deviceType = json.optString("deviceType", "unknown"),
                         fingerprint = fp,
-                        port = json.optInt("port", 53317),
+                        port = json.optInt("port", DeXPorts.HTTPS),
                         protocol = json.optString("protocol", "https"),
                         download = json.optBoolean("download", true),
                         identityHash = if (json.has("identityHash")) json.optString("identityHash") else null,
@@ -100,7 +100,7 @@ class UdpMulticastManager(
                 localInfo.googleSub?.let { put("googleSub", it) }
             }
             val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
-            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 53317)
+            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
             val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
 
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->

@@ -12,15 +12,15 @@ namespace DeXShareTarget.Services
 {
     /// <summary>
     /// Auto-configures the router via UPnP/IGD so WAN transfers work without manual port
-    /// forwarding: maps TCP 53317 + UDP 53316 to this PC and records the public IP so the
+    /// forwarding: maps TCP 48424 + UDP 48423 to this PC and records the public IP so the
     /// TLS certificate covers it. Every failure is silent — Thruflux remains the fallback.
     /// </summary>
     public static class UpnpPortForward
     {
         private const int SsdpPort = 1900;
         private const string SsdpMulticast = "239.255.255.250";
-        private const int DeXHttpsPort = 53317;
-        private const int DeXQuicPort = 53316;
+        private const int DeXHttpsPort = DeXConstants.HttpsPort;
+        private const int DeXQuicPort = DeXConstants.QuicPort;
 
         private static readonly string[] IgdServices =
         {
@@ -59,6 +59,12 @@ namespace DeXShareTarget.Services
             await AddPortMappingAsync(igd, DeXHttpsPort, "TCP", ct);
             await DeletePortMappingAsync(igd, DeXQuicPort, "UDP", ct);
             await AddPortMappingAsync(igd, DeXQuicPort, "UDP", ct);
+
+            // Legacy hygiene: releases before 7.4.1 mapped the old 53317 (TCP) and 53316 (UDP)
+            // ports; drop those stale entries so routers with small mapping tables never
+            // reject the new mappings. Deleting a nonexistent mapping is a silent no-op.
+            await DeletePortMappingAsync(igd, 53317, "TCP", ct);
+            await DeletePortMappingAsync(igd, 53316, "UDP", ct);
 
             var publicIp = await GetExternalIpAsync(igd, ct);
             if (IsUsablePublicIpv4(publicIp))

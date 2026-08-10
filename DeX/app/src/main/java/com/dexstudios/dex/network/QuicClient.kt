@@ -21,15 +21,19 @@ import java.util.concurrent.Executors
  * Every PC's certificate is signed by the bundled DeX root CA, so QUIC works with
  * zero user setup — Cronet trusts the CA via the app's network security config.
  */
-class QuicClient(private val context: Context) {
+class QuicClient(private val context: Context) : java.io.Closeable {
 
     private val executor: ExecutorService = Executors.newFixedThreadPool(4)
+
+    override fun close() {
+        executor.shutdown()
+    }
     private var engine: CronetEngine? = null
 
-    // The PC serves HTTP/3 on UDP 53316 and HTTP/1.1 on TCP 53317
+    // The PC serves HTTP/3 on UDP 48423 and HTTP/1.1 on TCP 48424
     private companion object {
-        const val QUIC_PORT = 53316
-        const val HTTPS_PORT = 53317
+        const val QUIC_PORT = DeXPorts.QUIC
+        const val HTTPS_PORT = DeXPorts.HTTPS
     }
 
     // Negotiated protocol ("h3", "http/1.1", ...) of the last completed upload
@@ -45,7 +49,7 @@ class QuicClient(private val context: Context) {
                 .enableBrotli(true)
                 .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 8L * 1024 * 1024)
             // Hint remembered PCs so even the first transfer of the day skips the
-            // HTTP/1.1 warm-up and attempts QUIC directly; falls back to TCP 53317.
+            // HTTP/1.1 warm-up and attempts QUIC directly; falls back to TCP 48424.
             PcMemory.ip(context)?.let { ip ->
                 builder.addQuicHint(ip, QUIC_PORT, HTTPS_PORT)
             }
@@ -196,6 +200,7 @@ class QuicClient(private val context: Context) {
         var receivedBytes = 0L
         var reported = false
         val buffer = ByteBuffer.allocateDirect(16384)
+        var chunkBuf = ByteArray(16384)
 
         fun report(ok: Boolean, status: Int, protocol: String) {
             if (!reported) {
@@ -221,10 +226,11 @@ class QuicClient(private val context: Context) {
             override fun onReadCompleted(request: UrlRequest, info: UrlResponseInfo, byteBuffer: ByteBuffer) {
                 byteBuffer.flip()
                 try {
-                    val chunk = ByteArray(byteBuffer.remaining())
-                    byteBuffer.get(chunk)
-                    output.write(chunk)
-                    receivedBytes += chunk.size
+                    val n = byteBuffer.remaining()
+                    if (chunkBuf.size < n) chunkBuf = ByteArray(n)
+                    byteBuffer.get(chunkBuf, 0, n)
+                    output.write(chunkBuf, 0, n)
+                    receivedBytes += n
                     onProgress(receivedBytes)
                 } catch (e: Exception) {
                     report(false, -1, "")

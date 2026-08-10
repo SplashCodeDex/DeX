@@ -223,7 +223,7 @@ function Update-ProfileUI {
                 $p = Invoke-RestMethod -Uri $uri -TimeoutSec 5 -ErrorAction Stop
                 [pscustomobject]@{ Email = $p.email; Name = $p.name; Picture = $p.picture }
             } catch { $null }
-        } -ArgumentList "http://127.0.0.1:53318/local/settings/google-profile"
+        } -ArgumentList "$global:DeXLocalApi/local/settings/google-profile"
     } catch {
         # Never let a job-spawn failure break this module's load — the avatar
         # click wiring at the bottom of this file must always attach.

@@ -45,6 +45,8 @@ fun HistoryScreen(
 ) {
     val context = LocalContext.current
     val items by TransferHistory.items.collectAsStateWithLifecycle()
+    val sentIcon = ImageVector.vectorResource(R.drawable.ic_send)
+    val receivedIcon = ImageVector.vectorResource(R.drawable.ic_folder)
 
     LaunchedEffect(Unit) {
         TransferHistory.refresh(context)
@@ -111,7 +113,7 @@ fun HistoryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(items, key = { it.id }) { record ->
-                            HistoryRow(record = record, onClick = { openRecord(context, record) })
+                            HistoryRow(record = record, sentIcon = sentIcon, receivedIcon = receivedIcon, onClick = { openRecord(context, record) })
                         }
                     }
                 }
@@ -127,7 +129,7 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistoryRow(record: TransferRecord, onClick: () -> Unit) {
+private fun HistoryRow(record: TransferRecord, sentIcon: ImageVector, receivedIcon: ImageVector, onClick: () -> Unit) {
     val isSent = record.direction == "sent"
     Row(
         modifier = Modifier
@@ -149,9 +151,7 @@ private fun HistoryRow(record: TransferRecord, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(
-                    if (isSent) R.drawable.ic_send else R.drawable.ic_folder
-                ),
+                imageVector = if (isSent) sentIcon else receivedIcon,
                 contentDescription = null,
                 tint = if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(20.dp)
@@ -199,9 +199,11 @@ private fun formatSize(bytes: Long): String {
     }
 }
 
+private val dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+
 private fun formatDate(timestamp: Long): String {
     if (timestamp <= 0L) return ""
-    return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
+    return dateFormat.format(Date(timestamp))
 }
 
 private fun openRecord(context: Context, record: TransferRecord) {

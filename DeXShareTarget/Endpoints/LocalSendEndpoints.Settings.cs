@@ -19,7 +19,7 @@ namespace DeXShareTarget.Endpoints
             });
 
             // PC-side Google Sign-In: opens the browser (OAuth loopback), then sets the verified email.
-            // Reachable at http://127.0.0.1:53318/local/settings/google-signin
+            // Reachable at http://127.0.0.1:48425/local/settings/google-signin
             app.MapGet("/local/settings/google-signin", async () =>
             {
                 if (!DeXShareTarget.Services.GoogleOAuth.IsConfigured())

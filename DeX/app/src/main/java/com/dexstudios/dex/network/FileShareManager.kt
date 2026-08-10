@@ -185,7 +185,7 @@ class FileShareManager(
             sendPullReply(requestId, emptyList(), files.map { resolveName(it) to "no connection" }, cancelled = false)
             return@withContext
         }
-        val port = 53317
+        val port = DeXPorts.HTTPS
         val token = client.authToken(wsService.connectedFingerprint, null, null)
 
         val fileMeta = files.mapIndexed { index, f ->
@@ -197,7 +197,7 @@ class FileShareManager(
             info = RegisterDto(
                 alias = getDeviceName(context), version = "2.0", deviceModel = android.os.Build.MODEL ?: "Android",
                 deviceType = "mobile", fingerprint = deviceConfig.fingerprint,
-                port = 53317, protocol = "https", download = false,
+                port = DeXPorts.HTTPS, protocol = "https", download = false,
                 identityHash = deviceConfig.identityHash
             ),
             files = fileMeta.mapValues { (_, m) ->

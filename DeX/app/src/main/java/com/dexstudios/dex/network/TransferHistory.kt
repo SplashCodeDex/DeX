@@ -1,9 +1,11 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -22,11 +24,14 @@ object TransferHistory {
     private const val KEY = "transfers"
     private const val MAX_ENTRIES = 200
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
 
     fun init(context: Context) {
-        _items.value = read(context)
+        scope.launch {
+            _items.value = read(context)
+        }
     }
 
     fun refresh(context: Context) {

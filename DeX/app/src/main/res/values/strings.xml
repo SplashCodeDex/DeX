@@ -128,5 +128,5 @@
     <string name="settings_public_address">Public Address (WAN)</string>
     <string name="settings_public_address_label">Public address</string>
     <string name="settings_public_address_hint">mypc.ddns.net or 203.0.113.5</string>
-    <string name="settings_public_address_note">Lets the phone reach your PC from anywhere. Requires the PC\'s QUIC port (UDP 53316) to be forwarded, and a PC app restart after changing.</string>
+    <string name="settings_public_address_note">Lets the phone reach your PC from anywhere. Requires the PC\'s QUIC port (UDP 48423) to be forwarded, and a PC app restart after changing.</string>
 </resources>

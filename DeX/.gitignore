@@ -14,5 +14,11 @@
 .cxx
 local.properties
 
+# Android Studio inspection report artifacts (Code Inspect exports at project root).
+# All direct-children XML of DeX/ are inspection junk; legitimate XML lives in subdirs.
+/.xml
+/.descriptions.xml
+/*.xml
+
 # Local OAuth credentials - NEVER commit
 DeXShareTarget/oauth.local.json

@@ -106,8 +106,8 @@ class PunchSession(
             val localPort = ss.localPort
             val socket = Socket()
             socket.bind(InetSocketAddress("0.0.0.0", localPort))
-            socket.connect(InetSocketAddress(pcIp, 53317), 5000)
-            val ssl = sslContext.socketFactory.createSocket(socket, pcIp, 53317, true) as SSLSocket
+            socket.connect(InetSocketAddress(pcIp, DeXPorts.HTTPS), 5000)
+            val ssl = sslContext.socketFactory.createSocket(socket, pcIp, DeXPorts.HTTPS, true) as SSLSocket
             ssl.startHandshake()
             val request = "GET /punch/endpoint?fingerprint=${URLEncoder.encode(deviceConfig.fingerprint, "UTF-8")} HTTP/1.1\r\n" +
                 "Host: $pcIp\r\nConnection: close\r\n\r\n"

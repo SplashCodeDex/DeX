@@ -2,6 +2,7 @@ package com.dexstudios.dex.ui.main
 
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.ClientEngine
+import com.dexstudios.dex.network.DeXPorts
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.DiscoveryEngine
 import com.dexstudios.dex.network.RegisterDto
@@ -41,7 +42,7 @@ class MainScreenViewModelTest {
             deviceModel = "Pixel 6",
             deviceType = "mobile",
             fingerprint = "fp_untrusted_99",
-            port = 53317,
+            port = DeXPorts.HTTPS,
             protocol = "https",
             download = true
         )

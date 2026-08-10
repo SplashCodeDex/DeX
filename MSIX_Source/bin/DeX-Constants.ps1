@@ -5,5 +5,5 @@
 # Defined as $global: so the values are readable from the dot-sourced module files AND from
 # the imported AdbManager.psm1 module scope, matching the existing $global:AdbExePath pattern.
 
-$global:DeXLocalApi = "http://127.0.0.1:53318"                       # unencrypted localhost control API
+$global:DeXLocalApi = "http://127.0.0.1:48425"                       # unencrypted localhost control API
 $global:DeXDataRoot = Join-Path $env:LOCALAPPDATA "DeX"              # app data (theme.json, identity)

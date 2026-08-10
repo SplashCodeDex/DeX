@@ -1,6 +1,29 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+        <!-- Pairing PIN/QR view transitions. Referenced by Show-PinPanel (UIComponents.ps1),
+             the discovered-device click handler (Bindings_Window.ps1), the tick pairing flow
+             (Connect-Engine.ps1) and btnPinCancel (Bindings_Pairing.ps1). Do NOT delete: the
+             PowerShell engine resolves these by name and every caller is a try/catch-swallowed
+             no-op when they are missing (the panel then stays Collapsed/offscreen and the
+             window refuses to hide on click-outside). -->
+        <Storyboard x:Key="SlideInPinAnim">
+            <DoubleAnimation Storyboard.TargetName="menuContentTrans" Storyboard.TargetProperty="X" To="-300" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+            <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3" />
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
+        </Storyboard>
+        <Storyboard x:Key="SlideOutPinAnim">
+            <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+            <DoubleAnimation Storyboard.TargetName="menuContentTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3" />
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
+        </Storyboard>
+
             <!-- Minimal Spatial ScrollBar Style -->
             <Style TargetType="ScrollBar">
                 <Setter Property="Background" Value="Transparent"/>

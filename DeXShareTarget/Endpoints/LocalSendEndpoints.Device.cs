@@ -89,10 +89,10 @@ namespace DeXShareTarget.Endpoints
                     };
                     using var http = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(2) };
                     
-                    var response = await http.GetAsync($"https://{ip}:53317/api/localsend/v2/info");
+                    var response = await http.GetAsync($"https://{ip}:{DeXConstants.HttpsPort}/api/localsend/v2/info");
                     if (!response.IsSuccessStatusCode)
                     {
-                        response = await http.GetAsync($"http://{ip}:53317/api/localsend/v2/info");
+                        response = await http.GetAsync($"http://{ip}:{DeXConstants.HttpsPort}/api/localsend/v2/info");
                     }
 
                     if (response.IsSuccessStatusCode)

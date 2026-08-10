@@ -22,7 +22,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -58,6 +58,16 @@ android {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" +
+                layout.buildDirectory.get().asFile.absolutePath + "/compose_metrics",
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:stabilityConfigurationPath=" +
+                rootProject.file("compose_stability.conf").absolutePath
+        )
+    }
 }
 
 dependencies {
@@ -147,4 +157,12 @@ dependencies {
   // Image Loading
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)
+
+  // Baseline Profiles (AOT compilation for cold-start perf)
+  implementation(libs.androidx.profileinstaller)
+
+  // Credential Manager
+  implementation(libs.androidx.identity.core)
+  implementation(libs.androidx.identity.play)
+  implementation(libs.androidx.identity.googleid)
 }

@@ -76,7 +76,7 @@ class MessageHandlerTest {
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
-        handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
+        handler.handleMessage(pairPromptJson, "192.168.1.10", DeXPorts.HTTPS)
 
         verify { notificationHelper.showPairingRequestNotification("PC-1") }
 
@@ -98,7 +98,7 @@ class MessageHandlerTest {
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
-        handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
+        handler.handleMessage(pairPromptJson, "192.168.1.10", DeXPorts.HTTPS)
 
         AuthState.incomingPairRequest.value!!.deferred.complete("")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -115,7 +115,7 @@ class MessageHandlerTest {
         var sent: String? = null
         handler.onSendMessage = { sent = it }
 
-        handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
+        handler.handleMessage(pairPromptJson, "192.168.1.10", DeXPorts.HTTPS)
 
         testDispatcher.scheduler.advanceTimeBy(61_000)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -129,8 +129,8 @@ class MessageHandlerTest {
     fun `duplicate pair-prompt while one is pending is ignored`() = runTest(testDispatcher) {
         val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
 
-        handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
-        handler.handleMessage(pairPromptJson, "192.168.1.10", 53317)
+        handler.handleMessage(pairPromptJson, "192.168.1.10", DeXPorts.HTTPS)
+        handler.handleMessage(pairPromptJson, "192.168.1.10", DeXPorts.HTTPS)
 
         verify(exactly = 1) { notificationHelper.showPairingRequestNotification("PC-1") }
         assertNotNull(AuthState.incomingPairRequest.value)
@@ -141,7 +141,7 @@ class MessageHandlerTest {
         val mockConfig = mockk<DeviceConfig>(relaxed = true)
         val handler = MessageHandler(mockConfig, mockContext, notificationHelper, fileShareManager)
 
-        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
+        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", DeXPorts.HTTPS)
 
         verify { mockConfig.setPublicAddress("203.0.113.5") }
     }
@@ -152,7 +152,7 @@ class MessageHandlerTest {
         every { mockConfig.publicAddress } returns "mypc.dyndns.org"
         val handler = MessageHandler(mockConfig, mockContext, notificationHelper, fileShareManager)
 
-        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", 53317)
+        handler.handleMessage("""{"type":"public-address","data":{"address":"203.0.113.5"}}""", "192.168.1.10", DeXPorts.HTTPS)
 
         verify(exactly = 0) { mockConfig.setPublicAddress(any()) }
     }
@@ -171,7 +171,7 @@ class MessageHandlerTest {
 
         try {
             val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
-            handler.handleMessage("""{"type":"set-clipboard","data":{"text":"Hello from PC"}}""", "192.168.1.10", 53317)
+            handler.handleMessage("""{"type":"set-clipboard","data":{"text":"Hello from PC"}}""", "192.168.1.10", DeXPorts.HTTPS)
 
             val clipSlot = slot<android.content.ClipData>()
             verify(exactly = 1) { mockClipboard.setPrimaryClip(capture(clipSlot)) }
@@ -186,7 +186,7 @@ class MessageHandlerTest {
         every { mockContext.getSystemService(Context.CLIPBOARD_SERVICE) } returns mockClipboard
 
         val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
-        handler.handleMessage("""{"type":"set-clipboard","data":{"text":"   "}}""", "192.168.1.10", 53317)
+        handler.handleMessage("""{"type":"set-clipboard","data":{"text":"   "}}""", "192.168.1.10", DeXPorts.HTTPS)
 
         verify(exactly = 0) { mockClipboard.setPrimaryClip(any()) }
     }
@@ -201,10 +201,10 @@ class MessageHandlerTest {
         try {
             val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
             val uploadJson = """
-                {"type":"prepare-upload","data":{"info":{"alias":"PC-1","version":"2.0","deviceModel":"Windows PC","deviceType":"desktop","fingerprint":"pc_fp","port":53317,"protocol":"https","download":false},"files":{"f1":{"id":"f1","fileName":"photo.jpg","size":1024,"fileType":"image/jpeg"},"f2":{"id":"f2","fileName":"doc.pdf","size":2048,"fileType":"application/pdf"}}}}
+                {"type":"prepare-upload","data":{"info":{"alias":"PC-1","version":"2.0","deviceModel":"Windows PC","deviceType":"desktop","fingerprint":"pc_fp","port":48424,"protocol":"https","download":false},"files":{"f1":{"id":"f1","fileName":"photo.jpg","size":1024,"fileType":"image/jpeg"},"f2":{"id":"f2","fileName":"doc.pdf","size":2048,"fileType":"application/pdf"}}}}
             """.trimIndent()
 
-            handler.handleMessage(uploadJson, "192.168.1.10", 53317)
+            handler.handleMessage(uploadJson, "192.168.1.10", DeXPorts.HTTPS)
 
             val sessionSlot = slot<String>()
             verify { notificationHelper.showIncomingFileNotification(capture(sessionSlot), any(), 2) }
@@ -220,7 +220,7 @@ class MessageHandlerTest {
             assertTrue("coroutine should have consumed the pending prompt", TransferState.pendingPrompts.isEmpty())
 
             verify(timeout = 10_000, exactly = 1) {
-                TcpDownloadService.downloadBatch(any(), "192.168.1.10", 53317, 53319, match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+                TcpDownloadService.downloadBatch(any(), "192.168.1.10", DeXPorts.HTTPS, DeXPorts.PULL, match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
                     any()
                 )
             }

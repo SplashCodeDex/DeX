@@ -18,7 +18,7 @@ import org.koin.dsl.module
 val appModule = module {
     single { DeviceConfig(androidContext()) }
     single { NotificationHelper(androidContext()) }
-    single { QuicClient(androidContext()) }
+    single(createdAtStart = true) { QuicClient(androidContext()) }
     single { ClientEngine(quicClient = get(), deviceConfig = get()) }
     single { DiscoveryEngine(get(), androidContext()) }
     single { FileShareManager(get(), get(), androidContext()) }

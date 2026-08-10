@@ -21,6 +21,23 @@ function Reset-SpatialPanels {
     $script:wpfWindow.FindName("btnCloseMenu").Opacity = 0
     $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Collapsed'
     $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 0
+    # Pairing PIN/QR panel: force-collapse so a stale pairing state can never wedge the
+    # window open (the Deactivated handler keeps the window up while pinViewPanel is
+    # visible) or leave the panel offscreen (pinViewTrans slides it out to X=300).
+    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+    if ($pinViewPanel) {
+        $pinViewPanel.Visibility = 'Collapsed'
+        $pinViewPanel.Opacity = 0
+    }
+    $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+    if ($pinViewTrans) { $pinViewTrans.X = 300 }
+    $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
+    if ($menuContentTrans) { $menuContentTrans.X = 0 }
+    $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
+    if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    $script:activeOutboundPairIp = $null
+    $script:activeOutboundPairFp = $null
     $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Visible'
     $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Visible'
@@ -52,6 +69,35 @@ function Get-ConnectedDeviceTarget {
     if ($connectedDevice) { return $connectedDevice.Split()[0].Trim() }
     return $null
 }
+
+# Runs `adb devices -l` asynchronously (spawn + poll) and feeds the result into Update-WpfUI,
+# so a cold adb server (first call can take seconds) can never block the UI thread during a
+# tray action. Mirrors the non-blocking pattern used by the tray-icon click handler.
+function Update-WpfUIAsync {
+    try {
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo.FileName = "adb.exe"
+        $proc.StartInfo.Arguments = "devices -l"
+        $proc.StartInfo.UseShellExecute = $false
+        $proc.StartInfo.RedirectStandardOutput = $true
+        $proc.StartInfo.CreateNoWindow = $true
+        $proc.Start() | Out-Null
+
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds(50)
+        $timer.Add_Tick({
+            if ($proc.HasExited) {
+                $timer.Stop()
+                try {
+                    $out = $proc.StandardOutput.ReadToEnd() -split "`r?`n"
+                    Update-WpfUI -DevicesOutput $out
+                } catch {}
+                $proc.Dispose()
+            }
+        })
+        $timer.Start()
+    } catch { Write-Trace "Update-WpfUIAsync error: $_" }
+}
 $actionConnect = {
     $res = Invoke-AdbConnect
     if ($res.Success) {
@@ -68,7 +114,7 @@ $actionConnect = {
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
         Show-Toast -Title "Connection Failed" -Message $res.Message
     }
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 $actionDisconnect = {
     $null = adb disconnect 2>&1
@@ -77,7 +123,7 @@ $actionDisconnect = {
     $script:txtStatus.Text = "ADB Status: Disconnected"
     try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
     Show-Toast -Title "ADB Disconnected" -Message "Severed all wireless connections."
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 
 
@@ -111,7 +157,7 @@ $actionMirror = {
             Show-Toast -Title "Mirror Failed" -Message "No device connected. Open the DeX app on the phone."
         }
     }
-    Update-WpfUI
+    Update-WpfUIAsync
 }
 
 $actionPull = {
@@ -341,7 +387,10 @@ function Show-PairingPrompt {
     $btnCancel = $win.FindName("btnCancel")
     $btnPair = $win.FindName("btnPair")
     
-    $resultPin = $null
+    # Reset the out-param BEFORE showing the dialog. The function returns the script-scope
+    # variable, so a stale value from a previous attempt would otherwise be returned when
+    # the user cancels (re-pairing with an old PIN and re-prompting on every tick).
+    $script:resultPin = $null
     
     $btnCancel.Add_Click({
         $win.DialogResult = $false

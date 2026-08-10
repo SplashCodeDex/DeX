@@ -367,6 +367,16 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     $script:wpfWindow.FindName("btnSettingsQrCode").Visibility = 'Visible'
                     $script:wpfWindow.FindName("btnPinCancel").Visibility = 'Visible'
                     
+                    # Reveal the pairing panel (it starts Collapsed and translated to X=300;
+                    # the SlideInPinAnim storyboard then animates it into view).
+                    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+                    if ($pinViewPanel) {
+                        $pinViewPanel.Visibility = 'Visible'
+                        $pinViewPanel.Opacity = 1
+                    }
+                    $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+                    if ($pinViewTrans) { $pinViewTrans.X = 0 }
+                    
                     # Show QR Code initially instead of PIN
                     $null = Show-QrCode
                     

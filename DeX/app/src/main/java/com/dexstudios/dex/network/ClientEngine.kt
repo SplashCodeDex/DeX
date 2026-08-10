@@ -182,11 +182,11 @@ class ClientEngine(
                 ip, port, sessionId, fileId, fileName, token, stream, fileSize,
                 onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
                 onResult = { ok, status ->
-                    if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status), null)
+                    if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status)) { }
                 }
             )
             if (request == null) {
-                if (!cont.isCancelled) cont.resume(UploadOutcome(false, -1), null)
+                if (!cont.isCancelled) cont.resume(UploadOutcome(false, -1)) { }
             } else {
                 cont.invokeOnCancellation { request.cancel() }
             }
@@ -213,11 +213,11 @@ class ClientEngine(
                 ip, port, fileId, token, output,
                 onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
                 onResult = { ok, status, protocol ->
-                    if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol), null)
+                    if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol)) { }
                 }
             )
             if (request == null) {
-                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1), null)
+                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1)) { }
             } else {
                 cont.invokeOnCancellation { request.cancel() }
             }
