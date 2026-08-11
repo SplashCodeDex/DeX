@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.1.0] - 2026-08-11
+### Fixed
+- **[fix] Logo background color (Desktop)**: Changed the Start Menu and App List logo background color for DeX from transparent to black.
+
 ## [7.7.0.0] - 2026-08-11
 ### Fixed
 - **[fix] QR code not appearing on discovered-device click (Desktop)**: `Show-QrCode` used a `[System.Action]` + `BeginInvoke` delegate that throws under Windows PowerShell 5.1 ("The object must be a runtime Reflection object."), aborting the pairing slide-in; the fetch also used `Invoke-RestMethod`, which decodes `image/png` to a String so the byte[] check never matched. The QR PNG is now fetched in a background job via `HttpWebRequest` (raw bytes) and applied on the UI thread.
