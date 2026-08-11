@@ -176,7 +176,17 @@ fun MainNavigation() {
       exit = slideOutVertically(targetOffsetY = { it }),
       modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
     ) {
-      FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
+      Box(contentAlignment = Alignment.Center) {
+          FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
+          if (globalDimAlpha > 0f) {
+              Box(
+                  modifier = Modifier
+                      .matchParentSize()
+                      .graphicsLayer { alpha = globalDimAlpha }
+                      .background(Color.Black, shape = androidx.compose.foundation.shape.CircleShape)
+              )
+          }
+      }
     }
 
     androidx.compose.animation.AnimatedVisibility(

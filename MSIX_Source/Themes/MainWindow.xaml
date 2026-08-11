@@ -1016,10 +1016,10 @@
                             <TranslateTransform x:Name="pinViewTrans" X="300" />
                         </StackPanel.RenderTransform>
                             <!-- Header / Status -->
-                            <Grid Margin="0,0,0,32">
-                                <TextBlock x:Name="txtPinTitle" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                                <TextBlock x:Name="txtPinSubtitle" Text="" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                            </Grid>
+                            <StackPanel Margin="0,0,0,24">
+                                <TextBlock x:Name="txtPinTitle" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                <TextBlock x:Name="txtPinSubtitle" Text="" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                            </StackPanel>
                         
                         <Grid HorizontalAlignment="Center">
                             <StackPanel x:Name="pinCodeContent" Visibility="Visible" RenderTransformOrigin="0.5,0.5">
@@ -1029,7 +1029,7 @@
                                         <TranslateTransform x:Name="pinContentTrans" X="0" />
                                     </TransformGroup>
                                 </StackPanel.RenderTransform>
-                                <ItemsControl x:Name="icPinDigits" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                <ItemsControl x:Name="icPinDigits" HorizontalAlignment="Center">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" />
