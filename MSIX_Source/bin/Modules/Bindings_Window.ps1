@@ -148,8 +148,8 @@ $script:wpfWindow.Add_KeyDown({
         return
     }
     if ($e.Key -eq [System.Windows.Input.Key]::Escape) {
-        $settingsPanel = $script:wpfWindow.FindName("SettingsPanel")
-        $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
+        $settingsPanel = (dxEl "SettingsPanel")
+        $fileExplorer = (dxEl "FileExplorer")
         $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
         
         # While the QR/PIN request screen is shown, Escape cancels the pairing (same as the
@@ -170,10 +170,11 @@ $script:wpfWindow.Add_KeyDown({
             $sb.Children[0].By = $null
             $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
             Start-CardTransition $sb
+            Restore-ExpandPosition
             $e.Handled = $true
             return
         }
-        
+
         # Edge Case: Reset all expanded panels before hiding
         $script:wpfWindow.Hide()
         $script:lastDeactivated = [DateTime]::Now
@@ -183,7 +184,7 @@ $script:wpfWindow.Add_KeyDown({
         # Edge Case 25: Alt + Up Arrow / Backspace navigates Up Directory. Fires in both
         # File Explorer (SAF) and local history modes; the click handler itself no-ops at
         # roots (Phone Folders, drive root), so raising it unconditionally is safe.
-        if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible' -and $null -ne $script:btnUpDir -and -not [string]::IsNullOrEmpty($script:currentDirPath)) {
+        if ((dxEl "FileExplorer").Visibility -eq 'Visible' -and $null -ne $script:btnUpDir -and -not [string]::IsNullOrEmpty($script:currentDirPath)) {
             $script:btnUpDir.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
             $e.Handled = $true
         }
@@ -288,6 +289,9 @@ if ($script:dragPill) {
                 # Drag pending: wait for the move handler to cross the 5px
                 # dead zone before committing. Prevents accidental 1px drags
                 # from resetting hasBeenDragged (which gates double-click-to-reset).
+                # Clear any saved pre-expand position — dragging overrides it.
+                $script:preExpandLeft = $null; $script:preExpandTop = $null
+
                 $pt = New-Object DeXWin32.DragMove+POINT
                 [DeXWin32.DragMove]::GetCursorPos([ref]$pt)
                 $script:dragStartCursorX = $pt.X
@@ -304,6 +308,7 @@ if ($script:dragPill) {
                 $script:dragContentHeight = $contentH
 
                 $script:dragPending = $true
+                $script:dragMonitorRect = $null  # force re-query on first move frame
                 $script:wpfWindow.CaptureMouse()
             }
         }
@@ -366,11 +371,23 @@ $script:wpfWindow.Add_PreviewMouseMove({
     $cw = $script:dragContentWidth
     $ch = $script:dragContentHeight
 
-    # Per-monitor work area for magnetism: the cursor position determines
-    # which monitor's bounds to snap against, not the primary monitor.
-    $cursorPt = New-Object System.Drawing.Point($pt.X, $pt.Y)
-    try { $wa = [System.Windows.Forms.Screen]::FromPoint($cursorPt).WorkingArea } catch {
-        $wa = [System.Windows.SystemParameters]::WorkArea
+    # Per-monitor work area for magnetism. Screen.FromPoint allocates and
+    # queries GDI on every call — only re-query when the cursor crosses a
+    # monitor boundary. For same-monitor frames this is a pure rect check.
+    if ($script:dragMonitorRect -and
+        $pt.X -ge $script:dragMonitorRect.Left -and $pt.X -lt $script:dragMonitorRect.Right -and
+        $pt.Y -ge $script:dragMonitorRect.Top  -and $pt.Y -lt $script:dragMonitorRect.Bottom) {
+        $wa = $script:dragMonitorWorkArea
+    } else {
+        $cursorPt = New-Object System.Drawing.Point($pt.X, $pt.Y)
+        try {
+            $screen = [System.Windows.Forms.Screen]::FromPoint($cursorPt)
+            $script:dragMonitorRect = $screen.Bounds
+            $script:dragMonitorWorkArea = $screen.WorkingArea
+            $wa = $script:dragMonitorWorkArea
+        } catch {
+            $wa = [System.Windows.SystemParameters]::WorkArea
+        }
     }
     $snap = 20
 
@@ -465,12 +482,14 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
         $script:wpfWindow.BeginAnimation([System.Windows.Window]::TopProperty,  $animY)
     }
 
-    # Clear snap state for next drag.
+    # Clear drag state for next drag.
     $script:dragSnappedTop = $false
     $script:dragSnappedBottom = $false
     $script:dragSnappedLeft = $false
     $script:dragSnappedRight = $false
     $script:dragSnappedWa = $null
+    $script:dragMonitorRect = $null
+    $script:dragMonitorWorkArea = $null
 
     # Post-drag sanity: keep at least 20% of content (min 60px) reachable.
     $mb = (dxEl "mainBorder")
@@ -558,15 +577,17 @@ if ($btnCloseMenu) {
         $sb.Children[0].By = $null
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         Start-CardTransition $sb
+        Restore-ExpandPosition
         return
     }
-    
+
     # If FileExplorer is visible, contract it instead of hiding the whole window (consistent UX)
     if ($fileExplorer.Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractMenu"].Clone()
         $sb.Children[0].By = $null
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         Start-CardTransition $sb
+        Restore-ExpandPosition
         $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
         return
@@ -615,7 +636,7 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     $script:activeOutboundPairFp = $targetPeer.Fingerprint
                     
                     $script:wpfWindow.FindName("txtPinTitle").Text = "Pairing with $($targetPeer.Alias)"
-                    $script:wpfWindow.FindName("txtPinSubtitle").Text = "Scan this code with your phone, or tap Request PIN"
+                    $script:wpfWindow.FindName("txtPinSubtitle").Text = "Scan this code with your phone, or tap PIN CODE"
                     
                     $script:wpfWindow.FindName("btnPinAccept").Visibility = 'Collapsed'
                     $script:wpfWindow.FindName("btnPinAcceptOnce").Visibility = 'Collapsed'
@@ -669,7 +690,7 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
             # History always opens for a known peer — it works over the WebSocket even for
             # WAN devices where ADB is unreachable. Only expand if not already visible
             # (actionPull would otherwise contract the panel).
-            $fePanel = $script:wpfWindow.FindName("FileExplorer")
+            $fePanel = (dxEl "FileExplorer")
             if ($fePanel -and $fePanel.Visibility -ne 'Visible') {
                 Invoke-MenuAction $actionPull
             }

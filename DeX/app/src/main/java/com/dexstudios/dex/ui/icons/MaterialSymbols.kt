@@ -2,6 +2,7 @@ package com.dexstudios.dex.ui.icons
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
@@ -345,6 +346,95 @@ public object MaterialSymbols {
             }
         }.build().also { _close = it }
 
+    public val Pin: ImageVector
+        get() = _pin ?: ImageVector.Builder(
+            name = "pin",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black), pathFillType = PathFillType.EvenOdd) {
+                // Outer Rounded Box
+                moveTo(4f, 20f)
+                quadTo(3.175f, 20f, 2.588f, 19.412f)
+                quadTo(2f, 18.825f, 2f, 18f)
+                verticalLineTo(6f)
+                quadTo(2f, 5.175f, 2.588f, 4.588f)
+                quadTo(3.175f, 4f, 4f, 4f)
+                horizontalLineTo(20f)
+                quadTo(20.825f, 4f, 21.412f, 4.588f)
+                quadTo(22f, 5.175f, 22f, 6f)
+                verticalLineTo(18f)
+                quadTo(22f, 18.825f, 21.412f, 19.412f)
+                quadTo(20.825f, 20f, 20f, 20f)
+                close()
+
+                // Digit 1
+                moveTo(7f, 15f)
+                horizontalLineTo(9f)
+                verticalLineTo(9f)
+                horizontalLineTo(7f)
+                verticalLineTo(10f)
+                horizontalLineTo(8f)
+                verticalLineTo(15f)
+                close()
+
+                // Digit 2
+                moveTo(10.5f, 15f)
+                horizontalLineTo(13.5f)
+                quadTo(13.725f, 15f, 13.863f, 14.863f)
+                quadTo(14f, 14.725f, 14f, 14.5f)
+                verticalLineTo(13.5f)
+                quadTo(14f, 13.275f, 13.863f, 13.138f)
+                quadTo(13.725f, 13f, 13.5f, 13f)
+                horizontalLineTo(11.5f)
+                verticalLineTo(12f)
+                horizontalLineTo(13.5f)
+                quadTo(13.725f, 12f, 13.863f, 11.863f)
+                quadTo(14f, 11.725f, 14f, 11.5f)
+                verticalLineTo(10.5f)
+                quadTo(14f, 10.275f, 13.863f, 10.138f)
+                quadTo(13.725f, 10f, 13.5f, 10f)
+                horizontalLineTo(10.5f)
+                verticalLineTo(11f)
+                horizontalLineTo(12.5f)
+                verticalLineTo(12f)
+                horizontalLineTo(10.5f)
+                quadTo(10.275f, 12f, 10.138f, 12.138f)
+                quadTo(10f, 12.275f, 10f, 12.5f)
+                verticalLineTo(14.5f)
+                quadTo(10f, 14.725f, 10.138f, 14.863f)
+                quadTo(10.275f, 15f, 10.5f, 15f)
+                close()
+
+                // Digit 3
+                moveTo(15.5f, 15f)
+                horizontalLineTo(18.5f)
+                quadTo(18.725f, 15f, 18.863f, 14.863f)
+                quadTo(19f, 14.725f, 19f, 14.5f)
+                verticalLineTo(13.25f)
+                quadTo(19f, 13.025f, 18.863f, 12.888f)
+                quadTo(18.725f, 12.75f, 18.5f, 12.75f)
+                quadTo(18.725f, 12.75f, 18.863f, 12.612f)
+                quadTo(19f, 12.475f, 19f, 12.25f)
+                verticalLineTo(10.5f)
+                quadTo(19f, 10.275f, 18.863f, 10.138f)
+                quadTo(18.725f, 10f, 18.5f, 10f)
+                horizontalLineTo(15.5f)
+                verticalLineTo(11f)
+                horizontalLineTo(17.5f)
+                verticalLineTo(12.25f)
+                horizontalLineTo(16.5f)
+                verticalLineTo(13.25f)
+                horizontalLineTo(17.5f)
+                verticalLineTo(14f)
+                horizontalLineTo(15.5f)
+                verticalLineTo(15f)
+                close()
+            }
+        }.build().also { _pin = it }
+
     private fun batteryFrameBuilder(name: String, fillPath: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector.Builder {
         return ImageVector.Builder(
             name = name,
@@ -409,4 +499,5 @@ public object MaterialSymbols {
     private var _check: ImageVector? = null
     private var _checkCircle: ImageVector? = null
     private var _close: ImageVector? = null
+    private var _pin: ImageVector? = null
 }

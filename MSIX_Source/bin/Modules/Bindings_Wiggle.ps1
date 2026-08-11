@@ -115,8 +115,8 @@ $script:wiggleTimer.Add_Tick({
                 # Show only nearby devices (dummies) for Wiggle menu
                 (dxEl "TopActionsPanel").Visibility = 'Collapsed'
                 (dxEl "btnUserJoe").Visibility = 'Collapsed'
-                (dxEl "btnDeviceGalaxy").Visibility = 'Collapsed'
                 (dxEl "btnDeviceWindows").Visibility = 'Collapsed'
+                (dxEl "icLivePeers").Visibility = 'Collapsed'
                 (dxEl "NearbyExpandPanel").Visibility = 'Visible'
                 (dxEl "NearbyExpandPanel").Opacity = 1
                 $script:openedViaWiggle = $true

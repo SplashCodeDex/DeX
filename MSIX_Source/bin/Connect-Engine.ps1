@@ -174,6 +174,7 @@ if ($global:AppThemeMode -eq "System") {
 
 # Lazy element cache: FindName walks the visual tree every call. Cache results
 # in a hashtable so hot-path code (show, drag, deactivate) doesn't re-walk.
+# Aliased as $script:ce for the pre-existing callers that used it directly.
 $script:dxEl = @{}
 function dxEl([string]$name) {
     if (-not $script:dxEl.ContainsKey($name)) {
@@ -181,6 +182,23 @@ function dxEl([string]$name) {
     }
     return $script:dxEl[$name]
 }
+$script:ce = $script:dxEl  # wire pre-existing direct-hashtable callers
+
+# Pre-load every element that has a handler attached at init time.
+# $script:ce was never initialized before, so $script:ce["X"] always threw
+# and every handler in Bindings_Pairing, Bindings_FileBrowser, Bindings_Settings,
+# and Bindings_Search was silently skipped.
+$initElements = @(
+    'btnPinCancel', 'btnUpDir', 'btnCancelPull', 'btnToggleExplorerMode',
+    'btnChangeDownloadPath', 'btnPushFiles', 'btnPushFolder',
+    'btnCopyIP', 'btnSettingsAutoConnect', 'btnSettingsConnectNow',
+    'btnSettingsQrCode', 'btnSettingsDnd', 'btnSettingsTheme',
+    'btnSettingsWiggleToggle', 'btnSettingsDownloadPath', 'btnSettingsAbout',
+    'btnSettingsResetIdentity', 'btnSettingsSignOut', 'btnSettingsGoogleSignIn',
+    'btnProfileTop', 'btnProfileBottom', 'btnProfileTopSettings',
+    'txtSearch', 'btnQAPull', 'btnQAClipboard'
+)
+foreach ($elName in $initElements) { $null = dxEl $elName }
 
     # Load UI Bindings in current scope
     . "$PSScriptRoot\TrayUIBindings.ps1"

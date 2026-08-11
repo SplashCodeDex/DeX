@@ -25,6 +25,7 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
@@ -101,7 +102,7 @@ fun ConnectionOptionsDialog(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     ConnectionOptionItem(
-                        icon = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        icon = MaterialSymbols.Pin,
                         label = stringResource(R.string.connect_option_pin),
                         onClick = { onPinCode(); dismiss() }
                     )

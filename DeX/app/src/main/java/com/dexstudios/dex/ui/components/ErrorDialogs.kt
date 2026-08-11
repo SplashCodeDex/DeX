@@ -24,6 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -41,8 +43,6 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
@@ -381,40 +381,65 @@ fun PairingRequestDialog(
     expectedPin: String,
     onAccept: (String) -> Unit,
     onReject: () -> Unit,
-    backdrop: Backdrop? = null,
     deadlineElapsedMs: Long = 0L,
 ) {
     var enteredPin by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(value = false) }
+    var isSuccess by remember { mutableStateOf(value = false) }
+    var greenSlotsCount by remember { mutableIntStateOf(0) }
     var visible by remember { mutableStateOf(false) }
     var secondsLeft by remember { mutableIntStateOf(60) }
+    var progress by remember { mutableFloatStateOf(1f) }
 
     val haptics = LocalHapticFeedback.current
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isSuccess) {
+        if (isSuccess) {
+            // Domino effect: 100ms per slot
+            repeat(5) {
+                delay(80)
+                greenSlotsCount++
+            }
+            delay(200) // pause for merging
+            // The morph happens via AnimatedContent triggered by isSuccess later
+            delay(1200) // Allow full animation to play
+            onAccept(enteredPin)
+        }
+    }
 
     LaunchedEffect(Unit) {
         visible = true
+        delay(300)
+        focusRequester.requestFocus()
     }
 
     // Countdown mirroring the PC's PIN panel expiry.
     LaunchedEffect(Unit) {
+        val durationMs = 60_000L
         val deadline = if (deadlineElapsedMs > 0) deadlineElapsedMs
-                       else SystemClock.elapsedRealtime() + 60_000L
+                       else SystemClock.elapsedRealtime() + durationMs
+
         while (true) {
             val remainingMs = deadline - SystemClock.elapsedRealtime()
             secondsLeft = ((remainingMs + 999) / 1000).toInt().coerceAtLeast(0)
+            progress = (remainingMs.toFloat() / durationMs).coerceIn(0f, 1f)
+
             if (remainingMs <= 0) break
-            delay(1000)
+            delay(100) // Smoother progress updates
         }
         onReject()
     }
 
-    // With a backdrop the dim lives INSIDE the captured layer.
-    val overlayDim = if (backdrop == null) Color.Black.copy(alpha = 0.4f) else Color.Transparent
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (isSuccess) 0.2f else 0.6f,
+        animationSpec = tween(800)
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayDim)
+            .background(Color.Black.copy(alpha = dimAlpha))
             .imePadding()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -425,18 +450,22 @@ fun PairingRequestDialog(
     ) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn(tween(400)) + scaleIn(tween(400, easing = BackOut), initialScale = 0.8f),
-            exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.8f)
+            enter = fadeIn(tween(400)) + scaleIn(tween(400, easing = BackOut), initialScale = 0.85f),
+            exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.85f)
         ) {
-            val cardContent: @Composable BoxScope.() -> Unit = {
+            DeXPanel(
+                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth(0.9f)
+            ) {
                 // Close Button
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(16.dp)
-                        .size(32.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
-                        .bubbleFluidity(targetScale = 0.9f)
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -451,187 +480,170 @@ fun PairingRequestDialog(
                         imageVector = MaterialSymbols.Close,
                         contentDescription = "Close",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
                 Column(
-                    modifier = Modifier.padding(top = 48.dp, bottom = 24.dp, start = 32.dp, end = 32.dp),
+                    modifier = Modifier.padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Text(
                         stringResource(R.string.pairing_enter_pin_on_device, alias),
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    PinInputField(
-                        value = enteredPin,
-                        onValueChange = {
-                            if (it.length <= 5) {
-                                if (it.length > enteredPin.length) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                }
-                                enteredPin = it
-                                isError = false
+                    AnimatedContent(
+                        targetState = isSuccess,
+                        transitionSpec = {
+                            if (targetState) {
+                                (scaleIn(tween(500, easing = BackOut), initialScale = 0.5f) + fadeIn(tween(500)))
+                                    .togetherWith(fadeOut(tween(300)))
+                            } else {
+                                fadeIn().togetherWith(fadeOut())
                             }
                         },
-                        isError = isError
-                    )
+                        label = "success_morph"
+                    ) { success ->
+                        if (success) {
+                            Icon(
+                                imageVector = MaterialSymbols.CheckCircle,
+                                contentDescription = "Success",
+                                modifier = Modifier.size(64.dp),
+                                tint = Color(0xFF4CAF50)
+                            )
+                        } else {
+                            PinInputField(
+                                value = enteredPin,
+                                onValueChange = {
+                                    if (it.length <= 5) {
+                                        if (it.length > enteredPin.length) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        }
+                                        enteredPin = it
+                                        isError = false
+                                    }
+                                },
+                                isError = isError,
+                                isSuccess = isSuccess,
+                                greenSlotsCount = greenSlotsCount,
+                                focusRequester = focusRequester
+                            )
+                        }
+                    }
 
-                    if (isError) {
+                    if (isError && !isSuccess) {
                         Text(
                             stringResource(R.string.pairing_wrong_pin),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(top = 12.dp)
                         )
                     }
 
-                    Text(
-                        stringResource(R.string.pairing_expires_in, secondsLeft),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    Spacer(modifier = Modifier.height(48.dp))
+                    // Timer Section
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(4.dp)
+                                .clip(CircleShape),
+                            color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.pairing_expires_in, secondsLeft),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
-                    val confirmInteractionSource = remember { MutableInteractionSource() }
-                    val isConfirmPressed by confirmInteractionSource.collectIsPressedAsState()
-                    val confirmPressProgress by animateFloatAsState(
-                        targetValue = if (isConfirmPressed) 1f else 0f,
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f)
-                    )
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     val isComplete = enteredPin.length == 5
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .graphicsLayer {
-                                val s = 1f - 0.02f * confirmPressProgress
-                                scaleX = s
-                                scaleY = s
-                            },
-                        contentAlignment = Alignment.Center
+                    DeXButton(
+                        onClick = {
+                            if (enteredPin == expectedPin) {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isSuccess = true
+                            } else {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isError = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        enabled = isComplete && !isSuccess,
+                        colors = if (isSuccess) ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        ) else ButtonDefaults.buttonColors()
                     ) {
-                        if (backdrop != null) {
-                            LiquidGlassPanel(
-                                backdrop = backdrop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable(
-                                        enabled = isComplete,
-                                        interactionSource = confirmInteractionSource,
-                                        indication = null,
-                                        onClick = {
-                                            if (enteredPin == expectedPin) {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                onAccept(enteredPin)
-                                            } else {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                isError = true
-                                            }
-                                        }
-                                    ),
-                                config = LiquidGlassPresets.FlatInteractive.copy(
-                                    surfaceTintAlpha = if (isComplete) 0.25f else 0.1f
-                                ),
-                                content = {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        ConfirmButtonContent(isComplete)
-                                    }
-                                }
-                            )
-                        } else {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable(
-                                        enabled = isComplete,
-                                        interactionSource = confirmInteractionSource,
-                                        indication = null,
-                                        onClick = {
-                                            if (enteredPin == expectedPin) {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                onAccept(enteredPin)
-                                            } else {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                isError = true
-                                            }
-                                        }
-                                    ),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isComplete) 0.5f else 0.2f),
-                                border = if (isComplete) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                                content = {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        ConfirmButtonContent(isComplete)
-                                    }
-                                }
-                            )
-                        }
+                        ConfirmButtonContent(isComplete, isSuccess)
                     }
                 }
-            }
-
-            if (backdrop != null) {
-                LiquidGlassPanel(
-                    backdrop = backdrop,
-                    modifier = Modifier
-                        .widthIn(max = 400.dp)
-                        .fillMaxWidth(0.9f)
-                        .bubbleFluidity(targetScale = 0.99f)
-                        .border(0.5.dp, Color.White.copy(alpha = 0.2f), LiquidGlassPresets.Flat.shape),
-                    shape = LiquidGlassPresets.Flat.shape,
-                    config = LiquidGlassPresets.Flat,
-                    content = cardContent
-                )
-            } else {
-                DeXPanel(
-                    shape = RoundedCornerShape(48.dp),
-                    modifier = Modifier
-                        .widthIn(max = 400.dp)
-                        .fillMaxWidth(0.9f)
-                        .bubbleFluidity(targetScale = 0.99f),
-                    content = cardContent
-                )
             }
         }
     }
 }
 
 @Composable
-private fun ConfirmButtonContent(isComplete: Boolean) {
-    Crossfade(targetState = isComplete, animationSpec = tween(300)) { complete ->
-        if (complete) {
+private fun ConfirmButtonContent(isComplete: Boolean, isSuccess: Boolean = false) {
+    AnimatedContent(
+        targetState = isSuccess,
+        transitionSpec = {
+            (slideInVertically { it } + fadeIn()).togetherWith(slideOutVertically { -it } + fadeOut())
+        },
+        label = "button_text_morph"
+    ) { success ->
+        if (success) {
             Text(
-                "confirm",
+                "Connected",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White // Contrast logic: Green button -> White text
             )
         } else {
-            Text(
-                "enter pin",
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
+            Crossfade(targetState = isComplete, animationSpec = tween(300), label = "confirm_crossfade") { complete ->
+                if (complete) {
+                    Text(
+                        "confirm",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimary // Black if White, White if Black
+                    )
+                } else {
+                    Text(
+                        "enter pin",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
+            }
         }
     }
 }
@@ -677,7 +689,10 @@ val BackOut = Easing { fraction ->
 fun PinInputField(
     value: String,
     onValueChange: (String) -> Unit,
-    isError: Boolean
+    isError: Boolean,
+    isSuccess: Boolean = false,
+    greenSlotsCount: Int = 0,
+    focusRequester: FocusRequester = remember { FocusRequester() }
 ) {
     val infiniteTransition = rememberInfiniteTransition()
     val cursorAlpha by infiniteTransition.animateFloat(
@@ -691,7 +706,8 @@ fun PinInputField(
                 0f at 500
                 0f at 999
             }
-        )
+        ),
+        label = "cursor_blink"
     )
 
     BasicTextField(
@@ -700,7 +716,9 @@ fun PinInputField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         cursorBrush = SolidColor(Color.Transparent),
         textStyle = androidx.compose.ui.text.TextStyle(color = Color.Transparent),
-        modifier = Modifier.shake(isError),
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .shake(isError),
         decorationBox = { innerTextField ->
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 // Real text field capturing input but visually hidden
@@ -717,56 +735,78 @@ fun PinInputField(
                         }
                         val isFocused = index == value.length
                         val isFilled = index < value.length
+                        val isGreen = index < greenSlotsCount
 
-                        val scale by animateFloatAsState(
-                            targetValue = if (isFilled) 1.05f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                        val slotOffset by animateDpAsState(
+                            targetValue = if (isSuccess) {
+                                // Merge towards center: index 2 is center
+                                (2 - index).dp * 48 // Approximate width + spacing
+                            } else 0.dp,
+                            animationSpec = tween(600, easing = FastOutSlowInEasing),
+                            label = "merge_offset"
+                        )
+
+                        val slotAlpha by animateFloatAsState(
+                            targetValue = if (isSuccess) 0f else 1f,
+                            animationSpec = tween(400, delayMillis = 200),
+                            label = "merge_alpha"
                         )
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(72.dp)
+                                .height(64.dp)
                                 .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
+                                    translationX = slotOffset.toPx()
+                                    alpha = slotAlpha
                                 }
                                 .background(
                                     color = when {
-                                        isError -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
-                                        isFocused -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                        isGreen -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                        isError -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                                        isFocused -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                     },
-                                    shape = RoundedCornerShape(20.dp)
+                                    shape = RoundedCornerShape(16.dp)
                                 )
                                 .border(
-                                    width = if (isFocused) 2.dp else 1.dp,
+                                    width = if (isFocused || isGreen) 2.dp else 1.dp,
                                     color = when {
-                                        isError -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                                        isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                        isFilled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                        isGreen -> Color(0xFF4CAF50)
+                                        isError -> MaterialTheme.colorScheme.error
+                                        isFocused -> MaterialTheme.colorScheme.primary
+                                        isFilled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                                     },
-                                    shape = RoundedCornerShape(20.dp)
+                                    shape = RoundedCornerShape(16.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = char,
-                                style = MaterialTheme.typography.displaySmall.copy(
-                                    fontWeight = FontWeight.Black,
-                                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                            AnimatedContent(
+                                targetState = char,
+                                transitionSpec = {
+                                    (scaleIn(animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow)) + fadeIn())
+                                        .togetherWith(fadeOut(animationSpec = tween(100)))
+                                },
+                                label = "digit_animation"
+                            ) { digit ->
+                                Text(
+                                    text = digit,
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                    )
                                 )
-                            )
+                            }
 
                             // Animated Blinking Cursor Caret
-                            if (isFocused) {
+                            if (isFocused && !isSuccess) {
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .padding(bottom = 14.dp)
-                                        .width(16.dp)
-                                        .height(3.dp)
+                                        .padding(bottom = 12.dp)
+                                        .width(12.dp)
+                                        .height(2.dp)
                                         .clip(CircleShape)
                                         .graphicsLayer { alpha = cursorAlpha }
                                         .background(MaterialTheme.colorScheme.primary)

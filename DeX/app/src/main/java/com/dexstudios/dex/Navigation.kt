@@ -246,7 +246,6 @@ fun MainNavigation() {
                 req.deferred.complete("")
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
             },
-            backdrop = contentBackdrop,
             deadlineElapsedMs = req.deadlineElapsedMs
         )
     }

@@ -54,8 +54,8 @@ function Reset-SpatialPanels {
     }
     $script:ce["TopActionsPanel"].Visibility = 'Visible'
     $script:ce["btnUserJoe"].Visibility = 'Visible'
-    $script:ce["btnDeviceGalaxy"].Visibility = 'Visible'
     $script:ce["btnDeviceWindows"].Visibility = 'Visible'
+    $script:ce["icLivePeers"].Visibility = 'Visible'
     $btnQAPull = $script:ce["btnQAPull"]
     if ($btnQAPull) { $btnQAPull.IsChecked = $false }
 }
@@ -183,6 +183,7 @@ $actionPull = {
         $sb.Children[1].By = $null
         $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
         Start-CardTransition $sb
+        Restore-ExpandPosition
         $btnQAPull = $script:ce["btnQAPull"]
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
         return
@@ -191,18 +192,27 @@ $actionPull = {
     $settingsPanel = $script:ce["SettingsPanel"]
     $isSwapping = ($settingsPanel -and $settingsPanel.Visibility -eq 'Visible')
     if ($isSwapping) {
-        # Swap from Settings to File Explorer: collapse settings first, then fall through
+        # Swap from Settings to File Explorer: instantly restore the window
+        # to its pre-expand position so the next Nudge-ForExpand starts fresh.
+        if ($null -ne $script:preExpandLeft) { $script:wpfWindow.Left = $script:preExpandLeft }
+        if ($null -ne $script:preExpandTop)  { $script:wpfWindow.Top  = $script:preExpandTop }
+        $script:preExpandLeft = $null; $script:preExpandTop = $null
+
         $settingsPanel.Visibility = 'Collapsed'
         $settingsPanel.Opacity = 0
         $script:ce["settingsTrans"].X = 150
     }
-    
+
     $mainBorder = $script:ce["mainBorder"]
     if (-not $script:contractedWidth) { $script:contractedWidth = $mainBorder.ActualWidth }
     if (-not $script:contractedHeight) { $script:contractedHeight = $mainBorder.ActualHeight }
     if ([double]::IsNaN($mainBorder.Width)) { $mainBorder.Width = $mainBorder.ActualWidth }
     if ([double]::IsNaN($mainBorder.Height)) { $mainBorder.Height = $mainBorder.ActualHeight }
-    
+
+    # Pick expansion direction based on screen position — flips alignment
+    # and nudges the window so the expanded panel never flies off-screen.
+    Nudge-ForExpand 754 195
+
     $sb = $script:wpfWindow.Resources["ExpandMenu"].Clone()
     if ($isSwapping) {
         14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
@@ -274,27 +284,36 @@ $actionSettings = {
         $sb.Children[1].By = $null
         $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
         Start-CardTransition $sb
+        Restore-ExpandPosition
         return
     }
-    
+
     $fileExplorer = $script:ce["FileExplorer"]
     $isSwapping = ($fileExplorer -and $fileExplorer.Visibility -eq 'Visible')
     
     # If file explorer is visible, collapse it first then fall through to expand settings
     if ($isSwapping) {
+        # Instantly restore pre-expand position so the next nudge starts fresh.
+        if ($null -ne $script:preExpandLeft) { $script:wpfWindow.Left = $script:preExpandLeft }
+        if ($null -ne $script:preExpandTop)  { $script:wpfWindow.Top  = $script:preExpandTop }
+        $script:preExpandLeft = $null; $script:preExpandTop = $null
+
         $fileExplorer.Visibility = 'Collapsed'
         $fileExplorer.Opacity = 0
         $script:ce["fileTrans"].X = 150
         $btnQAPull = $script:ce["btnQAPull"]
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
     }
-    
+
     $mainBorder = $script:ce["mainBorder"]
     if (-not $script:contractedWidth) { $script:contractedWidth = $mainBorder.ActualWidth }
     if (-not $script:contractedHeight) { $script:contractedHeight = $mainBorder.ActualHeight }
     if ([double]::IsNaN($mainBorder.Width)) { $mainBorder.Width = $mainBorder.ActualWidth }
     if ([double]::IsNaN($mainBorder.Height)) { $mainBorder.Height = $mainBorder.ActualHeight }
-    
+
+    # Settings panel width is 675 (not contractedWidth + 754). Use the actual delta.
+    Nudge-ForExpand (675 - $script:contractedWidth) 195
+
     $sb = $script:wpfWindow.Resources["ExpandSettings"].Clone()
     if ($isSwapping) {
         14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }

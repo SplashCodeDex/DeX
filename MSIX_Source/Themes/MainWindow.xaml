@@ -43,7 +43,7 @@
         </ResourceDictionary>
     
 </Window.Resources>
-    <Border x:Name="mainBorder" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="34" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Background="{DynamicResource PrimaryBrush}" RenderTransformOrigin="0.5,1" Margin="25" Effect="{StaticResource MainShadow}">
+    <Border x:Name="mainBorder" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="34" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Background="{DynamicResource PrimaryBrush}" RenderTransformOrigin="0.5,1" Margin="25">
         <Border.RenderTransform>
             <TransformGroup>
                 <ScaleTransform ScaleX="1" ScaleY="1" x:Name="winScale" />
@@ -749,7 +749,7 @@
                                         <Button Style="{StaticResource SpatialListItem}" Margin="0,2,0,2" Tag="{Binding [Ip]}">
                                             <Button.ContextMenu>
                                                 <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
-                                                    <MenuItem Name="menuPair" Header="Request PIN (Pair)" Tag="{Binding [Fingerprint]}" />
+                                                    <MenuItem Name="menuPair" Header="PIN CODE (Pair)" Tag="{Binding [Fingerprint]}" />
                                                     <MenuItem Name="menuGuestConnect" Header="Connect ADB" Tag="{Binding [Ip]}" />
                                                     <MenuItem Name="menuGuestCopyIp" Header="Copy IP Address" Tag="{Binding [Ip]}" />
                                                     <Separator Background="{DynamicResource PrimaryTextBrush}" />
@@ -777,7 +777,7 @@
                                                 
                                                 <Grid Width="38" Height="38" Margin="0,0,12,0">
                                                     <Ellipse Fill="{DynamicResource SecondaryBrush}" />
-                                                    <TextBlock Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Text="&#xE8EA;" FontFamily="Segoe UI, Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                                                 </Grid>
                                                 
@@ -821,25 +821,6 @@
                     </Grid>
                 </Button>
 
-                <!-- Device: Galaxy S21 (unhidden, original phone icon avatar) -->
-                <RadioButton x:Name="btnDeviceGalaxy" Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        
-                        <Grid Width="38" Height="38" Margin="0,0,12,0">
-                            <Ellipse Fill="{DynamicResource SecondaryBrush}" />
-                            <TextBlock Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Grid>
-                        
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="Galaxy S21" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                        </StackPanel>
-                    </Grid>
-                </RadioButton>
-
                 <!-- Device: Windows (always visible when contracted) -->
                 <RadioButton x:Name="btnDeviceWindows" Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2">
                     <Grid>
@@ -859,6 +840,62 @@
                     </Grid>
                 </RadioButton>
 
+                <!-- Dynamic Live Peers (paired/trusted devices, "My Devices" section) -->
+                <ItemsControl x:Name="icLivePeers">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2" Tag="{Binding [IP]}">
+                                <RadioButton.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </RadioButton.Triggers>
+                                <RadioButton.ContextMenu>
+                                    <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
+                                        <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />
+                                        <MenuItem Name="menuMirror" Header="Mirror Screen" Tag="{Binding [IP]}" />
+                                        <MenuItem Name="menuCopyIp" Header="Copy IP Address" Tag="{Binding [IP]}" />
+                                        <MenuItem Name="menuDisconnect" Header="Disconnect ADB" Tag="{Binding [IP]}" />
+                                        <Separator Background="{DynamicResource PrimaryTextBrush}" />
+                                        <MenuItem Name="menuRename" Header="Rename / Alias" Tag="{Binding [Fingerprint]}" />
+                                        <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
+                                    </ContextMenu>
+                                </RadioButton.ContextMenu>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Grid Width="38" Height="38" Margin="0,0,12,0">
+                                            <Ellipse Fill="{DynamicResource SecondaryBrush}" />
+                                            <TextBlock Text="{Binding [IconGlyph]}" FontFamily="Segoe UI, Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                        </Grid>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding [Name]}" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock FontFamily="Segoe UI" Text="{Binding [SubText][ModelText]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI" Text="{Binding [SubText][WifiIcon]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                <TextBlock FontFamily="Segoe UI" Text="{Binding [SubText][WifiText]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,16,0" Opacity="0.8">
+                                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI" Text="{Binding [SubText][BatteryIcon]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBlock FontFamily="Segoe UI" Text="{Binding [SubText][BatteryText]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                            </RadioButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Nearby Expand Panel: hidden when contracted, staggers in when expanded -->
                 <StackPanel x:Name="NearbyExpandPanel" Visibility="Collapsed" Opacity="0">
@@ -881,7 +918,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            
+
                             <Grid Width="38" Height="38" Margin="0,0,12,0">
                                 <Ellipse>
                                     <Ellipse.Fill>
@@ -890,12 +927,12 @@
                                 </Ellipse>
                                 <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                             </Grid>
-                            
+
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="Ama Serwaa" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                 <TextBlock Text="user2@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
-                            
+
                             <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
                             <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
                         </Grid>
@@ -909,7 +946,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            
+
                             <Grid Width="38" Height="38" Margin="0,0,12,0">
                                 <Ellipse>
                                     <Ellipse.Fill>
@@ -918,12 +955,12 @@
                                 </Ellipse>
                                 <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                             </Grid>
-                            
+
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="Akua Donkor" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                 <TextBlock Text="user1@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
-                            
+
                             <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
                             <TextBlock Grid.Column="2" Text="&#xE7F8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
                         </Grid>
@@ -937,7 +974,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            
+
                             <Grid Width="38" Height="38" Margin="0,0,12,0">
                                 <Ellipse>
                                     <Ellipse.Fill>
@@ -946,63 +983,16 @@
                                 </Ellipse>
                                 <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                             </Grid>
-                            
+
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="Kwame Asante" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                 <TextBlock Text="user3@dex.net" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
-                            
+
                             <!-- TODO: Detect device type to choose between phone (xE8EA) and laptop (xE7F8) icons for WAN profiles -->
                             <TextBlock Grid.Column="2" Text="&#xE8EA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
                         </Grid>
                     </Button>
-                    
-                    <!-- Dynamic Live Peers (Spawns indefinitely as mDNS peers connect) -->
-                    <ItemsControl x:Name="icLivePeers">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <RadioButton Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2" Tag="{Binding [IP]}">
-                                    <RadioButton.Triggers>
-                                        <EventTrigger RoutedEvent="Loaded">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </RadioButton.Triggers>
-                                    <RadioButton.ContextMenu>
-                                        <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
-                                            <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />
-                                            <MenuItem Name="menuMirror" Header="Mirror Screen" Tag="{Binding [IP]}" />
-                                            <MenuItem Name="menuCopyIp" Header="Copy IP Address" Tag="{Binding [IP]}" />
-                                            <MenuItem Name="menuDisconnect" Header="Disconnect ADB" Tag="{Binding [IP]}" />
-                                            <Separator Background="{DynamicResource PrimaryTextBrush}" />
-                                            <MenuItem Name="menuRename" Header="Rename / Alias" Tag="{Binding [Fingerprint]}" />
-                                            <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
-                                        </ContextMenu>
-                                    </RadioButton.ContextMenu>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        
-                                        <Grid Width="38" Height="38" Margin="0,0,12,0">
-                                            <Ellipse Fill="{DynamicResource SecondaryBrush}" />
-                                            <TextBlock Text="{Binding [IconGlyph]}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                                        </Grid>
-                                        
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding [Name]}" FontSize="15" FontFamily="Segoe UI" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                            <TextBlock Text="{Binding [SubText]}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                                        </StackPanel>
-                                    </Grid>
-                                </RadioButton>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
 
                 </StackPanel>
                         </StackPanel>

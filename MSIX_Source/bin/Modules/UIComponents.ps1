@@ -259,52 +259,120 @@ function Update-WpfUI {
 # repaint. Suspending it around size/scale transitions AND around bulk list swaps (which
 # repaint the card) keeps the visuals identical while removing the re-blur cost on each.
 # Idempotent flag (not a counter): overlapping suspenders (a transition + a refresh) share
-# one suspend, and the FIRST restorer re-applies the shadow — so rapid double transitions
-# can never leave the shadow permanently off.
-$script:cardShadowSuspended = $false
-function Suspend-CardEffect {
-    if ($script:cardShadowSuspended) { return }
-    $mb = $script:wpfWindow.FindName("mainBorder")
-    if ($mb -and $null -ne $mb.Effect) { $mb.Effect = $null }
-    $script:cardShadowSuspended = $true
+# Card shadow removed for performance (DropShadowEffect is CPU-rendered).
+# Keep stubs so existing callers don't break.
+function Suspend-CardEffect {}
+function Restore-CardEffect {}
+
+function Start-CardTransition($storyboard) {
+    $storyboard.Begin($script:wpfWindow, $true)
 }
-function Restore-CardEffect {
-    if (-not $script:cardShadowSuspended) { return }
-    $script:cardShadowSuspended = $false
-    $mb = $script:wpfWindow.FindName("mainBorder")
-    if ($mb -and $null -eq $mb.Effect) {
-        try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
+
+function Nudge-ForExpand($expandW, $expandH) {
+    # Multi-directional expansion. Right+Top alignment is immutable — the
+    # panel always grows left+down internally. To make it appear to grow
+    # right or up, we animate the WINDOW position in sync with the expand
+    # storyboard (800ms, BouncyEase). The menu slides smoothly into the
+    # open space instead of snapping.
+    #
+    #   Expand LEFT:   no nudge (natural: Right-aligned width↑ → left)
+    #   Expand RIGHT:  animate window → right by expandW
+    #   Expand DOWN:   no nudge (natural: Top-aligned   height↑ → down)
+    #   Expand UP:     animate window → up    by expandH
+    #
+    $mb = (dxEl "mainBorder")
+    $wa = [System.Windows.SystemParameters]::WorkArea
+    $winW = if ($script:wpfWindow.Width  -gt 0) { $script:wpfWindow.Width  } else { 1420 }
+    $cw   = if ($mb.ActualWidth  -gt 0) { $mb.ActualWidth  } else { 300 }
+    $ch   = if ($mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+
+    # Save pre-nudge position BEFORE any changes, so contract can restore.
+    $script:preExpandLeft = $script:wpfWindow.Left
+    $script:preExpandTop  = $script:wpfWindow.Top
+
+    $cLeft   = $script:wpfWindow.Left + $winW - 25 - $cw
+    $cRight  = $script:wpfWindow.Left + $winW - 25
+    $cTop    = $script:wpfWindow.Top + 25
+    $cBottom = $cTop + $ch
+
+    $spaceL = $cLeft   - $wa.Left
+    $spaceR = $wa.Right  - $cRight
+    $spaceU = $cTop    - $wa.Top
+    $spaceD = $wa.Bottom - $cBottom
+
+    $goLeft = ($spaceL -ge $spaceR) -or ($spaceL -ge $expandW + 20)
+    $goDown = ($spaceD -ge $spaceU) -or ($spaceD -ge $expandH + 20)
+
+    $toX = $script:wpfWindow.Left
+    $toY = $script:wpfWindow.Top
+    if (-not $goLeft) { $toX += $expandW }
+    if (-not $goDown) { $toY -= $expandH }
+
+    # Sanity clamp — the nudge destination must not push content off-screen.
+    $ncLeft   = $toX + $winW - 25 - $cw
+    $ncRight  = $toX + $winW - 25
+    $ncTop    = $toY + 25
+    $ncBottom = $ncTop + $ch
+    if ($ncLeft   -lt $wa.Left)   { $toX += ($wa.Left   - $ncLeft)   }
+    if ($ncRight  -gt $wa.Right)  { $toX -= ($ncRight  - $wa.Right)  }
+    if ($ncTop    -lt $wa.Top)    { $toY += ($wa.Top    - $ncTop)    }
+    if ($ncBottom -gt $wa.Bottom) { $toY -= ($ncBottom - $wa.Bottom) }
+
+    # Animate the window slide in sync with the 800ms expand storyboard.
+    # Same easing curve so the menu and panel move as one.
+    if ($toX -ne $script:wpfWindow.Left -or $toY -ne $script:wpfWindow.Top) {
+        $ease = try { $script:wpfWindow.FindResource("BouncyEase") } catch { $null }
+        if (-not $ease) { $ease = (New-Object System.Windows.Media.Animation.CubicEase) }
+        $dur = [TimeSpan]::FromSeconds(0.8)
+
+        if ($toX -ne $script:wpfWindow.Left) {
+            $ax = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
+                From = $script:wpfWindow.Left; To = $toX; Duration = $dur
+                EasingFunction = $ease; FillBehavior = 'Stop'
+            }
+            $script:wpfWindow.Left = $toX
+            $script:wpfWindow.BeginAnimation([System.Windows.Window]::LeftProperty, $ax)
+        }
+        if ($toY -ne $script:wpfWindow.Top) {
+            $ay = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
+                From = $script:wpfWindow.Top; To = $toY; Duration = $dur
+                EasingFunction = $ease; FillBehavior = 'Stop'
+            }
+            $script:wpfWindow.Top = $toY
+            $script:wpfWindow.BeginAnimation([System.Windows.Window]::TopProperty, $ay)
+        }
     }
 }
 
-# Begins a card resize/scale transition (Expand/Contract/PopIn) with the software drop shadow
-# suspended for its duration. The DropShadowEffect is the priciest per-frame cost while
-# mainBorder animates its size/scale, so we clear it up front and restore it ~0.95s later.
-# NOTE: the restore is inlined (not a Restore-CardEffect call) because GetNewClosure()
-# creates an isolated scope that cannot reliably resolve functions from the dot-sourced
-# parent script — a call here threw "not recognized" at runtime.
-$script:cardShadowRestoreTimer = $null
-function Start-CardTransition($storyboard) {
-    Suspend-CardEffect
+function Restore-ExpandPosition {
+    # Animate the window back to where it was before the expand nudge,
+    # in sync with the 800ms contract storyboard. Idempotent — safe to
+    # call even when no nudge was applied (no-op).
+    if ($null -eq $script:preExpandLeft -and $null -eq $script:preExpandTop) { return }
 
-    if ($null -ne $script:cardShadowRestoreTimer) { $script:cardShadowRestoreTimer.Stop() }
-    $timer = New-Object System.Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(950)
-    $timer.Add_Tick({
-        param($s, $e)
-        $s.Stop()
-        if ($script:cardShadowSuspended) {
-            $script:cardShadowSuspended = $false
-            $mb = $script:wpfWindow.FindName("mainBorder")
-            if ($mb -and $null -eq $mb.Effect) {
-                try { $mb.Effect = $script:wpfWindow.FindResource("MainShadow") } catch {}
-            }
+    $ease = try { $script:wpfWindow.FindResource("BouncyEase") } catch { $null }
+    if (-not $ease) { $ease = (New-Object System.Windows.Media.Animation.CubicEase) }
+    $dur = [TimeSpan]::FromSeconds(0.8)
+
+    if ($null -ne $script:preExpandLeft -and $script:preExpandLeft -ne $script:wpfWindow.Left) {
+        $ax = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
+            From = $script:wpfWindow.Left; To = $script:preExpandLeft; Duration = $dur
+            EasingFunction = $ease; FillBehavior = 'Stop'
         }
-    }.GetNewClosure())
-    $script:cardShadowRestoreTimer = $timer
-    $timer.Start()
+        $script:wpfWindow.Left = $script:preExpandLeft
+        $script:wpfWindow.BeginAnimation([System.Windows.Window]::LeftProperty, $ax)
+    }
+    if ($null -ne $script:preExpandTop -and $script:preExpandTop -ne $script:wpfWindow.Top) {
+        $ay = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
+            From = $script:wpfWindow.Top; To = $script:preExpandTop; Duration = $dur
+            EasingFunction = $ease; FillBehavior = 'Stop'
+        }
+        $script:wpfWindow.Top = $script:preExpandTop
+        $script:wpfWindow.BeginAnimation([System.Windows.Window]::TopProperty, $ay)
+    }
 
-    $storyboard.Begin($script:wpfWindow, $true)
+    $script:preExpandLeft = $null
+    $script:preExpandTop  = $null
 }
 
 # Resolves the PC's LAN IP and loads the pairing QR code into the panel, showing the QR
@@ -342,7 +410,7 @@ function Show-QrCode {
     $txtQrBtnIcon = $script:wpfWindow.FindName("txtQrBtnIcon")
     if ($txtQrBtnIcon) { $txtQrBtnIcon.Visibility = 'Collapsed' }
     $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")
-    if ($txtQrBtnText) { $txtQrBtnText.Text = "Request PIN" }
+    if ($txtQrBtnText) { $txtQrBtnText.Text = "PIN CODE" }
 
     # Fetch the PNG over HTTP in a background job (bounded 3s), then set the image on
     # the UI thread from the byte stream. The QR view is already shown; a slow/failed

@@ -22,15 +22,51 @@ function Get-DeviceSubText {
         [string]$Fallback = "OmniMesh"
     )
 
-    if (-not $Peer.Model -and -not $Peer.Battery) { return $Fallback }
-
-    $text = ""
-    if ($Peer.Model) { $text += "$([char]0xE8EA) $($Peer.Model)" }
-    if ($Peer.Battery) { $text += "  $([char]0xE83F) $($Peer.Battery)%" }
-    if ($null -ne $Peer.WifiRssi -and $Peer.WifiRssi -gt -127) {
-        $text += "  $([char]0xE701) $($Peer.WifiRssi)dBm"
-    } elseif ($Peer.WifiSsid) {
-        $text += "  $([char]0xE701) $($Peer.WifiSsid)"
+    if (-not $Peer.Model -and -not $Peer.Battery) { 
+        return @{
+            ModelIcon = ""
+            ModelText = $Fallback
+            BatteryIcon = ""
+            BatteryText = ""
+            WifiIcon = ""
+            WifiText = ""
+        }
     }
-    return $text
+
+    $res = @{
+        ModelIcon = ""
+        ModelText = ""
+        BatteryIcon = ""
+        BatteryText = ""
+        WifiIcon = ""
+        WifiText = ""
+    }
+
+    if ($Peer.Model) { 
+        $res.ModelIcon = ""
+        $res.ModelText = $Peer.Model
+    }
+    if ($Peer.Battery) {
+        $level = [int]$Peer.Battery
+        $glyph = switch ($level) {
+            { $_ -ge 90 } { 0xEBAC }  # full
+            { $_ -ge 70 } { 0xEBA9 }  # ~3/4
+            { $_ -ge 50 } { 0xEBA7 }  # half
+            { $_ -ge 30 } { 0xEBA5 }  # ~1/4
+            { $_ -ge 10 } { 0xEBA3 }  # low
+            default      { 0xEBA2 }  # empty
+        }
+        $res.BatteryIcon = "$([char]$glyph)"
+        $res.BatteryText = ""
+    }
+    
+    if ($null -ne $Peer.WifiRssi -and $Peer.WifiRssi -gt -127) {
+        $res.WifiIcon = "$([char]0xE701)"
+        $res.WifiText = "$($Peer.WifiRssi)dBm"
+    } elseif ($Peer.WifiSsid) {
+        $res.WifiIcon = "$([char]0xE701)"
+        $res.WifiText = $Peer.WifiSsid
+    }
+
+    return $res
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.5.0] - 2026-08-11
+### Fixed
+- **[fix] Tofu box characters in device list SubText (Desktop)**: Fixed an issue where the device model and battery percentages were rendering as missing glyph boxes ("tofu"). The XAML `FontFamily` declaration order in the UI incorrectly prioritized icon fonts (`Segoe Fluent Icons`) ahead of the standard `Segoe UI`, breaking WPF's character-by-character fallback for standard text.
+
 ## [7.9.4.0] - 2026-08-11
 ### Fixed
 - **[fix] QR Code UI left clipping on outbound pairing (Desktop)**: Fixed an issue where the QR code was shifted to the left and clipped out of bounds upon opening the pairing panel. The `qrContentTrans` X translation is now explicitly reset to 0 (and `pinContentTrans` to 140) whenever the QR view initializes.

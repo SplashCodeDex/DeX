@@ -46,7 +46,7 @@ $script:notifyIcon.Add_MouseUp({
         } catch { Write-Trace "Update-WpfUI error: $_" }
         
         # Edge Case 27 & 28: Dynamic work area bounds clipping protection & window activation focus
-        # Also reset containers to contracted state so PopIn shows clean window
+        # Also reset containers to contracted state so PopIn shows clean window.
         (dxEl "FileExplorer").Visibility = 'Collapsed'
         (dxEl "FileExplorer").Opacity = 0
         (dxEl "fileTrans").X = 150
@@ -60,8 +60,8 @@ $script:notifyIcon.Add_MouseUp({
         (dxEl "NearbyExpandPanel").Opacity = 0
         (dxEl "TopActionsPanel").Visibility = 'Visible'
         (dxEl "btnUserJoe").Visibility = 'Visible'
-        (dxEl "btnDeviceGalaxy").Visibility = 'Visible'
         (dxEl "btnDeviceWindows").Visibility = 'Visible'
+        (dxEl "icLivePeers").Visibility = 'Visible'
 
         $workArea = [System.Windows.SystemParameters]::WorkArea
         $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
@@ -114,8 +114,5 @@ $script:notifyIcon.Add_MouseUp({
         $script:showMenuGuardTimer.Start()
     }
 })
-
-$btnDeviceGalaxy = (dxEl "btnDeviceGalaxy")
-if ($btnDeviceGalaxy) { $btnDeviceGalaxy.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }
 $btnDeviceWindows = (dxEl "btnDeviceWindows")
 if ($btnDeviceWindows) { $btnDeviceWindows.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }
