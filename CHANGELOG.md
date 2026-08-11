@@ -1,5 +1,18 @@
 # Changelog
 
+## [7.7.0.0] - 2026-08-11
+### Fixed
+- **[fix] QR code not appearing on discovered-device click (Desktop)**: `Show-QrCode` used a `[System.Action]` + `BeginInvoke` delegate that throws under Windows PowerShell 5.1 ("The object must be a runtime Reflection object."), aborting the pairing slide-in; the fetch also used `Invoke-RestMethod`, which decodes `image/png` to a String so the byte[] check never matched. The QR PNG is now fetched in a background job via `HttpWebRequest` (raw bytes) and applied on the UI thread.
+- **[fix] PIN / QR / Cancel switching edge cases (Desktop)**: Escape now cancels the pairing (was a swallowed no-op); "QR CODE" back-switch uses `pair-cancel` instead of `unpair`; the PIN countdown actually expires (was stuck on "Expires in 0s"); stale poll ticks and in-flight pair requests can no longer resurrect over a newer session; duplicate "Request PIN" clicks are guarded; the idle QR phase auto-expires after 60s; switching devices cancels the previous session; stale QR bitmaps are cleared.
+- **[fix] Cancel no longer revokes trust (Desktop)**: `/local/pair-cancel` no longer removes the device from the trusted list — cancelling a re-pair (or it timing out) keeps existing trust intact. Explicit revocation is still `/local/unpair` ("Forget Device") or a phone-initiated unpair.
+- **[fix] Pairing token saved only on acceptance**: `PushPairPromptAsync` no longer persists the pairing token upfront, which could clobber a trusted device's valid token on a re-pair that was then cancelled — silently de-trusting it. The token is stored on the pending attempt and persisted in the `pair-response` accepted path.
+- **[fix] Android PIN dialog shows the expiry countdown**: mirrors the PC's 60s window, driven by the prompt's actual deadline (so a dialog opened late from a notification shows the true remaining time), turns red at ≤10s, and auto-dismisses at zero.
+- **[fix] Android "Connect" now pairs with the tapped PC**: the phone previously failed silently when the tapped PC differed from the auto-connected target; it now connects to the tapped PC first, then sends the pair request (with a 6s cap).
+- **[fix] PC cancel dismisses the phone's PIN dialog immediately**: the PC pushes a `pair-cancelled` message over the WebSocket instead of letting the phone count down its own 60s.
+- **[fix] Pairing state keyed by fingerprint instead of IP**: pending-pair and pair-status are no longer broken by a phone IP change mid-pairing (DHCP), and phones behind the same NAT cannot collide.
+### Hardening
+- **[fix] Certificate lifecycle (Desktop)**: server certificates are validated with the exact TLS API Kestrel uses (a keyless/corrupt PFX is regenerated instead of crashing startup), persisted atomically, fall back to self-signed if the embedded root CA is unavailable, renew live on public/LAN IP changes via a per-connection selector, and log lifecycle events to `%APPDATA%\DeX\cert.log`.
+
 ## [7.6.0.0] - 2026-08-11
 ### Added
 - **[minor] Dynamic Island UI/UX Upgrade (Android)**: Rebuilt the top navigation bar into an iOS-style Liquid Glass Dynamic Island. Features smooth cross-fading avatars, bubble fluidity physics on the brand logo, and a full-screen 85% dim overlay that natively covers the system status bar and bottom navbars.

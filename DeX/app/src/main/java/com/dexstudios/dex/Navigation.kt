@@ -57,6 +57,7 @@ fun MainNavigation() {
   val currentRoute = tabs[selectedTabIndex]
 
   val mainListState = rememberLazyListState()
+  val historyListState = rememberLazyListState()
 
   val devicesFilled = ImageVector.vectorResource(R.drawable.ic_devices_filled)
   val devicesOutlined = ImageVector.vectorResource(R.drawable.ic_devices_outlined)
@@ -96,18 +97,7 @@ fun MainNavigation() {
     // subtree — a backdrop that captures the glass sampling it is a render loop
     // and crashes (SIGSEGV).
     val contentBackdrop = rememberLayerBackdrop()
-    val incomingPairRequestFlow = remember {
-        kotlinx.coroutines.flow.MutableStateFlow(
-            com.dexstudios.dex.network.PairRequestInfo(
-                alias = "DEXSTUDIOS",
-                fingerprint = "mock_fp",
-                pin = "12345",
-                deferred = kotlinx.coroutines.CompletableDeferred(),
-                deadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + 600_000L
-            )
-        )
-    }
-    val incomingPairRequest by incomingPairRequestFlow.collectAsStateWithLifecycle()
+    val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -132,7 +122,8 @@ fun MainNavigation() {
               listState = mainListState
             )
             History -> HistoryScreen(
-              modifier = Modifier.safeDrawingPadding()
+              modifier = Modifier.safeDrawingPadding(),
+              listState = historyListState
             )
             Settings -> SettingsScreen(
               modifier = Modifier.safeDrawingPadding()
@@ -163,26 +154,23 @@ fun MainNavigation() {
     }
 
     androidx.compose.animation.AnimatedVisibility(
-        visible = currentRoute == Main,
+        visible = currentRoute == Main || currentRoute == History,
         enter = androidx.compose.animation.fadeIn(),
         exit = androidx.compose.animation.fadeOut(),
         modifier = Modifier.align(Alignment.TopCenter)
     ) {
         Box {
-            FloatingTopAppBar(
-                backdrop = contentBackdrop
-            )
-
-            val scrollOffset = if (mainListState.firstVisibleItemIndex == 0) {
-                mainListState.firstVisibleItemScrollOffset.toFloat()
+            val activeListState = if (currentRoute == Main) mainListState else historyListState
+            val scrollOffset = if (activeListState.firstVisibleItemIndex == 0) {
+                activeListState.firstVisibleItemScrollOffset.toFloat()
             } else {
                 500f
             }
-
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp)
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                     .graphicsLayer {
                         translationY = -scrollOffset * 0.5f
                         val s = (1f + (scrollOffset / 800f)).coerceAtMost(1.5f)
@@ -201,6 +189,10 @@ fun MainNavigation() {
                     contentScale = ContentScale.Fit
                 )
             }
+
+            FloatingTopAppBar(
+                backdrop = contentBackdrop
+            )
         }
     }
 

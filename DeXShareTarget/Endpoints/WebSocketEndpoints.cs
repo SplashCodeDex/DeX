@@ -251,7 +251,7 @@ namespace DeXShareTarget.Endpoints
                     var pin = await LocalSendEndpoints.PushPairPromptAsync(fingerprint, clientIp);
                     if (string.IsNullOrEmpty(pin))
                     {
-                        LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Failed";
+                        LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Failed";
                     }
                     Console.WriteLine($"[WS] Pairing requested by {fingerprint}");
                 }
@@ -259,7 +259,7 @@ namespace DeXShareTarget.Endpoints
                 {
                     IdentityManager.RemovePairedDevice(fingerprint);
                     WebSocketConnectionManager.Unverify(fingerprint);
-                    LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Cancelled";
+                    LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Cancelled";
                     Console.WriteLine($"[WS] Device {fingerprint} requested unpair");
                 }
                 else if (type == "pair-response" && root.TryGetProperty("data", out var data))
@@ -268,10 +268,10 @@ namespace DeXShareTarget.Endpoints
                     // Read the pending attempt's token BEFORE clearing it: the token is only
                     // persisted now, on acceptance (PushPairPromptAsync deliberately does not
                     // save it upfront — see there).
-                    var pendingToken = LocalSendEndpoints.PendingPairPins.TryGetValue(clientIp, out var pending)
+                    var pendingToken = LocalSendEndpoints.PendingPairPins.TryGetValue(fingerprint, out var pending)
                         ? pending.Token
                         : null;
-                    LocalSendEndpoints.ClearPendingPair(clientIp);
+                    LocalSendEndpoints.ClearPendingPair(fingerprint);
                     if (accepted)
                     {
                         IdentityManager.SavePairedDevice(fingerprint);
@@ -280,12 +280,12 @@ namespace DeXShareTarget.Endpoints
                             IdentityManager.SavePairedToken(fingerprint, pendingToken);
                         }
                         WebSocketConnectionManager.MarkVerified(fingerprint);
-                        LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Accepted";
+                        LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Accepted";
                         Console.WriteLine($"[WS] Pairing accepted by {fingerprint}");
                     }
                     else
                     {
-                        LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Rejected";
+                        LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Rejected";
                         Console.WriteLine($"[WS] Pairing rejected by {fingerprint}");
                     }
                 }

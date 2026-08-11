@@ -110,4 +110,10 @@ class NotificationHelper(private val context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify("pairing".hashCode(), notification)
     }
+
+    /** Removes the pending pairing-request notification (e.g. when the PC cancels the attempt). */
+    fun cancelPairingNotification() {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel("pairing".hashCode())
+    }
 }

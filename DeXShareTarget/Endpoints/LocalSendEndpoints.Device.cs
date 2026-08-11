@@ -145,10 +145,20 @@ namespace DeXShareTarget.Endpoints
             });
             app.MapGet("/local/pair-status", (HttpRequest request) => 
             {
+                // Resolve by fingerprint (preferred) or by IP (legacy callers).
+                var fp = request.Query["fingerprint"].ToString();
                 var ip = request.Query["ip"].ToString();
-                if (!string.IsNullOrEmpty(ip) && OutboundPairingStatus.TryGetValue(ip, out var status))
+                if (!string.IsNullOrEmpty(fp) && OutboundPairingStatus.TryGetValue(fp, out var byFp))
                 {
-                    return Results.Json(new { status });
+                    return Results.Json(new { status = byFp });
+                }
+                if (!string.IsNullOrEmpty(ip))
+                {
+                    var entry = PendingPairPins.Values.FirstOrDefault(a => a.Ip == ip);
+                    if (entry != null && OutboundPairingStatus.TryGetValue(entry.Fingerprint, out var byIp))
+                    {
+                        return Results.Json(new { status = byIp });
+                    }
                 }
                 return Results.NotFound();
             });
@@ -166,7 +176,7 @@ namespace DeXShareTarget.Endpoints
                 {
                     return Results.NotFound();
                 }
-                return Results.Json(new { ip = entry.Key, fingerprint = entry.Value.Fingerprint, pin = entry.Value.Pin, alias = entry.Value.Alias });
+                return Results.Json(new { ip = entry.Value.Ip, fingerprint = entry.Value.Fingerprint, pin = entry.Value.Pin, alias = entry.Value.Alias });
             });
 
             app.MapGet("/local/cert", () =>
@@ -192,13 +202,29 @@ namespace DeXShareTarget.Endpoints
                 return Results.Json(new { pin });
             });
 
-            app.MapPost("/local/pair-cancel", (HttpRequest request) => 
+            app.MapPost("/local/pair-cancel", async (HttpRequest request) => 
             {
                 var targetIp = request.Query["ip"].ToString();
-                if (!string.IsNullOrEmpty(targetIp))
+                var targetFp = request.Query["fingerprint"].ToString();
+                // Resolve the attempt by fingerprint (preferred) or by IP (legacy callers).
+                var attemptFp = targetFp;
+                if (string.IsNullOrEmpty(attemptFp) && !string.IsNullOrEmpty(targetIp))
                 {
-                    OutboundPairingStatus[targetIp] = "Cancelled";
-                    ClearPendingPair(targetIp);
+                    attemptFp = PendingPairPins.Values.FirstOrDefault(a => a.Ip == targetIp)?.Fingerprint ?? "";
+                }
+                if (!string.IsNullOrEmpty(attemptFp))
+                {
+                    OutboundPairingStatus[attemptFp] = "Cancelled";
+                    ClearPendingPair(attemptFp);
+                    // Tell the phone the PC cancelled so its PIN dialog closes immediately
+                    // instead of counting down its own 60s and only then rejecting.
+                    try
+                    {
+                        var cancelMsg = JsonSerializer.Serialize(new { type = "pair-cancelled", data = new { } },
+                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        await WebSocketConnectionManager.SendAsync(attemptFp, cancelMsg);
+                    }
+                    catch { }
                 }
                 // NOTE: deliberately does NOT call IdentityManager.RemovePairedDevice.
                 // Cancelling a pairing attempt must never revoke an already-established

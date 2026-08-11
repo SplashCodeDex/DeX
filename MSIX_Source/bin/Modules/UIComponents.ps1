@@ -492,7 +492,7 @@ function Show-PinPanel {
             return
         }
         try {
-            $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$sessionIp" -TimeoutSec 1 -ErrorAction Stop
+            $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$sessionIp&fingerprint=$sessionFp" -TimeoutSec 1 -ErrorAction Stop
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                 $script:pairWaitTimer.Stop()
                 if ($HidePanelOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }

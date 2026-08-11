@@ -78,7 +78,10 @@ namespace DeXShareTarget.Endpoints
         {
             try
             {
-                OutboundPairingStatus[statusIp] = "Pending";
+                // Pending-pair attempts and their status are keyed by FINGERPRINT, never by
+                // IP: a phone whose DHCP lease changes mid-pairing must still resolve, and two
+                // phones behind the same NAT must not collide.
+                OutboundPairingStatus[targetFp] = "Pending";
                 var pin = new Random().Next(10000, 99999).ToString();
                 var token = Guid.NewGuid().ToString("N");
                 // NOTE: the token is deliberately NOT persisted here. It is only saved when
@@ -97,24 +100,25 @@ namespace DeXShareTarget.Endpoints
                 var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                 if (await WebSocketConnectionManager.SendAsync(targetFp, json))
                 {
-                    PendingPairPins[statusIp] = new Models.PendingPairAttempt
+                    PendingPairPins[targetFp] = new Models.PendingPairAttempt
                     {
                         Fingerprint = targetFp,
                         Pin = pin,
                         Alias = reqDto.Alias,
                         Token = token,
+                        Ip = statusIp,
                         CreatedAt = DateTime.UtcNow
                     };
                     ShowPairPinToast(pin, targetFp);
                     return pin;
                 }
-                OutboundPairingStatus[statusIp] = "Failed"; // No active WebSocket connection
+                OutboundPairingStatus[targetFp] = "Failed"; // No active WebSocket connection
                 return "";
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[PAIR-PUSH] Failed to push pair-prompt: {ex.Message}");
-                OutboundPairingStatus[statusIp] = "Failed";
+                OutboundPairingStatus[targetFp] = "Failed";
                 return "";
             }
         }
@@ -141,9 +145,9 @@ namespace DeXShareTarget.Endpoints
         }
 
         /// <summary>Clears the stored PIN for a pairing attempt once it completes, is cancelled, or expires.</summary>
-        public static void ClearPendingPair(string statusIp)
+        public static void ClearPendingPair(string fingerprint)
         {
-            PendingPairPins.TryRemove(statusIp, out _);
+            PendingPairPins.TryRemove(fingerprint, out _);
         }
 
         private static async Task StartTcpServerAsync()

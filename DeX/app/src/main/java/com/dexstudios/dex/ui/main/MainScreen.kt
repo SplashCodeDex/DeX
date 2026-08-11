@@ -386,6 +386,10 @@ fun MainScreen(
                                         selectedDevice = device
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     } else {
+                                        // Guard against starting a second pairing while the PIN dialog for
+                                        // the first is still showing (a second tap would make the PC push a
+                                        // NEW prompt/PIN, desyncing the phone dialog from the PC display).
+                                        if (AuthState.incomingPairRequest.value != null) return@DeviceListItem
                                         if (pairingDeviceFingerprint == device.info.fingerprint) return@DeviceListItem
                                         pairingDeviceFingerprint = device.info.fingerprint
                                         Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()

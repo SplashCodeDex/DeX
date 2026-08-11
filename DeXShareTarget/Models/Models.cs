@@ -64,6 +64,7 @@ namespace DeXShareTarget.Models
         public string Pin { get; set; } = "";
         public string Alias { get; set; } = "";
         public string? Token { get; set; }
+        public string Ip { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

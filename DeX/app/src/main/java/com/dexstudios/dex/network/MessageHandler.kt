@@ -39,6 +39,7 @@ class MessageHandler(
 
             when (type) {
                 "pair-prompt" -> handlePairPrompt(dataElement)
+                "pair-cancelled" -> handlePairCancelled()
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
                 "public-address" -> handlePublicAddress(dataElement)
                 "endpoint-info" -> handleEndpointInfo(dataElement)
@@ -92,6 +93,18 @@ class MessageHandler(
             }
             sendPairResponse(accepted)
         }
+    }
+
+    /**
+     * The PC cancelled the pairing (user clicked Cancel / timed out on the PC panel).
+     * Dismiss the PIN dialog immediately instead of letting it count down its own 60s
+     * and only then rejecting — same effect as the user tapping ✕.
+     */
+    private fun handlePairCancelled() {
+        val pending = AuthState.incomingPairRequest.value ?: return
+        AuthState.incomingPairRequest.value = null
+        notificationHelper.cancelPairingNotification()
+        pending.deferred.complete("")
     }
 
     private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
