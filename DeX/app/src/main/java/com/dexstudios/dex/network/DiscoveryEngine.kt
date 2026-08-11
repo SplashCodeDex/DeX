@@ -84,15 +84,25 @@ class DiscoveryEngine(
 
         // Re-advertise whenever the trusted identity changes (Google sign-in/sign-out)
         // so the LAN advertisement always carries the current identityHash/googleSub.
+        // Only restart when the pair actually differs from what the managers already
+        // advertise: DataStore's init writes email then googleSub separately, which fired
+        // this twice on every cold start — each restart tears down and re-binds the UDP
+        // multicast socket, and that churn could leave the phone's listener dead so the
+        // PC only sees it on mDNS cadence (15-31s) and it vanishes from the GUI's 10s
+        // freshness window.
         identityWatchJob = scope.launch {
+            var lastAdvertised = deviceConfig.email to deviceConfig.googleSub
             combine(deviceConfig.emailFlow, deviceConfig.googleSubFlow) { email, sub -> email to sub }
                 .drop(1)
-                .collectLatest {
-                    Timber.i("Trusted identity changed; re-advertising NSD + UDP")
-                    nsdManagerHelper?.stop()
-                    nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
-                    udpManager?.stop()
-                    udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
+                .collectLatest { pair ->
+                    if (pair != lastAdvertised) {
+                        lastAdvertised = pair
+                        Timber.i("Trusted identity changed; re-advertising NSD + UDP")
+                        nsdManagerHelper?.stop()
+                        nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
+                        udpManager?.stop()
+                        udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
+                    }
                 }
         }
     }

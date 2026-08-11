@@ -344,7 +344,12 @@ $mdnsTimer.Add_Tick({
                         $liveUdp = @()
                         foreach ($p in $udpRes) {
                             $dt = [datetimeOffset]::FromUnixTimeMilliseconds($p.lastSeen).UtcDateTime
-                            if (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10)) {
+                            # Show devices that announced within the freshness window OR are
+                            # WebSocket-online. The server deliberately keeps WS-connected
+                            # devices listed even when their LAN announcements lapse (mDNS
+                            # queries run every 15-31s, telemetry every 60s — both exceed the
+                            # 10s window), so those must stay clickable instead of vanishing.
+                            if (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10) -or $p.isOnline) {
                                 if ($p.isPaired -or $p.isAutoTrusted) {
                                     # Telemetry (WebSocket) feeds battery + wifi for every device
                                     $peerRow = @{
