@@ -141,14 +141,19 @@ namespace DeXShareTarget
                 var app = new System.Windows.Application();
                 app.Startup += (s, e) => 
                 {
-                    try 
+                    // Run the server and observe its completion so a startup failure is
+                    // logged instead of becoming a silent unobserved task exception.
+                    _ = Task.Run(async () =>
                     {
-                        _ = LocalSendServer.StartAsync();
-                    } 
-                    catch (Exception ex)
-                    {
-                        LogCrash(ex, "LocalSendServer Startup");
-                    }
+                        try
+                        {
+                            await LocalSendServer.StartAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            LogCrash(ex, "LocalSendServer Startup");
+                        }
+                    });
                 };
                 app.Run();
             }

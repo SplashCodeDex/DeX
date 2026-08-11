@@ -46,10 +46,6 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.network.DeviceManager
-import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
-import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.NetworkErrorDialog
 import com.dexstudios.dex.ui.components.TransferProgressOverlay
@@ -460,7 +456,7 @@ fun MainScreen(
                                             modifier = Modifier
                                                 .padding(bottom = 24.dp)
                                                 .size(96.dp)
-                                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), CircleShape),
+                                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(

@@ -118,7 +118,8 @@ fun SettingsScreen(
         FloatingTopAppBar(
             modifier = Modifier.align(Alignment.TopCenter),
             backdrop = contentBackdrop,
-            showSearch = false
+            showSearch = false,
+            showLogo = false
         )
     }
 }

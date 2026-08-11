@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -51,8 +52,6 @@ namespace DeXShareTarget
             }
 
             ServerCert = GetOrCreateServerCertificate();
-            // The address the current certificate covers; used to detect runtime IP changes
-            var certifiedAddress = PublicAddress;
 
             // Port mappings are not needed for the certificate, so run them in the background
             // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.
@@ -63,22 +62,21 @@ namespace DeXShareTarget
                     try { await UpnpPortForward.ConfigureAsync(CancellationToken.None); }
                     catch (Exception ex) { Console.WriteLine($"[UPNP] Auto-config failed: {ex.Message}"); }
 
-                    // The public IP changed at runtime: the running certificate no longer covers
-                    // it and QUIC over WAN would fail TLS. Restart the server so a fresh
-                    // certificate (with the new SAN) is created; phones reconnect automatically.
-                    if (!string.IsNullOrEmpty(PublicAddress) && PublicAddress != certifiedAddress)
+                    // The public IP or a LAN IP changed at runtime, so the current certificate's
+                    // SANs no longer cover the addresses clients connect to and TLS would fail.
+                    // Renew the certificate in place: the HTTP/1.1 endpoint serves the certificate
+                    // through a per-connection selector, so new connections pick up the renewed
+                    // certificate immediately — no server restart required.
+                    if (ServerCert is not null && !CertCoversAddresses(ServerCert, PublicAddress))
                     {
-                        certifiedAddress = PublicAddress;
                         try
                         {
-                            Console.WriteLine("[CERT] Public IP changed; restarting server to renew certificate");
-                            await App.StopAsync();
+                            Console.WriteLine("[CERT] Network address changed; renewing certificate");
                             ServerCert = GetOrCreateServerCertificate();
-                            await App.StartAsync();
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[CERT] Server restart after IP change failed: {ex.Message}");
+                            Console.WriteLine($"[CERT] Certificate renewal failed: {ex.Message}");
                         }
                     }
 
@@ -91,13 +89,20 @@ namespace DeXShareTarget
                 // Endpoint 1: HTTP/1.1 on TCP 48424 (Does not block UDP 48424)
                 // HTTP/1.1 only: OkHttp WebSockets (the Android client) cannot run over HTTP/2,
                 // and every other client (Ktor CIO, PowerShell, .NET HttpClient) is HTTP/1.1 anyway.
+                // The certificate is served through a selector so a runtime renewal (IP change)
+                // applies to new connections without rebuilding the host.
                 options.ListenAnyIP(DeXConstants.HttpsPort, listenOptions =>
                 {
                     listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
-                    listenOptions.UseHttps(ServerCert);
+                    listenOptions.UseHttps(httpsOptions =>
+                    {
+                        httpsOptions.ServerCertificateSelector = (_, _) => ServerCert;
+                    });
                 });
                 
                 // Endpoint 2: HTTP/3 (QUIC) on UDP 48423 (Exclusive QUIC socket)
+                // QUIC requires a fixed certificate at listener setup (no per-connection selector),
+                // so this endpoint uses the latest ServerCert and picks up a renewal on next start.
                 options.ListenAnyIP(DeXConstants.QuicPort, listenOptions =>
                 {
                     listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http3;
@@ -151,12 +156,21 @@ namespace DeXShareTarget
         }
 
         /// <summary>
-        /// Loads (or creates) a stable self-signed certificate persisted under %APPDATA%\DeX.
+        /// Loads (or creates) a stable server certificate persisted under %APPDATA%\DeX.
         /// A stable cert is required so Android's Cronet/QUIC client can trust it once and
-        /// reuse it across app restarts. SANs cover the machine name and current LAN IPs so
-        /// hostname verification succeeds whether the phone connects by hostname or by IP.
-        /// The configured public (WAN) address is added as a SAN too.
+        /// reuse it across app restarts. SANs cover the machine name, current LAN IPs and the
+        /// configured public (WAN) address, so hostname verification succeeds whether the
+        /// phone connects by hostname, LAN IP or public address.
         /// </summary>
+        /// <remarks>
+        /// Hardening: an existing certificate is reused ONLY if it can actually serve TLS.
+        /// Older builds persisted PFXs without a private key — such a file loads fine and
+        /// passes every date/issuer check, then makes Kestrel refuse to start with
+        /// "server mode SSL must use a certificate with the associated private key". The
+        /// SslStreamCertificateContext.Create check below uses the exact API Kestrel calls,
+        /// so a keyless/unsupported certificate is caught here and regenerated instead of
+        /// crashing the server on the first launch.
+        /// </remarks>
         private static X509Certificate2 GetOrCreateServerCertificate()
         {
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX");
@@ -170,22 +184,79 @@ namespace DeXShareTarget
                 try
                 {
                     var existing = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
-                    var coversPublicAddress = string.IsNullOrEmpty(publicAddress) ||
-                        existing.Extensions.OfType<X509SubjectAlternativeNameExtension>()
-                            .Any(e => e.EnumerateDnsNames().Contains(publicAddress) ||
-                                      e.EnumerateIPAddresses().Any(ip => ip.ToString() == publicAddress));
-                    // Regenerate if expiring soon, the public address changed, or it was signed
-                    // by the old self-signed scheme instead of the bundled DeX root CA
-                    if (existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7) &&
-                        coversPublicAddress &&
-                        string.Equals(existing.Issuer, "CN=DeX Root CA", StringComparison.OrdinalIgnoreCase))
+                    var usable = CanServeWithCert(existing);
+                    var valid = existing.NotAfter > DateTimeOffset.UtcNow.AddDays(7);
+                    var covers = CertCoversAddresses(existing, publicAddress);
+                    var trustedIssuer = string.Equals(existing.Issuer, "CN=DeX Root CA", StringComparison.OrdinalIgnoreCase);
+                    if (usable && valid && covers && trustedIssuer)
                     {
                         return existing;
                     }
+                    LogCert($"Existing certificate rejected (servable={usable}, valid={valid}, coversAddresses={covers}, rootCaSigned={trustedIssuer}); regenerating");
                 }
-                catch { /* corrupt or expired, regenerate below */ }
+                catch (Exception ex)
+                {
+                    LogCert($"Existing certificate unreadable ({ex.Message}); regenerating");
+                }
             }
 
+            LogCert("Generating fresh server certificate");
+            return CreateAndPersistServerCertificate(dir, certPath, publicAddress);
+        }
+
+        /// <summary>
+        /// True if the certificate has a working private key that the TLS stack will accept.
+        /// This calls SslStreamCertificateContext.Create — the exact API Kestrel uses when it
+        /// starts HTTPS listeners — so a certificate that passes here is one Kestrel will serve.
+        /// </summary>
+        private static bool CanServeWithCert(X509Certificate2 cert)
+        {
+            try
+            {
+                // Probe with the exact API Kestrel uses; the context is GC-collected after the check.
+                _ = SslStreamCertificateContext.Create(cert, null, offline: true);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>True if the certificate's SANs cover the machine name, every current LAN IPv4 and the public address.</summary>
+        private static bool CertCoversAddresses(X509Certificate2 cert, string? publicAddress)
+        {
+            try
+            {
+                var san = cert.Extensions.OfType<X509SubjectAlternativeNameExtension>().FirstOrDefault();
+                if (san is null) return false;
+                var dnsNames = san.EnumerateDnsNames().ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var ipNames = san.EnumerateIPAddresses().Select(a => a.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var ip in GetLocalIPv4Addresses())
+                {
+                    if (!ipNames.Contains(ip)) return false;
+                }
+                if (!string.IsNullOrEmpty(publicAddress) && !dnsNames.Contains(publicAddress) && !ipNames.Contains(publicAddress))
+                {
+                    return false;
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Creates a fresh certificate (signed by the bundled DeX root CA, or self-signed as a
+        /// last-resort fallback if the embedded CA is unavailable), verifies the TLS stack will
+        /// accept it, and persists it atomically so a crash mid-write can never leave a truncated
+        /// PFX behind.
+        /// </summary>
+        private static X509Certificate2 CreateAndPersistServerCertificate(string dir, string certPath, string publicAddress)
+        {
             using var rsa = RSA.Create(2048);
             var request = new CertificateRequest($"cn={Environment.MachineName}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             var san = new SubjectAlternativeNameBuilder();
@@ -209,20 +280,61 @@ namespace DeXShareTarget
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
             request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, false));
 
-            // Signed by the bundled DeX root CA so Android's Cronet trusts it automatically.
-            // NOTE: CertificateRequest.Create(issuer, ...) returns a cert WITHOUT the private
-            // key attached — exporting it directly would produce a keyless PFX and Kestrel
-            // would refuse to start ("server mode SSL must use a certificate with the
-            // associated private key"). CopyWithPrivateKey reattaches the request's RSA key.
-            using var ca = LoadEmbeddedCa();
-            var signed = request.Create(
-                ca,
-                DateTimeOffset.UtcNow.AddDays(-1),
-                DateTimeOffset.UtcNow.AddYears(1),
-                Guid.NewGuid().ToByteArray());
-            var leaf = signed.CopyWithPrivateKey(rsa);
-            File.WriteAllBytes(certPath, leaf.Export(X509ContentType.Pfx, "dex-local"));
-            return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
+            // Preferred: signed by the bundled DeX root CA so Android's Cronet trusts it
+            // automatically. If the embedded CA is missing (tampered/trimmed install), fall
+            // back to a self-signed certificate so the server always starts; phones simply
+            // prompt to trust it once.
+            X509Certificate2 leaf;
+            try
+            {
+                using var ca = LoadEmbeddedCa();
+                // NOTE: CertificateRequest.Create(issuer, ...) returns a cert WITHOUT the private
+                // key attached — exporting it directly would produce a keyless PFX and Kestrel
+                // would refuse to start. CopyWithPrivateKey reattaches the request's RSA key.
+                var signed = request.Create(ca, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1), Guid.NewGuid().ToByteArray());
+                leaf = signed.CopyWithPrivateKey(rsa);
+                signed.Dispose();
+            }
+            catch (Exception ex)
+            {
+                LogCert($"Root CA unavailable ({ex.Message}); using self-signed fallback");
+                leaf = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+            }
+
+            if (!CanServeWithCert(leaf))
+            {
+                leaf.Dispose();
+                throw new InvalidOperationException("Generated server certificate was rejected by the TLS stack");
+            }
+
+            // Persist atomically: write a temp file, then move it over the target. A crash
+            // between the two steps leaves a valid old file (or a stray temp file), never a
+            // corrupt PFX that loads but cannot serve TLS.
+            var tmpPath = certPath + ".tmp";
+            File.WriteAllBytes(tmpPath, leaf.Export(X509ContentType.Pfx, "dex-local"));
+            File.Move(tmpPath, certPath, overwrite: true);
+            leaf.Dispose();
+
+            var reloaded = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(certPath), "dex-local", X509KeyStorageFlags.Exportable);
+            if (!CanServeWithCert(reloaded))
+            {
+                throw new InvalidOperationException("Reloaded server certificate failed the TLS stack check");
+            }
+            LogCert("Server certificate persisted");
+            return reloaded;
+        }
+
+        /// <summary>Persists certificate lifecycle events for field diagnostics (no secrets).</summary>
+        private static void LogCert(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DeX");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "cert.log"), $"[{DateTime.Now:O}] {message}\n");
+            }
+            catch { }
+            Console.WriteLine($"[CERT] {message}");
         }
 
         private static X509Certificate2 LoadEmbeddedCa()
