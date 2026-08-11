@@ -214,7 +214,7 @@ $actionPull = {
 
     $sb = $script:wpfWindow.Resources["ExpandMenu"].Clone()
     if ($isSwapping) {
-        14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
+        15, 14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
     }
     $sb.Children[0].By = $null
     $sb.Children[0].To = $script:contractedWidth + 754
@@ -315,7 +315,7 @@ $actionSettings = {
 
     $sb = $script:wpfWindow.Resources["ExpandSettings"].Clone()
     if ($isSwapping) {
-        14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
+        15, 14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
     }
     $sb.Children[0].By = $null
     $sb.Children[0].To = 675

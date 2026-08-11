@@ -379,8 +379,8 @@ fun MainScreen(
                     }
 
                     // 2. "Discovered" Section Title
-                    if (untrustedDevices.isNotEmpty()) {
-                        item {
+                    item {
+                        Column(modifier = Modifier.padding(bottom = 8.dp)) {
                             Text(
                                 text = "Discovered",
                                 style = MaterialTheme.typography.titleLarge,
@@ -388,91 +388,81 @@ fun MainScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.onBackground
                             )
-                        }
-                    }
-
-                    // 3. Real Discovered Devices (Untrusted)
-                    items(untrustedDevices, key = { it.info.fingerprint }) { device ->
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            DeviceListItem(
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .width(300.dp),
-                                device = device,
-                                isTrusted = false,
-                                onClick = {},
-                                onButtonClick = {
-                                    // Show connection options (PIN vs QR)
-                                    connectOptionsDevice = device
-                                },
-                                onLongClick = {
-                                    // Long-press opens the device context menu
-                                    contextMenuDevice = device
-                                }
-                            )
-                        }
-                    }
-
-                    // 4. Empty State Panel
-                    if (discoveredDevices.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 32.dp),
-                                contentAlignment = Alignment.Center
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                DeXPanel(
-                                    shape = RoundedCornerShape(32.dp),
-                                    modifier = Modifier
-                                        .widthIn(max = 400.dp)
-                                        .fillMaxWidth()
-                                        .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(vertical = 32.dp, horizontal = 16.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(bottom = 24.dp)
-                                                .size(96.dp)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
-                                                contentDescription = "Scan",
-                                                modifier = Modifier.size(48.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
+                                // A. Real Discovered Devices (Untrusted)
+                                items(untrustedDevices, key = { it.info.fingerprint }) { device ->
+                                    DeviceListItem(
+                                        modifier = Modifier.width(300.dp),
+                                        device = device,
+                                        isTrusted = false,
+                                        onClick = {},
+                                        onButtonClick = {
+                                            // Show connection options (PIN vs QR)
+                                            connectOptionsDevice = device
+                                        },
+                                        onLongClick = {
+                                            // Long-press opens the device context menu
+                                            contextMenuDevice = device
                                         }
+                                    )
+                                }
 
-                                        Text(
-                                            text = "Scan to add Device",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                        Text(
-                                            text = "No Devices Connected. Make sure they are powered on and nearby.",
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp),
-                                            textAlign = TextAlign.Center
-                                        )
-
-                                        DeXButton(
-                                            onClick = { launchQrScanner() },
-                                            modifier = Modifier.fillMaxWidth(0.8f).height(44.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary,
-                                                contentColor = MaterialTheme.colorScheme.onPrimary
-                                            )
+                                // B. Permanent "Scan to add Device" Card
+                                item {
+                                    DeXPanel(
+                                        shape = RoundedCornerShape(32.dp),
+                                        modifier = Modifier
+                                            .width(300.dp)
+                                            .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp)
                                         ) {
-                                            Text("Scan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(bottom = 16.dp)
+                                                    .size(64.dp)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
+                                                    contentDescription = "Scan",
+                                                    modifier = Modifier.size(32.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+
+                                            Text(
+                                                text = "Scan to add Device",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onBackground,
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                            )
+                                            Text(
+                                                text = "Pair with QR or PIN",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(bottom = 16.dp),
+                                                textAlign = TextAlign.Center
+                                            )
+
+                                            DeXButton(
+                                                onClick = { launchQrScanner() },
+                                                modifier = Modifier.fillMaxWidth().height(40.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.primary,
+                                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            ) {
+                                                Text("Scan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            }
                                         }
                                     }
                                 }

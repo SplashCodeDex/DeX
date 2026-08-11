@@ -531,7 +531,7 @@
                 </StackPanel>
                 
                 <!-- Main content holding all views -->
-                  <Grid x:Name="menuViewsContainer" ClipToBounds="True">
+                      <Grid x:Name="menuViewsContainer" ClipToBounds="True" MaxHeight="352">
                         <Grid.Resources>
                             <Storyboard x:Key="SlideInPinAnim">
                                 <DoubleAnimation Storyboard.TargetName="menuContentTrans" Storyboard.TargetProperty="X" To="-300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
@@ -570,21 +570,8 @@
                               <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                           </Storyboard>
                       </Grid.Resources>
-                      <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="MaxHeight" Value="352" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Visibility, ElementName=FileExplorer}" Value="Visible">
-                                    <Setter Property="MaxHeight" Value="Infinity" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Visibility, ElementName=SettingsPanel}" Value="Visible">
-                                    <Setter Property="MaxHeight" Value="Infinity" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
-                    
-                    <DockPanel x:Name="menuContentPanel" LastChildFill="True">
+                      
+                      <DockPanel x:Name="menuContentPanel" LastChildFill="True">
                         <DockPanel.RenderTransform>
                             <TranslateTransform x:Name="menuContentTrans" X="0" Y="0" />
                         </DockPanel.RenderTransform>

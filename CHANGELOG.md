@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.13.0] - 2026-08-11
+### Fixed
+- **[fix] Menu content shrinks abruptly during contraction**: Fixed a 66px gap appearing at the top of the menu during contraction. The issue occurred because a DataTrigger instantly snapped the container's MaxHeight back to 352px the moment the inner panels (FileExplorer/Settings) started fading out, while the main border was still animating its height. Removed the DataTriggers and integrated synchronized `MaxHeight` double animations directly into the `ExpandMenu` and `ContractMenu` storyboards.
+
 ## [7.9.12.0] - 2026-08-11
 ### Fixed
 - **[fix] Close button disappears after first use in Expand Menu**: Fixed an issue where the `btnCloseMenu` button would remain permanently shrunk (0 width/margin) after the first menu contraction. Added explicit zero-duration reset animations in the `ExpandMenu` storyboard to restore its width and margin whenever the menu expands.

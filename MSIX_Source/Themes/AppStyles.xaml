@@ -144,7 +144,7 @@
             </ObjectAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" />
             
-
+            <DoubleAnimation Storyboard.TargetName="menuViewsContainer" Storyboard.TargetProperty="MaxHeight" To="9999" Duration="0:0:0" />
             
             <!-- Subtle Parallax on Main Menu: Slide Right slightly -->
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
@@ -163,6 +163,9 @@
             <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
+            
+            <DoubleAnimation Storyboard.TargetName="menuViewsContainer" Storyboard.TargetProperty="MaxHeight" To="352" Duration="0:0:0" BeginTime="0:0:0.85" />
+            
             <DoubleAnimation Storyboard.TargetName="fileTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
@@ -223,7 +226,7 @@
             </ObjectAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" />
             
-
+            <DoubleAnimation Storyboard.TargetName="menuViewsContainer" Storyboard.TargetProperty="MaxHeight" To="9999" Duration="0:0:0" />
             
             <!-- Subtle Parallax on Main Menu: Slide Right slightly -->
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
@@ -242,6 +245,9 @@
             <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
+            
+            <DoubleAnimation Storyboard.TargetName="menuViewsContainer" Storyboard.TargetProperty="MaxHeight" To="352" Duration="0:0:0" BeginTime="0:0:0.85" />
+            
             <DoubleAnimation Storyboard.TargetName="settingsTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
