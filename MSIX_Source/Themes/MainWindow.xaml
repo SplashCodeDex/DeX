@@ -1042,17 +1042,6 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
-                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SecondaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center">
-                                        <Ellipse.Triggers>
-                                            <EventTrigger RoutedEvent="Loaded">
-                                                <BeginStoryboard>
-                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.2" Duration="0:0:0.8" />
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </EventTrigger>
-                                        </Ellipse.Triggers>
-                                    </Ellipse>
                                     <TextBlock x:Name="txtPinStatus" Text="Waiting for acceptance..." FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <TextBlock x:Name="txtPinTimeout" Text="" FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" Opacity="0.7" />
