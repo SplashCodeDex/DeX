@@ -328,6 +328,17 @@ function Show-QrCode {
 
     $script:wpfWindow.FindName("pinCodeContent").Visibility = 'Collapsed'
     $script:wpfWindow.FindName("qrCodeContent").Visibility = 'Visible'
+
+    $pinT = $script:wpfWindow.FindName("pinContentTrans")
+    if ($pinT) {
+        $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+        $pinT.X = 140
+    }
+    $qrT = $script:wpfWindow.FindName("qrContentTrans")
+    if ($qrT) {
+        $qrT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+        $qrT.X = 0
+    }
     $txtQrBtnIcon = $script:wpfWindow.FindName("txtQrBtnIcon")
     if ($txtQrBtnIcon) { $txtQrBtnIcon.Visibility = 'Collapsed' }
     $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")

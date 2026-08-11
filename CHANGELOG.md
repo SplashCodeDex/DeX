@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.4.0] - 2026-08-11
+### Fixed
+- **[fix] QR Code UI left clipping on outbound pairing (Desktop)**: Fixed an issue where the QR code was shifted to the left and clipped out of bounds upon opening the pairing panel. The `qrContentTrans` X translation is now explicitly reset to 0 (and `pinContentTrans` to 140) whenever the QR view initializes.
+
 ## [7.9.3.0] - 2026-08-11
 ### Fixed
 - **[fix] Click-outside no longer hides the spatial menu after a pairing (Desktop)**: Once any pairing session had run, the window could never be dismissed by clicking outside in the contracted state. The stopped `pairWaitTimer` (never nulled on completion/cancellation) made the Deactivated guard's truthy check permanently block the hide. The guard now only keeps the window while the poll timer is actually running, and the timer is nulled when pairing state is cleared.
