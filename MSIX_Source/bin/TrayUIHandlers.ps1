@@ -19,8 +19,7 @@ function Reset-SpatialPanels {
     $script:ce["menuTrans"].X = 0
     $script:ce["btnCloseMenu"].Visibility = 'Collapsed'
     $script:ce["btnCloseMenu"].Opacity = 0
-    $script:ce["NearbyExpandPanel"].Visibility = 'Collapsed'
-    $script:ce["NearbyExpandPanel"].Opacity = 0
+
     # Pairing PIN/QR panel: only collapse/clear when NO pairing session is live. An active
     # session must survive window dismissal (click-away): the pairWaitTimer keeps polling
     # in the background, the completion toast still fires, and re-opening the window shows

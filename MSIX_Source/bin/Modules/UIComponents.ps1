@@ -345,20 +345,18 @@ function Nudge-ForExpand($expandW, $expandH) {
 }
 
 function Restore-ExpandPosition {
-    # Animate the window back to its pre-expand position, in sync with
-    # the contract storyboard (0.25s content fade + 0.35s panel shrink).
-    # Same BackEase as the contract so the window and panel move as one.
+    # Animate the window back to where it was before the expand nudge,
+    # in sync with the 800ms contract storyboard. Idempotent — safe to
+    # call even when no nudge was applied (no-op).
     if ($null -eq $script:preExpandLeft -and $null -eq $script:preExpandTop) { return }
 
-    $ease = New-Object System.Windows.Media.Animation.BackEase
-    $ease.Amplitude = 0.15; $ease.EasingMode = 'EaseOut'
-    $dur  = [TimeSpan]::FromSeconds(0.35)
-    $wait = [TimeSpan]::FromSeconds(0.25)
+    $ease = try { $script:wpfWindow.FindResource("BouncyEase") } catch { $null }
+    if (-not $ease) { $ease = (New-Object System.Windows.Media.Animation.CubicEase) }
+    $dur = [TimeSpan]::FromSeconds(0.8)
 
     if ($null -ne $script:preExpandLeft -and $script:preExpandLeft -ne $script:wpfWindow.Left) {
         $ax = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
-            From = $script:wpfWindow.Left; To = $script:preExpandLeft
-            Duration = $dur; BeginTime = $wait
+            From = $script:wpfWindow.Left; To = $script:preExpandLeft; Duration = $dur
             EasingFunction = $ease; FillBehavior = 'Stop'
         }
         $script:wpfWindow.Left = $script:preExpandLeft
@@ -366,8 +364,7 @@ function Restore-ExpandPosition {
     }
     if ($null -ne $script:preExpandTop -and $script:preExpandTop -ne $script:wpfWindow.Top) {
         $ay = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{
-            From = $script:wpfWindow.Top; To = $script:preExpandTop
-            Duration = $dur; BeginTime = $wait
+            From = $script:wpfWindow.Top; To = $script:preExpandTop; Duration = $dur
             EasingFunction = $ease; FillBehavior = 'Stop'
         }
         $script:wpfWindow.Top = $script:preExpandTop

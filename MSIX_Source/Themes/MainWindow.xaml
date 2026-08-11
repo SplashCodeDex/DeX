@@ -859,7 +859,8 @@
                                         <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />
                                         <MenuItem Name="menuMirror" Header="Mirror Screen" Tag="{Binding [IP]}" />
                                         <MenuItem Name="menuCopyIp" Header="Copy IP Address" Tag="{Binding [IP]}" />
-                                        <MenuItem Name="menuDisconnect" Header="Disconnect ADB" Tag="{Binding [IP]}" />
+                                        <MenuItem Name="menuConnectAdb" Header="Connect ADB" Tag="{Binding [IP]}" Visibility="{Binding [ConnectAdbVisibility]}" />
+                                        <MenuItem Name="menuDisconnectAdb" Header="Disconnect ADB" Tag="{Binding [IP]}" Visibility="{Binding [DisconnectAdbVisibility]}" />
                                         <Separator Background="{DynamicResource PrimaryTextBrush}" />
                                         <MenuItem Name="menuRename" Header="Rename / Alias" Tag="{Binding [Fingerprint]}" />
                                         <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
@@ -897,9 +898,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Nearby Expand Panel: hidden when contracted, staggers in when expanded -->
-                <StackPanel x:Name="NearbyExpandPanel" Visibility="Collapsed" Opacity="0">
-                    <Separator Background="{DynamicResource AccentBrush}" Height="1" Margin="16,6" />
 
                     <!-- ====================================================================
                          Static "Nearby" profile placeholders (btnUser1/2/3).
@@ -994,7 +992,6 @@
                         </Grid>
                     </Button>
 
-                </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>

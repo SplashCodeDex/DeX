@@ -62,7 +62,7 @@ function Get-DeviceSubText {
             default        { 0xE850 }  # Battery0 (empty)
         }
         $res.BatteryIcon = "$([char]$glyph)"
-        $res.BatteryText = ""
+        $res.BatteryText = "${level}%"
     }
     
     if ($null -ne $Peer.WifiRssi -and $Peer.WifiRssi -gt -127) {

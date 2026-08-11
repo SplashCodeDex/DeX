@@ -37,6 +37,26 @@ namespace DeXShareTarget.Endpoints
                 return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed or was cancelled.</h3></body></html>", "text/html");
             });
 
+            // OAuth browser redirect lands here (Kestrel, port 48425). The browser sends the
+            // authorization code as query params; we hand it to the waiting SignInAsync flow.
+            app.MapGet("/local/oauth/callback", (string? code, string? state, string? error) =>
+            {
+                if (!string.IsNullOrEmpty(error))
+                {
+                    return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed — Google reported an error.</h3></body></html>", "text/html");
+                }
+                if (string.IsNullOrEmpty(state) || string.IsNullOrEmpty(code))
+                {
+                    return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed — missing parameters.</h3></body></html>", "text/html");
+                }
+                var ok = GoogleOAuth.HandleCallback(state, code, out var cbError);
+                if (ok)
+                {
+                    return Results.Text("<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>DeX signed in — you can close this tab.</h3></body></html>", "text/html");
+                }
+                return Results.Text($"<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed — {cbError}</h3></body></html>", "text/html");
+            });
+
             // PC sign-out: clears the email identity and the stored Google profile
             app.MapPost("/local/settings/signout", () =>
             {

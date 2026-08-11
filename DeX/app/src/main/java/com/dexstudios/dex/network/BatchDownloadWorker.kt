@@ -313,6 +313,7 @@ class BatchDownloadWorker(
     }
 
     private suspend fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String) {
+        val sourceFingerprint = inputData.getString("sourceFingerprint")
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
         lastUiUpdate.set(now)
@@ -342,7 +343,8 @@ class BatchDownloadWorker(
                     doneFiles = doneFiles,
                     totalFiles = totalFiles,
                     protocol = transferProtocol,
-                    speedBps = smoothedSpeed.get()
+                    speedBps = smoothedSpeed.get(),
+                    sourceFingerprint = sourceFingerprint
                 )
             )
             setForeground(createForegroundInfo((progress * 100).toInt(), "Downloading: $displayName"))

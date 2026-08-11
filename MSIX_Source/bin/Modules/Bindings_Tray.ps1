@@ -1,4 +1,4 @@
-﻿
+
 $script:notifyIcon.Add_MouseUp({
     param($sender, $e)
     Write-Trace "MouseUp fired! Button: $($e.Button)"
@@ -56,12 +56,13 @@ $script:notifyIcon.Add_MouseUp({
         (dxEl "menuTrans").X = 0
         (dxEl "btnCloseMenu").Visibility = 'Collapsed'
         (dxEl "btnCloseMenu").Opacity = 0
-        (dxEl "NearbyExpandPanel").Visibility = 'Collapsed'
-        (dxEl "NearbyExpandPanel").Opacity = 0
         (dxEl "TopActionsPanel").Visibility = 'Visible'
         (dxEl "btnUserJoe").Visibility = 'Visible'
         (dxEl "btnDeviceWindows").Visibility = 'Visible'
         (dxEl "icLivePeers").Visibility = 'Visible'
+        (dxEl "btnUser1").Visibility = 'Visible'
+        (dxEl "btnUser2").Visibility = 'Visible'
+        (dxEl "btnUser3").Visibility = 'Visible'
 
         $workArea = [System.Windows.SystemParameters]::WorkArea
         $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }

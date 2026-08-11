@@ -18,7 +18,7 @@ class MainScreenTest {
   }
 
   @Test
-  fun recentHeader_exists() {
-    composeTestRule.onNodeWithText("Recent").assertExists()
+  fun myDevicesHeader_exists() {
+    composeTestRule.onNodeWithText("My Devices").assertExists()
   }
 }

@@ -249,7 +249,8 @@ data class UploadState(
     val isSuccess: Boolean = false,
     val error: String? = null,
     val protocol: String = "",
-    val speedBps: Long = 0L
+    val speedBps: Long = 0L,
+    val targetFingerprint: String? = null
 )
 
 data class DownloadOutcome(

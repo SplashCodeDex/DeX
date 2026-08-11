@@ -196,7 +196,7 @@ $initElements = @(
     'btnSettingsWiggleToggle', 'btnSettingsDownloadPath', 'btnSettingsAbout',
     'btnSettingsResetIdentity', 'btnSettingsSignOut', 'btnSettingsGoogleSignIn',
     'btnProfileTop', 'btnProfileBottom', 'btnProfileTopSettings',
-    'txtSearch', 'btnQAPull', 'btnQAClipboard'
+    'txtSearch', 'btnQAPull', 'btnQAClipboard', 'FileExplorer'
 )
 foreach ($elName in $initElements) { $null = dxEl $elName }
 
@@ -467,12 +467,15 @@ $mdnsTimer.Add_Tick({
                                         WifiSsid = $p.wifiSsid
                                         WifiRssi = $p.wifiRssi
                                     }
+                                    $adbConnected = ($script:currentTarget -and $p.ip -eq ($script:currentTarget -replace ':.*',''))
                                     $livePeers += @{
                                         Name        = $p.info.alias
                                         SubText     = Get-DeviceSubText -Peer $peerRow
                                         IconGlyph   = "$([char]0xE8EA)"
                                         IP          = $p.ip
                                         Fingerprint = $p.info.fingerprint
+                                        ConnectAdbVisibility = if ($adbConnected) { 'Collapsed' } else { 'Visible' }
+                                        DisconnectAdbVisibility = if ($adbConnected) { 'Visible' } else { 'Collapsed' }
                                     }
                                 } else {
                                     $liveUdp += @{

@@ -148,7 +148,15 @@ class MessageHandler(
             // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress).
             // The HTTPS port comes from the PC's advertised info; the TCP port is the legacy fallback.
             val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size, file.token) }
-            TcpDownloadService.downloadBatch(context, senderIp, uploadReq.info.port, PULL_PORT, files, dirUri)
+            TcpDownloadService.downloadBatch(
+                context,
+                senderIp,
+                uploadReq.info.port,
+                PULL_PORT,
+                files,
+                dirUri,
+                fingerprint = uploadReq.info.fingerprint
+            )
         }
     }
 

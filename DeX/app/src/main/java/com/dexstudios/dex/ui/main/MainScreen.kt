@@ -74,6 +74,10 @@ fun MainScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
+    val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
+    val rosterDevices by com.dexstudios.dex.network.PunchState.devices.collectAsStateWithLifecycle()
+
     val wsService: WebSocketClientService = koinInject()
                     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
                     var selectedRosterDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
@@ -240,8 +244,6 @@ fun MainScreen(
         // status bar and navigation bar — the glass edge fades keep it readable.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
-            val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
             TransferProgressOverlay(
                 downloadState = downloadState,
                 uploadState = uploadState,
@@ -251,10 +253,8 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
-        val rosterDevices by com.dexstudios.dex.network.PunchState.devices.collectAsStateWithLifecycle()
         // Status bar height — content scrolls behind the native status bar, so
-        // the glass header and the "Recent" rest position clear it explicitly.
+        // the glass header and the "My Devices" rest position clear it explicitly.
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         Box(modifier = modifier.fillMaxSize()) {
             // ===== Backdrop source: the scrolling content the glass samples.
@@ -278,6 +278,27 @@ fun MainScreen(
                 )
 
                 val discoveredDevices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
+                val deviceConfig: com.dexstudios.dex.network.DeviceConfig = koinInject()
+
+                val (trustedLocal, untrustedDevices) = discoveredDevices.partition { device ->
+                    AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
+                        (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash)
+                }
+
+                // Consolidated and prioritized: Real Trusted Devices (Active Transfer > Recency)
+                val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint) {
+                    val map = mutableMapOf<String, DiscoveredDevice>()
+                    // WAN devices baseline
+                    rosterDevices.forEach { map[it.info.fingerprint] = it }
+                    // Local trusted devices overwrite roster (LAN is preferred/faster)
+                    trustedLocal.forEach { map[it.info.fingerprint] = it }
+
+                    map.values.sortedWith(
+                        compareByDescending<DiscoveredDevice> {
+                            it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint
+                        }.thenByDescending { it.lastSeenTimestamp }
+                    ).toList()
+                }
 
                 LazyColumn(
                     state = listState,
@@ -292,14 +313,14 @@ fun MainScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. "Recent" Section (Horizontal Carousel)
+                    // 1. "My Devices" Section (Horizontal Carousel)
                     item {
-                        // Top padding rests the "Recent" title visibly right under
+                        // Top padding rests the "My Devices" title visibly right under
                         // the glass avatar button (which clears the status bar);
                         // it still scrolls up beneath the header like the rest.
                         Column(modifier = Modifier.padding(top = statusBarHeight + 64.dp, bottom = 8.dp)) {
                             Text(
-                                text = "Recent",
+                                text = "My Devices",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -310,6 +331,28 @@ fun MainScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
+                                // A. Real Trusted Devices (Sorted)
+                                items(consolidatedTrusted, key = { it.info.fingerprint }) { device ->
+                                    DeviceListItem(
+                                        modifier = Modifier.width(300.dp),
+                                        device = device,
+                                        isTrusted = true,
+                                        onClick = {},
+                                        onButtonClick = {
+                                            if (device.viaRoster) {
+                                                selectedRosterDevice = device
+                                            } else {
+                                                selectedDevice = device
+                                            }
+                                            filePickerLauncher.launch(arrayOf("*/*"))
+                                        },
+                                        onLongClick = {
+                                            contextMenuDevice = device
+                                        }
+                                    )
+                                }
+
+                                // B. Dummy Devices (Placeholders at the end)
                                 item {
                                     DummyDeviceCard(
                                         alias = "Gaming PC",
@@ -336,7 +379,7 @@ fun MainScreen(
                     }
 
                     // 2. "Discovered" Section Title
-                    if (discoveredDevices.isNotEmpty()) {
+                    if (untrustedDevices.isNotEmpty()) {
                         item {
                             Text(
                                 text = "Discovered",
@@ -348,67 +391,25 @@ fun MainScreen(
                         }
                     }
 
-                    // 3. Real Discovered Devices
-                    items(discoveredDevices, key = { it.info.fingerprint }) { device ->
-                        val deviceConfig: com.dexstudios.dex.network.DeviceConfig = koinInject()
-                        val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
-                            (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash)
-
+                    // 3. Real Discovered Devices (Untrusted)
+                    items(untrustedDevices, key = { it.info.fingerprint }) { device ->
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             DeviceListItem(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp)
-                                    .width(300.dp), // Narrower width as requested
+                                    .width(300.dp),
                                 device = device,
-                                isTrusted = isTrusted,
+                                isTrusted = false,
                                 onClick = {},
                                 onButtonClick = {
-                                    if (isTrusted) {
-                                        selectedDevice = device
-                                        filePickerLauncher.launch(arrayOf("*/*"))
-                                    } else {
-                                        // Show connection options (PIN vs QR)
-                                        connectOptionsDevice = device
-                                    }
+                                    // Show connection options (PIN vs QR)
+                                    connectOptionsDevice = device
                                 },
                                 onLongClick = {
                                     // Long-press opens the device context menu
                                     contextMenuDevice = device
                                 }
                             )
-                        }
-                    }
-
-                    // 3.5 My devices over WAN (same email, direct punch transfers via the PC)
-                    if (rosterDevices.isNotEmpty()) {
-                        item {
-                            Text(
-                                text = "My Devices",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                        items(rosterDevices, key = { "roster-${it.info.fingerprint}" }) { device ->
-                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                DeviceListItem(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .width(300.dp),
-                                    device = device,
-                                    isTrusted = true,
-                                    onClick = {},
-                                    onButtonClick = {
-                                        selectedRosterDevice = device
-                                        filePickerLauncher.launch(arrayOf("*/*"))
-                                    },
-                                    onLongClick = {
-                                        // Long-press opens the device context menu
-                                        contextMenuDevice = device
-                                    },
-                                )
-                            }
                         }
                     }
 
@@ -481,25 +482,22 @@ fun MainScreen(
                 }
             }
 
-                // ===== Glass overlays: drawn AFTER the captured content, sample it =====
-                // Frosted edge fade — content progressively blurs as it approaches
-                // the native status bar / glass header (top).
-                // The bottom edge is covered by the glass nav bar already — no
-                // separate bottom fade needed.
-                GlassScrollEdge(
-                    backdrop = contentBackdrop,
-                    edge = GlassEdge.Top,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(statusBarHeight + 64.dp)
-                )
-
-
+            // ===== Glass overlays: drawn AFTER the captured content, sample it =====
+            // Frosted edge fade — content progressively blurs as it approaches
+            // the native status bar / glass header (top).
+            // The bottom edge is covered by the glass nav bar already — no
+            // separate bottom fade needed.
+            GlassScrollEdge(
+                backdrop = contentBackdrop,
+                edge = GlassEdge.Top,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(statusBarHeight + 64.dp)
+            )
         }
     }
 
-    val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
     if (uploadState.error != null) {
         NetworkErrorDialog(
             error = stringResource(R.string.upload_failed, humanizeTransferError(uploadState.error ?: "")),
@@ -507,7 +505,6 @@ fun MainScreen(
         )
     }
 
-    val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
     if (downloadState.error != null) {
         NetworkErrorDialog(
             error = stringResource(R.string.download_failed, humanizeTransferError(downloadState.error ?: "")),

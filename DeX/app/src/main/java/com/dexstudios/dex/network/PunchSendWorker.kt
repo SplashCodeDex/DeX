@@ -184,6 +184,7 @@ class PunchSendWorker(
     }
 
     private suspend fun reportProgress(progress: Float, fileName: String, protocol: String, totalFiles: Int) {
+        val targetFingerprint = inputData.getString("targetFingerprint")
         try {
             client.updateUploadState(
                 UploadState(
@@ -192,7 +193,8 @@ class PunchSendWorker(
                     aggregateProgress = progress,
                     isUploading = true,
                     totalFiles = totalFiles,
-                    protocol = protocol
+                    protocol = protocol,
+                    targetFingerprint = targetFingerprint
                 )
             )
             setForeground(createForegroundInfo((progress * 100).toInt(), "Sending: $fileName"))

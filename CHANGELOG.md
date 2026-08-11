@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.9.11.0] - 2026-08-11
+### Changed
+- **[minor] Removed legacy ADB connections from UI device clicks**: Left-clicking a device now exclusively interacts with the WebSocket/File Explorer subsystem. ADB connections are now strictly opt-in via a new dynamic "Connect ADB" / "Disconnect ADB" context menu item.
+
+## [7.9.10.0] - 2026-08-11
+### Fixed
+- **[fix] Desktop UI freezes when clicking a paired device**: Fixed a severe UI freeze caused by `Invoke-AdbConnect` being run synchronously on the WPF dispatcher thread when tapping a device. The connection sequence (TCP ping, `adb start-server`, and `adb connect`) has been moved to an asynchronous background job, keeping the spatial menu responsive even when the ADB daemon or the target device hangs.
+
+## [7.9.6.0] - 2026-08-11
+### Changed
+- **[minor] Moved extended nearby users**: The extended nearby users dummies (Akua Donkor, Kwame Asante, Ama Serwaa) have been moved into the main 'My Devices' list and the 'Extended nearby users' section/animations have been entirely removed.
+
 ## [7.9.5.0] - 2026-08-11
 ### Fixed
 - **[fix] Tofu box characters in device list SubText (Desktop)**: Fixed an issue where the device model and battery percentages were rendering as missing glyph boxes ("tofu"). The XAML `FontFamily` declaration order in the UI incorrectly prioritized icon fonts (`Segoe Fluent Icons`) ahead of the standard `Segoe UI`, breaking WPF's character-by-character fallback for standard text.

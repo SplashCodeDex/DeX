@@ -64,11 +64,43 @@ $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [Sy
                 $ip = $menuItem.Tag
                 if ($ip) { Start-MirrorSession -Ip $ip }
             }
-            "menuDisconnect" {
+            "menuDisconnectAdb" {
                 $ip = $menuItem.Tag
                 if ($ip) {
                     $null = adb disconnect "${ip}:5555" 2>&1
                     Show-Toast -Title "ADB Disconnected" -Message "Disconnected $ip."
+                    Update-WpfUIAsync
+                }
+            }
+            "menuConnectAdb" {
+                $ip = $menuItem.Tag
+                if ($ip) {
+                    $adbJob = Start-Job -ScriptBlock {
+                        param($targetIp, $mod, $adb)
+                        $global:AdbExePath = $adb
+                        Import-Module $mod -DisableNameChecking
+                        Invoke-AdbConnect -Target $targetIp
+                    } -ArgumentList $ip, (Join-Path $PSScriptRoot "AdbManager.psm1"), $global:AdbExePath
+                    
+                    $adbTimer = New-Object System.Windows.Threading.DispatcherTimer
+                    $adbTimer.Interval = [TimeSpan]::FromMilliseconds(200)
+                    $adbTimer.Add_Tick({
+                        param($s, $e)
+                        if ($adbJob.State -notin @('Running', 'NotStarted')) {
+                            $s.Stop()
+                            try {
+                                $res = Receive-Job -Job $adbJob -ErrorAction SilentlyContinue
+                                if ($res.Success) {
+                                    Show-Toast -Title "ADB Connected" -Message "Successfully connected to $($res.Name)"
+                                    Update-WpfUIAsync
+                                } else {
+                                    Show-Toast -Title "Connection Failed" -Message $res.Message
+                                }
+                            } catch {}
+                            Remove-Job -Job $adbJob -Force
+                        }
+                    }.GetNewClosure())
+                    $adbTimer.Start()
                 }
             }
             "menuPair" {

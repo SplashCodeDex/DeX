@@ -1,4 +1,4 @@
-﻿# Win32 interop for premium window drag. GetCursorPos tracks physical cursor
+# Win32 interop for premium window drag. GetCursorPos tracks physical cursor
 # position; GetDpiForWindow returns the correct DPI for whatever monitor the
 # window is on mid-drag (critical on mixed-DPI multi-monitor setups).
 if (-not $script:dragWin32Added) {
@@ -722,12 +722,7 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                 Invoke-MenuAction $actionPull
             }
 
-            # Legacy ADB connect is best-effort: never block History on it, only surface
-            # a failure when the device isn't a known WebSocket peer.
-            $res = Invoke-AdbConnect -Target $ip
-            if (-not $res.Success -and -not $livePeer) {
-                Show-Toast -Title "Connection Failed" -Message $res.Message
-            }
+
             
             $e.Handled = $true
         }

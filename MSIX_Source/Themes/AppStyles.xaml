@@ -142,11 +142,7 @@
             </ObjectAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" />
             
-            <!-- Show Nearby Expand Users when expanded -->
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.2" Value="{x:Static Visibility.Visible}" />
-            </ObjectAnimationUsingKeyFrames>
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.5" BeginTime="0:0:0.3" />
+
             
             <!-- Subtle Parallax on Main Menu: Slide Right slightly -->
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
@@ -159,17 +155,24 @@
             </ObjectAnimationUsingKeyFrames>
 
             <!-- Panel contraction starts after content fades. -->
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.35" BeginTime="0:0:0.25">
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.35" BeginTime="0:0:0.25">
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="fileTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.35" BeginTime="0:0:0.25">
+            <DoubleAnimation Storyboard.TargetName="fileTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
 
-            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+            <!-- Close button shrinks width so quick-actions slide smoothly into the gap. -->
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Width" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Margin" To="0" Duration="0:0:0.3">
+                <ThicknessAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Visibility">
                 <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
@@ -185,11 +188,7 @@
             <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
             <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
 
-            <!-- Hide Nearby Expand Users when contracting -->
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
-            </ObjectAnimationUsingKeyFrames>
+
         </Storyboard>
 
         <!-- Settings Expand Storyboard: same window expansion but shows SettingsPanel instead of FileExplorer -->
@@ -222,11 +221,7 @@
             </ObjectAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" />
             
-            <!-- Show Nearby Expand Users when expanded -->
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.2" Value="{x:Static Visibility.Visible}" />
-            </ObjectAnimationUsingKeyFrames>
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.5" BeginTime="0:0:0.3" />
+
             
             <!-- Subtle Parallax on Main Menu: Slide Right slightly -->
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
@@ -249,7 +244,14 @@
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
 
-            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+            <!-- Close button shrinks width so quick-actions slide smoothly into the gap. -->
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Width" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Margin" To="0" Duration="0:0:0.3">
+                <ThicknessAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Visibility">
                 <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
@@ -265,11 +267,7 @@
             <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
             <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
 
-            <!-- Hide Nearby Expand Users when contracting -->
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
-            </ObjectAnimationUsingKeyFrames>
+
         </Storyboard>
         
         <Storyboard x:Key="PopIn">

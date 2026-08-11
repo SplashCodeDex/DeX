@@ -1,4 +1,4 @@
-﻿
+
 # --- Wiggle-to-Open Feature ---
 try {
     Add-Type -TypeDefinition @"
@@ -112,13 +112,7 @@ $script:wiggleTimer.Add_Tick({
                 (dxEl "menuContentPanel").Opacity = 0
                 (dxEl "mainBorder").Opacity = 0
 
-                # Show only nearby devices (dummies) for Wiggle menu
-                (dxEl "TopActionsPanel").Visibility = 'Collapsed'
-                (dxEl "btnUserJoe").Visibility = 'Collapsed'
-                (dxEl "btnDeviceWindows").Visibility = 'Collapsed'
-                (dxEl "icLivePeers").Visibility = 'Collapsed'
-                (dxEl "NearbyExpandPanel").Visibility = 'Visible'
-                (dxEl "NearbyExpandPanel").Opacity = 1
+
                 $script:openedViaWiggle = $true
 
                 # Position content (not window) centered around cursor.

@@ -243,6 +243,7 @@ class UploadWorker(
         currentFile: String,
         useQuic: Boolean
     ) {
+        val targetFingerprint = inputData.getString("targetFingerprint")
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
         lastUiUpdate.set(now)
@@ -269,7 +270,8 @@ class UploadWorker(
                     aggregateProgress = aggregate,
                     isUploading = true,
                     protocol = if (useQuic) client.lastUploadProtocol() else "http/1.1",
-                    speedBps = smoothedSpeed.get()
+                    speedBps = smoothedSpeed.get(),
+                    targetFingerprint = targetFingerprint
                 )
             )
             setForeground(createForegroundInfo((aggregate * 100).toInt(), applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)))
