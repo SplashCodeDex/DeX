@@ -384,7 +384,6 @@ function Show-PinPanel {
         [string]$SuccessMessage,
         [string]$FailureMessage
     )
-    Release-PinAnimations
     $w = $script:wpfWindow
     $w.FindName("txtPinTitle").Text = $Title
 
@@ -406,7 +405,10 @@ function Show-PinPanel {
     $w.FindName("txtQrBtnIcon").Visibility = 'Visible'
     $w.FindName("txtQrBtnText").Text = "QR CODE"
 
-    if ($w.FindName("pinViewPanel").Visibility -eq 'Visible') {
+    $pinViewPanel = $w.FindName("pinViewPanel")
+    if ($pinViewPanel.Visibility -eq 'Visible' -and $pinViewPanel.Opacity -gt 0) {
+        try { $w.FindName("menuViewsContainer").FindResource("SwitchQrToPinAnim").Stop($w) } catch {}
+        try { $w.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Stop($w) } catch {}
         $pinT = $w.FindName("pinContentTrans")
         if ($pinT) {
             $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
@@ -414,12 +416,8 @@ function Show-PinPanel {
         }
         try { $w.FindName("menuViewsContainer").FindResource("SwitchQrToPinAnim").Begin($w) } catch {}
     } else {
-        $w.FindName("pinViewPanel").Visibility = 'Visible'
-        $pinT = $w.FindName("pinContentTrans")
-        if ($pinT) {
-            $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
-            $pinT.X = 0
-        }
+        Release-PinAnimations
+        $pinViewPanel.Visibility = 'Visible'
         try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
     }
 

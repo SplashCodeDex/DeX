@@ -137,10 +137,10 @@ fun FloatingTopAppBar(
                     .fillMaxSize()
                     .zIndex(0.5f)
                     .graphicsLayer { alpha = focusAlpha }
-                    .background(Color.Black.copy(alpha = 0.4f))
+                    .background(Color.Black.copy(alpha = 0.65f))
                     .then(
                         if (android.os.Build.VERSION.SDK_INT >= 31) {
-                            Modifier.blur(12.dp)
+                            Modifier.blur(24.dp)
                         } else Modifier
                     )
                     .clickable(
