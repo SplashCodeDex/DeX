@@ -1020,8 +1020,11 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock x:Name="txtPinTitle" Grid.Row="0" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" />
-                        <TextBlock x:Name="txtPinSubtitle" Grid.Row="0" Text="from Galaxy S21" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" />
+                            <!-- Header / Status -->
+                            <Grid Grid.Row="0">
+                                <TextBlock x:Name="txtPinTitle" Grid.Row="0" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                <TextBlock x:Name="txtPinSubtitle" Grid.Row="0" Text="from Galaxy S21" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                            </Grid>
                         
                         <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
                             <StackPanel x:Name="pinCodeContent" Visibility="Visible" RenderTransformOrigin="0.5,0.5">

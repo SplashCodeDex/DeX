@@ -333,18 +333,49 @@ function Show-QrCode {
     $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")
     if ($txtQrBtnText) { $txtQrBtnText.Text = "Request PIN" }
 
-    # Fetch the PNG over HTTP on a background thread (bounded 3s), then set the image on
+    # Fetch the PNG over HTTP in a background job (bounded 3s), then set the image on
     # the UI thread from the byte stream. The QR view is already shown; a slow/failed
     # fetch degrades to an empty QR frame instead of freezing the app.
-    $action = [System.Action]{
-        try {
-            $bytes = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/qr?ip=$localIp" -TimeoutSec 3 -ErrorAction Stop
-            if ($bytes -is [byte[]] -and $bytes.Length -gt 0) {
-                $ms = New-Object System.IO.MemoryStream(,$bytes)
-                $uiAction = [System.Action]{
-                    try {
-                        $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
-                        if ($imgQrCode) {
+    # NOTE: a plain [System.Action] + BeginInvoke cannot run scriptblocks on threadpool
+    # threads under PowerShell 5.1 ("The object must be a runtime Reflection object."),
+    # so the fetch runs in a real background job instead (same pattern as Start-AsyncSafBrowse).
+    # WebClient.DownloadData is used (not Invoke-RestMethod) because Invoke-RestMethod
+    # decodes the image/png body to a String, which would never match the byte[] check.
+    $imgQrCode = $script:wpfWindow.FindName("imgQrCode")
+    if ($imgQrCode) {
+        $api = $global:DeXLocalApi
+        $qrIp = $localIp
+        $qrJob = Start-Job -ScriptBlock {
+            param($apiUrl, $ip)
+            try {
+                # HttpWebRequest (always available in .NET Framework) so the response body
+                # stays raw bytes; Invoke-RestMethod would decode image/png to a String.
+                $req = [System.Net.HttpWebRequest]::Create("$apiUrl/local/qr?ip=$ip")
+                $req.Timeout = 3000
+                $resp = $req.GetResponse()
+                try {
+                    $ms = New-Object System.IO.MemoryStream
+                    $resp.GetResponseStream().CopyTo($ms)
+                    $bytes = $ms.ToArray()
+                    # Unary comma prevents PowerShell from unrolling the byte[] in the pipeline.
+                    if ($bytes -and $bytes.Length -gt 0) { , $bytes } else { $null }
+                } finally { $resp.Close() }
+            } catch { $null }
+        } -ArgumentList $api, $qrIp
+
+        $qrTimer = New-Object System.Windows.Threading.DispatcherTimer
+        $qrTimer.Interval = [TimeSpan]::FromMilliseconds(50)
+        $qrTimer.Add_Tick({
+            if ($qrJob.State -notin @('Running', 'NotStarted')) {
+                $qrTimer.Stop()
+                try {
+                    $out = Receive-Job $qrJob -ErrorAction SilentlyContinue
+                    $bytes = $null
+                    if ($out -is [byte[]]) { $bytes = $out }
+                    elseif ($out -is [array] -and $out.Count -eq 1 -and $out[0] -is [byte[]]) { $bytes = $out[0] }
+                    if ($bytes -and $bytes.Length -gt 0) {
+                        $ms = New-Object System.IO.MemoryStream(,$bytes)
+                        try {
                             $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
                             $bitmap.BeginInit()
                             $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
@@ -352,16 +383,17 @@ function Show-QrCode {
                             $bitmap.EndInit()
                             $bitmap.Freeze()
                             $imgQrCode.Source = $bitmap
+                        } catch {} finally {
+                            if ($ms) { $ms.Dispose() }
                         }
-                    } catch {} finally {
-                        if ($ms) { $ms.Dispose() }
                     }
+                } catch {} finally {
+                    Remove-Job $qrJob -Force -ErrorAction SilentlyContinue
                 }
-                $script:wpfWindow.Dispatcher.InvokeAsync($uiAction) | Out-Null
             }
-        } catch {}
+        }.GetNewClosure())
+        $qrTimer.Start()
     }
-    $null = $action.BeginInvoke($null, $null)
     return $true
 }
 
