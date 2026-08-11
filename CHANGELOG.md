@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.3.0] - 2026-08-11
+### Fixed
+- **[fix] Click-outside no longer hides the spatial menu after a pairing (Desktop)**: Once any pairing session had run, the window could never be dismissed by clicking outside in the contracted state. The stopped `pairWaitTimer` (never nulled on completion/cancellation) made the Deactivated guard's truthy check permanently block the hide. The guard now only keeps the window while the poll timer is actually running, and the timer is nulled when pairing state is cleared.
+
 ## [7.9.2.0] - 2026-08-11
 ### Fixed
 - **[fix] PIN UI 164px gap on inbound request (Desktop)**: Fixed an issue where the PIN code content was offset to the right by 164px during the initial slide-in animation. The `pinContentTrans` X translation (initialized to 140 for switch animations) is now properly reset to 0 when the pairing panel first appears.

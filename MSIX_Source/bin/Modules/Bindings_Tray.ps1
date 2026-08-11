@@ -47,29 +47,25 @@ $script:notifyIcon.Add_MouseUp({
         
         # Edge Case 27 & 28: Dynamic work area bounds clipping protection & window activation focus
         # Also reset containers to contracted state so PopIn shows clean window
-        $script:wpfWindow.FindName("FileExplorer").Visibility = 'Collapsed'
-        $script:wpfWindow.FindName("FileExplorer").Opacity = 0
-        $script:wpfWindow.FindName("fileTrans").X = 150
-        $script:wpfWindow.FindName("SettingsPanel").Visibility = 'Collapsed'
-        $script:wpfWindow.FindName("SettingsPanel").Opacity = 0
-        $script:wpfWindow.FindName("settingsTrans").X = 150
-        $script:wpfWindow.FindName("menuTrans").X = 0
-        $script:wpfWindow.FindName("btnCloseMenu").Visibility = 'Collapsed'
-        $script:wpfWindow.FindName("btnCloseMenu").Opacity = 0
-        $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Collapsed'
-        $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 0
-        $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Visible'
-        $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Visible'
-        $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Visible'
-        $script:wpfWindow.FindName("btnDeviceWindows").Visibility = 'Visible'
-        
+        (dxEl "FileExplorer").Visibility = 'Collapsed'
+        (dxEl "FileExplorer").Opacity = 0
+        (dxEl "fileTrans").X = 150
+        (dxEl "SettingsPanel").Visibility = 'Collapsed'
+        (dxEl "SettingsPanel").Opacity = 0
+        (dxEl "settingsTrans").X = 150
+        (dxEl "menuTrans").X = 0
+        (dxEl "btnCloseMenu").Visibility = 'Collapsed'
+        (dxEl "btnCloseMenu").Opacity = 0
+        (dxEl "NearbyExpandPanel").Visibility = 'Collapsed'
+        (dxEl "NearbyExpandPanel").Opacity = 0
+        (dxEl "TopActionsPanel").Visibility = 'Visible'
+        (dxEl "btnUserJoe").Visibility = 'Visible'
+        (dxEl "btnDeviceGalaxy").Visibility = 'Visible'
+        (dxEl "btnDeviceWindows").Visibility = 'Visible'
+
         $workArea = [System.Windows.SystemParameters]::WorkArea
         $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
-        # Content-based vertical positioning: mainBorder is VerticalAlignment=Top with
-        # Margin=25, so contentBottom = windowTop + 25 + contentHeight. Position the
-        # content (not the window) at the bottom of the work area.
-        $mb = $script:wpfWindow.FindName("mainBorder")
-        $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+        $contentH = if ((dxEl "mainBorder").ActualHeight -gt 0) { (dxEl "mainBorder").ActualHeight } else { 430 }
 
         if (-not $script:isLocationPinned) {
             $left = $workArea.Right - $winWidth + 13
@@ -82,24 +78,18 @@ $script:notifyIcon.Add_MouseUp({
             $script:wpfWindow.Top = $top
         }
         $script:wpfWindow.Topmost = $true
-        
-        $script:lastDeactivated = [DateTime]::Now
-        
-        $script:wpfWindow.FindName("winScale").ScaleX = 0.85
-        $script:wpfWindow.FindName("winScale").ScaleY = 0.85
-        $script:wpfWindow.FindName("winTrans").Y = 15
-        $script:wpfWindow.FindName("menuTrans").Y = 20
-        $script:wpfWindow.FindName("menuContentTrans").Y = 35
-        $script:wpfWindow.FindName("menuContentPanel").Opacity = 0
-        $script:wpfWindow.FindName("mainBorder").Opacity = 0
 
-        try {
-            $sb = $script:wpfWindow.FindResource("PopIn")
-            if ($sb) {
-                Start-CardTransition $sb
-                $sb.Pause($script:wpfWindow)
-            }
-        } catch { Write-Trace "PopIn pre-trigger failed: $_" }
+        $script:lastDeactivated = [DateTime]::Now
+
+        # Set PopIn initial state before Show so the first frame is already
+        # at the storyboard's From values — no flash, no pause/resume needed.
+        (dxEl "winScale").ScaleX = 0.85
+        (dxEl "winScale").ScaleY = 0.85
+        (dxEl "winTrans").Y = 15
+        (dxEl "menuTrans").Y = 20
+        (dxEl "menuContentTrans").Y = 35
+        (dxEl "menuContentPanel").Opacity = 0
+        (dxEl "mainBorder").Opacity = 0
 
         # Guard: suppress Deactivated during show+animate to prevent double-flash race
         if ($script:showMenuGuardTimer) { $script:showMenuGuardTimer.Stop() }
@@ -108,10 +98,11 @@ $script:notifyIcon.Add_MouseUp({
         $script:wpfWindow.Show()
         $script:wpfWindow.Activate()
         $script:wpfWindow.Focus()
-        
+
         try {
-            if ($sb) { $sb.Resume($script:wpfWindow) }
-        } catch { Write-Trace "PopIn resume failed: $_" }
+            $sb = $script:wpfWindow.FindResource("PopIn")
+            if ($sb) { Start-CardTransition $sb }
+        } catch { Write-Trace "PopIn failed: $_" }
 
         # Clear the guard after PopIn animation completes (~800ms covers the longest 750ms tween)
         $script:showMenuGuardTimer = New-Object System.Windows.Threading.DispatcherTimer
@@ -124,7 +115,7 @@ $script:notifyIcon.Add_MouseUp({
     }
 })
 
-$btnDeviceGalaxy = $script:wpfWindow.FindName("btnDeviceGalaxy")
+$btnDeviceGalaxy = (dxEl "btnDeviceGalaxy")
 if ($btnDeviceGalaxy) { $btnDeviceGalaxy.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }
-$btnDeviceWindows = $script:wpfWindow.FindName("btnDeviceWindows")
+$btnDeviceWindows = (dxEl "btnDeviceWindows")
 if ($btnDeviceWindows) { $btnDeviceWindows.Add_Click({ $script:isMockMode = $true; Invoke-MenuAction $actionPull }) }

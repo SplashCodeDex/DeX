@@ -1,5 +1,5 @@
-﻿
-$btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
+
+$btnCopyIP = $script:ce["btnCopyIP"]
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
         if (-not [string]::IsNullOrWhiteSpace($script:currentTarget)) {
@@ -7,7 +7,7 @@ if ($btnCopyIP) {
                 Set-Clipboard -Value $script:currentTarget -ErrorAction Stop
                 Show-Toast -Title "Copied" -Message "IP Address copied to clipboard: $($script:currentTarget)"
                 
-                $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
+                $btnCopyIP = $script:ce["btnCopyIP"]
                 if ($null -ne $btnCopyIP) {
                     $tb = $btnCopyIP.Content
                     if ($tb -is [System.Windows.Controls.TextBlock]) {
@@ -33,13 +33,13 @@ if ($btnCopyIP) {
 
 # Settings Panel Button Handlers
 # Auto-Connect toggle in settings
-$btnSettingsAutoConnect = $script:wpfWindow.FindName("btnSettingsAutoConnect")
+$btnSettingsAutoConnect = $script:ce["btnSettingsAutoConnect"]
 if ($btnSettingsAutoConnect) {
     $btnSettingsAutoConnect.Add_Click({
         Invoke-MenuAction $actionAuto
         # Update badge after toggle
-        $txtBadge = $script:wpfWindow.FindName("txtBadgeAutoConnect")
-        $badge = $script:wpfWindow.FindName("badgeAutoConnect")
+        $txtBadge = $script:ce["txtBadgeAutoConnect"]
+        $badge = $script:ce["badgeAutoConnect"]
         if ($txtBadge -and $badge) {
             $isEnabled = Get-AutoConnectStatus
             $txtBadge.Text = if ($isEnabled) { "ON" } else { "OFF" }
@@ -55,7 +55,7 @@ if ($btnSettingsAutoConnect) {
 }
 
 # Connect Now button in settings
-$btnSettingsConnectNow = $script:wpfWindow.FindName("btnSettingsConnectNow")
+$btnSettingsConnectNow = $script:ce["btnSettingsConnectNow"]
 if ($btnSettingsConnectNow) {
     $btnSettingsConnectNow.Add_Click({
         Invoke-MenuAction $actionConnect
@@ -63,10 +63,10 @@ if ($btnSettingsConnectNow) {
 }
 
 # QR Code button in settings
-$btnSettingsQrCode = $script:wpfWindow.FindName("btnSettingsQrCode")
+$btnSettingsQrCode = $script:ce["btnSettingsQrCode"]
 if ($btnSettingsQrCode) {
     $btnSettingsQrCode.Add_Click({
-        $qrCodeContent = $script:wpfWindow.FindName("qrCodeContent")
+        $qrCodeContent = $script:ce["qrCodeContent"]
 
         if ($qrCodeContent.Visibility -eq 'Visible') {
             # User clicked "Request PIN"
@@ -92,15 +92,15 @@ if ($btnSettingsQrCode) {
                     Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
                 } catch {}
             }
-            $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
+            $txtTimeout = $script:ce["txtPinTimeout"]
             if ($txtTimeout) { $txtTimeout.Text = "" }
             if (-not (Show-QrCode)) {
                 Show-Toast -Title "Network Error" -Message "Could not determine local IP address."
             }
             # Restore the QR-view hint (Show-PinPanel cleared it when entering the PIN view).
-            $script:wpfWindow.FindName("txtPinSubtitle").Text = "Scan this code with your phone, or tap Request PIN"
+            $script:ce["txtPinSubtitle"].Text = "Scan this code with your phone, or tap Request PIN"
             # Slide the QR view back in over the PIN view (mirror of the Request PIN switch).
-            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
+            try { $script:ce["menuViewsContainer"].FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
             # This is a fresh idle QR phase: re-arm its 60s expiry.
             Start-QrPhaseTimer
         }
@@ -109,15 +109,15 @@ if ($btnSettingsQrCode) {
 
 # DND toggle in settings
 $script:isDndEnabled = $false
-$btnSettingsDnd = $script:wpfWindow.FindName("btnSettingsDnd")
+$btnSettingsDnd = $script:ce["btnSettingsDnd"]
 if ($btnSettingsDnd) {
     $btnSettingsDnd.Add_Click({
         $script:isDndEnabled = -not $script:isDndEnabled
         $stateStr = if ($script:isDndEnabled) { "true" } else { "false" }
         try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dnd?enabled=$stateStr" -Method Post } catch {}
         
-        $txtBadge = $script:wpfWindow.FindName("txtBadgeDnd")
-        $badge = $script:wpfWindow.FindName("badgeDnd")
+        $txtBadge = $script:ce["txtBadgeDnd"]
+        $badge = $script:ce["badgeDnd"]
         if ($txtBadge -and $badge) {
             $txtBadge.Text = if ($script:isDndEnabled) { "ON" } else { "OFF" }
             if ($script:isDndEnabled) {
@@ -132,7 +132,7 @@ if ($btnSettingsDnd) {
 }
 
 # Theme toggle in settings
-$btnSettingsTheme = $script:wpfWindow.FindName("btnSettingsTheme")
+$btnSettingsTheme = $script:ce["btnSettingsTheme"]
 if ($btnSettingsTheme) {
     $btnSettingsTheme.Add_Click({
         $global:AppThemeMode = "Manual"
@@ -145,11 +145,11 @@ if ($btnSettingsTheme) {
 }
 
 # Wiggle Toggle button in settings
-$btnSettingsWiggleToggle = $script:wpfWindow.FindName("btnSettingsWiggleToggle")
+$btnSettingsWiggleToggle = $script:ce["btnSettingsWiggleToggle"]
 if ($btnSettingsWiggleToggle) {
     $btnSettingsWiggleToggle.Add_Click({
         $script:wiggleEnabled = -not $script:wiggleEnabled
-        $txtSettingsWiggleToggle = $script:wpfWindow.FindName("txtSettingsWiggleToggle")
+        $txtSettingsWiggleToggle = $script:ce["txtSettingsWiggleToggle"]
         if ($txtSettingsWiggleToggle) {
             $txtSettingsWiggleToggle.Text = if ($script:wiggleEnabled) { "Enabled" } else { "Disabled" }
         }
@@ -157,7 +157,7 @@ if ($btnSettingsWiggleToggle) {
 }
 
 # Download Path button in settings
-$btnSettingsDownloadPath = $script:wpfWindow.FindName("btnSettingsDownloadPath")
+$btnSettingsDownloadPath = $script:ce["btnSettingsDownloadPath"]
 if ($btnSettingsDownloadPath) {
     $btnSettingsDownloadPath.Add_Click({
         Add-Type -AssemblyName System.Windows.Forms
@@ -165,7 +165,7 @@ if ($btnSettingsDownloadPath) {
         $dialog.Description = "Select Download Destination Directory"
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $script:customDownloadPath = $dialog.SelectedPath
-            $txtDlPath = $script:wpfWindow.FindName("txtSettingsDownloadPath")
+            $txtDlPath = $script:ce["txtSettingsDownloadPath"]
             if ($txtDlPath) {
                 $txtDlPath.Text = $script:customDownloadPath
             }
@@ -175,7 +175,7 @@ if ($btnSettingsDownloadPath) {
 }
 
 # About button in settings
-$btnSettingsAbout = $script:wpfWindow.FindName("btnSettingsAbout")
+$btnSettingsAbout = $script:ce["btnSettingsAbout"]
 if ($btnSettingsAbout) {
     $btnSettingsAbout.Add_Click({
         Start-Process "https://github.com/SplashCodeDex/DeX"
@@ -186,13 +186,13 @@ if ($btnSettingsAbout) {
 # Google Sign-In button in settings (PC-side OAuth loopback flow)
 # Applies a fetched profile to the settings UI. UI thread only.
 function Apply-GoogleProfile($profile) {
-    $txtSub = $script:wpfWindow.FindName("txtSettingsSubtitle")
-    $txtGoogle = $script:wpfWindow.FindName("txtSettingsGoogleState")
+    $txtSub = $script:ce["txtSettingsSubtitle"]
+    $txtGoogle = $script:ce["txtSettingsGoogleState"]
     if ($profile -and $profile.email) {
-        $txtName = $script:wpfWindow.FindName("txtProfileName")
-        $txtEmail = $script:wpfWindow.FindName("txtProfileEmail")
-        $avatar = $script:wpfWindow.FindName("imgProfileAvatar")
-        $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+        $txtName = $script:ce["txtProfileName"]
+        $txtEmail = $script:ce["txtProfileEmail"]
+        $avatar = $script:ce["imgProfileAvatar"]
+        $btnSignOut = $script:ce["btnSettingsSignOut"]
         if ($txtName) { $txtName.Text = if ($profile.name) { $profile.name } else { $profile.email } }
         if ($txtEmail) { $txtEmail.Text = $profile.email }
         if ($btnSignOut) { $btnSignOut.Visibility = 'Visible' }
@@ -210,7 +210,7 @@ function Apply-GoogleProfile($profile) {
         }
         $script:profileApplied = $true
     } else {
-        $btnSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+        $btnSignOut = $script:ce["btnSettingsSignOut"]
         if ($btnSignOut) { $btnSignOut.Visibility = 'Collapsed' }
         if ($txtSub) { $txtSub.Text = "DeX" }
         if ($txtGoogle) { $txtGoogle.Text = "Trust all devices signed in with your email" }
@@ -235,7 +235,7 @@ function Update-ProfileUI {
     }
 }
 
-$btnSettingsSignOut = $script:wpfWindow.FindName("btnSettingsSignOut")
+$btnSettingsSignOut = $script:ce["btnSettingsSignOut"]
 if ($btnSettingsSignOut) {
     $btnSettingsSignOut.Add_Click({
         try {
@@ -248,7 +248,7 @@ if ($btnSettingsSignOut) {
     })
 }
 
-$btnSettingsGoogleSignIn = $script:wpfWindow.FindName("btnSettingsGoogleSignIn")
+$btnSettingsGoogleSignIn = $script:ce["btnSettingsGoogleSignIn"]
 if ($btnSettingsGoogleSignIn) {
     $btnSettingsGoogleSignIn.Add_Click({
         # Non-blocking: the OAuth flow can take minutes (browser approval), so it
@@ -335,7 +335,7 @@ Update-ProfileUI
 $script:profileRetryTimer.Start()
 
 # Reset Identity & Trust button in settings
-$btnSettingsResetIdentity = $script:wpfWindow.FindName("btnSettingsResetIdentity")
+$btnSettingsResetIdentity = $script:ce["btnSettingsResetIdentity"]
 if ($btnSettingsResetIdentity) {
     $btnSettingsResetIdentity.Add_Click({
         Remove-Item "$global:DeXDataRoot\identity.json" -Force -ErrorAction SilentlyContinue

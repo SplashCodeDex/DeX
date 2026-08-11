@@ -1,4 +1,4 @@
-﻿. "$PSScriptRoot\Modules\UIComponents.ps1"
+. "$PSScriptRoot\Modules\UIComponents.ps1"
 function Reset-SpatialPanels {
     try {
         $script:wpfWindow.FindResource("ExpandMenu").Stop($script:wpfWindow)
@@ -8,19 +8,19 @@ function Reset-SpatialPanels {
         $script:wpfWindow.FindResource("PopIn").Stop($script:wpfWindow)
     } catch {}
 
-    $script:wpfWindow.FindName("mainBorder").Width = [double]::NaN
-    $script:wpfWindow.FindName("mainBorder").Height = [double]::NaN
-    $script:wpfWindow.FindName("FileExplorer").Visibility = 'Collapsed'
-    $script:wpfWindow.FindName("FileExplorer").Opacity = 0
-    $script:wpfWindow.FindName("fileTrans").X = 150
-    $script:wpfWindow.FindName("SettingsPanel").Visibility = 'Collapsed'
-    $script:wpfWindow.FindName("SettingsPanel").Opacity = 0
-    $script:wpfWindow.FindName("settingsTrans").X = 150
-    $script:wpfWindow.FindName("menuTrans").X = 0
-    $script:wpfWindow.FindName("btnCloseMenu").Visibility = 'Collapsed'
-    $script:wpfWindow.FindName("btnCloseMenu").Opacity = 0
-    $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Collapsed'
-    $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 0
+    $script:ce["mainBorder"].Width = [double]::NaN
+    $script:ce["mainBorder"].Height = [double]::NaN
+    $script:ce["FileExplorer"].Visibility = 'Collapsed'
+    $script:ce["FileExplorer"].Opacity = 0
+    $script:ce["fileTrans"].X = 150
+    $script:ce["SettingsPanel"].Visibility = 'Collapsed'
+    $script:ce["SettingsPanel"].Opacity = 0
+    $script:ce["settingsTrans"].X = 150
+    $script:ce["menuTrans"].X = 0
+    $script:ce["btnCloseMenu"].Visibility = 'Collapsed'
+    $script:ce["btnCloseMenu"].Opacity = 0
+    $script:ce["NearbyExpandPanel"].Visibility = 'Collapsed'
+    $script:ce["NearbyExpandPanel"].Opacity = 0
     # Pairing PIN/QR panel: only collapse/clear when NO pairing session is live. An active
     # session must survive window dismissal (click-away): the pairWaitTimer keeps polling
     # in the background, the completion toast still fires, and re-opening the window shows
@@ -29,14 +29,14 @@ function Reset-SpatialPanels {
     # under the visible panel).
     if (-not $script:activeOutboundPairIp) {
         Release-PinAnimations
-        $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+        $pinViewPanel = $script:ce["pinViewPanel"]
         if ($pinViewPanel) {
             $pinViewPanel.Visibility = 'Collapsed'
             $pinViewPanel.Opacity = 0
         }
-        $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
+        $pinViewTrans = $script:ce["pinViewTrans"]
         if ($pinViewTrans) { $pinViewTrans.X = 300 }
-        $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
+        $menuContentTrans = $script:ce["menuContentTrans"]
         if ($menuContentTrans) {
             $menuContentTrans.X = 0
             # The PopIn entrance sets menuContentTrans.Y=35 (menuTrans.Y=20, winTrans.Y=15) and
@@ -44,19 +44,19 @@ function Reset-SpatialPanels {
             # pushing the menu/pin content down by up to ~70px. Always clear them here.
             $menuContentTrans.Y = 0
         }
-        $menuTrans = $script:wpfWindow.FindName("menuTrans")
+        $menuTrans = $script:ce["menuTrans"]
         if ($menuTrans) { $menuTrans.Y = 0 }
-        $winTrans = $script:wpfWindow.FindName("winTrans")
+        $winTrans = $script:ce["winTrans"]
         if ($winTrans) { $winTrans.Y = 0 }
-        $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
+        $menuContentPanel = $script:ce["menuContentPanel"]
         if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
         Clear-PairingState
     }
-    $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Visible'
-    $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Visible'
-    $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Visible'
-    $script:wpfWindow.FindName("btnDeviceWindows").Visibility = 'Visible'
-    $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
+    $script:ce["TopActionsPanel"].Visibility = 'Visible'
+    $script:ce["btnUserJoe"].Visibility = 'Visible'
+    $script:ce["btnDeviceGalaxy"].Visibility = 'Visible'
+    $script:ce["btnDeviceWindows"].Visibility = 'Visible'
+    $btnQAPull = $script:ce["btnQAPull"]
     if ($btnQAPull) { $btnQAPull.IsChecked = $false }
 }
 
@@ -176,28 +176,28 @@ $actionMirror = {
 
 $actionPull = {
     
-    if ($script:wpfWindow.FindName("FileExplorer").Visibility -eq 'Visible') {
+    if ($script:ce["FileExplorer"].Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractMenu"].Clone()
         $sb.Children[0].By = $null
         $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         $sb.Children[1].By = $null
         $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
         Start-CardTransition $sb
-        $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
+        $btnQAPull = $script:ce["btnQAPull"]
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
         return
     }
     
-    $settingsPanel = $script:wpfWindow.FindName("SettingsPanel")
+    $settingsPanel = $script:ce["SettingsPanel"]
     $isSwapping = ($settingsPanel -and $settingsPanel.Visibility -eq 'Visible')
     if ($isSwapping) {
         # Swap from Settings to File Explorer: collapse settings first, then fall through
         $settingsPanel.Visibility = 'Collapsed'
         $settingsPanel.Opacity = 0
-        $script:wpfWindow.FindName("settingsTrans").X = 150
+        $script:ce["settingsTrans"].X = 150
     }
     
-    $mainBorder = $script:wpfWindow.FindName("mainBorder")
+    $mainBorder = $script:ce["mainBorder"]
     if (-not $script:contractedWidth) { $script:contractedWidth = $mainBorder.ActualWidth }
     if (-not $script:contractedHeight) { $script:contractedHeight = $mainBorder.ActualHeight }
     if ([double]::IsNaN($mainBorder.Width)) { $mainBorder.Width = $mainBorder.ActualWidth }
@@ -213,7 +213,7 @@ $actionPull = {
     $sb.Children[1].To = $script:contractedHeight + 195
     Start-CardTransition $sb
     
-    $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
+    $btnQAPull = $script:ce["btnQAPull"]
     if ($btnQAPull) { $btnQAPull.IsChecked = $true }
     
     $outDir = if ($script:customDownloadPath) { $script:customDownloadPath } else { Join-Path $env:USERPROFILE "Downloads\DeX" }
@@ -225,7 +225,7 @@ $actionClipboard = {
     # Quick-action toggle: start/stop the automatic 2-way clipboard sync
     $script:clipboardSyncEnabled = -not $script:clipboardSyncEnabled
     
-    $btnQAClipboard = $script:wpfWindow.FindName("btnQAClipboard")
+    $btnQAClipboard = $script:ce["btnQAClipboard"]
     if ($btnQAClipboard) {
         $btnQAClipboard.IsChecked = $script:clipboardSyncEnabled
         $btnQAClipboard.ToolTip = if ($script:clipboardSyncEnabled) { "Clipboard Sync: On" } else { "Clipboard Sync: Off" }
@@ -263,8 +263,8 @@ $actionAuto = {
 
 # Settings Panel Toggle (avatar click expands/contracts settings)
 $actionSettings = {
-    $settingsPanel = $script:wpfWindow.FindName("SettingsPanel")
-    $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
+    $settingsPanel = $script:ce["SettingsPanel"]
+    $fileExplorer = $script:ce["FileExplorer"]
     
     # If settings is already visible, contract it
     if ($settingsPanel.Visibility -eq 'Visible') {
@@ -277,19 +277,19 @@ $actionSettings = {
         return
     }
     
-    $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
+    $fileExplorer = $script:ce["FileExplorer"]
     $isSwapping = ($fileExplorer -and $fileExplorer.Visibility -eq 'Visible')
     
     # If file explorer is visible, collapse it first then fall through to expand settings
     if ($isSwapping) {
         $fileExplorer.Visibility = 'Collapsed'
         $fileExplorer.Opacity = 0
-        $script:wpfWindow.FindName("fileTrans").X = 150
-        $btnQAPull = $script:wpfWindow.FindName("btnQAPull")
+        $script:ce["fileTrans"].X = 150
+        $btnQAPull = $script:ce["btnQAPull"]
         if ($btnQAPull) { $btnQAPull.IsChecked = $false }
     }
     
-    $mainBorder = $script:wpfWindow.FindName("mainBorder")
+    $mainBorder = $script:ce["mainBorder"]
     if (-not $script:contractedWidth) { $script:contractedWidth = $mainBorder.ActualWidth }
     if (-not $script:contractedHeight) { $script:contractedHeight = $mainBorder.ActualHeight }
     if ([double]::IsNaN($mainBorder.Width)) { $mainBorder.Width = $mainBorder.ActualWidth }
@@ -308,8 +308,8 @@ $actionSettings = {
 
     
     # Update auto-connect badge
-    $txtBadge = $script:wpfWindow.FindName("txtBadgeAutoConnect")
-    $badge = $script:wpfWindow.FindName("badgeAutoConnect")
+    $txtBadge = $script:ce["txtBadgeAutoConnect"]
+    $badge = $script:ce["badgeAutoConnect"]
     if ($txtBadge -and $badge) {
         $isEnabled = Get-AutoConnectStatus
         $txtBadge.Text = if ($isEnabled) { "ON" } else { "OFF" }
@@ -323,16 +323,16 @@ $actionSettings = {
     }
     
     # Update download path
-    $txtDlPath = $script:wpfWindow.FindName("txtSettingsDownloadPath")
+    $txtDlPath = $script:ce["txtSettingsDownloadPath"]
     if ($txtDlPath) {
         $path = if ($script:customDownloadPath) { $script:customDownloadPath } else { "Downloads\DeX" }
         $txtDlPath.Text = $path
     }
 }
 
-$btnTopProfile = $script:wpfWindow.FindName("btnProfileTop")
-$btnProfileBottom = $script:wpfWindow.FindName("btnProfileBottom")
-$btnProfileTopSettings = $script:wpfWindow.FindName("btnProfileTopSettings")
+$btnTopProfile = $script:ce["btnProfileTop"]
+$btnProfileBottom = $script:ce["btnProfileBottom"]
+$btnProfileTopSettings = $script:ce["btnProfileTopSettings"]
 
 # Avatar clicks now open the settings panel instead of the popup
 
@@ -442,7 +442,7 @@ $actionPushFiles = {
             }
         })
     } finally {
-        $btn = $script:wpfWindow.FindName("btnPushFiles")
+        $btn = $script:ce["btnPushFiles"]
         if ($btn) { $btn.IsChecked = $false }
     }
 }
@@ -466,13 +466,13 @@ $actionPushFolder = {
             }
         })
     } finally {
-        $btn = $script:wpfWindow.FindName("btnPushFolder")
+        $btn = $script:ce["btnPushFolder"]
         if ($btn) { $btn.IsChecked = $false }
     }
 }
 
 
-$fileExplorerPanel = $script:wpfWindow.FindName("FileExplorer")
+$fileExplorerPanel = $script:ce["FileExplorer"]
 if ($fileExplorerPanel) {
 
 }

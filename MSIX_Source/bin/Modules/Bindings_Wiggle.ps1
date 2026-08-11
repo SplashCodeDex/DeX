@@ -103,37 +103,28 @@ $script:wiggleTimer.Add_Tick({
             
             # Show the menu near the cursor
             if (-not $script:wpfWindow.IsVisible) {
-                # Prepare animations if needed
-                $script:wpfWindow.FindName("winScale").ScaleX = 0.85
-                $script:wpfWindow.FindName("winScale").ScaleY = 0.85
-                $script:wpfWindow.FindName("winTrans").Y = 15
-                $script:wpfWindow.FindName("menuTrans").Y = 20
-                $script:wpfWindow.FindName("menuContentTrans").Y = 35
-                $script:wpfWindow.FindName("menuContentPanel").Opacity = 0
-                $script:wpfWindow.FindName("mainBorder").Opacity = 0
-                
-                # Show only nearby devices (dummies) for Wiggle menu
-                $script:wpfWindow.FindName("TopActionsPanel").Visibility = 'Collapsed'
-                $script:wpfWindow.FindName("btnUserJoe").Visibility = 'Collapsed'
-                $script:wpfWindow.FindName("btnDeviceGalaxy").Visibility = 'Collapsed'
-                $script:wpfWindow.FindName("btnDeviceWindows").Visibility = 'Collapsed'
-                $script:wpfWindow.FindName("NearbyExpandPanel").Visibility = 'Visible'
-                $script:wpfWindow.FindName("NearbyExpandPanel").Opacity = 1
-                $script:openedViaWiggle = $true
+                # Set PopIn initial state before Show — matches storyboard From values.
+                (dxEl "winScale").ScaleX = 0.85
+                (dxEl "winScale").ScaleY = 0.85
+                (dxEl "winTrans").Y = 15
+                (dxEl "menuTrans").Y = 20
+                (dxEl "menuContentTrans").Y = 35
+                (dxEl "menuContentPanel").Opacity = 0
+                (dxEl "mainBorder").Opacity = 0
 
-                try {
-                    $sb = $script:wpfWindow.FindResource("PopIn")
-                    if ($sb) {
-                        Start-CardTransition $sb
-                        $sb.Pause($script:wpfWindow)
-                    }
-                } catch {}
+                # Show only nearby devices (dummies) for Wiggle menu
+                (dxEl "TopActionsPanel").Visibility = 'Collapsed'
+                (dxEl "btnUserJoe").Visibility = 'Collapsed'
+                (dxEl "btnDeviceGalaxy").Visibility = 'Collapsed'
+                (dxEl "btnDeviceWindows").Visibility = 'Collapsed'
+                (dxEl "NearbyExpandPanel").Visibility = 'Visible'
+                (dxEl "NearbyExpandPanel").Opacity = 1
+                $script:openedViaWiggle = $true
 
                 # Position content (not window) centered around cursor.
                 # Layout: HorizontalAlignment=Right, VerticalAlignment=Top, Margin=25.
-                $mb = $script:wpfWindow.FindName("mainBorder")
-                $contentW = if ($mb -and $mb.ActualWidth  -gt 0) { $mb.ActualWidth  } else { 300 }
-                $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+                $contentW = if ((dxEl "mainBorder").ActualWidth  -gt 0) { (dxEl "mainBorder").ActualWidth  } else { 300 }
+                $contentH = if ((dxEl "mainBorder").ActualHeight -gt 0) { (dxEl "mainBorder").ActualHeight } else { 430 }
                 $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
 
                 $targetLeft = $pos.X - $winWidth + 25 + ($contentW / 2)
@@ -154,12 +145,13 @@ $script:wiggleTimer.Add_Tick({
                 $script:wpfWindow.Left = $targetLeft
                 $script:wpfWindow.Top = $targetTop
                 $script:wpfWindow.Topmost = $true
-                
+
                 $script:wpfWindow.Show()
                 # (Activate removed to prevent dragging focus loss)
 
                 try {
-                    if ($sb) { $sb.Resume($script:wpfWindow) }
+                    $sb = $script:wpfWindow.FindResource("PopIn")
+                    if ($sb) { Start-CardTransition $sb }
                 } catch {}
             }
         }

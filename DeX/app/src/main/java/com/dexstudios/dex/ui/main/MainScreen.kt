@@ -80,6 +80,7 @@ fun MainScreen(
     var pairingDeviceFingerprint by remember { mutableStateOf<String?>(null) }
     var showTroubleshootDialog by remember { mutableStateOf(false) }
     var contextMenuDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
+    var connectOptionsDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -238,20 +239,6 @@ fun MainScreen(
         // Full-window content: the scrolling content passes behind the native
         // status bar and navigation bar — the glass edge fades keep it readable.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        floatingActionButton = {
-            val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
-            if (devices.isNotEmpty()) {
-                DeXFloatingActionButton(
-                    onClick = { launchQrScanner() },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                    modifier = Modifier.padding(bottom = 88.dp) // Clear the bottom nav bar
-                ) {
-                    Icon(ImageVector.vectorResource(R.drawable.ic_qr_code_scanner), contentDescription = stringResource(R.string.scan_qr))
-                }
-            }
-        },
         bottomBar = {
             val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
             val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
@@ -386,21 +373,8 @@ fun MainScreen(
                                         selectedDevice = device
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     } else {
-                                        // Guard against starting a second pairing while the PIN dialog for
-                                        // the first is still showing (a second tap would make the PC push a
-                                        // NEW prompt/PIN, desyncing the phone dialog from the PC display).
-                                        if (AuthState.incomingPairRequest.value != null) return@DeviceListItem
-                                        if (pairingDeviceFingerprint == device.info.fingerprint) return@DeviceListItem
-                                        pairingDeviceFingerprint = device.info.fingerprint
-                                        Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
-                                        viewModel.requestPairing(device) { success ->
-                                            pairingDeviceFingerprint = null
-                                            if (success) {
-                                                Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
+                                        // Show connection options (PIN vs QR)
+                                        connectOptionsDevice = device
                                     }
                                 },
                                 onLongClick = {
@@ -602,6 +576,30 @@ fun MainScreen(
                 Toast.makeText(context, "Forgotten ${device.info.alias}", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { contextMenuDevice = null }
+        )
+    }
+
+    connectOptionsDevice?.let { device ->
+        ConnectionOptionsDialog(
+            device = device,
+            backdrop = contentBackdrop,
+            onPinCode = {
+                // Original pairing logic
+                if (AuthState.incomingPairRequest.value != null) return@ConnectionOptionsDialog
+                if (pairingDeviceFingerprint == device.info.fingerprint) return@ConnectionOptionsDialog
+                pairingDeviceFingerprint = device.info.fingerprint
+                Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
+                viewModel.requestPairing(device) { success ->
+                    pairingDeviceFingerprint = null
+                    if (success) {
+                        Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onQrCode = { launchQrScanner() },
+            onDismiss = { connectOptionsDevice = null }
         )
     }
 }

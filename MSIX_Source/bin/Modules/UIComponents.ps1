@@ -533,7 +533,7 @@ function Show-PinPanel {
 }
 
 function Clear-PairingState {
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop(); $script:pairWaitTimer = $null }
     if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
     # An inbound pairing keeps the window on top; restore the user's prior z-order now.
     if ($null -ne $script:priorWindowTopmost) {
@@ -564,7 +564,7 @@ function Clear-PairingState {
 function Stop-PairingTimers {
     if ($script:pairInitTimer) { $script:pairInitTimer.Stop(); $script:pairInitTimer = $null }
     if ($script:pairInitJob) { Remove-Job $script:pairInitJob -Force -ErrorAction SilentlyContinue; $script:pairInitJob = $null }
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop(); $script:pairWaitTimer = $null }
     if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
 }
 

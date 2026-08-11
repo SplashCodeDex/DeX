@@ -1,5 +1,5 @@
 
-$script:btnUpDir = $script:wpfWindow.FindName("btnUpDir")
+$script:btnUpDir = $script:ce["btnUpDir"]
 $script:currentDirPath = ""
 $script:explorerMode = $false
 
@@ -33,9 +33,9 @@ $script:pullSeq = 0
 $script:pullPollTimer = $null
 
 function Set-PullProgressUi([int]$Pct, [string]$Status) {
-    $dock = $script:wpfWindow.FindName("dockPullProgress")
-    $bar = $script:wpfWindow.FindName("prgPullProgress")
-    $txt = $script:wpfWindow.FindName("txtPullTitle")
+    $dock = $script:ce["dockPullProgress"]
+    $bar = $script:ce["prgPullProgress"]
+    $txt = $script:ce["txtPullTitle"]
     if ($null -eq $dock) { return }
     if ($dock.Visibility -eq 'Collapsed') {
         $dock.Visibility = 'Visible'
@@ -50,7 +50,7 @@ function Set-PullProgressUi([int]$Pct, [string]$Status) {
 }
 
 function Hide-PullProgressDock {
-    $dock = $script:wpfWindow.FindName("dockPullProgress")
+    $dock = $script:ce["dockPullProgress"]
     if ($null -eq $dock) { return }
     $da = New-Object System.Windows.Media.Animation.DoubleAnimation
     $da.To = 0.0; $da.Duration = [TimeSpan]::FromMilliseconds(250)
@@ -235,7 +235,7 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
     if (-not $script:pullPollTimer.IsEnabled) { $script:pullPollTimer.Start() }
 }
 
-$script:btnCancelPull = $script:wpfWindow.FindName("btnCancelPull")
+$script:btnCancelPull = $script:ce["btnCancelPull"]
 if ($script:btnCancelPull) {
     $script:btnCancelPull.Add_Click({
         $active = Get-ActivePullId
@@ -384,7 +384,7 @@ function Start-GrantFolderFlow([string]$Ip) {
             Show-Toast -Title "Folder Granted" -Message "Your phone folder is now accessible from File Explorer."
             # Folders changed — reload the root so the fresh grant shows up immediately,
             # but only if the user is still looking at the File Explorer panel.
-            $fe = $script:wpfWindow.FindName("FileExplorer")
+            $fe = $script:ce["FileExplorer"]
             if ($fe -and $fe.Visibility -eq 'Visible') { Show-PhoneFoldersRoot }
         }
         # A false result (user cancelled the picker) needs no extra toast: the
@@ -394,7 +394,7 @@ function Start-GrantFolderFlow([string]$Ip) {
 }
 
 # Toggle between Transfer History (local Downloads\DeX) and File Explorer Mode (SAF-granted phone folders)
-$script:btnToggleExplorerMode = $script:wpfWindow.FindName("btnToggleExplorerMode")
+$script:btnToggleExplorerMode = $script:ce["btnToggleExplorerMode"]
 if ($script:btnToggleExplorerMode) {
     $script:btnToggleExplorerMode.Add_Click({
         $script:explorerMode = -not $script:explorerMode
@@ -423,7 +423,7 @@ $script:customDownloadPath = ""
 $script:dockTimer = $null
 
 
-$btnChange = $script:wpfWindow.FindName("btnChangeDownloadPath")
+$btnChange = $script:ce["btnChangeDownloadPath"]
 if ($null -ne $btnChange) {
     $btnChange.Add_Click({
         Add-Type -AssemblyName System.Windows.Forms
@@ -555,9 +555,9 @@ $script:lbFiles.Add_KeyDown({
         $e.Handled = $true
     }
 })
-$btnPushFiles = $script:wpfWindow.FindName("btnPushFiles")
+$btnPushFiles = $script:ce["btnPushFiles"]
 if ($btnPushFiles) { $btnPushFiles.Add_Click({ Invoke-MenuAction $actionPushFiles }) }
-$btnPushFolder = $script:wpfWindow.FindName("btnPushFolder")
+$btnPushFolder = $script:ce["btnPushFolder"]
 if ($btnPushFolder) { $btnPushFolder.Add_Click({ Invoke-MenuAction $actionPushFolder }) }
     $fileExplorerPanel.Add_PreviewDragOver({
         $e = $args[1]

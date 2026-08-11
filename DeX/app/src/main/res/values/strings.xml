@@ -51,6 +51,9 @@
     <string name="upload_success">Successfully Uploaded %1$s</string>
     <string name="upload_failed">Upload Failed: %1$s</string>
     <string name="pairing_request">Pairing Request</string>
+    <string name="connect_option_pin">PIN CODE</string>
+    <string name="connect_option_qr">QR CODE</string>
+    <string name="connect_device_title">Connect to %1$s</string>
     <string name="toast_scanned_ip">Scanned PC IP: %1$s, searching…</string>
     <string name="toast_scan_failed">Scan failed: %1$s</string>
     <plurals name="toast_sending_files">

@@ -172,6 +172,16 @@ if ($global:AppThemeMode -eq "System") {
     }
 })
 
+# Lazy element cache: FindName walks the visual tree every call. Cache results
+# in a hashtable so hot-path code (show, drag, deactivate) doesn't re-walk.
+$script:dxEl = @{}
+function dxEl([string]$name) {
+    if (-not $script:dxEl.ContainsKey($name)) {
+        $script:dxEl[$name] = $script:wpfWindow.FindName($name)
+    }
+    return $script:dxEl[$name]
+}
+
     # Load UI Bindings in current scope
     . "$PSScriptRoot\TrayUIBindings.ps1"
 

@@ -1,5 +1,5 @@
 # --- PIN Pairing Handlers ---
-$btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
+$btnPinCancel = $script:ce["btnPinCancel"]
 if ($btnPinCancel) {
     $btnPinCancel.Add_Click({
     # Centralized cancellation: stops every session timer (pairWaitTimer, pairInitTimer,
