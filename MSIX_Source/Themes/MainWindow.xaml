@@ -543,7 +543,7 @@
                                 <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                                 <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                                 <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
-                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Hidden}" /></ObjectAnimationUsingKeyFrames>
+                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
                             </Storyboard>
                             <Storyboard x:Key="SlideOutPinAnim">
                                 <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>
@@ -1023,7 +1023,7 @@
                             <!-- Header / Status -->
                             <Grid Grid.Row="0">
                                 <TextBlock x:Name="txtPinTitle" Grid.Row="0" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                                <TextBlock x:Name="txtPinSubtitle" Grid.Row="0" Text="from Galaxy S21" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                <TextBlock x:Name="txtPinSubtitle" Grid.Row="0" Text="" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                             </Grid>
                         
                         <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">

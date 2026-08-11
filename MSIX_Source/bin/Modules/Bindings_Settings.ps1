@@ -97,6 +97,8 @@ if ($btnSettingsQrCode) {
             if (-not (Show-QrCode)) {
                 Show-Toast -Title "Network Error" -Message "Could not determine local IP address."
             }
+            # Restore the QR-view hint (Show-PinPanel cleared it when entering the PIN view).
+            $script:wpfWindow.FindName("txtPinSubtitle").Text = "Scan this code with your phone, or tap Request PIN"
             # Slide the QR view back in over the PIN view (mirror of the Request PIN switch).
             try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
             # This is a fresh idle QR phase: re-arm its 60s expiry.

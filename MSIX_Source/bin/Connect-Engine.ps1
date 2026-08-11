@@ -321,13 +321,86 @@ $mdnsTimer.Add_Tick({
             if (-not $script:activeOutboundPairIp) {
                 $pp = $pendingPair
                 if ($pp -and $pp.pin) {
-                    $script:activeOutboundPairIp = $pp.ip
-                    $script:activeOutboundPairFp = $pp.fingerprint
-                    Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for remote acceptance..." `
-                        -HidePanelOnTerminal `
-                        -HideAcceptButtons `
-                        -SuccessMessage "Device has been paired." `
-                        -FailureMessage "Request was declined or timed out."
+                    # The user may have just cancelled this exact attempt: its result was
+                    # already queued by the poller, so it must not slide the panel back in
+                    # over the dismissal. Suppression is time-bounded (see Stop-PairingSession)
+                    # so a genuine new attempt for the same device still shows.
+                    if ($pp.fingerprint -eq $script:suppressPendingPairFp -and [datetime]::UtcNow -lt $script:suppressPendingPairUntil) {
+                        $script:suppressPendingPairFp = $null
+                        $script:suppressPendingPairUntil = $null
+                    } else {
+                        # A phone-initiated pairing needs the PC user to READ the PIN from the
+                        # screen. Surface the window whenever it isn't already the focused,
+                        # on-screen window (hidden in the tray, minimized, or behind other
+                        # apps) — otherwise the PIN panel would be invisible and stall.
+                        $w = $script:wpfWindow
+                        if (-not $w.IsVisible -or -not $w.IsActive) {
+                            Write-Trace "Auto-showing window for inbound pairing (visible=$($w.IsVisible) active=$($w.IsActive))"
+                            $script:isShowingMenu = $true
+                            if (-not $w.IsVisible) { $w.Show() }
+                            $w.Activate()
+                            $w.Focus()
+                            # WPF Activate() is blocked by the Windows foreground lock when a
+                            # background process calls it, leaving the window behind other apps
+                            # (the "flicker" the user never sees the PIN in). Force it to the
+                            # foreground with the Win32 API.
+                            try {
+                                if (-not $script:fgApiAdded) {
+                                    Add-Type -Namespace DeXWin32 -Name Fg -MemberDefinition @"
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+"@
+                                    $script:fgApiAdded = $true
+                                }
+                                $hwnd = [System.Windows.Interop.WindowInteropHelper]::new($w).Handle
+                                [DeXWin32.Fg]::ShowWindow($hwnd, 9) | Out-Null   # SW_RESTORE
+                                [DeXWin32.Fg]::SetForegroundWindow($hwnd) | Out-Null
+                            } catch {}
+                            # The foreground lock reclaims focus ~1s later, dropping the window
+                            # behind the previously focused app even though it stays "visible".
+                            # Keep it on top for the pairing's duration so the PIN stays in view;
+                            # restore the user's prior z-order when the pairing ends.
+                            $script:priorWindowTopmost = $w.Topmost
+                            $w.Topmost = $true
+                            # Reset any leftover chrome state from a previous show/hide animation
+                            # (a window hidden mid-PopIn can reappear translucent or scaled).
+                            $wb = $w.FindName("mainBorder")
+                            if ($wb) { $wb.Opacity = 1 }
+                            $ws2 = $w.FindName("winScale")
+                            if ($ws2) { $ws2.ScaleX = 1; $ws2.ScaleY = 1 }
+                            if (-not $script:showMenuGuardTimer) {
+                                $script:showMenuGuardTimer = New-Object System.Windows.Threading.DispatcherTimer
+                                $script:showMenuGuardTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
+                                $script:showMenuGuardTimer.Add_Tick({
+                                    $script:isShowingMenu = $false
+                                    $script:showMenuGuardTimer.Stop()
+                                    $script:showMenuGuardTimer = $null
+                                })
+                            }
+                            $script:showMenuGuardTimer.Stop()
+                            $script:showMenuGuardTimer.Start()
+                        }
+                        $script:activeOutboundPairIp = $pp.ip
+                        $script:activeOutboundPairFp = $pp.fingerprint
+                        try {
+                            Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for the PIN to be entered on the phone..." `
+                                -HidePanelOnTerminal `
+                                -HideAcceptButtons `
+                                -SuccessMessage "Device has been paired." `
+                                -FailureMessage "Request was declined or timed out."
+                            # Guarantee the PIN panel is on-screen even if the slide-in
+                            # storyboard failed to run (panel starts collapsed at X=300).
+                            $pv = $script:wpfWindow.FindName("pinViewPanel")
+                            if ($pv) { $pv.Opacity = 1 }
+                            $pt = $script:wpfWindow.FindName("pinViewTrans")
+                            if ($pt) { $pt.X = 0 }
+                            $mcp = $script:wpfWindow.FindName("menuContentPanel")
+                            if ($mcp) { $mcp.Opacity = 0 }
+                            Write-Trace "Inbound PIN panel shown"
+                        } catch {
+                            Write-Trace "Show-PinPanel failed for inbound pairing: $_"
+                        }
+                    }
                 }
             }
 

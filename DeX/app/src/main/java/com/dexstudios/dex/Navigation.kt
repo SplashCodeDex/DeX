@@ -2,9 +2,15 @@ package com.dexstudios.dex
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +30,7 @@ import com.dexstudios.dex.ui.components.bubbleFluidity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -41,6 +48,7 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.FloatingPillNavBar
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.NavBarItem
+import com.dexstudios.dex.ui.state.TopAppBarState
 import com.dexstudios.dex.ui.history.HistoryScreen
 import com.dexstudios.dex.ui.main.MainScreen
 import com.dexstudios.dex.ui.settings.SettingsScreen
@@ -99,6 +107,14 @@ fun MainNavigation() {
     // and crashes (SIGSEGV).
     val contentBackdrop = rememberLayerBackdrop()
     val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
+
+    val isDimmed = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded || incomingPairRequest != null
+    val globalDimAlpha by animateFloatAsState(
+        targetValue = if (isDimmed) 0.85f else 0f,
+        animationSpec = tween(500),
+        label = "globalDimAlpha"
+    )
+
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -133,14 +149,23 @@ fun MainNavigation() {
         }
       }
 
-      if (incomingPairRequest != null) {
+      if (globalDimAlpha > 0f) {
         // Dim recorded INTO the backdrop (not overlaid on top) so the glass PIN
-        // card samples the dimmed scene behind it — the documented pattern for
+        // card samples the dimmed scene behind it - the documented pattern for
         // glass dialogs.
         Box(
           modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
+            .graphicsLayer { alpha = globalDimAlpha }
+            .background(Color.Black)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    TopAppBarState.isProfileExpanded = false
+                    TopAppBarState.isSearchExpanded = false
+                }
+            )
         )
       }
     }
@@ -167,7 +192,7 @@ fun MainNavigation() {
             } else {
                 500f
             }
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

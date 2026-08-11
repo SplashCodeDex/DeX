@@ -52,7 +52,7 @@ fun DeXTheme(
   @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
   val subtleRipple = androidx.compose.material3.RippleConfiguration(
       color = if (darkTheme) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black,
-      rippleAlpha = androidx.compose.material3.RippleAlpha(
+      rippleAlpha = androidx.compose.material.ripple.RippleAlpha(
           draggedAlpha = 0.02f,
           focusedAlpha = 0.02f,
           hoveredAlpha = 0.02f,

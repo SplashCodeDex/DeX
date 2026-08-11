@@ -90,7 +90,7 @@
     <string name="pairing_enter_pin_on_device">Enter the PIN shown on %1$s</string>
     <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
     <string name="pairing_expires_in">Expires in %1$d s</string>
-    <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN on your PC</string>
+    <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN shown on their screen</string>
 
     <!-- History Screen -->
     <string name="history_title">History</string>

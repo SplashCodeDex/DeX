@@ -1,4 +1,17 @@
-﻿
+﻿# Win32 interop for unconstrained window drag: WPF's DragMove() sends
+# WM_NCLBUTTONDOWN/HTCAPTION which lets the system constrain window position
+# to keep the window on-screen. Since mainBorder is bottom-aligned within a
+# 760px window (~305px dead space above), the visible menu can't reach the
+# top ~30% of the screen. SetWindowPos bypasses that limit entirely.
+if (-not $script:dragWin32Added) {
+    Add-Type -Namespace DeXWin32 -Name DragMove -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT lpPoint);
+[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+[StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
+'@
+    $script:dragWin32Added = $true
+}
+
 $btnExit = $script:wpfWindow.FindName("btnExit")
 if ($btnExit) {
     $btnExit.Add_Click({
@@ -253,8 +266,21 @@ if ($script:dragPill) {
             
             if ($_.ButtonState -eq [System.Windows.Input.MouseButtonState]::Pressed) {
                 $script:hasBeenDragged = $true
-                try { $script:wpfWindow.DragMove() } catch {}
-                
+                # Manual drag via SetWindowPos: WPF DragMove() uses the system
+                # move loop which prevents the window top from going off-screen.
+                # The visible content is bottom-aligned ~305px below the window
+                # top, so the menu stalls ~30% from the screen top. SetWindowPos
+                # has no screen-edge constraint.
+                $pt = New-Object DeXWin32.DragMove+POINT
+                [DeXWin32.DragMove]::GetCursorPos([ref]$pt)
+                $script:dragStartX = $pt.X
+                $script:dragStartY = $pt.Y
+                $script:dragWinLeft = $script:wpfWindow.Left
+                $script:dragWinTop = $script:wpfWindow.Top
+                $script:dragHwnd = [System.Windows.Interop.WindowInteropHelper]::new($script:wpfWindow).Handle
+                $script:isDragging = $true
+                $script:wpfWindow.CaptureMouse()
+
                 if ($dragPillAccent) {
                     $anim2 = New-Object System.Windows.Media.Animation.DoubleAnimation
                     $anim2.To = 0
@@ -265,6 +291,33 @@ if ($script:dragPill) {
         }
     })
 }
+
+# Drag-move handler: repositions the window on every mouse move during a
+# drag, using SetWindowPos to bypass the system's screen-edge clamping.
+$script:wpfWindow.Add_PreviewMouseMove({
+    if (-not $script:isDragging) { return }
+    $pt = New-Object DeXWin32.DragMove+POINT
+    [DeXWin32.DragMove]::GetCursorPos([ref]$pt)
+    $newLeft = $script:dragWinLeft + ($pt.X - $script:dragStartX)
+    $newTop  = $script:dragWinTop  + ($pt.Y - $script:dragStartY)
+    $SWP_NOZORDER = 0x0004; $SWP_NOSIZE = 0x0001; $SWP_NOACTIVATE = 0x0010
+    [DeXWin32.DragMove]::SetWindowPos($script:dragHwnd, [IntPtr]::Zero, [int]$newLeft, [int]$newTop, 0, 0, $SWP_NOZORDER -bor $SWP_NOSIZE -bor $SWP_NOACTIVATE)
+})
+
+# Drag-up handler: ends the manual drag, releases mouse capture, and fades
+# the drag-pill accent back to its rest state.
+$script:wpfWindow.Add_PreviewMouseLeftButtonUp({
+    if (-not $script:isDragging) { return }
+    $script:isDragging = $false
+    try { $script:wpfWindow.ReleaseMouseCapture() } catch {}
+    $pill = $script:wpfWindow.FindName("dragPillAccent")
+    if ($pill) {
+        $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
+        $anim.To = 0
+        $anim.Duration = [TimeSpan]::FromSeconds(0.15)
+        $pill.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $anim)
+    }
+})
 
 if ($script:btnToggleTopmost) {
     $script:btnToggleTopmost.Add_Click({
@@ -296,10 +349,14 @@ $script:wpfWindow.Add_Deactivated({
         # Keep the QR/PIN request screen visible on click-outside; only Cancel dismisses it
         $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
         if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) { return }
+        # Also keep the window while ANY pairing session is active — an auto-shown inbound
+        # pairing (window surfaced from the tray) must not be dismissed before the user
+        # reads the PIN, even if the panel's render state is mid-transition.
+        if ($script:activeOutboundPairIp -or $script:pairWaitTimer) { return }
         $now = [DateTime]::Now
         Write-Trace "Deactivated - Ms since last: $(($now - $script:lastDeactivated).TotalMilliseconds)"
         if (($now - $script:lastDeactivated).TotalMilliseconds -gt 200) {
-            Write-Trace "Deactivated: Hiding window"
+            Write-Trace "Deactivated: Hiding window (pinPanel=$($pinPanel.Visibility))"
             try { $script:wpfWindow.FindResource("PopIn").Stop($script:wpfWindow) } catch {}
             $script:wpfWindow.Hide()
             $script:lastDeactivated = $now
@@ -377,7 +434,7 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     $script:activeOutboundPairFp = $targetPeer.Fingerprint
                     
                     $script:wpfWindow.FindName("txtPinTitle").Text = "Pairing with $($targetPeer.Alias)"
-                    $script:wpfWindow.FindName("txtPinSubtitle").Text = "Select an option below to connect"
+                    $script:wpfWindow.FindName("txtPinSubtitle").Text = "Scan this code with your phone, or tap Request PIN"
                     
                     $script:wpfWindow.FindName("btnPinAccept").Visibility = 'Collapsed'
                     $script:wpfWindow.FindName("btnPinAcceptOnce").Visibility = 'Collapsed'

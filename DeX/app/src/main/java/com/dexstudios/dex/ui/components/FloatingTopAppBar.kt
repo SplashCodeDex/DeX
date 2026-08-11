@@ -45,10 +45,19 @@ import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+
+private var isProfileExpanded: Boolean
+    get() = TopAppBarState.isProfileExpanded
+    set(value) { TopAppBarState.isProfileExpanded = value }
+    
+private var isSearchExpanded: Boolean
+    get() = TopAppBarState.isSearchExpanded
+    set(value) { TopAppBarState.isSearchExpanded = value }
 
 @Composable
 fun FloatingTopAppBar(
@@ -56,8 +65,6 @@ fun FloatingTopAppBar(
     backdrop: Backdrop? = null,
     showSearch: Boolean = true,
 ) {
-    var isProfileExpanded by remember { mutableStateOf(false) }
-    var isSearchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     val configuration = LocalConfiguration.current
@@ -117,17 +124,6 @@ fun FloatingTopAppBar(
         }
     }
 
-    val anyExpanded = isProfileExpanded || isSearchExpanded
-    val focusAlpha by animateFloatAsState(
-        targetValue = if (anyExpanded) 1f else 0f,
-        animationSpec = tween(500),
-        label = "focusAlpha"
-    )
-    val contentAlpha by animateFloatAsState(
-        targetValue = if (anyExpanded) 0f else 1f,
-        animationSpec = tween(400),
-        label = "contentAlpha"
-    )
     val avatarAlpha by animateFloatAsState(
         targetValue = if (isSearchExpanded) 0f else 1f,
         animationSpec = tween(400),
@@ -139,26 +135,8 @@ fun FloatingTopAppBar(
         label = "searchAlpha"
     )
 
-    Box(modifier = modifier.then(if (anyExpanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth())) {
-        // Outside tap dismissal & Focus Blur layer
-        if (focusAlpha > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(0.5f)
-                    .graphicsLayer { alpha = focusAlpha }
-                    .background(Color.Black.copy(alpha = 0.85f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            isProfileExpanded = false
-                            isSearchExpanded = false
-                        }
-                    )
-            )
-        }
-
+    Box(modifier = modifier.fillMaxWidth()) {
+        
         // The Top Bar Layout
         Box(
             modifier = Modifier

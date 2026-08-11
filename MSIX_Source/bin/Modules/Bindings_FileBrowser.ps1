@@ -30,6 +30,7 @@ function Invoke-DexEndpoint([string]$Name, [string]$Ip, $Extra) {
 # it. Only the UI thread mutates entries (via Dispatcher marshaling in Start-PullProgressPoll).
 $script:activePulls = [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new()
 $script:pullSeq = 0
+$script:pullPollTimer = $null
 
 function Set-PullProgressUi([int]$Pct, [string]$Status) {
     $dock = $script:wpfWindow.FindName("dockPullProgress")
@@ -107,6 +108,10 @@ function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
     $wpf = $script:wpfWindow
     if ($null -eq $wpf) { return }
     $cCopy = $cancelled; $sCopy = $savedN; $fCopy = $failedN; $oCopy = $OutDir
+    # Capture $script:currentDirPath as a local: a GetNewClosure closure reads $script:
+    # variables from its detached scope (always empty), so the direct read below would
+    # never match and the history list would not refresh after a completed pull.
+    $dirCopy = $script:currentDirPath
     $wpf.Dispatcher.InvokeAsync([Action]{
         if ($cCopy) {
             Show-Toast -Title "Pull Cancelled" -Message "The file pull was cancelled."
@@ -119,33 +124,39 @@ function Show-PullCompleteToast([string]$RequestId, [string]$OutDir) {
         }
         # Pulled files land in the local history folder: refresh the list so they appear
         # immediately instead of on the next manual reload.
-        if ($script:currentDirPath -match '^[A-Za-z]:\\') {
-            Load-Directory $script:currentDirPath
+        if ($dirCopy -match '^[A-Za-z]:\\') {
+            Load-Directory $dirCopy
         }
     }) | Out-Null
 }
 
-# Polls one pull's status on a background thread. The deadline is activity-based: it only
+# Polls one pull's status on a background JOB. The deadline is activity-based: it only
 # gives up when the phone stops sending progress (or a hard cap is hit), never on a fixed cap.
-# Thread-safety: the poll task only computes values; every mutation of $script:activePulls
-# is marshaled onto the UI thread so the ConcurrentDictionary entries are never torn.
+# PS 5.1 cannot run scriptblock delegates on threadpool threads — the old
+# Task.Run([Action]{...}) threw "no runspace available" here, so the poll loop ran in a
+# real background job instead (the codebase's Start-AsyncSafBrowse pattern), and a single
+# UI-thread DispatcherTimer drains the job output. The drain tick is a PLAIN scriptblock
+# (no GetNewClosure): a closure runs in a detached module scope where direct $script: reads
+# are empty, so it could never touch $script:activePulls. Thread-safety: the job only
+# computes values; every mutation of $script:activePulls happens on the UI thread.
 function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
     $script:pullSeq++
     $entry = @{ Task = $null; Seq = $script:pullSeq; OutDir = $OutDir; Pct = 0; Status = "Pulling files from phone..." }
     $script:activePulls[$RequestId] = $entry
-    $script:activePulls[$RequestId].Task = [System.Threading.Tasks.Task]::Run([Action]{
-        $rid = $RequestId
+
+    $api = $global:DeXLocalApi
+    $rid = $RequestId
+    $job = Start-Job -ScriptBlock {
+        param($apiBase, $requestId)
         $lastActivity = Get-Date
         $hardDeadline = (Get-Date).AddMinutes(30)
         $finished = $false
         while ((Get-Date) -lt $hardDeadline) {
             $st = $null
-            try { $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dex/pull-status?requestId=$rid" -TimeoutSec 3 -ErrorAction Stop } catch {}
+            try { $st = Invoke-RestMethod -Uri "$apiBase/local/dex/pull-status?requestId=$requestId" -TimeoutSec 3 -ErrorAction Stop } catch {}
             if ($null -eq $st) { Start-Sleep -Milliseconds 300; continue }
 
             $done = [bool]$st.done
-            $pct = $null
-            $status = $null
             if (-not $done -and $st.progress) {
                 # Live progress extends the activity window and drives the dock.
                 $lastActivity = Get-Date
@@ -153,25 +164,10 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
                 $pct = if ($total -gt 0) { [int]([long]$st.progress.sentBytes * 100 / $total) } else { 0 }
                 if ($pct -gt 99) { $pct = 99 }
                 $status = "Pulling {0} of {1} files..." -f [int]$st.progress.doneFiles, [int]$st.progress.totalFiles
+                [pscustomobject]@{ Pct = $pct; Status = $status; Done = $false; Stalled = $false }
             } elseif ($done) {
                 $finished = $true
-                $pct = 100
-                $status = "Pull finished"
-            }
-
-            # Marshal state updates to the UI thread — the map is UI-thread-owned.
-            if ($null -ne $pct) {
-                $pctCopy = $pct; $statusCopy = $status
-                $wpf = $script:wpfWindow
-                if ($null -ne $wpf) {
-                    $wpf.Dispatcher.InvokeAsync([Action]{
-                        if ($script:activePulls.ContainsKey($rid)) {
-                            $script:activePulls[$rid].Pct = $pctCopy
-                            $script:activePulls[$rid].Status = $statusCopy
-                        }
-                        Show-PullDockIfActive $rid $pctCopy $statusCopy
-                    }.GetNewClosure()) | Out-Null
-                }
+                [pscustomobject]@{ Pct = 100; Status = "Pull finished"; Done = $true; Stalled = $false }
             }
             if ($finished) { break }
 
@@ -180,29 +176,63 @@ function Start-PullProgressPoll([string]$RequestId, [string]$OutDir) {
 
             Start-Sleep -Milliseconds 300
         }
-
-        $outDirCopy = $OutDir
-        $wpf = $script:wpfWindow
-        if ($null -ne $wpf) {
-            # Terminal handling: remove the entry from the UI-owned map on the dispatcher and
-            # promote the next pull. The blocking completion-status HTTP then runs on THIS
-            # background thread (Show-PullCompleteToast), so the dispatcher only ever sees
-            # the cheap toast / list-refresh marshaled back from it.
-            $wpf.Dispatcher.Invoke([Action]{
-                if ($script:activePulls.ContainsKey($rid)) {
-                    $entryCopy = $script:activePulls[$rid]
-                    $outDirCopy = $entryCopy.OutDir
-                    $script:activePulls.TryRemove($rid, [ref]$null) | Out-Null
-                }
-                Refresh-PullDock
-            }.GetNewClosure()) | Out-Null
-            if ($finished) {
-                Show-PullCompleteToast $rid $outDirCopy
-            } else {
-                $wpf.Dispatcher.InvokeAsync([Action]{ Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete." }) | Out-Null
-            }
+        if (-not $finished) {
+            [pscustomobject]@{ Pct = 0; Status = "Stalled"; Done = $false; Stalled = $true }
         }
-    }.GetNewClosure())
+    } -ArgumentList $api, $rid
+    $entry.Task = $job
+
+    # Ensure the shared drain timer is running (created once; stops when no pulls remain).
+    if (-not $script:pullPollTimer) {
+        $script:pullPollTimer = New-Object System.Windows.Threading.DispatcherTimer
+        $script:pullPollTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+        $script:pullPollTimer.Add_Tick({
+            $anyActive = $false
+            foreach ($k in @($script:activePulls.Keys)) {
+                $e = $script:activePulls[$k]
+                $job = $null
+                if ($null -ne $e) { $job = $e.Task }
+                if ($null -eq $job) { continue }
+                $anyActive = $true
+
+                $out = @(Receive-Job $job -ErrorAction SilentlyContinue)
+                $terminal = $null
+                foreach ($r in $out) {
+                    if ($r.Done -or $r.Stalled) { $terminal = $r; break }
+                    $e.Pct = [int]$r.Pct
+                    $e.Status = $r.Status
+                    Show-PullDockIfActive $k ([int]$r.Pct) $r.Status
+                }
+
+                if ($null -ne $terminal) {
+                    # Terminal: remove the entry, promote the next pull, and report.
+                    Remove-Job $job -Force -ErrorAction SilentlyContinue
+                    $e.Task = $null
+                    if ($terminal.Done) {
+                        $outDir = $e.OutDir
+                        $script:activePulls.TryRemove($k, [ref]$null) | Out-Null
+                        Refresh-PullDock
+                        Show-PullCompleteToast $k $outDir
+                    } else {
+                        $script:activePulls.TryRemove($k, [ref]$null) | Out-Null
+                        Refresh-PullDock
+                        Show-Toast -Title "Pull Stalled" -Message "The phone stopped responding; the pull may be incomplete."
+                    }
+                } elseif ($job.State -notin @('Running', 'NotStarted')) {
+                    # The job ended without a terminal record — clean up quietly.
+                    Remove-Job $job -Force -ErrorAction SilentlyContinue
+                    $e.Task = $null
+                    $script:activePulls.TryRemove($k, [ref]$null) | Out-Null
+                    Refresh-PullDock
+                }
+            }
+            if (-not $anyActive) {
+                $t = $script:pullPollTimer
+                if ($t) { $t.Stop(); $script:pullPollTimer = $null }
+            }
+        })
+    }
+    if (-not $script:pullPollTimer.IsEnabled) { $script:pullPollTimer.Start() }
 }
 
 $script:btnCancelPull = $script:wpfWindow.FindName("btnCancelPull")

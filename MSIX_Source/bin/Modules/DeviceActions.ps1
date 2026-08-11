@@ -170,7 +170,7 @@ function Start-PinPairing {
             Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."
             return
         }
-        Show-PinPanel -Title "Pairing with $($result.Alias)" -Code $result.Pin -Status "Waiting for remote acceptance..." `
+        Show-PinPanel -Title "Pairing with $($result.Alias)" -Code $result.Pin -Status "Waiting for the PIN to be entered on the phone..." `
             -ShowQrToggle -HideAcceptButtons `
             -SuccessMessage "Device trusted and added to Your Devices." `
             -FailureMessage "The remote device rejected or timed out."

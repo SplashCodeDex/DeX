@@ -162,7 +162,7 @@ object LiquidGlassPresets {
         chromaticAberration = false,
         depthEffect = false,
         surfaceTint = Color.White,
-        surfaceTintAlpha = 0.08f,
+        surfaceTintAlpha = 0.12f,
         highlight = Highlight.Ambient,
         shadowRadius = 12.dp,
         shadowColor = Color.Black.copy(alpha = 0.15f),

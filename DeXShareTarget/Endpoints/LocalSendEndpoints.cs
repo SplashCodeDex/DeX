@@ -133,7 +133,7 @@ namespace DeXShareTarget.Endpoints
                     <visual>
                         <binding template='ToastGeneric'>
                             <text>DeX Pairing PIN</text>
-                            <text>Enter {pin} on {alias}</text>
+                            <text>Enter PIN {pin} on {alias}</text>
                         </binding>
                     </visual>
                 </toast>";
