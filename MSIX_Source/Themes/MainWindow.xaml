@@ -543,7 +543,7 @@
                                 <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                                 <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                                 <ObjectAnimationUsingKeyFrames Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}" /></ObjectAnimationUsingKeyFrames>
-                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" /></ObjectAnimationUsingKeyFrames>
+                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Visibility"><DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Hidden}" /></ObjectAnimationUsingKeyFrames>
                             </Storyboard>
                             <Storyboard x:Key="SlideOutPinAnim">
                                 <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>
@@ -1011,22 +1011,17 @@
                     
 
                     <!-- PIN View -->
-                    <Grid x:Name="pinViewPanel" Visibility="Collapsed" Opacity="0" Margin="16">
-                        <Grid.RenderTransform>
+                    <StackPanel x:Name="pinViewPanel" Visibility="Collapsed" Opacity="0" Margin="16" VerticalAlignment="Center">
+                        <StackPanel.RenderTransform>
                             <TranslateTransform x:Name="pinViewTrans" X="300" />
-                        </Grid.RenderTransform>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                        </StackPanel.RenderTransform>
                             <!-- Header / Status -->
-                            <Grid Grid.Row="0">
-                                <TextBlock x:Name="txtPinTitle" Grid.Row="0" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                                <TextBlock x:Name="txtPinSubtitle" Grid.Row="0" Text="" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                            <Grid Margin="0,0,0,32">
+                                <TextBlock x:Name="txtPinTitle" Text="Pairing Request" FontSize="18" FontFamily="Segoe UI" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,8,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                <TextBlock x:Name="txtPinSubtitle" Text="" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,34,0,0" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                             </Grid>
                         
-                        <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Grid HorizontalAlignment="Center">
                             <StackPanel x:Name="pinCodeContent" Visibility="Visible" RenderTransformOrigin="0.5,0.5">
                                 <StackPanel.RenderTransform>
                                     <TransformGroup>
@@ -1064,7 +1059,7 @@
                             </Border>
                         </Grid>
                         
-                        <Grid Grid.Row="2" Margin="0,0,0,8">
+                        <Grid Margin="0,32,0,8">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="8" />
@@ -1089,7 +1084,7 @@
                             <Button x:Name="btnPinAccept" Style="{StaticResource AnimatedActionBtn}" Grid.Row="0" Grid.Column="5" MinWidth="80" Content="Accept" Foreground="{DynamicResource SecondaryForegroundBrush}" Background="{DynamicResource SecondaryBrush}" />
                             <Button x:Name="btnPinAcceptOnce" Style="{StaticResource AnimatedActionBtn}" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" MinWidth="110" Content="Accept Once (Guest)" Foreground="{DynamicResource SecondaryTextBrush}" Background="Transparent" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="0,8" FontSize="13" />
                         </Grid>
-                    </Grid>
+                    </StackPanel>
                 </Grid>
                 
                 </DockPanel>
