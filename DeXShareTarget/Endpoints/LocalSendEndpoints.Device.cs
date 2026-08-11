@@ -195,16 +195,17 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/pair-cancel", (HttpRequest request) => 
             {
                 var targetIp = request.Query["ip"].ToString();
-                var fp = request.Query["fingerprint"].ToString();
                 if (!string.IsNullOrEmpty(targetIp))
                 {
                     OutboundPairingStatus[targetIp] = "Cancelled";
                     ClearPendingPair(targetIp);
                 }
-                if (!string.IsNullOrEmpty(fp))
-                {
-                    IdentityManager.RemovePairedDevice(fp);
-                }
+                // NOTE: deliberately does NOT call IdentityManager.RemovePairedDevice.
+                // Cancelling a pairing attempt must never revoke an already-established
+                // trust (e.g. a re-pair that the user cancels or that times out would
+                // silently drop the device from "Your Devices"). Explicit revocation is
+                // the /local/unpair endpoint ("Forget Device") or the phone's unpair
+                // message — not a cancel.
                 return Results.Ok();
             });
         }

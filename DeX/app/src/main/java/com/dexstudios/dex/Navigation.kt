@@ -7,8 +7,19 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.dexstudios.dex.ui.components.bubbleFluidity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +55,8 @@ fun MainNavigation() {
   // tab, and back on any tab falls through to the system (exit).
   var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
   val currentRoute = tabs[selectedTabIndex]
+
+  val mainListState = rememberLazyListState()
 
   val devicesFilled = ImageVector.vectorResource(R.drawable.ic_devices_filled)
   val devicesOutlined = ImageVector.vectorResource(R.drawable.ic_devices_outlined)
@@ -83,7 +96,18 @@ fun MainNavigation() {
     // subtree — a backdrop that captures the glass sampling it is a render loop
     // and crashes (SIGSEGV).
     val contentBackdrop = rememberLayerBackdrop()
-    val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
+    val incomingPairRequestFlow = remember {
+        kotlinx.coroutines.flow.MutableStateFlow(
+            com.dexstudios.dex.network.PairRequestInfo(
+                alias = "DEXSTUDIOS",
+                fingerprint = "mock_fp",
+                pin = "12345",
+                deferred = kotlinx.coroutines.CompletableDeferred(),
+                deadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + 600_000L
+            )
+        )
+    }
+    val incomingPairRequest by incomingPairRequestFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -104,7 +128,8 @@ fun MainNavigation() {
         tabStateHolder.SaveableStateProvider(tab.toString()) {
           when (tab) {
             Main -> MainScreen(
-              modifier = Modifier
+              modifier = Modifier,
+              listState = mainListState
             )
             History -> HistoryScreen(
               modifier = Modifier.safeDrawingPadding()
@@ -143,9 +168,40 @@ fun MainNavigation() {
         exit = androidx.compose.animation.fadeOut(),
         modifier = Modifier.align(Alignment.TopCenter)
     ) {
-        FloatingTopAppBar(
-            backdrop = contentBackdrop
-        )
+        Box {
+            FloatingTopAppBar(
+                backdrop = contentBackdrop
+            )
+
+            val scrollOffset = if (mainListState.firstVisibleItemIndex == 0) {
+                mainListState.firstVisibleItemScrollOffset.toFloat()
+            } else {
+                500f
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp)
+                    .graphicsLayer {
+                        translationY = -scrollOffset * 0.5f
+                        val s = (1f + (scrollOffset / 800f)).coerceAtMost(1.5f)
+                        scaleX = s
+                        scaleY = s
+                        alpha = (1f - scrollOffset / 300f).coerceIn(0f, 1f)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.dex_logo),
+                    contentDescription = "DeX Logo",
+                    modifier = Modifier
+                        .height(80.dp)
+                        .bubbleFluidity(targetScale = 0.85f, pullFactor = 0.25f),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
     }
 
     incomingPairRequest?.let { req ->
@@ -161,7 +217,8 @@ fun MainNavigation() {
                 req.deferred.complete("")
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
             },
-            backdrop = contentBackdrop
+            backdrop = contentBackdrop,
+            deadlineElapsedMs = req.deadlineElapsedMs
         )
     }
   }

@@ -3,6 +3,7 @@ package com.dexstudios.dex.network
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.SystemClock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,8 @@ class MessageHandler(
             alias = pairReq.alias,
             fingerprint = pairReq.fingerprint,
             pin = pairReq.pin,
-            deferred = CompletableDeferred()
+            deferred = CompletableDeferred(),
+            deadlineElapsedMs = SystemClock.elapsedRealtime() + PAIR_PROMPT_TIMEOUT_MS
         )
         AuthState.incomingPairRequest.value = info
         notificationHelper.showPairingRequestNotification(pairReq.alias)

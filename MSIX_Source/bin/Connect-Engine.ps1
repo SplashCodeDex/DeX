@@ -325,6 +325,7 @@ $mdnsTimer.Add_Tick({
                     $script:activeOutboundPairFp = $pp.fingerprint
                     Show-PinPanel -Title "Pairing with $($pp.alias)" -Code $pp.pin -Status "Waiting for remote acceptance..." `
                         -HidePanelOnTerminal `
+                        -HideAcceptButtons `
                         -SuccessMessage "Device has been paired." `
                         -FailureMessage "Request was declined or timed out."
                 }

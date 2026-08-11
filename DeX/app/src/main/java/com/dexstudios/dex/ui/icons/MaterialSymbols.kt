@@ -307,6 +307,44 @@ public object MaterialSymbols {
             }
         }.build().also { _checkCircle = it }
 
+    public val Close: ImageVector
+        get() = _close ?: ImageVector.Builder(
+            name = "close",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(18.3f, 5.71f)
+                quadToRelative(-0.39f, -0.39f, -1.02f, -0.39f)
+                reflectiveQuadToRelative(-1.02f, 0.39f)
+                lineTo(12f, 10.59f)
+                lineTo(7.71f, 6.3f)
+                quadToRelative(-0.39f, -0.39f, -1.02f, -0.39f)
+                reflectiveQuadToRelative(-1.02f, 0.39f)
+                quadToRelative(-0.39f, 0.39f, -0.39f, 1.02f)
+                reflectiveQuadToRelative(0.39f, 1.02f)
+                lineTo(9.41f, 12f)
+                lineTo(5.71f, 15.71f)
+                quadToRelative(-0.39f, 0.39f, -0.39f, 1.02f)
+                reflectiveQuadToRelative(0.39f, 1.02f)
+                quadToRelative(0.39f, 0.39f, 1.02f, 0.39f)
+                reflectiveQuadToRelative(1.02f, -0.39f)
+                lineTo(12f, 13.41f)
+                lineToRelative(4.29f, 4.29f)
+                quadToRelative(0.39f, 0.39f, 1.02f, 0.39f)
+                reflectiveQuadToRelative(1.02f, -0.39f)
+                quadToRelative(0.39f, -0.39f, 0.39f, -1.02f)
+                reflectiveQuadToRelative(-0.39f, -1.02f)
+                lineTo(14.59f, 12f)
+                lineToRelative(4.29f, -4.29f)
+                quadToRelative(0.39f, -0.39f, 0.39f, -1.02f)
+                reflectiveQuadToRelative(-0.39f, -1.02f)
+                close()
+            }
+        }.build().also { _close = it }
+
     private fun batteryFrameBuilder(name: String, fillPath: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector.Builder {
         return ImageVector.Builder(
             name = name,
@@ -370,4 +408,5 @@ public object MaterialSymbols {
     private var _notifications: ImageVector? = null
     private var _check: ImageVector? = null
     private var _checkCircle: ImageVector? = null
+    private var _close: ImageVector? = null
 }

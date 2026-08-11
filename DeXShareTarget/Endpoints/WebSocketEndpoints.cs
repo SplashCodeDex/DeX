@@ -265,10 +265,20 @@ namespace DeXShareTarget.Endpoints
                 else if (type == "pair-response" && root.TryGetProperty("data", out var data))
                 {
                     var accepted = data.TryGetProperty("accepted", out var a) && a.GetBoolean();
+                    // Read the pending attempt's token BEFORE clearing it: the token is only
+                    // persisted now, on acceptance (PushPairPromptAsync deliberately does not
+                    // save it upfront — see there).
+                    var pendingToken = LocalSendEndpoints.PendingPairPins.TryGetValue(clientIp, out var pending)
+                        ? pending.Token
+                        : null;
                     LocalSendEndpoints.ClearPendingPair(clientIp);
                     if (accepted)
                     {
                         IdentityManager.SavePairedDevice(fingerprint);
+                        if (!string.IsNullOrEmpty(pendingToken))
+                        {
+                            IdentityManager.SavePairedToken(fingerprint, pendingToken);
+                        }
                         WebSocketConnectionManager.MarkVerified(fingerprint);
                         LocalSendEndpoints.OutboundPairingStatus[clientIp] = "Accepted";
                         Console.WriteLine($"[WS] Pairing accepted by {fingerprint}");

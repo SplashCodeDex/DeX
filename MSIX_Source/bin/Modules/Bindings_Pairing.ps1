@@ -2,13 +2,11 @@
 $btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
 if ($btnPinCancel) {
     $btnPinCancel.Add_Click({
-    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    
-    if ($script:activeOutboundPairIp) {
-        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue } catch {}
-    }
-    Clear-PairingState
-    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+    # Centralized cancellation: stops every session timer (pairWaitTimer, pairInitTimer,
+    # qrPhaseTimer), removes the in-flight pair-initiate job, cancels the pending pairing
+    # server-side, clears the session state, and slides the panel out. Idempotent, so a
+    # double-click (or Escape + click) is harmless.
+    Stop-PairingSession -SlideOut
     })
 }
 

@@ -103,14 +103,23 @@ function Start-PinPairing {
         }
     }
 
+    # Guard: a pair-initiate is already in flight — a second click would push a duplicate
+    # pair-prompt to the phone.
+    if ($script:pairInitJob) {
+        Show-Toast -Title "Pairing in Progress" -Message "Already requesting a PIN from the device."
+        return
+    }
+
     $script:activeOutboundPairIp = $Ip
     $script:activeOutboundPairFp = $Fingerprint
+    $script:pairInitSessionIp = $Ip
+    $script:pairInitSessionFp = $Fingerprint
+    # The idle QR phase's expiry timer is superseded once a PIN request is sent.
+    if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
 
     # PS 5.1: scriptblock delegates cannot run on threadpool threads, so the pair-initiate
     # POST (which waits on the phone's WebSocket and can stall on a half-dead connection)
     # runs in a background Job; a poll timer applies the result on the UI thread.
-    if ($script:pairInitJob) { Remove-Job $script:pairInitJob -Force -ErrorAction SilentlyContinue }
-    if ($script:pairInitTimer) { $script:pairInitTimer.Stop() }
     $api = $global:DeXLocalApi
     $job = Start-Job -ScriptBlock {
         param($apiBase, $targetIp, $targetFp, $targetAlias)
@@ -138,17 +147,24 @@ function Start-PinPairing {
     $script:pairInitTimer = $timer
     $timer.Add_Tick({
         $job = $script:pairInitJob
-        if (-not $job) { $script:pairInitTimer.Stop(); return }
+        if (-not $job) {
+            $t = $script:pairInitTimer
+            if ($t) { $t.Stop() }
+            $script:pairInitTimer = $null
+            return
+        }
         # A freshly spawned job starts in NotStarted — keep polling until it reaches a terminal state.
         if ($job.State -notin @('Completed','Failed','Stopped')) { return }
-        $script:pairInitTimer.Stop()
+        $t2 = $script:pairInitTimer
+        if ($t2) { $t2.Stop() }
+        $script:pairInitTimer = $null
         $script:pairInitJob = $null
         $result = $null
         if ($job.State -eq 'Completed') { $result = Receive-Job $job -ErrorAction SilentlyContinue }
         Remove-Job $job -Force -ErrorAction SilentlyContinue
-        # The user cancelled (Escape/Cancel) while the POST was in flight — don't
-        # resurrect the panel over the dismissed menu.
-        if (-not $script:activeOutboundPairIp) { return }
+        # The session moved on (user cancelled, switched device, or a new pairing started):
+        # never resurrect this result over the current panel.
+        if ($script:activeOutboundPairIp -ne $script:pairInitSessionIp -or $script:activeOutboundPairFp -ne $script:pairInitSessionFp) { return }
         if (-not $result -or -not $result.Pin) {
             Clear-PairingState
             Show-Toast -Title "Device Not Connected" -Message "The phone has no active connection. Open the DeX app on the phone, wait a few seconds, then try again."

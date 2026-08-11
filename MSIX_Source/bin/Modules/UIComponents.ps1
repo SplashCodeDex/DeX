@@ -470,19 +470,34 @@ function Show-PinPanel {
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
     $script:pairWaitTimer = New-Object System.Windows.Threading.DispatcherTimer
     $script:pairWaitTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
+    $sessionIp = $script:activeOutboundPairIp
+    $sessionFp = $script:activeOutboundPairFp
     $script:pairWaitTimer.Add_Tick({
+        # Session guard: the pairing may have been cancelled or replaced while this tick was
+        # queued — never act on a stale session (wrong toasts, wrong panel state).
+        if ($script:activeOutboundPairIp -ne $sessionIp -or $script:activeOutboundPairFp -ne $sessionFp) {
+            $script:pairWaitTimer.Stop()
+            return
+        }
         $script:pinTimeoutSeconds--
         if ($txtTimeout -and $script:pinTimeoutSeconds -ge 0) {
             $txtTimeout.Text = "Expires in $($script:pinTimeoutSeconds)s"
         }
+        # Real expiry: the countdown previously just stopped counting and the panel stayed
+        # open forever on "Expires in 0s". Treat 0 as a user-timeout: cancel + close.
+        if ($script:pinTimeoutSeconds -le 0) {
+            $script:pairWaitTimer.Stop()
+            Stop-PairingSession -SlideOut
+            Show-Toast -Title "Pairing Timed Out" -Message $FailureMessage
+            return
+        }
         try {
-            $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:activeOutboundPairIp)" -TimeoutSec 1 -ErrorAction Stop
+            $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$sessionIp" -TimeoutSec 1 -ErrorAction Stop
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                 $script:pairWaitTimer.Stop()
                 if ($HidePanelOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                Clear-PairingState
                 try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                $script:activeOutboundPairIp = $null
-                $script:activeOutboundPairFp = $null
                 if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message $SuccessMessage }
                 else { Show-Toast -Title "Pairing Failed" -Message $FailureMessage }
             }
@@ -493,10 +508,62 @@ function Show-PinPanel {
 
 function Clear-PairingState {
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
     $script:activeOutboundPairIp = $null
     $script:activeOutboundPairFp = $null
+    $script:pairInitSessionIp = $null
+    $script:pairInitSessionFp = $null
     $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
     if ($txtTimeout) { $txtTimeout.Text = "" }
+    # Never leave a stale QR bitmap behind (it may show a previous session's URL).
+    $imgQr = $script:wpfWindow.FindName("imgQrCode")
+    if ($imgQr) { $imgQr.Source = $null }
+}
+
+# Stops every pairing session timer/job without touching the session state or the server.
+# Used by the "QR CODE" back-switch, which keeps the device context so "Request PIN" works
+# again from the QR view.
+function Stop-PairingTimers {
+    if ($script:pairInitTimer) { $script:pairInitTimer.Stop(); $script:pairInitTimer = $null }
+    if ($script:pairInitJob) { Remove-Job $script:pairInitJob -Force -ErrorAction SilentlyContinue; $script:pairInitJob = $null }
+    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
+    if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
+}
+
+# User-initiated cancellation (Cancel button, Escape, switching to a different device, or
+# timeout): stops every session timer, cancels the pending pairing server-side, and clears
+# the session state. -SlideOut also plays the panel exit animation.
+function Stop-PairingSession {
+    param([switch]$SlideOut)
+    Stop-PairingTimers
+    if ($script:activeOutboundPairIp) {
+        try {
+            Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
+        } catch {}
+    }
+    Clear-PairingState
+    if ($SlideOut) {
+        try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+    }
+}
+
+# Starts the idle-QR-phase expiry: if the user never taps "Request PIN" (or returns to the
+# QR view and idles), close the panel after 60s instead of leaving the session dangling.
+function Start-QrPhaseTimer {
+    if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop() }
+    $script:qrPhaseTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $script:qrPhaseTimer.Interval = [TimeSpan]::FromSeconds(60)
+    $script:qrPhaseTimer.Add_Tick({
+        # Only auto-cancel while still in the idle QR phase (no PIN session and no request
+        # in flight) — otherwise the session carries on.
+        $pinPhaseActive = ($script:pairWaitTimer -and $script:pairWaitTimer.IsEnabled)
+        if (-not $pinPhaseActive -and -not $script:pairInitJob) {
+            Stop-PairingSession -SlideOut
+            Show-Toast -Title "Pairing Expired" -Message "The pairing request expired."
+        }
+        $script:qrPhaseTimer.Stop()
+    })
+    $script:qrPhaseTimer.Start()
 }
 
 

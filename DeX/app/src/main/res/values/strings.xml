@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">DeX</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_account_title">Account</string>
+    <string name="settings_connectivity_title">Connectivity</string>
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_sign_out">Sign Out</string>
+    <string name="settings_app_version">Version</string>
+    <string name="settings_device_fingerprint">Device Fingerprint</string>
+    <string name="settings_ip_address">IP Address</string>
+    <string name="settings_dark_mode">Dark Mode</string>
     <string name="trust_identity_title">Trust &amp; Identity</string>
     <string name="trust_identity_desc">Devices signed in with the same Google account will automatically trust each other.</string>
     <!-- Share Target -->
@@ -80,6 +89,7 @@
     <string name="pairing_failed">Pairing failed!</string>
     <string name="pairing_enter_pin_on_device">Enter the PIN shown on %1$s</string>
     <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
+    <string name="pairing_expires_in">Expires in %1$d s</string>
     <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN on your PC</string>
 
     <!-- History Screen -->

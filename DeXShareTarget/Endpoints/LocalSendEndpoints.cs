@@ -81,7 +81,11 @@ namespace DeXShareTarget.Endpoints
                 OutboundPairingStatus[statusIp] = "Pending";
                 var pin = new Random().Next(10000, 99999).ToString();
                 var token = Guid.NewGuid().ToString("N");
-                IdentityManager.SavePairedToken(targetFp, token);
+                // NOTE: the token is deliberately NOT persisted here. It is only saved when
+                // the phone accepts (pair-response). Persisting it upfront would clobber an
+                // already-paired device's valid token on every re-pair attempt — if that
+                // attempt is then cancelled or times out, the phone still holds the old token
+                // while the PC has the new one, silently de-trusting the device.
                 var reqDto = new PairRequestDto
                 {
                     Alias = Environment.MachineName,
@@ -98,6 +102,7 @@ namespace DeXShareTarget.Endpoints
                         Fingerprint = targetFp,
                         Pin = pin,
                         Alias = reqDto.Alias,
+                        Token = token,
                         CreatedAt = DateTime.UtcNow
                     };
                     ShowPairPinToast(pin, targetFp);

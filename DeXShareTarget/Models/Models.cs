@@ -63,6 +63,7 @@ namespace DeXShareTarget.Models
         public string Fingerprint { get; set; } = "";
         public string Pin { get; set; } = "";
         public string Alias { get; set; } = "";
+        public string? Token { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

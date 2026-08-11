@@ -148,4 +148,41 @@ object LiquidGlassPresets {
         shadowRadius = 24.dp,
         shadowColor = Color.Black.copy(alpha = 0.4f),
     )
+
+    /**
+     * Minimalist flat glass with no lens distortion or prismatic gradients.
+     * Deep blur and subtle tint for a modern, clean look.
+     */
+    val Flat: LiquidGlassConfig = LiquidGlassConfig(
+        shape = RoundedCornerShape(48.dp),
+        blurRadius = 24.dp,
+        lensHeight = 0.dp,
+        lensAmount = 0.dp,
+        vibrancyEnabled = false,
+        chromaticAberration = false,
+        depthEffect = false,
+        surfaceTint = Color.White,
+        surfaceTintAlpha = 0.08f,
+        highlight = Highlight.Ambient,
+        shadowRadius = 12.dp,
+        shadowColor = Color.Black.copy(alpha = 0.15f),
+    )
+
+    /**
+     * Interactive version of the flat glass, slightly more opaque for buttons.
+     */
+    val FlatInteractive: LiquidGlassConfig = LiquidGlassConfig(
+        shape = CircleShape,
+        blurRadius = 16.dp,
+        lensHeight = 0.dp,
+        lensAmount = 0.dp,
+        vibrancyEnabled = false,
+        chromaticAberration = false,
+        depthEffect = false,
+        surfaceTint = Color.White,
+        surfaceTintAlpha = 0.15f,
+        highlight = Highlight.Ambient,
+        shadowRadius = 8.dp,
+        shadowColor = Color.Black.copy(alpha = 0.2f),
+    )
 }

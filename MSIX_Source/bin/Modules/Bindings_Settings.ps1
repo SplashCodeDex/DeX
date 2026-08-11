@@ -66,10 +66,7 @@ if ($btnSettingsConnectNow) {
 $btnSettingsQrCode = $script:wpfWindow.FindName("btnSettingsQrCode")
 if ($btnSettingsQrCode) {
     $btnSettingsQrCode.Add_Click({
-        $pinCodeContent = $script:wpfWindow.FindName("pinCodeContent")
         $qrCodeContent = $script:wpfWindow.FindName("qrCodeContent")
-        $txtQrBtnIcon = $script:wpfWindow.FindName("txtQrBtnIcon")
-        $txtQrBtnText = $script:wpfWindow.FindName("txtQrBtnText")
 
         if ($qrCodeContent.Visibility -eq 'Visible') {
             # User clicked "Request PIN"
@@ -78,18 +75,23 @@ if ($btnSettingsQrCode) {
                 Show-Toast -Title "No Device Selected" -Message "Select a device from the nearby list first."
                 return
             }
+            # Guard against a duplicate request while the first pair-initiate is in flight.
+            if ($script:pairInitJob) {
+                Show-Toast -Title "Pairing in Progress" -Message "Already requesting a PIN from the device."
+                return
+            }
             Start-PinPairing -Fingerprint $fp
         } else {
-            # User clicked "QR CODE" to go back, cancel pending pairing if any
-            try {
-                if ($script:activeOutboundPairFp) {
-                    Invoke-RestMethod -Uri "$global:DeXLocalApi/local/unpair?fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
-                }
-            } catch {}
-
-            if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-            $script:activeOutboundPairIp = $null
-            $script:activeOutboundPairFp = $null
+            # User clicked "QR CODE" to go back: cancel the pending pairing server-side
+            # (pair-cancel, NOT unpair — going back must never revoke an existing trust)
+            # and stop the session timers, but KEEP the device context so "Request PIN"
+            # works again from the QR view.
+            Stop-PairingTimers
+            if ($script:activeOutboundPairIp) {
+                try {
+                    Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-cancel?ip=$($script:activeOutboundPairIp)&fingerprint=$($script:activeOutboundPairFp)" -Method Post -ErrorAction SilentlyContinue
+                } catch {}
+            }
             $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
             if ($txtTimeout) { $txtTimeout.Text = "" }
             if (-not (Show-QrCode)) {
@@ -97,6 +99,8 @@ if ($btnSettingsQrCode) {
             }
             # Slide the QR view back in over the PIN view (mirror of the Request PIN switch).
             try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
+            # This is a fresh idle QR phase: re-arm its 60s expiry.
+            Start-QrPhaseTimer
         }
     })
 }

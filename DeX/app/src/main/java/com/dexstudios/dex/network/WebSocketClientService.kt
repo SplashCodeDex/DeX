@@ -195,7 +195,7 @@ class WebSocketClientService(
         serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     }
 
-    private fun connectToPC(pcDevice: DiscoveredDevice) {
+    private fun connectToPC(pcDevice: DiscoveredDevice, onConnected: (() -> Unit)? = null) {
         val fingerprint = deviceConfig.fingerprint
         val alias = java.net.URLEncoder.encode(getDeviceName(context), "UTF-8")
         val pcFingerprint = pcDevice.info.fingerprint
@@ -241,6 +241,7 @@ class WebSocketClientService(
                 // Report battery immediately so the PC has telemetry on connect, not after 60s
                 sendTelemetry()
                 Timber.i("WebSocket connected to PC: ${pcDevice.ip}")
+                onConnected?.invoke()
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -304,5 +305,38 @@ class WebSocketClientService(
             return false
         }
         return socket.send("""{"type":"pair-request"}""")
+    }
+
+    /**
+     * Sends a "pair-request" to [targetPc], connecting to it first when the phone is not
+     * already connected to that PC (it normally auto-connects to only ONE target PC, so
+     * tapping "Connect" on a different discovered PC would otherwise fail silently).
+     * [onResult] fires exactly once with the outcome.
+     */
+    fun requestPairingWith(targetPc: DiscoveredDevice, onResult: (Boolean) -> Unit) {
+        val fp = targetPc.info.fingerprint
+        val socket = activeSocket
+        if (socket != null && _connectedFingerprint == fp) {
+            onResult(socket.send("""{"type":"pair-request"}"""))
+            return
+        }
+        val settled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val finish: (Boolean) -> Unit = { ok ->
+            if (settled.compareAndSet(false, true)) onResult(ok)
+        }
+        // Switch to the tapped PC (close any socket to a different PC) and send the request
+        // as soon as its WebSocket opens.
+        if (activeSocket != null) {
+            activeSocket?.close(1000, "Switching to tapped PC")
+        }
+        connectToPC(targetPc, onConnected = {
+            finish(sendPairRequest(fp))
+        })
+        // If the connect never opens within the cap, report failure so the UI can reset
+        // its pairing state instead of spinning forever.
+        serviceScope.launch {
+            delay(6000)
+            finish(false)
+        }
     }
 }

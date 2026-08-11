@@ -55,7 +55,6 @@ fun FloatingTopAppBar(
     modifier: Modifier = Modifier,
     backdrop: Backdrop? = null,
     showSearch: Boolean = true,
-    showLogo: Boolean = true,
 ) {
     var isProfileExpanded by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
@@ -168,25 +167,7 @@ fun FloatingTopAppBar(
                 .padding(top = 8.dp, start = 16.dp, end = 16.dp)
                 .height(80.dp)
         ) {
-            // Brand Logo (Fades out when expanded) with interactive Bubble Fluidity physics
-            if (showLogo) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .graphicsLayer { alpha = contentAlpha },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.dex_logo),
-                        contentDescription = "DeX Logo",
-                        modifier = Modifier
-                            .height(80.dp)
-                            .bubbleFluidity(targetScale = 0.85f, pullFactor = 0.25f),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
+            // Logo moved to MainScreen.kt to scroll behind content
         }
 
         // Action Buttons Group / Search Island (Right side, overlaps when expanded)

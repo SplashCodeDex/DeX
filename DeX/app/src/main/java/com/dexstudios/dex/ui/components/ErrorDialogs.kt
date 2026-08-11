@@ -1,11 +1,14 @@
 package com.dexstudios.dex.ui.components
 
+import android.os.SystemClock
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,11 +19,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -29,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
@@ -36,6 +43,7 @@ import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 
@@ -374,24 +382,40 @@ fun PairingRequestDialog(
     onAccept: (String) -> Unit,
     onReject: () -> Unit,
     backdrop: Backdrop? = null,
+    deadlineElapsedMs: Long = 0L,
 ) {
     var enteredPin by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(value = false) }
     var visible by remember { mutableStateOf(false) }
+    var secondsLeft by remember { mutableIntStateOf(60) }
+
+    val haptics = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
         visible = true
     }
 
-    // With a backdrop the dim lives INSIDE the captured layer (the glass card
-    // samples the dimmed scene). Without one we fall back to an overlay dim.
+    // Countdown mirroring the PC's PIN panel expiry.
+    LaunchedEffect(Unit) {
+        val deadline = if (deadlineElapsedMs > 0) deadlineElapsedMs
+                       else SystemClock.elapsedRealtime() + 60_000L
+        while (true) {
+            val remainingMs = deadline - SystemClock.elapsedRealtime()
+            secondsLeft = ((remainingMs + 999) / 1000).toInt().coerceAtLeast(0)
+            if (remainingMs <= 0) break
+            delay(1000)
+        }
+        onReject()
+    }
+
+    // With a backdrop the dim lives INSIDE the captured layer.
     val overlayDim = if (backdrop == null) Color.Black.copy(alpha = 0.4f) else Color.Transparent
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayDim)
-            .imePadding() // Keyboard handling
+            .imePadding()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -409,9 +433,10 @@ fun PairingRequestDialog(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(20.dp)
-                        .size(18.dp) // Further reduced background size
+                        .padding(16.dp)
+                        .size(32.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                        .bubbleFluidity(targetScale = 0.9f)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -422,26 +447,22 @@ fun PairingRequestDialog(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "✕",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp // Ensure it fits the 18dp box but looks "big" enough
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.offset(y = (-1).dp) // Visual centering adjustment for the glyph
+                    Icon(
+                        imageVector = MaterialSymbols.Close,
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
                 Column(
-                    modifier = Modifier.padding(top = 48.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
+                    modifier = Modifier.padding(top = 48.dp, bottom = 24.dp, start = 32.dp, end = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         stringResource(R.string.pairing_enter_pin_on_device, alias),
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
@@ -453,6 +474,9 @@ fun PairingRequestDialog(
                         value = enteredPin,
                         onValueChange = {
                             if (it.length <= 5) {
+                                if (it.length > enteredPin.length) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
                                 enteredPin = it
                                 isError = false
                             }
@@ -469,61 +493,112 @@ fun PairingRequestDialog(
                         )
                     }
 
+                    Text(
+                        stringResource(R.string.pairing_expires_in, secondsLeft),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+
                     Spacer(modifier = Modifier.height(48.dp))
+
+                    val confirmInteractionSource = remember { MutableInteractionSource() }
+                    val isConfirmPressed by confirmInteractionSource.collectIsPressedAsState()
+                    val confirmPressProgress by animateFloatAsState(
+                        targetValue = if (isConfirmPressed) 1f else 0f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f)
+                    )
 
                     val isComplete = enteredPin.length == 5
 
-                    DeXButton(
-                        onClick = {
-                            if (enteredPin == expectedPin) {
-                                onAccept(enteredPin)
-                            } else {
-                                isError = true
-                            }
-                        },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .clip(CircleShape)
-                            .then(
-                                if (!isComplete) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                                else Modifier
-                            ),
-                        enabled = isComplete,
-                        shape = CircleShape,
-                        colors = if (isComplete) ButtonDefaults.buttonColors()
-                                 else ButtonDefaults.buttonColors(
-                                     containerColor = Color.Transparent,
-                                     contentColor = Color.Black,
-                                     disabledContainerColor = Color.Transparent,
-                                     disabledContentColor = Color.Black
-                                 )
+                            .graphicsLayer {
+                                val s = 1f - 0.02f * confirmPressProgress
+                                scaleX = s
+                                scaleY = s
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Crossfade(targetState = isComplete, animationSpec = tween(300)) { complete ->
-                            if (complete) {
-                                Text(
-                                    "confirm", // lowercase as requested
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
-                                )
-                            } else {
-                                AnimatedWaitingDots()
-                            }
+                        if (backdrop != null) {
+                            LiquidGlassPanel(
+                                backdrop = backdrop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        enabled = isComplete,
+                                        interactionSource = confirmInteractionSource,
+                                        indication = null,
+                                        onClick = {
+                                            if (enteredPin == expectedPin) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                onAccept(enteredPin)
+                                            } else {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                isError = true
+                                            }
+                                        }
+                                    ),
+                                config = LiquidGlassPresets.FlatInteractive.copy(
+                                    surfaceTintAlpha = if (isComplete) 0.25f else 0.1f
+                                ),
+                                content = {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        ConfirmButtonContent(isComplete)
+                                    }
+                                }
+                            )
+                        } else {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        enabled = isComplete,
+                                        interactionSource = confirmInteractionSource,
+                                        indication = null,
+                                        onClick = {
+                                            if (enteredPin == expectedPin) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                onAccept(enteredPin)
+                                            } else {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                isError = true
+                                            }
+                                        }
+                                    ),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isComplete) 0.5f else 0.2f),
+                                border = if (isComplete) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                content = {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        ConfirmButtonContent(isComplete)
+                                    }
+                                }
+                            )
                         }
                     }
                 }
             }
 
             if (backdrop != null) {
-                // Liquid glass card — samples the dimmed scene captured in the backdrop
                 LiquidGlassPanel(
                     backdrop = backdrop,
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth(0.9f)
-                        .bubbleFluidity(targetScale = 0.98f),
-                    shape = LiquidGlassPresets.Dialog.shape,
-                    config = LiquidGlassPresets.Dialog,
+                        .bubbleFluidity(targetScale = 0.99f)
+                        .border(0.5.dp, Color.White.copy(alpha = 0.2f), LiquidGlassPresets.Flat.shape),
+                    shape = LiquidGlassPresets.Flat.shape,
+                    config = LiquidGlassPresets.Flat,
                     content = cardContent
                 )
             } else {
@@ -532,10 +607,31 @@ fun PairingRequestDialog(
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth(0.9f)
-                        .bubbleFluidity(targetScale = 0.98f),
+                        .bubbleFluidity(targetScale = 0.99f),
                     content = cardContent
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmButtonContent(isComplete: Boolean) {
+    Crossfade(targetState = isComplete, animationSpec = tween(300)) { complete ->
+        if (complete) {
+            Text(
+                "confirm",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        } else {
+            Text(
+                "enter pin",
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
         }
     }
 }
@@ -604,42 +700,61 @@ fun PinInputField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         cursorBrush = SolidColor(Color.Transparent),
         textStyle = androidx.compose.ui.text.TextStyle(color = Color.Transparent),
+        modifier = Modifier.shake(isError),
         decorationBox = { innerTextField ->
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 // Real text field capturing input but visually hidden
                 Box(Modifier.fillMaxWidth()) { innerTextField() }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     repeat(5) { index ->
                         val char = when {
                             index < value.length -> value[index].toString()
                             else -> ""
                         }
                         val isFocused = index == value.length
+                        val isFilled = index < value.length
+
+                        val scale by animateFloatAsState(
+                            targetValue = if (isFilled) 1.05f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                        )
 
                         Box(
                             modifier = Modifier
-                                .size(width = 48.dp, height = 64.dp)
+                                .weight(1f)
+                                .height(72.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
                                 .background(
-                                    color = if (isError) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(16.dp)
+                                    color = when {
+                                        isError -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                                        isFocused -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                    },
+                                    shape = RoundedCornerShape(20.dp)
                                 )
                                 .border(
                                     width = if (isFocused) 2.dp else 1.dp,
                                     color = when {
-                                        isError -> MaterialTheme.colorScheme.error
-                                        isFocused -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        isError -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                        isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                        isFilled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                                     },
-                                    shape = RoundedCornerShape(16.dp)
+                                    shape = RoundedCornerShape(20.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = char,
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = FontWeight.Black,
                                     color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                 )
                             )
@@ -649,9 +764,10 @@ fun PinInputField(
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .padding(bottom = 12.dp)
-                                        .width(12.dp)
-                                        .height(2.dp)
+                                        .padding(bottom = 14.dp)
+                                        .width(16.dp)
+                                        .height(3.dp)
+                                        .clip(CircleShape)
                                         .graphicsLayer { alpha = cursorAlpha }
                                         .background(MaterialTheme.colorScheme.primary)
                                 )
@@ -662,4 +778,25 @@ fun PinInputField(
             }
         }
     )
+}
+
+fun Modifier.shake(enabled: Boolean): Modifier = composed {
+    val offset = remember { Animatable(0f) }
+    LaunchedEffect(enabled) {
+        if (enabled) {
+            offset.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 300
+                    -10f at 50
+                    10f at 100
+                    -10f at 150
+                    10f at 200
+                    -5f at 250
+                    0f at 300
+                }
+            )
+        }
+    }
+    this.offset { IntOffset(offset.value.dp.roundToPx(), 0) }
 }

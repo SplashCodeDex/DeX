@@ -11,6 +11,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import com.dexstudios.dex.network.RegisterDto
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -62,6 +68,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
+    listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(),
     viewModel: MainScreenViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
@@ -286,6 +293,7 @@ fun MainScreen(
                 val discoveredDevices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     // Content scrolls edge-to-edge — behind the native status bar
                     // (top) and the native nav bar (bottom); the edge fades keep it

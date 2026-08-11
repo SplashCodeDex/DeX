@@ -127,8 +127,14 @@ $script:wpfWindow.Add_KeyDown({
         $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
         $pinPanel = $script:wpfWindow.FindName("pinViewPanel")
         
-        # While the QR/PIN request screen is shown, Escape must not hide the window
+        # While the QR/PIN request screen is shown, Escape cancels the pairing (same as the
+        # Cancel button) instead of being a swallowed no-op — otherwise the expanded pairing
+        # card can never be dismissed from the keyboard.
         if ($pinPanel -and $pinPanel.Visibility -eq [System.Windows.Visibility]::Visible) {
+            $btnPinCancel = $script:wpfWindow.FindName("btnPinCancel")
+            if ($btnPinCancel) {
+                $btnPinCancel.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
+            }
             $e.Handled = $true
             return
         }
@@ -356,6 +362,17 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
 
             if ($isGuest) {
                 try {
+                    # Re-clicking the same device while its panel is open: no-op (don't
+                    # reset a session the user is mid-way through).
+                    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
+                    if ($script:activeOutboundPairIp -eq $ip -and $pinViewPanel -and $pinViewPanel.Visibility -eq 'Visible') {
+                        $e.Handled = $true
+                        return
+                    }
+                    # Switching to a different device (or starting fresh after a stale
+                    # session): fully cancel any previous pairing first — otherwise the old
+                    # session's in-flight job/timer can resurrect its PIN over the new panel.
+                    Stop-PairingSession
                     $script:activeOutboundPairIp = $ip
                     $script:activeOutboundPairFp = $targetPeer.Fingerprint
                     
@@ -369,7 +386,6 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     
                     # Reveal the pairing panel (it starts Collapsed and translated to X=300;
                     # the SlideInPinAnim storyboard then animates it into view).
-                    $pinViewPanel = $script:wpfWindow.FindName("pinViewPanel")
                     if ($pinViewPanel) {
                         $pinViewPanel.Visibility = 'Visible'
                         $pinViewPanel.Opacity = 1
@@ -377,14 +393,20 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                     $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
                     if ($pinViewTrans) { $pinViewTrans.X = 0 }
                     
+                    # Clear any stale QR bitmap from a previous session before fetching.
+                    $imgQr = $script:wpfWindow.FindName("imgQrCode")
+                    if ($imgQr) { $imgQr.Source = $null }
+                    
                     # Show QR Code initially instead of PIN
                     $null = Show-QrCode
                     
-                    # Stop any running timer from previous sessions
-                    if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
                     $txtTimeout = $script:wpfWindow.FindName("txtPinTimeout")
                     if ($txtTimeout) { $txtTimeout.Text = "" }
                     try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($script:wpfWindow) } catch {}
+                    
+                    # Idle QR phase expiry: if the user never taps "Request PIN", close the
+                    # panel after 60s instead of leaving the session dangling forever.
+                    Start-QrPhaseTimer
                     
                     $e.Handled = $true
                     return
