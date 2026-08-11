@@ -361,13 +361,7 @@ fun MainScreen(
                                     .width(300.dp), // Narrower width as requested
                                 device = device,
                                 isTrusted = isTrusted,
-                                onClick = {
-                                    if (isTrusted) {
-                                        selectedDevice = device
-                                        filePickerLauncher.launch(arrayOf("*/*"))
-                                    }
-                                    // If not trusted, tapping the card does nothing
-                                },
+                                onClick = {},
                                 onButtonClick = {
                                     if (isTrusted) {
                                         selectedDevice = device
@@ -404,7 +398,8 @@ fun MainScreen(
                                         .width(300.dp),
                                     device = device,
                                     isTrusted = true,
-                                    onClick = {
+                                    onClick = {},
+                                    onButtonClick = {
                                         selectedRosterDevice = device
                                         filePickerLauncher.launch(arrayOf("*/*"))
                                     },
@@ -553,6 +548,7 @@ fun MainScreen(
         DeviceContextMenu(
             device = device,
             isTrusted = isTrusted,
+            backdrop = contentBackdrop,
             onSendFile = {
                 selectedDevice = device
                 filePickerLauncher.launch(arrayOf("*/*"))

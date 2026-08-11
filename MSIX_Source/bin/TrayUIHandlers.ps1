@@ -178,10 +178,10 @@ $actionPull = {
     
     if ($script:ce["FileExplorer"].Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractMenu"].Clone()
-        $sb.Children[0].By = $null
-        $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
-        $sb.Children[1].By = $null
-        $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
+        $sb.Children[2].By = $null
+        $sb.Children[2].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
+        $sb.Children[3].By = $null
+        $sb.Children[3].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
         Start-CardTransition $sb
         Restore-ExpandPosition
         $btnQAPull = $script:ce["btnQAPull"]
@@ -279,10 +279,10 @@ $actionSettings = {
     # If settings is already visible, contract it
     if ($settingsPanel.Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractSettings"].Clone()
-        $sb.Children[0].By = $null
-        $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
-        $sb.Children[1].By = $null
-        $sb.Children[1].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
+        $sb.Children[2].By = $null
+        $sb.Children[2].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
+        $sb.Children[3].By = $null
+        $sb.Children[3].To = if ($script:contractedHeight) { $script:contractedHeight } else { 500 }
         Start-CardTransition $sb
         Restore-ExpandPosition
         return

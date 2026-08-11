@@ -22,8 +22,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
+import com.kyant.backdrop.Backdrop
 
 /**
  * A floating bubble card that appears on long-press of a [device].
@@ -38,6 +41,7 @@ import com.dexstudios.dex.ui.theme.spatialMenuExit
 fun DeviceContextMenu(
     device: DiscoveredDevice,
     isTrusted: Boolean,
+    backdrop: Backdrop,
     onSendFile: () -> Unit,
     onPair: () -> Unit,
     onForget: () -> Unit,
@@ -80,14 +84,16 @@ fun DeviceContextMenu(
                     indication = null,
                     onClick = ::dismiss
                 ),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.Center
         ) {
-            DeXPanel(
-                shape = RoundedCornerShape(28.dp),
+            LiquidGlassPanel(
+                backdrop = backdrop,
+                config = LiquidGlassPresets.DynamicIsland,
+                shape = RoundedCornerShape(32.dp),
                 modifier = Modifier
-                    .widthIn(max = 420.dp)
+                    .widthIn(max = 400.dp)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .padding(horizontal = 24.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -102,25 +108,27 @@ fun DeviceContextMenu(
 
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        color = Color.White.copy(alpha = 0.15f)
                     )
 
                     if (isTrusted) {
                         DeviceContextMenuItem(
                             icon = ImageVector.vectorResource(R.drawable.ic_send),
                             label = stringResource(R.string.device_send_file),
+                            tint = Color.White,
                             onClick = { onSendFile(); dismiss() }
                         )
                         DeviceContextMenuItem(
                             icon = ImageVector.vectorResource(R.drawable.ic_tune_outlined),
                             label = stringResource(R.string.device_forget),
-                            tint = MaterialTheme.colorScheme.error,
+                            tint = Color(0xFFFF5252), // Material Red A200 for better visibility on dark glass
                             onClick = { onForget(); dismiss() }
                         )
                     } else {
                         DeviceContextMenuItem(
                             icon = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
                             label = stringResource(R.string.device_pair),
+                            tint = Color.White,
                             onClick = { onPair(); dismiss() }
                         )
                     }
@@ -131,6 +139,7 @@ fun DeviceContextMenu(
                             if (showDetails) R.string.device_details_hide
                             else R.string.device_details
                         ),
+                        tint = Color.White,
                         onClick = { showDetails = !showDetails }
                     )
 
@@ -138,7 +147,7 @@ fun DeviceContextMenu(
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            color = Color.White.copy(alpha = 0.15f)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         DeviceContextMenuDetails(device = device)
@@ -165,13 +174,13 @@ private fun DeviceContextMenuHeader(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                .background(Color.White.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_computer),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color.White,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -185,14 +194,15 @@ private fun DeviceContextMenuHeader(
                     text = device.info.alias,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (isTrusted) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color.White.copy(alpha = 0.2f),
+                        contentColor = Color.White
                     ) {
                         Text(
                             text = stringResource(R.string.device_paired),
@@ -206,7 +216,7 @@ private fun DeviceContextMenuHeader(
             Text(
                 text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.6f)
             )
         }
     }
@@ -217,7 +227,7 @@ private fun DeviceContextMenuItem(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    tint: Color = MaterialTheme.colorScheme.onSurface
+    tint: Color = Color.White
 ) {
     Row(
         modifier = Modifier
@@ -278,13 +288,13 @@ private fun DeviceDetailRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.5f),
             modifier = Modifier.width(96.dp)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)

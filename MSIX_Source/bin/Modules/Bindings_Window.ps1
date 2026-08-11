@@ -68,56 +68,83 @@ if ($btnExit) {
             $tTxt = $script:wpfWindow.FindName("txtExitBtn")
             $tBtn = $script:wpfWindow.FindName("btnExit")
             $tAvatar = $script:wpfWindow.FindName("btnProfileBottom")
-            
-            $tTxt.Text = "Exit Engine"
-            
+
             $easeOut = New-Object System.Windows.Media.Animation.CubicEase; $easeOut.EasingMode = 'EaseOut'
+
+            # Fade text out → swap → fade in, 0.15s each side.
+            $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromSeconds(0.15); $fadeOut.EasingFunction = $easeOut
+            $fadeOut.Add_Completed({
+                $tTxt.Text = "Exit Engine"
+                $fadeIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+                $fadeIn.To = 1; $fadeIn.Duration = [TimeSpan]::FromSeconds(0.15); $fadeIn.EasingFunction = $easeOut
+                $tTxt.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeIn)
+            }.GetNewClosure())
+            $tTxt.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
+
+            # Contract the exit button margin.
             $animContract = New-Object System.Windows.Media.Animation.ThicknessAnimation
             $animContract.To = New-Object System.Windows.Thickness(0)
             $animContract.Duration = [TimeSpan]::FromSeconds(0.3)
             $animContract.EasingFunction = $easeOut
             $tBtn.BeginAnimation([System.Windows.FrameworkElement]::MarginProperty, $animContract)
-            
+
+            # Avatar scales back AFTER the text transition (0.15+0.15 = 0.3s delay).
             if ($null -ne $tAvatar.RenderTransform -and $tAvatar.RenderTransform -is [System.Windows.Media.ScaleTransform]) {
                 $animScaleBack = New-Object System.Windows.Media.Animation.DoubleAnimation
                 $animScaleBack.To = 1.0
                 $animScaleBack.Duration = [TimeSpan]::FromSeconds(0.3)
+                $animScaleBack.BeginTime = [TimeSpan]::FromSeconds(0.35)
                 $animScaleBack.EasingFunction = $easeOut
                 $tAvatar.RenderTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleXProperty, $animScaleBack)
                 $tAvatar.RenderTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleYProperty, $animScaleBack)
             }
-            
+
             $tBtn.ClearValue([System.Windows.Controls.Control]::BackgroundProperty)
             $tBtn.Parent.Width = [Double]::NaN
-            
+
             $script:exitTimer.Stop()
         })
         $script:exitTimer.Start()
         return
     } else {
         # Cancel the exit state
-        $txtExitBtn.Text = "Exit Engine"
         $btnExit = $script:wpfWindow.FindName("btnExit")
-        
+
         $easeOut = New-Object System.Windows.Media.Animation.CubicEase; $easeOut.EasingMode = 'EaseOut'
+
+        # Fade text out → swap → fade in.
+        $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
+        $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromSeconds(0.15); $fadeOut.EasingFunction = $easeOut
+        $fadeOut.Add_Completed({
+            $txtExitBtn.Text = "Exit Engine"
+            $fadeIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $fadeIn.To = 1; $fadeIn.Duration = [TimeSpan]::FromSeconds(0.15); $fadeIn.EasingFunction = $easeOut
+            $txtExitBtn.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeIn)
+        }.GetNewClosure())
+        $txtExitBtn.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
+
+        # Contract margin.
         $animContract = New-Object System.Windows.Media.Animation.ThicknessAnimation
         $animContract.To = New-Object System.Windows.Thickness(0)
         $animContract.Duration = [TimeSpan]::FromSeconds(0.3)
         $animContract.EasingFunction = $easeOut
         $btnExit.BeginAnimation([System.Windows.FrameworkElement]::MarginProperty, $animContract)
-        
+
+        # Avatar scales back after text transition.
         if ($null -ne $btnProfileBottom.RenderTransform -and $btnProfileBottom.RenderTransform -is [System.Windows.Media.ScaleTransform]) {
             $animScaleBack = New-Object System.Windows.Media.Animation.DoubleAnimation
             $animScaleBack.To = 1.0
             $animScaleBack.Duration = [TimeSpan]::FromSeconds(0.3)
+            $animScaleBack.BeginTime = [TimeSpan]::FromSeconds(0.35)
             $animScaleBack.EasingFunction = $easeOut
             $btnProfileBottom.RenderTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleXProperty, $animScaleBack)
             $btnProfileBottom.RenderTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleYProperty, $animScaleBack)
         }
-        
+
         $btnExit.ClearValue([System.Windows.Controls.Control]::BackgroundProperty)
         $btnExit.Parent.Width = [Double]::NaN
-        
+
         if ($null -ne $script:exitTimer) { $script:exitTimer.Stop() }
         return
     }
@@ -167,8 +194,8 @@ $script:wpfWindow.Add_KeyDown({
         # If settings is visible, contract it instead of hiding the whole window
         if ($settingsPanel.Visibility -eq 'Visible') {
             $sb = $script:wpfWindow.Resources["ContractSettings"].Clone()
-            $sb.Children[0].By = $null
-            $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
+            $sb.Children[2].By = $null
+            $sb.Children[2].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
             Start-CardTransition $sb
             Restore-ExpandPosition
             $e.Handled = $true
@@ -574,8 +601,8 @@ if ($btnCloseMenu) {
     # If settings is visible, contract it instead of hiding the whole window
     if ($settingsPanel.Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractSettings"].Clone()
-        $sb.Children[0].By = $null
-        $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
+        $sb.Children[2].By = $null
+        $sb.Children[2].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         Start-CardTransition $sb
         Restore-ExpandPosition
         return
@@ -584,8 +611,8 @@ if ($btnCloseMenu) {
     # If FileExplorer is visible, contract it instead of hiding the whole window (consistent UX)
     if ($fileExplorer.Visibility -eq 'Visible') {
         $sb = $script:wpfWindow.Resources["ContractMenu"].Clone()
-        $sb.Children[0].By = $null
-        $sb.Children[0].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
+        $sb.Children[2].By = $null
+        $sb.Children[2].To = if ($script:contractedWidth) { $script:contractedWidth } else { 300 }
         Start-CardTransition $sb
         Restore-ExpandPosition
         $btnQAPull = $script:wpfWindow.FindName("btnQAPull")

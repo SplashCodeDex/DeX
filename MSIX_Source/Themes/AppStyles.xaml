@@ -152,42 +152,43 @@
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
         </Storyboard>
         <Storyboard x:Key="ContractMenu">
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.8">
+            <!-- Content fades out first (0.25s), THEN panel shrinks. -->
+            <DoubleAnimation Storyboard.TargetName="FileExplorer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FileExplorer" Storyboard.TargetProperty="Visibility">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.25" Value="{x:Static Visibility.Collapsed}" />
+            </ObjectAnimationUsingKeyFrames>
+
+            <!-- Panel contraction starts after content fades. -->
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.35" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.8">
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.35" BeginTime="0:0:0.25">
+                <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="fileTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.35" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
 
-            <DoubleAnimation Storyboard.TargetName="fileTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.8">
-                <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="FileExplorer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4" />
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FileExplorer" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.8" Value="{x:Static Visibility.Collapsed}" />
-            </ObjectAnimationUsingKeyFrames>
-            
-            <!-- Hide Close Button and Top Profile when contracting, show Bottom Profile -->
-            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
-            
-            <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+
+            <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Visible}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.55" Value="{x:Static Visibility.Visible}" />
             </ObjectAnimationUsingKeyFrames>
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.4" />
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.4" EasingFunction="{StaticResource BouncyEase}" />
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.4" EasingFunction="{StaticResource BouncyEase}" />
-            
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" BeginTime="0:0:0.55" />
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
+
             <!-- Hide Nearby Expand Users when contracting -->
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
         </Storyboard>
 
@@ -231,44 +232,45 @@
             <DoubleAnimation Storyboard.TargetName="menuTrans" Storyboard.TargetProperty="X" From="-30" To="0" Duration="0:0:0.8" EasingFunction="{StaticResource BouncyEase}" />
         </Storyboard>
         <Storyboard x:Key="ContractSettings">
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.8">
+            <!-- Content fades out first (0.25s), THEN panel shrinks. -->
+            <DoubleAnimation Storyboard.TargetName="SettingsPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SettingsPanel" Storyboard.TargetProperty="Visibility">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.25" Value="{x:Static Visibility.Collapsed}" />
+            </ObjectAnimationUsingKeyFrames>
+
+            <!-- Panel contraction starts after content fades. -->
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Width" By="-754" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.8">
+            <DoubleAnimation Storyboard.TargetName="mainBorder" Storyboard.TargetProperty="Height" By="-195" Duration="0:0:0.6" BeginTime="0:0:0.25">
+                <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="settingsTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.6" BeginTime="0:0:0.25">
                 <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
 
-            <DoubleAnimation Storyboard.TargetName="settingsTrans" Storyboard.TargetProperty="X" To="150" Duration="0:0:0.8">
-                <DoubleAnimation.EasingFunction><BackEase Amplitude="0.15" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="SettingsPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4" />
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SettingsPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.8" Value="{x:Static Visibility.Collapsed}" />
-            </ObjectAnimationUsingKeyFrames>
-            
-            <!-- Hide Close Button and Top Profile when contracting, show Bottom Profile -->
-            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+            <DoubleAnimation Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnCloseMenu" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
-            
-            <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+
+            <DoubleAnimation Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnProfileTop" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Visible}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.55" Value="{x:Static Visibility.Visible}" />
             </ObjectAnimationUsingKeyFrames>
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.4" />
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.4" EasingFunction="{StaticResource BouncyEase}" />
-            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.4" EasingFunction="{StaticResource BouncyEase}" />
-            
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottom" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" BeginTime="0:0:0.55" />
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleX" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
+            <DoubleAnimation Storyboard.TargetName="btnProfileBottomScale" Storyboard.TargetProperty="ScaleY" From="0.2" To="1" Duration="0:0:0.5" BeginTime="0:0:0.55" EasingFunction="{StaticResource BouncyEase}" />
+
             <!-- Hide Nearby Expand Users when contracting -->
-            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
+            <DoubleAnimation Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="NearbyExpandPanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}" />
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="{x:Static Visibility.Collapsed}" />
             </ObjectAnimationUsingKeyFrames>
-        </Storyboard>    
+        </Storyboard>
         
         <Storyboard x:Key="PopIn">
             <DoubleAnimation Storyboard.TargetName="winScale" Storyboard.TargetProperty="ScaleX" From="0.85" To="1.0" Duration="0:0:0.5" EasingFunction="{StaticResource BouncyEase}" />

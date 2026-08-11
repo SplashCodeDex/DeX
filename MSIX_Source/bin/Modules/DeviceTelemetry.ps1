@@ -49,12 +49,17 @@ function Get-DeviceSubText {
     if ($Peer.Battery) {
         $level = [int]$Peer.Battery
         $glyph = switch ($level) {
-            { $_ -ge 90 } { 0xEBAC }  # full
-            { $_ -ge 70 } { 0xEBA9 }  # ~3/4
-            { $_ -ge 50 } { 0xEBA7 }  # half
-            { $_ -ge 30 } { 0xEBA5 }  # ~1/4
-            { $_ -ge 10 } { 0xEBA3 }  # low
-            default      { 0xEBA2 }  # empty
+            { $_ -ge 100 } { 0xE83F }  # Battery10 (full)
+            { $_ -ge 90 }  { 0xE859 }  # Battery9
+            { $_ -ge 80 }  { 0xE858 }  # Battery8
+            { $_ -ge 70 }  { 0xE857 }  # Battery7
+            { $_ -ge 60 }  { 0xE856 }  # Battery6
+            { $_ -ge 50 }  { 0xE855 }  # Battery5
+            { $_ -ge 40 }  { 0xE854 }  # Battery4
+            { $_ -ge 30 }  { 0xE853 }  # Battery3
+            { $_ -ge 20 }  { 0xE852 }  # Battery2
+            { $_ -ge 10 }  { 0xE851 }  # Battery1
+            default        { 0xE850 }  # Battery0 (empty)
         }
         $res.BatteryIcon = "$([char]$glyph)"
         $res.BatteryText = ""
