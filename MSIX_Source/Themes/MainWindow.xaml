@@ -538,6 +538,10 @@
                               <DoubleAnimation Storyboard.TargetName="menuContentPanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
                               <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.3"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                               <DoubleAnimation Storyboard.TargetName="pinViewPanel" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25" />
+                              <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="pinContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleX" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="qrContentScale" Storyboard.TargetProperty="ScaleY" From="0.95" To="1" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
                           </Storyboard>
                           <Storyboard x:Key="SlideOutPinAnim">
                               <DoubleAnimation Storyboard.TargetName="pinViewTrans" Storyboard.TargetProperty="X" To="300" Duration="0:0:0.25"><DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation>

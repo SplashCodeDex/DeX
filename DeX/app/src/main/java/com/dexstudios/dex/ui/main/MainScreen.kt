@@ -516,11 +516,7 @@ fun MainScreen(
                         .height(statusBarHeight + 64.dp)
                 )
 
-                FloatingTopAppBar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter),
-                    backdrop = contentBackdrop
-                )
+
         }
     }
 

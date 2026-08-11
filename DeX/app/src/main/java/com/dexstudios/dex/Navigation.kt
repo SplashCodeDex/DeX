@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.FloatingPillNavBar
+import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.NavBarItem
 import com.dexstudios.dex.ui.history.HistoryScreen
 import com.dexstudios.dex.ui.main.MainScreen
@@ -134,6 +135,17 @@ fun MainNavigation() {
       modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
     ) {
       FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = currentRoute == Main,
+        enter = androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.fadeOut(),
+        modifier = Modifier.align(Alignment.TopCenter)
+    ) {
+        FloatingTopAppBar(
+            backdrop = contentBackdrop
+        )
     }
 
     incomingPairRequest?.let { req ->
