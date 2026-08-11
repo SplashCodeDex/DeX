@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.9.2.0] - 2026-08-11
+### Fixed
+- **[fix] PIN UI 164px gap on inbound request (Desktop)**: Fixed an issue where the PIN code content was offset to the right by 164px during the initial slide-in animation. The `pinContentTrans` X translation (initialized to 140 for switch animations) is now properly reset to 0 when the pairing panel first appears.
+
 ## [7.9.1.0] - 2026-08-11
 ### Fixed
 - **[fix] Logo background color (Desktop)**: Changed the Start Menu and App List logo background color for DeX from transparent to black.

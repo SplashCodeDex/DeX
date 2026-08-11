@@ -462,6 +462,16 @@ function Show-PinPanel {
         try { $w.FindName("menuViewsContainer").FindResource("SwitchQrToPinAnim").Begin($w) } catch {}
     } else {
         Release-PinAnimations
+        $pinT = $w.FindName("pinContentTrans")
+        if ($pinT) {
+            $pinT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+            $pinT.X = 0
+        }
+        $qrT = $w.FindName("qrContentTrans")
+        if ($qrT) {
+            $qrT.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $null)
+            $qrT.X = -140
+        }
         $pinViewPanel.Visibility = 'Visible'
         try { $w.FindName("menuViewsContainer").FindResource("SlideInPinAnim").Begin($w) } catch {}
     }
