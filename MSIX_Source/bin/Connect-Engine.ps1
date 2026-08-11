@@ -363,11 +363,18 @@ $mdnsTimer.Add_Tick({
                             $script:priorWindowTopmost = $w.Topmost
                             $w.Topmost = $true
                             # Reset any leftover chrome state from a previous show/hide animation
-                            # (a window hidden mid-PopIn can reappear translucent or scaled).
+                            # (a window hidden mid-PopIn can reappear translucent, scaled, or
+                            # offset down by the frozen entrance Y-transforms).
                             $wb = $w.FindName("mainBorder")
                             if ($wb) { $wb.Opacity = 1 }
                             $ws2 = $w.FindName("winScale")
                             if ($ws2) { $ws2.ScaleX = 1; $ws2.ScaleY = 1 }
+                            $wTrans = $w.FindName("winTrans")
+                            if ($wTrans) { $wTrans.Y = 0 }
+                            $mTrans = $w.FindName("menuTrans")
+                            if ($mTrans) { $mTrans.Y = 0 }
+                            $mcTrans = $w.FindName("menuContentTrans")
+                            if ($mcTrans) { $mcTrans.X = 0; $mcTrans.Y = 0 }
                             if (-not $script:showMenuGuardTimer) {
                                 $script:showMenuGuardTimer = New-Object System.Windows.Threading.DispatcherTimer
                                 $script:showMenuGuardTimer.Interval = [TimeSpan]::FromMilliseconds(1000)

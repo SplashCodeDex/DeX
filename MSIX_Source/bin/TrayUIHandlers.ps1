@@ -37,7 +37,17 @@ function Reset-SpatialPanels {
         $pinViewTrans = $script:wpfWindow.FindName("pinViewTrans")
         if ($pinViewTrans) { $pinViewTrans.X = 300 }
         $menuContentTrans = $script:wpfWindow.FindName("menuContentTrans")
-        if ($menuContentTrans) { $menuContentTrans.X = 0 }
+        if ($menuContentTrans) {
+            $menuContentTrans.X = 0
+            # The PopIn entrance sets menuContentTrans.Y=35 (menuTrans.Y=20, winTrans.Y=15) and
+            # animates them to 0 — if the window is hidden mid-animation they freeze non-zero,
+            # pushing the menu/pin content down by up to ~70px. Always clear them here.
+            $menuContentTrans.Y = 0
+        }
+        $menuTrans = $script:wpfWindow.FindName("menuTrans")
+        if ($menuTrans) { $menuTrans.Y = 0 }
+        $winTrans = $script:wpfWindow.FindName("winTrans")
+        if ($winTrans) { $winTrans.Y = 0 }
         $menuContentPanel = $script:wpfWindow.FindName("menuContentPanel")
         if ($menuContentPanel) { $menuContentPanel.Opacity = 1 }
         Clear-PairingState

@@ -129,20 +129,28 @@ $script:wiggleTimer.Add_Tick({
                     }
                 } catch {}
 
-                # Setup position (center window loosely around cursor)
+                # Position content (not window) centered around cursor.
+                # Layout: HorizontalAlignment=Right, VerticalAlignment=Top, Margin=25.
+                $mb = $script:wpfWindow.FindName("mainBorder")
+                $contentW = if ($mb -and $mb.ActualWidth  -gt 0) { $mb.ActualWidth  } else { 300 }
+                $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
                 $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
-                $winHeight = if ($script:wpfWindow.Height -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Height)) { $script:wpfWindow.Height } else { 760 }
-                
-                $targetLeft = $pos.X - ($winWidth / 2)
-                $targetTop = $pos.Y - ($winHeight / 2)
-                
-                # Keep within work area of the correct monitor
+
+                $targetLeft = $pos.X - $winWidth + 25 + ($contentW / 2)
+                $targetTop  = $pos.Y - 25 - ($contentH / 2)
+
+                # Clamp so content stays within the correct monitor's work area
                 $workArea = [System.Windows.Forms.Screen]::FromPoint($pos).WorkingArea
-                if ($targetLeft -lt $workArea.Left) { $targetLeft = $workArea.Left }
-                if ($targetTop -lt $workArea.Top) { $targetTop = $workArea.Top }
-                if ($targetLeft + $winWidth -gt $workArea.Right) { $targetLeft = $workArea.Right - $winWidth }
-                if ($targetTop + $winHeight -gt $workArea.Bottom) { $targetTop = $workArea.Bottom - $winHeight }
-                
+                $cLeft   = $targetLeft + $winWidth - 25 - $contentW
+                $cTop    = $targetTop  + 25
+                $cRight  = $targetLeft + $winWidth - 25
+                $cBottom = $targetTop  + 25 + $contentH
+
+                if ($cLeft   -lt $workArea.Left)   { $targetLeft = $workArea.Left   - $winWidth + 25 + $contentW }
+                if ($cTop    -lt $workArea.Top)    { $targetTop  = $workArea.Top    - 25 }
+                if ($cRight  -gt $workArea.Right)  { $targetLeft = $workArea.Right  - $winWidth + 25 }
+                if ($cBottom -gt $workArea.Bottom) { $targetTop  = $workArea.Bottom - 25 - $contentH }
+
                 $script:wpfWindow.Left = $targetLeft
                 $script:wpfWindow.Top = $targetTop
                 $script:wpfWindow.Topmost = $true

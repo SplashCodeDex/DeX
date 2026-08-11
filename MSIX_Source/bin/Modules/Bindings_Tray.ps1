@@ -65,15 +65,19 @@ $script:notifyIcon.Add_MouseUp({
         
         $workArea = [System.Windows.SystemParameters]::WorkArea
         $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
-        $winHeight = if ($script:wpfWindow.Height -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Height)) { $script:wpfWindow.Height } else { 760 }
-        
+        # Content-based vertical positioning: mainBorder is VerticalAlignment=Top with
+        # Margin=25, so contentBottom = windowTop + 25 + contentHeight. Position the
+        # content (not the window) at the bottom of the work area.
+        $mb = $script:wpfWindow.FindName("mainBorder")
+        $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+
         if (-not $script:isLocationPinned) {
             $left = $workArea.Right - $winWidth + 13
-            $top = $workArea.Bottom - $winHeight + 13
-            
+            $top = $workArea.Bottom - $contentH - 38
+
             if ($left -lt $workArea.Left) { $left = $workArea.Left - 13 }
             if ($top -lt $workArea.Top) { $top = $workArea.Top - 13 }
-            
+
             $script:wpfWindow.Left = $left
             $script:wpfWindow.Top = $top
         }

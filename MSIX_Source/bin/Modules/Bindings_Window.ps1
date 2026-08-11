@@ -1,8 +1,7 @@
-﻿# Win32 interop for unconstrained window drag: WPF's DragMove() sends
-# WM_NCLBUTTONDOWN/HTCAPTION which lets the system constrain window position
-# to keep the window on-screen. Since mainBorder is bottom-aligned within a
-# 760px window (~305px dead space above), the visible menu can't reach the
-# top ~30% of the screen. SetWindowPos bypasses that limit entirely.
+﻿# Win32 interop for premium window drag: GetCursorPos tracks the physical
+# cursor (for DPI-aware delta calculation); SetWindowPos is kept as a
+# fallback but the primary drag path uses WPF property setters which go
+# through the composition engine for zero-jitter rendering.
 if (-not $script:dragWin32Added) {
     Add-Type -Namespace DeXWin32 -Name DragMove -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT lpPoint);
@@ -10,6 +9,17 @@ if (-not $script:dragWin32Added) {
 [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
 '@
     $script:dragWin32Added = $true
+}
+
+# Cache the DPI scale once so we can correct GetCursorPos (physical pixels)
+# → WPF (device-independent pixels) on every mouse-move tick.
+try {
+    $dpi = [System.Windows.Media.VisualTreeHelper]::GetDpi($script:wpfWindow)
+    $script:dpiScaleX = $dpi.DpiScaleX
+    $script:dpiScaleY = $dpi.DpiScaleY
+} catch {
+    $script:dpiScaleX = 1.0
+    $script:dpiScaleY = 1.0
 }
 
 $btnExit = $script:wpfWindow.FindName("btnExit")
@@ -212,21 +222,29 @@ if ($script:dragPill) {
                     $anim.RepeatBehavior = New-Object System.Windows.Media.Animation.RepeatBehavior(3)
                     if ($script:btnToggleTopmost) { $script:btnToggleTopmost.BeginAnimation([System.Windows.FrameworkElement]::MarginProperty, $anim) }
                 } else {
+                    $mb = $script:wpfWindow.FindName("mainBorder")
+                    $contentW = if ($mb -and $mb.ActualWidth  -gt 0) { $mb.ActualWidth  } else { 300 }
+                    $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
                     $winWidth = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
-                    $winHeight = if ($script:wpfWindow.Height -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Height)) { $script:wpfWindow.Height } else { 760 }
                     $workArea = [System.Windows.SystemParameters]::WorkArea
-                    $left = $workArea.Right - $winWidth + 13
-                    $top = $workArea.Bottom - $winHeight + 13
+                    # Position content bottom-right with 13px gap from work area edges.
+                    # Layout: HorizontalAlignment=Right, VerticalAlignment=Top, Margin=25.
+                    #   contentLeft = windowLeft + winWidth - 25 - contentW
+                    #   contentTop  = windowTop  + 25
+                    $contentLeft = $workArea.Right  - $contentW - 13
+                    $contentTop  = $workArea.Bottom - $contentH - 13
+                    $left = $contentLeft - $winWidth + 25 + $contentW
+                    $top  = $contentTop  - 25
                     if ($left -lt $workArea.Left) { $left = $workArea.Left - 13 }
-                    if ($top -lt $workArea.Top) { $top = $workArea.Top - 13 }
-                    
+                    if ($top  -lt $workArea.Top)  { $top  = $workArea.Top  - 13 }
+
                     $ease = $script:wpfWindow.FindResource("BouncyEase")
                     $animX = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{ From = $script:wpfWindow.Left; To = $left; Duration = "0:0:0.45"; EasingFunction = $ease; FillBehavior = "Stop" }
                     $animY = New-Object System.Windows.Media.Animation.DoubleAnimation -Property @{ From = $script:wpfWindow.Top; To = $top; Duration = "0:0:0.45"; EasingFunction = $ease; FillBehavior = "Stop" }
-                    
+
                     $script:wpfWindow.Left = $left
                     $script:wpfWindow.Top = $top
-                    
+
                     $script:wpfWindow.BeginAnimation([System.Windows.Window]::LeftProperty, $animX)
                     $script:wpfWindow.BeginAnimation([System.Windows.Window]::TopProperty, $animY)
                     
@@ -266,18 +284,27 @@ if ($script:dragPill) {
             
             if ($_.ButtonState -eq [System.Windows.Input.MouseButtonState]::Pressed) {
                 $script:hasBeenDragged = $true
-                # Manual drag via SetWindowPos: WPF DragMove() uses the system
-                # move loop which prevents the window top from going off-screen.
-                # The visible content is bottom-aligned ~305px below the window
-                # top, so the menu stalls ~30% from the screen top. SetWindowPos
-                # has no screen-edge constraint.
+                # Premium drag: track the CONTENT position (what the user sees)
+                # rather than the window position (which includes ~300px dead
+                # space). DPI-aware cursor delta, edge magnetism, and WPF
+                # property setters for the move — no system-constrained DragMove,
+                # no native SetWindowPos jitter.
                 $pt = New-Object DeXWin32.DragMove+POINT
                 [DeXWin32.DragMove]::GetCursorPos([ref]$pt)
-                $script:dragStartX = $pt.X
-                $script:dragStartY = $pt.Y
-                $script:dragWinLeft = $script:wpfWindow.Left
-                $script:dragWinTop = $script:wpfWindow.Top
-                $script:dragHwnd = [System.Windows.Interop.WindowInteropHelper]::new($script:wpfWindow).Handle
+                $script:dragStartCursorX = $pt.X
+                $script:dragStartCursorY = $pt.Y
+
+                # Capture the content's current screen position.
+                # Layout: HorizontalAlignment=Right, VerticalAlignment=Top, Margin=25.
+                $mb = $script:wpfWindow.FindName("mainBorder")
+                $contentW = if ($mb -and $mb.ActualWidth -gt 0) { $mb.ActualWidth } else { 300 }
+                $contentH = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+                $winW = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
+                $script:dragContentLeft   = $script:wpfWindow.Left + $winW - 25 - $contentW
+                $script:dragContentTop    = $script:wpfWindow.Top + 25
+                $script:dragContentWidth  = $contentW
+                $script:dragContentHeight = $contentH
+
                 $script:isDragging = $true
                 $script:wpfWindow.CaptureMouse()
 
@@ -292,24 +319,84 @@ if ($script:dragPill) {
     })
 }
 
-# Drag-move handler: repositions the window on every mouse move during a
-# drag, using SetWindowPos to bypass the system's screen-edge clamping.
+# Drag-move handler: tracks cursor delta (DPI-corrected), applies edge
+# magnetism to the content rect, then converts back to window coordinates
+# and sets Window.Left/Top through WPF's composition pipeline.
 $script:wpfWindow.Add_PreviewMouseMove({
     if (-not $script:isDragging) { return }
+
     $pt = New-Object DeXWin32.DragMove+POINT
     [DeXWin32.DragMove]::GetCursorPos([ref]$pt)
-    $newLeft = $script:dragWinLeft + ($pt.X - $script:dragStartX)
-    $newTop  = $script:dragWinTop  + ($pt.Y - $script:dragStartY)
-    $SWP_NOZORDER = 0x0004; $SWP_NOSIZE = 0x0001; $SWP_NOACTIVATE = 0x0010
-    [DeXWin32.DragMove]::SetWindowPos($script:dragHwnd, [IntPtr]::Zero, [int]$newLeft, [int]$newTop, 0, 0, $SWP_NOZORDER -bor $SWP_NOSIZE -bor $SWP_NOACTIVATE)
+
+    # DPI correction: GetCursorPos returns physical pixels; WPF coords are
+    # device-independent pixels (DIPs). Without this division the window
+    # moves 1.25–2.0× faster than the cursor on scaled displays.
+    $dx = ($pt.X - $script:dragStartCursorX) / $script:dpiScaleX
+    $dy = ($pt.Y - $script:dragStartCursorY) / $script:dpiScaleY
+
+    $newLeft = $script:dragContentLeft + $dx
+    $newTop  = $script:dragContentTop  + $dy
+    $cw = $script:dragContentWidth
+    $ch = $script:dragContentHeight
+
+    # Edge magnetism: when the content approaches a screen edge within the
+    # magnetic zone (20 DIPs), gently snap to it. Feels like macOS window
+    # snapping — intentional coupling, not a hard constraint.
+    $wa = [System.Windows.SystemParameters]::WorkArea
+    $snap = 20
+
+    if ($newTop -gt $wa.Top -and $newTop - $wa.Top -lt $snap) {
+        $newTop = $wa.Top
+    }
+    if ($newTop + $ch -lt $wa.Bottom -and $wa.Bottom - ($newTop + $ch) -lt $snap) {
+        $newTop = $wa.Bottom - $ch
+    }
+    if ($newLeft -gt $wa.Left -and $newLeft - $wa.Left -lt $snap) {
+        $newLeft = $wa.Left
+    }
+    if ($newLeft + $cw -lt $wa.Right -and $wa.Right - ($newLeft + $cw) -lt $snap) {
+        $newLeft = $wa.Right - $cw
+    }
+
+    # Convert content position → window position.
+    # Layout: mainBorder is HorizontalAlignment=Right, VerticalAlignment=Top, Margin=25.
+    #   contentLeft = windowLeft + windowWidth - 25 - contentWidth
+    #   contentTop  = windowTop  + 25
+    # Inverting:
+    $winW = if ($script:wpfWindow.Width -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width)) { $script:wpfWindow.Width } else { 1420 }
+    $script:wpfWindow.Left = $newLeft - $winW + 25 + $cw
+    $script:wpfWindow.Top  = $newTop  - 25
 })
 
-# Drag-up handler: ends the manual drag, releases mouse capture, and fades
-# the drag-pill accent back to its rest state.
+# Drag-up handler: ends the manual drag, releases mouse capture, and clips
+# the window so at least a sliver of content remains reachable on every edge.
 $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
     if (-not $script:isDragging) { return }
     $script:isDragging = $false
     try { $script:wpfWindow.ReleaseMouseCapture() } catch {}
+
+    # Post-drag sanity: ensure the content isn't stranded entirely off-screen.
+    # Allow 80% of content to go off-screen, but keep at least 20% grabbable.
+    $mb = $script:wpfWindow.FindName("mainBorder")
+    $cw = if ($mb -and $mb.ActualWidth  -gt 0) { $mb.ActualWidth  } else { 300 }
+    $ch = if ($mb -and $mb.ActualHeight -gt 0) { $mb.ActualHeight } else { 430 }
+    $winW = if ($script:wpfWindow.Width  -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Width))  { $script:wpfWindow.Width  } else { 1420 }
+    $winH = if ($script:wpfWindow.Height -gt 0 -and -not [double]::IsNaN($script:wpfWindow.Height)) { $script:wpfWindow.Height } else { 760 }
+    $wa = [System.Windows.SystemParameters]::WorkArea
+    $grab = [Math]::Max($cw * 0.2, 60)  # at least 60px of content must be reachable
+
+    # Content rect in screen coords
+    $cLeft   = $script:wpfWindow.Left + $winW - 25 - $cw
+    $cTop    = $script:wpfWindow.Top  + 25
+    $cRight  = $cLeft + $cw
+    $cBottom = $cTop  + $ch
+
+    if ($cRight  -lt $wa.Left  + $grab) { $script:wpfWindow.Left = $wa.Left  + $grab - $winW + 25 + $cw }
+    if ($cLeft   -gt $wa.Right - $grab) { $script:wpfWindow.Left = $wa.Right - $grab - $winW + 25 + $cw }
+    if ($cBottom -lt $wa.Top   + $grab) { $script:wpfWindow.Top  = $wa.Top   + $grab - 25 - $ch }
+    if ($cTop    -gt $wa.Bottom - $grab) { $script:wpfWindow.Top  = $wa.Bottom - $grab - 25 - $ch }
+
+    # Fade the drag-pill accent back to rest.
     $pill = $script:wpfWindow.FindName("dragPillAccent")
     if ($pill) {
         $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
