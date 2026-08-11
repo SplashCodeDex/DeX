@@ -82,6 +82,9 @@ class MessageHandler(
         CoroutineScope(Dispatchers.Main).launch {
             val enteredPin = withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS) { info.deferred.await() }
             AuthState.incomingPairRequest.value = null
+            // The dialog resolved by any path (PIN entered, ✕, or countdown timeout) — clear
+            // the pairing notification so it never lingers in the shade.
+            notificationHelper.cancelPairingNotification()
 
             val accepted = enteredPin != null && enteredPin == pairReq.pin
             if (accepted) {

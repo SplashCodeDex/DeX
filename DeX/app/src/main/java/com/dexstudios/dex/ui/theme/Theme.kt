@@ -49,10 +49,25 @@ fun DeXTheme(
       else -> LightColorScheme
     }
 
+  @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+  val subtleRipple = androidx.compose.material3.RippleConfiguration(
+      color = if (darkTheme) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black,
+      rippleAlpha = androidx.compose.material3.RippleAlpha(
+          draggedAlpha = 0.02f,
+          focusedAlpha = 0.02f,
+          hoveredAlpha = 0.02f,
+          pressedAlpha = 0.05f // Exceptionally subtle, mostly for glass
+      )
+  )
+
   MaterialTheme(
     colorScheme = colorScheme,
     typography = Typography,
     shapes = Shapes,
-    content = content
-  )
+  ) {
+      androidx.compose.runtime.CompositionLocalProvider(
+          androidx.compose.material3.LocalRippleConfiguration provides subtleRipple,
+          content = content
+      )
+  }
 }

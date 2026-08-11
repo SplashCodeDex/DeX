@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -170,7 +171,7 @@ fun MainNavigation() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 2.dp)
                     .graphicsLayer {
                         translationY = -scrollOffset * 0.5f
                         val s = (1f + (scrollOffset / 800f)).coerceAtMost(1.5f)
@@ -184,7 +185,8 @@ fun MainNavigation() {
                     painter = painterResource(id = R.drawable.dex_logo),
                     contentDescription = "DeX Logo",
                     modifier = Modifier
-                        .height(80.dp)
+                        .height(60.dp)
+                        .blur(radius = (scrollOffset / 25f).coerceIn(0f, 12f).dp)
                         .bubbleFluidity(targetScale = 0.85f, pullFactor = 0.25f),
                     contentScale = ContentScale.Fit
                 )

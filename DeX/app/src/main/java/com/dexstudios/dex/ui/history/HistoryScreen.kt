@@ -35,7 +35,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.TransferHistory
 import com.dexstudios.dex.network.TransferRecord
-import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.text.DateFormat
@@ -124,12 +123,6 @@ fun HistoryScreen(
                 }
             }
         }
-
-        // ===== Glass header overlay — drawn AFTER the captured content =====
-        FloatingTopAppBar(
-            modifier = Modifier.align(Alignment.TopCenter),
-            backdrop = contentBackdrop
-        )
     }
 }
 
