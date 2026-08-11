@@ -1,4 +1,4 @@
-
+﻿
 $btnCopyIP = $script:wpfWindow.FindName("btnCopyIP")
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -213,7 +213,7 @@ function Apply-GoogleProfile($profile) {
 
 # Non-blocking profile refresh: fetch in a background job, apply on the next
 # retry-timer tick (UI thread). The old synchronous REST call (5s timeout)
-# could freeze the whole window — including the spatial menu.
+# could freeze the whole window - including the spatial menu.
 function Update-ProfileUI {
     try {
         $null = Start-Job -Name "ProfileFetch" -ScriptBlock {
@@ -224,7 +224,7 @@ function Update-ProfileUI {
             } catch { $null }
         } -ArgumentList "$global:DeXLocalApi/local/settings/google-profile"
     } catch {
-        # Never let a job-spawn failure break this module's load — the avatar
+        # Never let a job-spawn failure break this module's load - the avatar
         # click wiring at the bottom of this file must always attach.
     }
 }
@@ -249,10 +249,10 @@ if ($btnSettingsGoogleSignIn) {
         # runs in a background job and a poll timer applies the outcome. The old
         # synchronous call froze the whole window for up to 240s.
         if (Get-Job -Name "GoogleSignIn" -ErrorAction SilentlyContinue) {
-            Show-Toast -Title "Google Sign-In" -Message "Sign-in already in progress — check your browser."
+            Show-Toast -Title "Google Sign-In" -Message "Sign-in already in progress - check your browser."
             return
         }
-        Show-Toast -Title "Google Sign-In" -Message "Opening browser — approve the account to trust all your devices."
+        Show-Toast -Title "Google Sign-In" -Message "Opening browser - approve the account to trust all your devices."
         $null = Start-Job -Name "GoogleSignIn" -ScriptBlock {
             param($uri)
             try {
@@ -285,7 +285,7 @@ $script:googleSignInTimer.Add_Tick({
     Remove-Job $job -Force
     switch ($status) {
         'signed-in' {
-            Show-Toast -Title "Google Sign-In" -Message "Signed in — same-email devices are now auto-trusted."
+            Show-Toast -Title "Google Sign-In" -Message "Signed in - same-email devices are now auto-trusted."
             Update-ProfileUI
         }
         'not-configured' { Show-Toast -Title "Google Sign-In" -Message "Google Sign-In is not configured on this PC." }
@@ -297,7 +297,7 @@ $script:googleSignInTimer.Start()
 
 # Populate the profile placeholder with the last signed-in Google account.
 # The engine may still be starting when the bindings load, so retry off the UI
-# thread — the old blocking loop (6 × (5s timeout + 2s sleep)) could freeze the
+# thread - the old blocking loop (6 x (5s timeout + 2s sleep)) could freeze the
 # whole window for tens of seconds at startup.
 $script:profileApplied = $false
 $script:profileRetryCount = 0

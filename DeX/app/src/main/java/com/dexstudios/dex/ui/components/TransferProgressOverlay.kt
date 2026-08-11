@@ -6,8 +6,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -15,12 +17,16 @@ import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DownloadState
 import com.dexstudios.dex.network.UploadState
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.kyant.backdrop.Backdrop
 import java.util.Locale
 
 @Composable
 fun TransferProgressOverlay(
     downloadState: DownloadState,
     uploadState: UploadState,
+    backdrop: Backdrop? = null,
     onCancelDownload: () -> Unit,
     onCancelUpload: () -> Unit
 ) {
@@ -32,13 +38,15 @@ fun TransferProgressOverlay(
         exit = shrinkVertically(shrinkTowards = Alignment.Top)
     ) {
         if (downloadState.isDownloading) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    config = LiquidGlassPresets.Frosted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.White) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -65,27 +73,36 @@ fun TransferProgressOverlay(
                         Text("${(downloadState.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
                         Text(transferStatus(downloadState.protocol, downloadState.speedBps), style = MaterialTheme.typography.bodySmall)
                     }
+                        }
+                    }
                 }
             }
         } else if (downloadState.isSuccess) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(R.string.download_success, downloadState.fileName), 
-                    modifier = Modifier.padding(16.dp), 
-                    fontWeight = FontWeight.Bold
-                )
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    config = LiquidGlassPresets.Frosted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.White) {
+                        Text(
+                            stringResource(R.string.download_success, downloadState.fileName), 
+                            modifier = Modifier.padding(16.dp), 
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         } else if (uploadState.isUploading) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    config = LiquidGlassPresets.Frosted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.White) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -112,18 +129,25 @@ fun TransferProgressOverlay(
                         Text(stringResource(R.string.toast_percent_total, (uploadState.aggregateProgress * 100).toInt()), style = MaterialTheme.typography.bodySmall)
                         Text(transferStatus(uploadState.protocol, uploadState.speedBps), style = MaterialTheme.typography.bodySmall)
                     }
+                        }
+                    }
                 }
             }
         } else if (uploadState.isSuccess) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(R.string.upload_success, uploadState.fileName), 
-                    modifier = Modifier.padding(16.dp), 
-                    fontWeight = FontWeight.Bold
-                )
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    config = LiquidGlassPresets.Frosted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.White) {
+                        Text(
+                            stringResource(R.string.upload_success, uploadState.fileName), 
+                            modifier = Modifier.padding(16.dp), 
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

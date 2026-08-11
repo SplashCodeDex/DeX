@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.6.0.0] - 2026-08-11
+### Added
+- **[minor] Dynamic Island UI/UX Upgrade (Android)**: Rebuilt the top navigation bar into an iOS-style Liquid Glass Dynamic Island. Features smooth cross-fading avatars, bubble fluidity physics on the brand logo, and a full-screen 85% dim overlay that natively covers the system status bar and bottom navbars.
+- **[minor] Glass Transfer Overlay**: Upgraded the file `TransferProgressOverlay` to utilize the native `LiquidGlassPanel` with backdrop sampling, removing flat material surfaces for a completely cohesive glassmorphism aesthetic.
+- **[minor] UX Refinements**: Removed the exposed sign-out button from the expanded profile island to align with standard UX best practices, converting the island into a clean profile status pill.
+
 ## [7.5.2.15] - 2026-08-10
 ### Fixed
 - **[fix] Missing Pairing UI Transitions (Desktop)**: Fixed a regression where closing the PIN or QR pairing screen caused the main "Discovered Devices" spatial menu content to permanently disappear. Restored the missing `SlideOutPinAnim`, `SlideInPinAnim`, and `Switch` storyboards in XAML so the menus reliably slide and crossfade back into view.

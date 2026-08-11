@@ -83,7 +83,7 @@ fun FloatingTopAppBar(
         label = "searchWidth"
     )
     val searchHeight by animateDpAsState(
-        targetValue = if (isSearchExpanded) 180.dp else 56.dp,
+        targetValue = if (isSearchExpanded) 72.dp else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "searchHeight"
     )
@@ -127,6 +127,16 @@ fun FloatingTopAppBar(
         targetValue = if (anyExpanded) 0f else 1f,
         animationSpec = tween(400),
         label = "contentAlpha"
+    )
+    val avatarAlpha by animateFloatAsState(
+        targetValue = if (isSearchExpanded) 0f else 1f,
+        animationSpec = tween(400),
+        label = "avatarAlpha"
+    )
+    val searchAlpha by animateFloatAsState(
+        targetValue = if (isProfileExpanded) 0f else 1f,
+        animationSpec = tween(400),
+        label = "searchAlpha"
     )
 
     Box(modifier = modifier.then(if (anyExpanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth())) {
@@ -175,85 +185,87 @@ fun FloatingTopAppBar(
                 )
             }
 
-            // Action Buttons Group / Search Island (Right side)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .height(80.dp)
-                    .zIndex(if (isSearchExpanded) 2f else 1f),
-                contentAlignment = Alignment.TopEnd
-            ) {
-                if (showSearch) {
-                    LiquidGlassIconButton(
-                        onClick = {
-                            isSearchExpanded = !isSearchExpanded
-                            if (isSearchExpanded) isProfileExpanded = false
+        }
+
+        // Action Buttons Group / Search Island (Right side, overlaps when expanded)
+        Box(
+            modifier = Modifier
+                .statusBarsPadding()
+                .align(Alignment.TopEnd)
+                .padding(top = 8.dp, end = 16.dp)
+                .zIndex(if (isSearchExpanded) 2f else 1f)
+                .graphicsLayer { alpha = searchAlpha },
+            contentAlignment = Alignment.TopEnd
+        ) {
+            if (showSearch) {
+                LiquidGlassIconButton(
+                    onClick = {
+                        isSearchExpanded = !isSearchExpanded
+                        if (isSearchExpanded) isProfileExpanded = false
+                    },
+                    width = searchWidth,
+                    height = searchHeight,
+                    backdrop = backdrop,
+                    config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                ) {
+                    AnimatedContent(
+                        targetState = isSearchExpanded,
+                        transitionSpec = {
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                         },
-                        width = searchWidth,
-                        height = searchHeight,
-                        backdrop = backdrop,
-                        config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
-                    ) {
-                        AnimatedContent(
-                            targetState = isSearchExpanded,
-                            transitionSpec = {
-                                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
-                            },
-                            label = "searchContent"
-                        ) { expanded ->
-                            if (expanded) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = ImageVector.vectorResource(R.drawable.ic_search),
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    androidx.compose.foundation.text.BasicTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .focusRequester(searchFocusRequester),
-                                        textStyle = TextStyle(
-                                            color = Color.White,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        cursorBrush = SolidColor(Color.White),
-                                        decorationBox = { innerTextField ->
-                                            if (searchQuery.isEmpty()) {
-                                                Text(
-                                                    "Search devices...",
-                                                    color = Color.White.copy(alpha = 0.5f),
-                                                    fontSize = 16.sp
-                                                )
-                                            }
-                                            innerTextField()
-                                        }
-                                    )
-                                }
-                            } else {
+                        label = "searchContent"
+                    ) { expanded ->
+                        if (expanded) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(R.drawable.ic_search),
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(32.dp)
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                androidx.compose.foundation.text.BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(searchFocusRequester),
+                                    textStyle = TextStyle(
+                                        color = Color.White,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    cursorBrush = SolidColor(Color.White),
+                                    decorationBox = { innerTextField ->
+                                        if (searchQuery.isEmpty()) {
+                                            Text(
+                                                "Search devices...",
+                                                color = Color.White.copy(alpha = 0.5f),
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
                                 )
                             }
+                        } else {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.ic_search),
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
                     }
-                } else {
-                    Spacer(modifier = Modifier.size(56.dp))
                 }
+            } else {
+                Spacer(modifier = Modifier.size(56.dp))
             }
-
         }
 
         // User Avatar / Dynamic Island (overlaps Logo & Search when expanded)
@@ -262,7 +274,8 @@ fun FloatingTopAppBar(
                 .statusBarsPadding()
                 .align(Alignment.TopStart)
                 .padding(top = 8.dp, start = 16.dp)
-                .zIndex(if (isProfileExpanded) 2f else 1f),
+                .zIndex(if (isProfileExpanded) 2f else 1f)
+                .graphicsLayer { alpha = avatarAlpha },
             contentAlignment = Alignment.TopStart
         ) {
             LiquidGlassIconButton(
@@ -288,11 +301,6 @@ fun FloatingTopAppBar(
                     if (expanded) {
                         ExpandedProfileContent(
                             profile = profile,
-                            onSignOut = {
-                                deviceConfig.signOut()
-                                isProfileExpanded = false
-                                Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
-                            },
                             onSignIn = {
                                 val activity = context as? android.app.Activity
                                 if (activity != null) {
@@ -356,7 +364,6 @@ private fun CollapsedProfileContent(profile: GoogleProfile) {
 @Composable
 private fun ExpandedProfileContent(
     profile: GoogleProfile,
-    onSignOut: () -> Unit,
     onSignIn: () -> Unit
 ) {
     Row(
@@ -414,17 +421,6 @@ private fun ExpandedProfileContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                DeXButton(
-                    onClick = onSignOut,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Text("Sign out", fontWeight = FontWeight.Bold)
-                }
             }
         }
     }

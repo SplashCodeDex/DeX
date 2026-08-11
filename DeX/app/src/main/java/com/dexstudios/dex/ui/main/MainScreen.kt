@@ -224,6 +224,7 @@ fun MainScreen(
     // First-run onboarding: shown once, dismissed via a persisted flag
     val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
+    val contentBackdrop = rememberLayerBackdrop()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -250,6 +251,7 @@ fun MainScreen(
             TransferProgressOverlay(
                 downloadState = downloadState,
                 uploadState = uploadState,
+                backdrop = contentBackdrop,
                 onCancelDownload = { com.dexstudios.dex.network.TcpDownloadService.cancelDownload(context) },
                 onCancelUpload = { viewModel.clientEngine.cancelUpload(context) }
             )
@@ -257,10 +259,6 @@ fun MainScreen(
     ) { padding ->
         val devices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
         val rosterDevices by com.dexstudios.dex.network.PunchState.devices.collectAsStateWithLifecycle()
-        // Screen-owned backdrop for the top bar glass buttons. It is separate
-        // from the navbar's backdrop (which captures this whole screen) so the
-        // buttons never sample a backdrop that captures them.
-        val contentBackdrop = rememberLayerBackdrop()
         // Status bar height — content scrolls behind the native status bar, so
         // the glass header and the "Recent" rest position clear it explicitly.
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

@@ -143,6 +143,16 @@ function Show-DownloadDockToast([string]$pathText) {
         $script:dockTimer.Add_Tick({
             $script:dockTimer.Stop()
             
+            $dock = $script:wpfWindow.FindName("dockDownloadToast")
+            if ($null -eq $dock) { return }
+            $dockTrans = $null
+            $dockScale = $null
+            $dockTg = $dock.RenderTransform
+            if ($dockTg -is [System.Windows.Media.TransformGroup]) {
+                $dockScale = $dockTg.Children[0]
+                $dockTrans = $dockTg.Children[1]
+            }
+            
             $easeIn = New-Object System.Windows.Media.Animation.CubicEase
             $easeIn.EasingMode = [System.Windows.Media.Animation.EasingMode]::EaseIn
             
