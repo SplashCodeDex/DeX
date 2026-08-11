@@ -53,36 +53,12 @@ namespace DeXShareTarget
 
             ServerCert = GetOrCreateServerCertificate();
 
-            // Port mappings are not needed for the certificate, so run them in the background
-            // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.
-            _ = Task.Run(async () =>
-            {
-                while (true)
-                {
-                    try { await UpnpPortForward.ConfigureAsync(CancellationToken.None); }
-                    catch (Exception ex) { Console.WriteLine($"[UPNP] Auto-config failed: {ex.Message}"); }
+            // Auto-update ports dynamically
+            DeXConstants.HttpsPort = GetAvailableTcpPort();
+            DeXConstants.QuicPort = GetAvailableUdpPort();
+            DeXConstants.TcpFallbackPort = GetAvailableTcpPort();
 
-                    // The public IP or a LAN IP changed at runtime, so the current certificate's
-                    // SANs no longer cover the addresses clients connect to and TLS would fail.
-                    // Renew the certificate in place: the HTTP/1.1 endpoint serves the certificate
-                    // through a per-connection selector, so new connections pick up the renewed
-                    // certificate immediately — no server restart required.
-                    if (ServerCert is not null && !CertCoversAddresses(ServerCert, PublicAddress))
-                    {
-                        try
-                        {
-                            Console.WriteLine("[CERT] Network address changed; renewing certificate");
-                            ServerCert = GetOrCreateServerCertificate();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[CERT] Certificate renewal failed: {ex.Message}");
-                        }
-                    }
-
-                    await Task.Delay(TimeSpan.FromHours(1));
-                }
-            });
+            // Note: UPnP port mapping moved to the bottom of this method so it maps the correct dynamic ports
 
             builder.WebHost.ConfigureKestrel(options =>
             {
@@ -134,6 +110,53 @@ namespace DeXShareTarget
             App.MapWebSocketEndpoints();
 
             await App.StartAsync();
+
+            // Port mappings are not needed for the certificate, so run them in the background
+            // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.
+            // This runs after Kestrel starts so it maps the newly assigned dynamic ports.
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try { await UpnpPortForward.ConfigureAsync(CancellationToken.None); }
+                    catch (Exception ex) { Console.WriteLine($"[UPNP] Auto-config failed: {ex.Message}"); }
+
+                    // The public IP or a LAN IP changed at runtime, so the current certificate's
+                    // SANs no longer cover the addresses clients connect to and TLS would fail.
+                    // Renew the certificate in place: the HTTP/1.1 endpoint serves the certificate
+                    // through a per-connection selector, so new connections pick up the renewed
+                    // certificate immediately — no server restart required.
+                    if (ServerCert is not null && !CertCoversAddresses(ServerCert, PublicAddress))
+                    {
+                        try
+                        {
+                            Console.WriteLine("[CERT] Network address changed; renewing certificate");
+                            ServerCert = GetOrCreateServerCertificate();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[CERT] Certificate renewal failed: {ex.Message}");
+                        }
+                    }
+
+                    await Task.Delay(TimeSpan.FromHours(1));
+                }
+            });
+        }
+
+        private static int GetAvailableTcpPort()
+        {
+            var l = new TcpListener(IPAddress.Loopback, 0);
+            l.Start();
+            int port = ((IPEndPoint)l.LocalEndpoint).Port;
+            l.Stop();
+            return port;
+        }
+
+        private static int GetAvailableUdpPort()
+        {
+            using var u = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
+            return ((IPEndPoint)u.Client.LocalEndPoint!).Port;
         }
 
         /// <summary>The public (WAN) address the phone should reach this PC at; pushed to phones on connect.</summary>

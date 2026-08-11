@@ -70,6 +70,10 @@ class WebSocketClientService(
     @Volatile
     var connectedIp: String? = null
 
+    /** The PC port the current socket is connected to. */
+    @Volatile
+    var connectedPort: Int = DeXPorts.HTTPS
+
     @Volatile
     private var connectedViaWan = false
 
@@ -178,7 +182,9 @@ class WebSocketClientService(
                 deviceModel = "PC",
                 deviceType = "desktop",
                 fingerprint = fingerprint,
-                port = DeXPorts.HTTPS,
+                port = PcMemory.port(context),
+                quicPort = PcMemory.quicPort(context),
+                tcpFallbackPort = DeXPorts.PULL,
                 protocol = "https",
                 download = false,
                 identityHash = null
@@ -222,10 +228,11 @@ class WebSocketClientService(
         // Remember this PC so we reconnect to the same one after restarts — but only
         // LAN addresses: a WAN connection must never overwrite the LAN IP memory
         if (!pcDevice.viaWan) {
-            PcMemory.save(context, pcFingerprint, pcDevice.ip)
+            PcMemory.save(context, pcFingerprint, pcDevice.ip, pcDevice.info.port, pcDevice.info.quicPort)
         }
         connectedViaWan = pcDevice.viaWan
         connectedIp = pcDevice.ip
+        connectedPort = pcDevice.info.port
 
         activeSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -258,6 +265,7 @@ class WebSocketClientService(
                     _connectedFingerprint = null
                     connectedViaWan = false
                     connectedIp = null
+                    // Do not reset connectedPort here so background TTL refreshes still have a port to try
                     // The PC is gone: never keep capturing/streaming into a dead socket
                     MirrorSession.stop()
                     scheduleReconnect()

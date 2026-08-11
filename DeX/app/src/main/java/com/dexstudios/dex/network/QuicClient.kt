@@ -30,11 +30,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
     }
     private var engine: CronetEngine? = null
 
-    // The PC serves HTTP/3 on UDP 48423 and HTTP/1.1 on TCP 48424
-    private companion object {
-        const val QUIC_PORT = DeXPorts.QUIC
-        const val HTTPS_PORT = DeXPorts.HTTPS
-    }
+
 
     // Negotiated protocol ("h3", "http/1.1", ...) of the last completed upload
     @Volatile
@@ -51,7 +47,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
             // Hint remembered PCs so even the first transfer of the day skips the
             // HTTP/1.1 warm-up and attempts QUIC directly; falls back to TCP 48424.
             PcMemory.ip(context)?.let { ip ->
-                builder.addQuicHint(ip, QUIC_PORT, HTTPS_PORT)
+                builder.addQuicHint(ip, PcMemory.quicPort(context), PcMemory.port(context))
             }
             engine = builder.build()
         } catch (t: Throwable) {

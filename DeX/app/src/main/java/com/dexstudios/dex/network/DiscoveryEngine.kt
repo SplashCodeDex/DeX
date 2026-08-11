@@ -144,6 +144,8 @@ class DiscoveryEngine(
                     put("deviceType", localInfo.deviceType)
                     put("fingerprint", localInfo.fingerprint)
                     put("port", localInfo.port)
+                    put("quicPort", localInfo.quicPort)
+                    put("tcpFallbackPort", localInfo.tcpFallbackPort)
                     put("protocol", localInfo.protocol)
                     put("download", localInfo.download)
                     put("identityHash", localInfo.identityHash)

@@ -74,6 +74,8 @@ class UdpMulticastManager(
                         deviceType = json.optString("deviceType", "unknown"),
                         fingerprint = fp,
                         port = json.optInt("port", DeXPorts.HTTPS),
+                        quicPort = json.optInt("quicPort", DeXPorts.QUIC),
+                        tcpFallbackPort = json.optInt("tcpFallbackPort", DeXPorts.PULL),
                         protocol = json.optString("protocol", "https"),
                         download = json.optBoolean("download", true),
                         identityHash = if (json.has("identityHash")) json.optString("identityHash") else null,
@@ -94,6 +96,8 @@ class UdpMulticastManager(
                 put("deviceType", localInfo.deviceType)
                 put("fingerprint", localInfo.fingerprint)
                 put("port", localInfo.port)
+                put("quicPort", localInfo.quicPort)
+                put("tcpFallbackPort", localInfo.tcpFallbackPort)
                 put("protocol", localInfo.protocol)
                 put("download", localInfo.download)
                 put("identityHash", localInfo.identityHash)

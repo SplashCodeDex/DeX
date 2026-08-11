@@ -81,7 +81,7 @@ class MainScreenViewModelTest {
 
     @Test
     fun `requestPairing sends pair request when connected to the PC`() = runTest(testDispatcher) {
-        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns true
+        every { mockWs.requestPairingWith(testDevice, any()) } answers { secondArg<(Boolean) -> Unit>().invoke(true) }
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var callbackResult: Boolean? = null
@@ -89,14 +89,14 @@ class MainScreenViewModelTest {
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        verify { mockWs.sendPairRequest(testDevice.info.fingerprint) }
+        verify { mockWs.requestPairingWith(testDevice, any()) }
         assertEquals(true, callbackResult)
         assertFalse("Pair request alone must NOT mark the device as paired — trust requires the PIN exchange", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
     }
 
     @Test
     fun `requestPairing reports failure when not connected to the PC`() = runTest(testDispatcher) {
-        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
+        every { mockWs.requestPairingWith(testDevice, any()) } answers { secondArg<(Boolean) -> Unit>().invoke(false) }
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var callbackResult: Boolean? = null
@@ -104,14 +104,14 @@ class MainScreenViewModelTest {
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        verify { mockWs.sendPairRequest(testDevice.info.fingerprint) }
+        verify { mockWs.requestPairingWith(testDevice, any()) }
         assertEquals(false, callbackResult)
         assertFalse("Failed pair request must not mark the device as paired", AuthState.pairedFingerprints.contains(testDevice.info.fingerprint))
     }
 
     @Test
     fun `pairingDeviceFingerprint guards against concurrent duplicate handshake requests`() = runTest(testDispatcher) {
-        every { mockWs.sendPairRequest(any()) } returns true
+        every { mockWs.requestPairingWith(any(), any()) } answers { secondArg<(Boolean) -> Unit>().invoke(true) }
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var pairingDeviceFingerprint: String? = null
@@ -156,7 +156,7 @@ class MainScreenViewModelTest {
 
     @Test
     fun `requestPairing failure callback resets pairingDeviceFingerprint to null`() = runTest(testDispatcher) {
-        every { mockWs.sendPairRequest(testDevice.info.fingerprint) } returns false
+        every { mockWs.requestPairingWith(testDevice, any()) } answers { secondArg<(Boolean) -> Unit>().invoke(false) }
 
         val viewModel = MainScreenViewModel(mockDiscovery, mockClient, mockWs)
         var pairingDeviceFingerprint: String? = testDevice.info.fingerprint

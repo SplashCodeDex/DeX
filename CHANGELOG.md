@@ -1,5 +1,9 @@
 # Changelog
 
+## [8.0.0.0] - 2026-08-11
+### Changed
+- **[major] Dynamic Port Allocation & ADB Isolation**: Completely resolved port collisions for multi-instance Fast User Switching. The C# background server now dynamically allocates its HTTPS and QUIC ports at startup and updates Android peers via UDP Multicast and WebSocket broadcasts. Android app logic (including UDP Discovery, WebSocket Service, and UPnP WAN handling) was overhauled to read, persist, and utilize these dynamic PC ports natively. Additionally, the internal ADB daemon is now securely isolated to port `48427` to prevent conflicts with Android Studio and other developer tools.
+
 ## [7.9.13.0] - 2026-08-11
 ### Fixed
 - **[fix] Menu content shrinks abruptly during contraction**: Fixed a 66px gap appearing at the top of the menu during contraction. The issue occurred because a DataTrigger instantly snapped the container's MaxHeight back to 352px the moment the inner panels (FileExplorer/Settings) started fading out, while the main border was still animating its height. Removed the DataTriggers and integrated synchronized `MaxHeight` double animations directly into the `ExpandMenu` and `ContractMenu` storyboards.

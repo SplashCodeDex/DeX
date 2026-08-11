@@ -157,7 +157,7 @@ namespace DeXShareTarget.Services
             }, stoppingToken);
             
             var multicastAddress = IPAddress.Parse("224.0.0.167");
-            var endPoint = new IPEndPoint(IPAddress.Any, DeXConstants.HttpsPort);
+            var endPoint = new IPEndPoint(IPAddress.Any, DeXConstants.DiscoveryPort);
             using var udp = new UdpClient();
             udp.EnableBroadcast = true;
             udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -186,7 +186,7 @@ namespace DeXShareTarget.Services
                             {
                                 Fingerprint = fp,
                                 Alias = alias ?? "Unknown",
-                                Port = root.TryGetProperty("port", out var p) ? p.GetInt32() : DeXConstants.HttpsPort,
+                                Port = root.TryGetProperty("port", out var p) ? p.GetInt32() : DeXConstants.DiscoveryPort,
                                 DeviceModel = root.TryGetProperty("deviceModel", out var dm) ? (dm.GetString() ?? "Unknown") : "Unknown",
                                 DeviceType = root.TryGetProperty("deviceType", out var dt) ? (dt.GetString() ?? "unknown") : "unknown",
                                 IdentityHash = root.TryGetProperty("identityHash", out var ih) ? ih.GetString() : null
@@ -211,11 +211,14 @@ namespace DeXShareTarget.Services
                   try
                   {
                     myInfo.IdentityHash = IdentityManager.IdentityHash;
+                    myInfo.Port = DeXConstants.HttpsPort;
+                    myInfo.QuicPort = DeXConstants.QuicPort;
+                    myInfo.TcpFallbackPort = DeXConstants.TcpFallbackPort;
                     var dynamicJson = JsonSerializer.Serialize(myInfo);
                     var dynamicBytes = Encoding.UTF8.GetBytes(dynamicJson);
 
-                    try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, new IPEndPoint(multicastAddress, DeXConstants.HttpsPort)); } catch { }
-                    foreach (var ep in GetDirectedBroadcasts(DeXConstants.HttpsPort))
+                    try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, new IPEndPoint(multicastAddress, DeXConstants.DiscoveryPort)); } catch { }
+                    foreach (var ep in GetDirectedBroadcasts(DeXConstants.DiscoveryPort))
                     {
                         try { await udp.SendAsync(dynamicBytes, dynamicBytes.Length, ep); } catch { }
                     }

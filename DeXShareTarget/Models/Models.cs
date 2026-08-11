@@ -13,6 +13,8 @@ namespace DeXShareTarget.Models
         [JsonPropertyName("deviceType")] public string DeviceType { get; set; } = "unknown";
         [JsonPropertyName("fingerprint")] public string Fingerprint { get; set; } = IdentityManager.Fingerprint;
         [JsonPropertyName("port")] public int Port { get; set; } = DeXConstants.HttpsPort;
+        [JsonPropertyName("quicPort")] public int QuicPort { get; set; } = DeXConstants.QuicPort;
+        [JsonPropertyName("tcpFallbackPort")] public int TcpFallbackPort { get; set; } = DeXConstants.TcpFallbackPort;
         [JsonPropertyName("protocol")] public string Protocol { get; set; } = "https";
         [JsonPropertyName("download")] public bool Download { get; set; } = true;
         [JsonPropertyName("identityHash")] public string? IdentityHash { get; set; }

@@ -10,6 +10,8 @@ data class RegisterDto(
     val deviceType: String,
     val fingerprint: String,
     val port: Int,
+    val quicPort: Int = DeXPorts.QUIC,
+    val tcpFallbackPort: Int = DeXPorts.PULL,
     val protocol: String,
     val download: Boolean,
     val identityHash: String? = null,

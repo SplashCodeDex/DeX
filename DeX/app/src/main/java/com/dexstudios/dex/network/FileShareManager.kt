@@ -186,7 +186,7 @@ class FileShareManager(
             sendPullReply(requestId, emptyList(), files.map { resolveName(it) to "no connection" }, cancelled = false)
             return@withContext
         }
-        val port = DeXPorts.HTTPS
+        val port = wsService.connectedPort
         val token = client.authToken(wsService.connectedFingerprint, null, null)
 
         val fileMeta = files.mapIndexed { index, f ->

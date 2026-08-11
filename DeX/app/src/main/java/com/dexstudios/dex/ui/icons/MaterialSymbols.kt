@@ -435,6 +435,64 @@ public object MaterialSymbols {
             }
         }.build().also { _pin = it }
 
+    public val Google: ImageVector
+        get() = _google ?: ImageVector.Builder(
+            name = "google",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            // Blue path
+            path(fill = SolidColor(Color(0xFF4285F4))) {
+                moveTo(23.49f, 12.27f)
+                curveTo(23.49f, 11.48f, 23.42f, 10.73f, 23.3f, 10f)
+                horizontalLineTo(12f)
+                verticalLineToRelative(4.51f)
+                horizontalLineToRelative(6.5f)
+                curveTo(18.22f, 15.67f, 17.5f, 16.73f, 16.5f, 17.39f)
+                verticalLineToRelative(2.98f)
+                horizontalLineToRelative(3.24f)
+                curveTo(21.64f, 18.58f, 23.49f, 15.68f, 23.49f, 12.27f)
+                close()
+            }
+            // Green path
+            path(fill = SolidColor(Color(0xFF34A853))) {
+                moveTo(12f, 24f)
+                curveTo(15.24f, 24f, 17.96f, 22.93f, 19.74f, 20.37f)
+                lineToRelative(-3.24f, -2.98f)
+                curveTo(15.54f, 18.06f, 13.94f, 18.5f, 12f, 18.5f)
+                curveTo(8.87f, 18.5f, 6.23f, 16.38f, 5.28f, 13.53f)
+                horizontalLineTo(1.92f)
+                verticalLineToRelative(3.11f)
+                curveTo(3.91f, 20.59f, 7.73f, 24f, 12f, 24f)
+                close()
+            }
+            // Yellow path
+            path(fill = SolidColor(Color(0xFFFBBC05))) {
+                moveTo(5.28f, 13.53f)
+                curveTo(5.03f, 12.78f, 4.89f, 11.99f, 4.89f, 11.16f)
+                curveTo(4.89f, 10.33f, 5.03f, 9.54f, 5.28f, 8.79f)
+                verticalLineTo(5.68f)
+                horizontalLineTo(1.92f)
+                curveTo(1.1f, 7.33f, 0.63f, 9.19f, 0.63f, 11.16f)
+                curveTo(0.63f, 13.13f, 1.1f, 14.99f, 1.92f, 16.64f)
+                lineToRelative(3.36f, -3.11f)
+                close()
+            }
+            // Red path
+            path(fill = SolidColor(Color(0xFFEA4335))) {
+                moveTo(12f, 4.32f)
+                curveTo(13.76f, 4.32f, 15.34f, 4.93f, 16.59f, 6.13f)
+                lineToRelative(3.24f, -3.24f)
+                curveTo(17.96f, 0.88f, 15.24f, 0f, 12f, 0f)
+                curveTo(7.73f, 0f, 3.91f, 3.41f, 1.92f, 7.55f)
+                lineToRelative(3.36f, 3.11f)
+                curveTo(6.23f, 7.92f, 8.87f, 5.8f, 12f, 5.8f)
+                close()
+            }
+        }.build().also { _google = it }
+
     private fun batteryFrameBuilder(name: String, fillPath: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector.Builder {
         return ImageVector.Builder(
             name = name,
@@ -487,6 +545,7 @@ public object MaterialSymbols {
         }
     }
 
+    private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
     private var _battery1: ImageVector? = null
     private var _battery2: ImageVector? = null

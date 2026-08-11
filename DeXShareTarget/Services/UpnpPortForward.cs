@@ -19,8 +19,8 @@ namespace DeXShareTarget.Services
     {
         private const int SsdpPort = 1900;
         private const string SsdpMulticast = "239.255.255.250";
-        private const int DeXHttpsPort = DeXConstants.HttpsPort;
-        private const int DeXQuicPort = DeXConstants.QuicPort;
+        private static int DeXHttpsPort => DeXConstants.HttpsPort;
+        private static int DeXQuicPort => DeXConstants.QuicPort;
 
         private static readonly string[] IgdServices =
         {

@@ -152,7 +152,7 @@ class MessageHandler(
                 context,
                 senderIp,
                 uploadReq.info.port,
-                PULL_PORT,
+                uploadReq.info.tcpFallbackPort,
                 files,
                 dirUri,
                 fingerprint = uploadReq.info.fingerprint
@@ -250,6 +250,5 @@ class MessageHandler(
         const val PAIR_PROMPT_TIMEOUT_MS = 60_000L
         const val PROMPT_TIMEOUT_MS = 60_000L
         const val GRANT_WAIT_MS = 180_000L
-        const val PULL_PORT = DeXPorts.PULL
     }
 }

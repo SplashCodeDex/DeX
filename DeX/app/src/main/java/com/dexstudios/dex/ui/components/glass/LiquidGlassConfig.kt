@@ -142,11 +142,11 @@ object LiquidGlassPresets {
         vibrancyEnabled = true,
         chromaticAberration = true,
         depthEffect = true,
-        surfaceTint = Color.Black,
-        surfaceTintAlpha = 0.6f,
+        surfaceTint = Color.White,
+        surfaceTintAlpha = 0.12f,
         highlight = Highlight.Ambient,
         shadowRadius = 24.dp,
-        shadowColor = Color.Black.copy(alpha = 0.4f),
+        shadowColor = Color.Black.copy(alpha = 0.2f),
     )
 
     /**

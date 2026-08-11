@@ -7,3 +7,4 @@
 
 $global:DeXLocalApi = "http://127.0.0.1:48425"                       # unencrypted localhost control API
 $global:DeXDataRoot = Join-Path $env:LOCALAPPDATA "DeX"              # app data (theme.json, identity)
+$global:DeXAdbPort = 48427                                           # isolated ADB daemon port

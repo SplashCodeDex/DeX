@@ -195,7 +195,7 @@ class MessageHandlerTest {
     fun `prepare-upload accepted enqueues one batch download for all files from the PC pull server`() = runTest(testDispatcher) {
         mockkObject(TcpDownloadService)
         mockkObject(SafStorage)
-        every { TcpDownloadService.downloadBatch(any(), any(), any(), any(), any(), any()) } returns Unit
+        every { TcpDownloadService.downloadBatch(any(), any(), any(), any(), any(), any(), any()) } returns Unit
         every { SafStorage.getDownloadsDexUri(any()) } returns mockk<android.net.Uri>()
 
         try {
@@ -221,6 +221,7 @@ class MessageHandlerTest {
 
             verify(timeout = 10_000, exactly = 1) {
                 TcpDownloadService.downloadBatch(any(), "192.168.1.10", DeXPorts.HTTPS, DeXPorts.PULL, match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+                    any(),
                     any()
                 )
             }

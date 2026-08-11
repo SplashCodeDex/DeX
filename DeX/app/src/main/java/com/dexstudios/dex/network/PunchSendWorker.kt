@@ -132,7 +132,7 @@ class PunchSendWorker(
             }.toMap()
         )
 
-        val prepared = client.prepareUpload(pcIp, DeXPorts.HTTPS, prepareRequest, token = googleSub.ifBlank { identityHash })
+        val prepared = client.prepareUpload(pcIp, wsService.connectedPort, prepareRequest, token = googleSub.ifBlank { identityHash })
         val response = prepared.response ?: return@withContext "The PC rejected the upload (HTTP ${prepared.httpStatus})"
 
         var sent = 0L
@@ -148,13 +148,13 @@ class PunchSendWorker(
             stream.use { input ->
                 val perFile = java.util.concurrent.atomic.AtomicLong(0L)
                 val outcome = if (client.quicAvailable()) {
-                    client.uploadFileQuic(pcIp, DeXPorts.HTTPS, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
+                    client.uploadFileQuic(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
                         val delta = bytes - perFile.getAndSet(bytes)
                         sent += delta
                         reportProgress(sent.toFloat() / total, d.second, if (client.lastUploadProtocol().isNotEmpty()) client.lastUploadProtocol() else "quic", fileData.size)
                     }
                 } else {
-                    client.uploadFile(pcIp, DeXPorts.HTTPS, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
+                    client.uploadFile(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
                         val delta = bytes - perFile.getAndSet(bytes)
                         sent += delta
                         reportProgress(sent.toFloat() / total, d.second, "http/1.1", fileData.size)

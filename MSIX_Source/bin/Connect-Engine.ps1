@@ -14,6 +14,7 @@ param(
 
 # Load shared constants (ports, paths) first so every subsequent module and binding can use them.
 . "$PSScriptRoot\DeX-Constants.ps1"
+[Environment]::SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", $global:DeXAdbPort, "Process")
 . "$PSScriptRoot\Modules\EngineUtils.ps1"
 Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"

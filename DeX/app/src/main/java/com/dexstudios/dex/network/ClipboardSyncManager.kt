@@ -52,7 +52,7 @@ class ClipboardSyncManager(
             ClipboardSyncState.lastPushed = text
             Timber.i("Clipboard changed, pushing to PC: $ip")
             CoroutineScope(Dispatchers.IO).launch {
-                clientEngine.sendClipboard(ip, DeXPorts.HTTPS, text, fingerprint, deviceConfig.identityHash)
+                clientEngine.sendClipboard(ip, webSocketClientService.connectedPort, text, fingerprint, deviceConfig.identityHash)
             }
         } catch (e: Exception) {
             Timber.e(e, "Clipboard auto-sync failed")

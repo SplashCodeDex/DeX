@@ -45,6 +45,7 @@ import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
@@ -54,7 +55,7 @@ import org.koin.compose.koinInject
 private var isProfileExpanded: Boolean
     get() = TopAppBarState.isProfileExpanded
     set(value) { TopAppBarState.isProfileExpanded = value }
-    
+
 private var isSearchExpanded: Boolean
     get() = TopAppBarState.isSearchExpanded
     set(value) { TopAppBarState.isSearchExpanded = value }
@@ -136,7 +137,7 @@ fun FloatingTopAppBar(
     )
 
     Box(modifier = modifier.fillMaxWidth()) {
-        
+
         // The Top Bar Layout
         Box(
             modifier = Modifier
@@ -349,9 +350,30 @@ private fun ExpandedProfileContent(
                 Spacer(modifier = Modifier.height(12.dp))
                 DeXButton(
                     onClick = onSignIn,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black
+                    )
                 ) {
-                    Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.Google,
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Sign in with Google",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         } else {
