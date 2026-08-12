@@ -263,6 +263,8 @@ namespace DeXShareTarget.Endpoints
                 if (!ActiveVStreamSessions.TryGetValue(sessionId, out var sessionManifest)) return Results.BadRequest();
                 string downloadsFolder = DeXConstants.DownloadsFolder;
                 var progress = new Dictionary<string, long>();
+                long totalReceivedBytes = 0L;
+                int completedFiles = 0;
 
                 foreach (var item in sessionManifest.Items)
                 {
@@ -273,9 +275,24 @@ namespace DeXShareTarget.Endpoints
 
                     long existingBytes = File.Exists(destPath) ? new FileInfo(destPath).Length : 0L;
                     progress[item.Id] = existingBytes;
+                    totalReceivedBytes += Math.Min(existingBytes, item.Size);
+                    if (existingBytes >= item.Size && item.Size > 0) completedFiles++;
                 }
 
-                return Results.Json(new { sessionId, progress });
+                double percentage = sessionManifest.TotalSize > 0
+                    ? Math.Min(100.0, (double)totalReceivedBytes / sessionManifest.TotalSize * 100.0)
+                    : 100.0;
+
+                return Results.Json(new
+                {
+                    sessionId,
+                    completedFiles,
+                    totalFiles = sessionManifest.TotalFiles,
+                    receivedBytes = totalReceivedBytes,
+                    totalBytes = sessionManifest.TotalSize,
+                    percentage = Math.Round(percentage, 1),
+                    progress
+                });
             });
 
             app.MapPost("/api/localsend/v2/vstream-data", async (HttpRequest request) =>
