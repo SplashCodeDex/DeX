@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.6.7.0] - 2026-08-12
+### Fixed
+- **[fix] Mobile Hotspot & Ephemeral Socket Discovery Resilience**:
+  - Ensured DiscoveryBackgroundService.cs maintains active UDP packet listening (canReceiveMain = true) when falling back to ephemeral sockets.
+  - Added Hotspot gateway unicast delivery for UDP discovery datagrams over Android Mobile Hotspot networks.
+
 ## [8.6.6.0] - 2026-08-12
 ### Fixed
 - **[fix] 60-Scenario Discovery Matrix Resilience**: 
@@ -1051,6 +1057,7 @@
 - **Persistent Spatial Menu**: Removed auto-hiding behavior on `Connect`, `Disconnect`, `Phone Files`, and `Auto-Connect` menu actions so the menu stays open for interactive use.
 - **Dynamic UI State Sync**: Added immediate `Update-WpfUI` triggers on menu actions to update connect/disconnect states and auto-connect highlights live.
 - **Project Rule Protocol**: Configured workspace rules enforcing `/ponytail` ladder, deep edge-case resolution, MSIX build & signing pipelines, and automated release commits.
+
 
 
 

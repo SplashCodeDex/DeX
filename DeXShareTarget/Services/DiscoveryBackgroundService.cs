@@ -196,7 +196,11 @@ namespace DeXShareTarget.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"[DISC] Cannot bind primary UDP discovery port {DeXConstants.DiscoveryPort} for receiving: {ex.Message}. Falling back to send-only ephemeral port.");
-                try { udp.Client.Bind(new IPEndPoint(IPAddress.Any, 0)); } catch { }
+                try {
+                    udp.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+                    udp.JoinMulticastGroup(multicastAddress);
+                    canReceiveMain = true;
+                } catch { }
             }
 
             var myJson = JsonSerializer.Serialize(myInfo);
