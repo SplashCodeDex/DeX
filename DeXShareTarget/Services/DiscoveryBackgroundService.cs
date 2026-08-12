@@ -178,9 +178,19 @@ namespace DeXShareTarget.Services
             var endPoint = new IPEndPoint(IPAddress.Any, DeXConstants.DiscoveryPort);
             using var udp = new UdpClient();
             udp.EnableBroadcast = true;
-            udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            udp.Client.Bind(endPoint);
-            udp.JoinMulticastGroup(multicastAddress);
+            bool canReceiveMain = false;
+            try
+            {
+                udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                udp.Client.Bind(endPoint);
+                udp.JoinMulticastGroup(multicastAddress);
+                canReceiveMain = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DISC] Cannot bind primary UDP discovery port {DeXConstants.DiscoveryPort} for receiving: {ex.Message}. Falling back to send-only ephemeral port.");
+                try { udp.Client.Bind(new IPEndPoint(IPAddress.Any, 0)); } catch { }
+            }
 
             var myJson = JsonSerializer.Serialize(myInfo);
             var myBytes = Encoding.UTF8.GetBytes(myJson);
@@ -189,6 +199,11 @@ namespace DeXShareTarget.Services
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    if (!canReceiveMain)
+                    {
+                        await Task.Delay(5000, stoppingToken);
+                        continue;
+                    }
                     try
                     {
                         var result = await udp.ReceiveAsync(stoppingToken);
