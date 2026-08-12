@@ -60,17 +60,50 @@ function Reset-SpatialPanels {
 }
 
 function Invoke-ExitEngine {
+    # Save session state snapshot before shutdown
+    Save-EngineState
+
     # Edge Case 20: Job and process cleanup on exit
     Get-Job | ForEach-Object { try { Stop-Job $_; Remove-Job $_ } catch {} }
     if ($script:adbLsProc -and -not $script:adbLsProc.HasExited) {
         try { $script:adbLsProc.Kill() } catch {}
     }
-    $script:wpfWindow.Hide()
-    $script:notifyIcon.Visible = $false
-    $script:notifyIcon.Dispose()
-    Stop-Process -Name "adb", "scrcpy", "DeXShareTarget" -ErrorAction SilentlyContinue
+
+    # Smooth 150ms WPF fade-out if window is active
+    if ($null -ne $script:wpfWindow -and $script:wpfWindow.IsVisible) {
+        try {
+            $animFade = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $animFade.To = 0.0
+            $animFade.Duration = [TimeSpan]::FromMilliseconds(150)
+            $script:wpfWindow.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $animFade)
+        } catch {}
+    }
+
+    if ($null -ne $script:notifyIcon) {
+        $script:notifyIcon.Visible = $false
+        $script:notifyIcon.Dispose()
+    }
+
+    # Surgical ADB cleanup: only terminate adb.exe processes running from DeX's own bin path
+    try {
+        $dexBinPath = $PSScriptRoot
+        Get-Process -Name "adb" -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                if ($_.MainModule.FileName -like "*$dexBinPath*" -or $_.Path -like "*$dexBinPath*") {
+                    $_ | Stop-Process -Force -ErrorAction SilentlyContinue
+                }
+            } catch {
+                $_ | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {
+        Stop-Process -Name "adb" -ErrorAction SilentlyContinue
+    }
+    Stop-Process -Name "scrcpy", "DeXShareTarget" -ErrorAction SilentlyContinue
+
     [System.Windows.Forms.Application]::Exit()
 }
+
 
 function Get-ConnectedDeviceTarget {
     $statusText = $script:txtStatus.Text
@@ -184,7 +217,7 @@ $actionPull = {
 
     $sb = $script:wpfWindow.Resources["ExpandMenu"].Clone()
     if ($isSwapping) {
-        15, 14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
+        for ($i = $sb.Children.Count - 1; $i -ge 7; $i--) { $sb.Children.RemoveAt($i) }
     }
     $sb.Children[0].By = $null
     $sb.Children[0].To = $script:contractedWidth + 754
@@ -285,7 +318,7 @@ $actionSettings = {
 
     $sb = $script:wpfWindow.Resources["ExpandSettings"].Clone()
     if ($isSwapping) {
-        15, 14, 13, 12, 11, 10, 9, 8, 7 | ForEach-Object { $sb.Children.RemoveAt($_) }
+        for ($i = $sb.Children.Count - 1; $i -ge 7; $i--) { $sb.Children.RemoveAt($i) }
     }
     $sb.Children[0].By = $null
     $sb.Children[0].To = 675

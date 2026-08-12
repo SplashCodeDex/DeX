@@ -204,6 +204,34 @@ if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
     Gate "Pester Unit Tests Passed" $false "Pester module not found on this system."
 }
 
+Write-Host "`n=== 10. AST Argument Guard ===" -ForegroundColor Cyan
+$allModules = Get-ChildItem -Path (Join-Path $root 'MSIX_Source\bin') -Recurse -Include *.ps1,*.psm1
+$astViolations = @()
+
+foreach ($mod in $allModules) {
+    $tokens = $null
+    $errs = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($mod.FullName, [ref]$tokens, [ref]$errs)
+    if ($null -eq $ast) { continue }
+    
+    $commandAsts = $ast.FindAll({ param($astNode) $astNode -is [System.Management.Automation.Language.CommandAst] }, $true)
+    foreach ($cmd in $commandAsts) {
+        $elements = $cmd.CommandElements
+        for ($i = 0; $i -lt $elements.Count; $i++) {
+            $elem = $elements[$i]
+            if ($elem -is [System.Management.Automation.Language.ParameterAst] -and ($i + 1) -lt $elements.Count) {
+                $arg = $elements[$i + 1]
+                if ($arg -is [System.Management.Automation.Language.ConvertExpressionAst]) {
+                    $astViolations += "$($mod.Name):L$($arg.Extent.StartLineNumber) - Unparenthesized convert in parameter argument mode: $($arg.Extent.Text)"
+                }
+            }
+        }
+    }
+}
+
+Gate "Zero unparenthesized type convert parameter arguments in modules" ($astViolations.Count -eq 0) `
+    (($astViolations | Select-Object -First 3) -join ' | ')
+
 Write-Host "`n==================================================" -ForegroundColor Cyan
 if ($script:Failures -gt 0) {
     Write-Host "  VALIDATION FAILED: $($script:Failures) gate(s) failed, $($script:Passes) passed." -ForegroundColor Red

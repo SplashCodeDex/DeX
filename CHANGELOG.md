@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.6.2.0] - 2026-08-12
+### Fixed
+- **[fix] Dynamic Storyboard Children Pruning in `TrayUIHandlers`**: Replaced fixed array index loop (`15, 14... 7`) with a dynamic bounds-checked reverse loop (`for ($i = $sb.Children.Count - 1; $i -ge 7; $i--)`). Eliminates `ArgumentOutOfRangeException: Specified argument was out of the range of valid values` when swapping panels on storyboards with fewer than 16 elements (such as `ExpandSettings`).
+### Added
+- **[minor] Automated AST Argument Guard in `Validate-Build.ps1`**: Integrated Section 10 AST static analysis gate into the 18-gate pre-flight build check. Automatically scans all module scripts (`*.ps1`, `*.psm1`) for unparenthesized type accelerators in parameter argument mode, preventing argument parsing regressions from entering production builds.
+
 ## [8.6.1.0] - 2026-08-12
 ### Fixed
 - **[fix] PowerShell Argument Mode Evaluation in `Bindings_Core`**: Enclosed `[bool]$this.IsChecked` in parentheses `([bool]$this.IsChecked)` when invoking `Set-DndMode -Enable`. Resolves PowerShell argument mode parsing error (`Cannot convert value "System.String" to type "System.Boolean"`) caused by unparenthesized string interpolation `[bool]@{IsChecked=True}.IsChecked`.
