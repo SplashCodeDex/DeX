@@ -63,7 +63,7 @@ class DiscoveryEngine(
 
     fun startDiscovery() {
         Timber.i("Starting DiscoveryEngine (NSD + UDP Multicast)...")
-        nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
+        nsdManagerHelper = NsdManagerHelper(context, localInfo) { device -> addDevice(device) }.apply { start() }
         udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
 
         cleanupJob = scope.launch {
@@ -99,7 +99,7 @@ class DiscoveryEngine(
                         lastAdvertised = pair
                         Timber.i("Trusted identity changed; re-advertising NSD + UDP")
                         nsdManagerHelper?.stop()
-                        nsdManagerHelper = NsdManagerHelper(context, localInfo).apply { start() }
+                        nsdManagerHelper = NsdManagerHelper(context, localInfo) { device -> addDevice(device) }.apply { start() }
                         udpManager?.stop()
                         udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
                     }

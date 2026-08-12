@@ -1,6 +1,9 @@
 package com.dexstudios.dex.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,12 +23,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.kyant.backdrop.Backdrop
+import androidx.compose.ui.graphics.isSpecified
 
 data class NavBarItem(
     val selectedIcon: ImageVector,
@@ -42,14 +47,63 @@ fun FloatingPillNavBar(
     backdrop: Backdrop? = null,
     config: LiquidGlassConfig = LiquidGlassPresets.NavBar,
 ) {
+    val selectedIndex = items.indexOfFirst { it.isSelected }.coerceAtLeast(0)
+
     val content: @Composable BoxScope.() -> Unit = {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
-            items.forEach { item ->
-                NavBarIcon(item = item, modifier = Modifier.weight(1f))
+            val itemWidth = maxWidth / items.size
+            val indicatorOffset by animateDpAsState(
+                targetValue = itemWidth * selectedIndex,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "navIndicatorOffset"
+            )
+
+            // 1. Shared Animated Highlighter (Liquid Glass or Solid Fallback)
+            val indicatorModifier = Modifier
+                .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
+                .width(itemWidth)
+                .fillMaxHeight()
+
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    modifier = indicatorModifier,
+                    shape = CircleShape,
+                    config = LiquidGlassPresets.IconButton.copy(
+                        blurRadius = 4.dp,
+                        lensHeight = 12.dp,
+                        lensAmount = 24.dp,
+                        surfaceTintAlpha = 0.15f
+                    )
+                ) { }
+            } else {
+                Box(
+                    modifier = indicatorModifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
+
+            // 2. Icons Row
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEach { item ->
+                    NavBarIcon(
+                        item = item,
+                        isGlass = backdrop != null,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -77,12 +131,26 @@ fun FloatingPillNavBar(
 }
 
 @Composable
-private fun NavBarIcon(item: NavBarItem, modifier: Modifier = Modifier) {
+private fun NavBarIcon(
+    item: NavBarItem,
+    isGlass: Boolean,
+    modifier: Modifier = Modifier
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val containerColor = if (item.isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-    val contentColor = if (item.isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    // When using glass, we use the primary color for the "selected" state to pop through the lens.
+    // When using a solid background, we use onPrimary for contrast.
+    val targetContentColor = if (item.isSelected) {
+        if (isGlass) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        label = "navContentColor"
+    )
     val currentIcon = if (item.isSelected) item.selectedIcon else item.unselectedIcon
 
     Column(
@@ -94,8 +162,7 @@ private fun NavBarIcon(item: NavBarItem, modifier: Modifier = Modifier) {
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = item.onClick
-            )
-            .background(containerColor),
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

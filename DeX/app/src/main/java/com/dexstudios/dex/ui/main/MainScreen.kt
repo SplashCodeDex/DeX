@@ -413,55 +413,69 @@ fun MainScreen(
 
                                 // B. Permanent "Scan to add Device" Card
                                 item {
+                                    val cardShape = RoundedCornerShape(48.dp)
                                     DeXPanel(
-                                        shape = RoundedCornerShape(32.dp),
+                                        shape = cardShape,
                                         modifier = Modifier
                                             .width(300.dp)
+                                            .height(340.dp)
                                             .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
                                     ) {
                                         Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp)
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(24.dp),
+                                            verticalArrangement = Arrangement.Bottom,
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
+                                            // Icon centered in the top area
                                             Box(
-                                                modifier = Modifier
-                                                    .padding(bottom = 16.dp)
-                                                    .size(64.dp)
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                                modifier = Modifier.weight(1f).fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Icon(
-                                                    imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
-                                                    contentDescription = "Scan",
-                                                    modifier = Modifier.size(32.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(110.dp)
+                                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
+                                                        contentDescription = "Scan",
+                                                        modifier = Modifier.size(56.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
                                             }
 
                                             Text(
                                                 text = "Scan to add Device",
-                                                fontSize = 18.sp,
+                                                style = MaterialTheme.typography.headlineSmall,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onBackground,
-                                                modifier = Modifier.padding(bottom = 4.dp)
+                                                modifier = Modifier.padding(bottom = 8.dp),
+                                                textAlign = TextAlign.Center
                                             )
                                             Text(
-                                                text = "Pair with QR or PIN",
-                                                fontSize = 12.sp,
+                                                text = "QRCode must be triggered from PC",
+                                                style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(bottom = 16.dp),
+                                                lineHeight = 20.sp,
                                                 textAlign = TextAlign.Center
                                             )
 
+                                            Spacer(modifier = Modifier.height(32.dp))
+
                                             DeXButton(
                                                 onClick = { launchQrScanner() },
-                                                modifier = Modifier.fillMaxWidth().height(40.dp),
+                                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                                shape = CircleShape,
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primary,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                                    containerColor = MaterialTheme.colorScheme.onSurface,
+                                                    contentColor = MaterialTheme.colorScheme.surface
                                                 )
                                             ) {
-                                                Text("Scan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text("Scan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                             }
                                         }
                                     }

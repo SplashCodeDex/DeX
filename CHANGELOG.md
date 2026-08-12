@@ -3,6 +3,7 @@
 ## [8.0.0.0] - 2026-08-11
 ### Changed
 - **[major] Dynamic Port Allocation & ADB Isolation**: Completely resolved port collisions for multi-instance Fast User Switching. The C# background server now dynamically allocates its HTTPS and QUIC ports at startup and updates Android peers via UDP Multicast and WebSocket broadcasts. Android app logic (including UDP Discovery, WebSocket Service, and UPnP WAN handling) was overhauled to read, persist, and utilize these dynamic PC ports natively. Additionally, the internal ADB daemon is now securely isolated to port `48427` to prevent conflicts with Android Studio and other developer tools.
+- **[fix] Dynamic Port Edge Cases (Android)**: Patched `UdpMulticastManager` and `DiscoveryEngine` to properly deserialize and construct `RegisterDto` with the newly assigned dynamic QUIC and TCP Fallback ports from the UDP payload. Updated `WebSocketClientService.wanTarget()` to dynamically route WAN connections to the persisted `PcMemory.port` rather than hardcoding the fallback constant, ensuring seamless compatibility with UPnP dynamic port forwarding.
 
 ## [7.9.13.0] - 2026-08-11
 ### Fixed

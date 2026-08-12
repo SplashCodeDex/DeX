@@ -110,7 +110,7 @@ fun MainNavigation() {
 
     val isDimmed = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded || incomingPairRequest != null
     val globalDimAlpha by animateFloatAsState(
-        targetValue = if (isDimmed) 0.85f else 0f,
+        targetValue = if (isDimmed) 0.75f else 0f,
         animationSpec = tween(500),
         label = "globalDimAlpha"
     )
@@ -178,14 +178,6 @@ fun MainNavigation() {
     ) {
       Box(contentAlignment = Alignment.Center) {
           FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
-          if (globalDimAlpha > 0f) {
-              Box(
-                  modifier = Modifier
-                      .matchParentSize()
-                      .graphicsLayer { alpha = globalDimAlpha }
-                      .background(Color.Black, shape = androidx.compose.foundation.shape.CircleShape)
-              )
-          }
       }
     }
 

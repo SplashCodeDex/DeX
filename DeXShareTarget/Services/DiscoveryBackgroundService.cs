@@ -97,6 +97,8 @@ namespace DeXShareTarget.Services
             if (!string.IsNullOrEmpty(myInfo.GoogleSub)) service.AddProperty("googleSub", myInfo.GoogleSub);
             service.AddProperty("deviceModel", myInfo.DeviceModel);
             service.AddProperty("deviceType", myInfo.DeviceType);
+            service.AddProperty("quicPort", DeXConstants.QuicPort.ToString());
+            service.AddProperty("tcpFallbackPort", DeXConstants.TcpFallbackPort.ToString());
             
             var sd = new Makaretu.Dns.ServiceDiscovery(mdns);
             sd.Advertise(service);
