@@ -73,22 +73,4 @@ namespace DeXShareTarget.Models
         public string Ip { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
-
-    public class VStreamManifestDto
-    {
-        [JsonPropertyName("sessionId")] public string SessionId { get; set; } = Guid.NewGuid().ToString();
-        [JsonPropertyName("info")] public RegisterDto Info { get; set; } = new();
-        [JsonPropertyName("totalSize")] public long TotalSize { get; set; }
-        [JsonPropertyName("totalFiles")] public int TotalFiles { get; set; }
-        [JsonPropertyName("items")] public List<VStreamItemDto> Items { get; set; } = new();
-    }
-
-    public class VStreamItemDto
-    {
-        [JsonPropertyName("id")] public string Id { get; set; } = Guid.NewGuid().ToString();
-        [JsonPropertyName("relativePath")] public string RelativePath { get; set; } = "";
-        [JsonPropertyName("size")] public long Size { get; set; }
-        [JsonPropertyName("partialHash")] public string? PartialHash { get; set; }
-        [JsonPropertyName("offset")] public long Offset { get; set; }
-    }
 }

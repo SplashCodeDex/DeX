@@ -23,7 +23,6 @@ namespace DeXShareTarget.Endpoints
         // startup (the endpoints are registered a single time in MapLocalSendEndpoints).
         private static readonly ConcurrentDictionary<string, PrepareUploadRequestDto> ActiveUploadSessions = new();
         private static readonly ConcurrentDictionary<string, int> ActiveUploadSessionsProgress = new();
-        private static readonly ConcurrentDictionary<string, VStreamManifestDto> ActiveVStreamSessions = new();
 
         /// <summary>Registers the LocalSend v2 transfer endpoints (info, register, prepare-upload, upload, punch, download).</summary>
         public static void MapShareEndpoints(this WebApplication app)
@@ -52,50 +51,15 @@ namespace DeXShareTarget.Endpoints
                 {
                     return Results.StatusCode(403);
                 }
-                var tcs = new TaskCompletionSource<bool>();
-                ReceivePromptWindow? win = null;
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var senderAlias = req.Info.Alias ?? "Unknown Device";
-                    win = new ReceivePromptWindow(senderAlias, req.Files.Count);
-                    win.Show();
-                    _ = win.WaitForResponseAsync().ContinueWith(t => 
-                    {
-                        tcs.TrySetResult(t.Result);
-                    });
-                });
 
-                bool res = false;
-                using (ct.Register(() => { tcs.TrySetResult(false); win?.Dispatcher.Invoke(() => win.Close()); }))
-                {
-                    res = await tcs.Task;
-                }
-
-                if (!res) return Results.StatusCode(403);
-                
                 var sessionId = Guid.NewGuid().ToString();
                 ActiveUploadSessions[sessionId] = req;
-                _ = Task.Delay(TimeSpan.FromMinutes(10)).ContinueWith(t => { ActiveUploadSessions.TryRemove(sessionId, out _); ActiveUploadSessionsProgress.TryRemove(sessionId, out _); });
+
                 var resFiles = new Dictionary<string, string>();
                 string downloadsFolder = DeXConstants.DownloadsFolder;
                 Directory.CreateDirectory(downloadsFolder);
                 foreach (var kvp in req.Files)
                 {
-                    string safeFileName = Path.GetFileName(kvp.Value.FileName);
-                    if (string.IsNullOrEmpty(safeFileName)) safeFileName = "unnamed_file";
-                    
-                    string destPath = Path.Combine(downloadsFolder, safeFileName);
-                    if (File.Exists(destPath) && new FileInfo(destPath).Length == kvp.Value.Size)
-                    {
-                        var localPartial = await HashHelper.ComputePartialHashAsync(destPath, kvp.Value.Size);
-                        if (localPartial != null && localPartial == kvp.Value.PartialHash)
-                        {
-                            File.SetLastWriteTime(destPath, DateTime.Now);
-                            resFiles[kvp.Key] = "[SKIP]";
-                            continue;
-                        }
-                    }
-
                     resFiles[kvp.Key] = Guid.NewGuid().ToString(); // Token for the file
                 }
                 return Results.Json(new PrepareUploadResponseDto { SessionId = sessionId, Files = resFiles });
@@ -224,113 +188,6 @@ namespace DeXShareTarget.Endpoints
                 HostedFileLastAccess[fileId] = DateTime.UtcNow;
                 // Range processing enables resumable downloads over flaky WAN connections
                 return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
-            });
-
-            // DeX-VStream Protocol Endpoints (Virtual Directory Manifest Streaming)
-            app.MapPost("/api/localsend/v2/vstream-prepare", async (HttpRequest request, VStreamManifestDto req, CancellationToken ct) =>
-            {
-                if (IsDndEnabled) return Results.StatusCode(403);
-                var auth = request.Headers.Authorization.ToString();
-                var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length) : null;
-                bool isAutoTrusted = IdentityManager.IsIdentityToken(token);
-                bool isPaired = !string.IsNullOrEmpty(token) && IdentityManager.PairedTokens.TryGetValue(req.Info.Fingerprint, out var expectedToken) && expectedToken == token;
-                if (!isAutoTrusted && !isPaired) return Results.StatusCode(403);
-
-                var sessionId = Guid.NewGuid().ToString();
-                req.SessionId = sessionId;
-                ActiveVStreamSessions[sessionId] = req;
-
-                string downloadsFolder = DeXConstants.DownloadsFolder;
-                Directory.CreateDirectory(downloadsFolder);
-
-                // Prepare target directory structure upfront
-                foreach (var item in req.Items)
-                {
-                    string safeRel = SanitizeRelativePath(item.RelativePath);
-                    if (!string.IsNullOrEmpty(safeRel))
-                    {
-                        string destPath = Path.Combine(downloadsFolder, safeRel);
-                        string? parentDir = Path.GetDirectoryName(destPath);
-                        if (!string.IsNullOrEmpty(parentDir)) Directory.CreateDirectory(parentDir);
-                    }
-                }
-
-                return Results.Json(new { sessionId, totalFiles = req.TotalFiles, totalSize = req.TotalSize });
-            });
-
-            app.MapGet("/api/localsend/v2/vstream-progress", (string sessionId) =>
-            {
-                if (!ActiveVStreamSessions.TryGetValue(sessionId, out var sessionManifest)) return Results.BadRequest();
-                string downloadsFolder = DeXConstants.DownloadsFolder;
-                var progress = new Dictionary<string, long>();
-                long totalReceivedBytes = 0L;
-                int completedFiles = 0;
-
-                foreach (var item in sessionManifest.Items)
-                {
-                    string safeRel = SanitizeRelativePath(item.RelativePath);
-                    string destPath = string.IsNullOrEmpty(safeRel)
-                        ? Path.Combine(downloadsFolder, "unnamed_file")
-                        : Path.Combine(downloadsFolder, safeRel);
-
-                    long existingBytes = File.Exists(destPath) ? new FileInfo(destPath).Length : 0L;
-                    progress[item.Id] = existingBytes;
-                    totalReceivedBytes += Math.Min(existingBytes, item.Size);
-                    if (existingBytes >= item.Size && item.Size > 0) completedFiles++;
-                }
-
-                double percentage = sessionManifest.TotalSize > 0
-                    ? Math.Min(100.0, (double)totalReceivedBytes / sessionManifest.TotalSize * 100.0)
-                    : 100.0;
-
-                return Results.Json(new
-                {
-                    sessionId,
-                    completedFiles,
-                    totalFiles = sessionManifest.TotalFiles,
-                    receivedBytes = totalReceivedBytes,
-                    totalBytes = sessionManifest.TotalSize,
-                    percentage = Math.Round(percentage, 1),
-                    progress
-                });
-            });
-
-            app.MapPost("/api/localsend/v2/vstream-data", async (HttpRequest request) =>
-            {
-                var sessionId = request.Query["sessionId"].ToString();
-                var itemId = request.Query["itemId"].ToString();
-                if (!ActiveVStreamSessions.TryGetValue(sessionId, out var sessionManifest)) return Results.BadRequest();
-                var item = sessionManifest.Items.FirstOrDefault(i => i.Id == itemId);
-                if (item == null) return Results.BadRequest();
-
-                string safeRel = SanitizeRelativePath(item.RelativePath);
-                string downloadsFolder = DeXConstants.DownloadsFolder;
-                string destPath = string.IsNullOrEmpty(safeRel)
-                    ? Path.Combine(downloadsFolder, "unnamed_file")
-                    : Path.Combine(downloadsFolder, safeRel);
-
-                long startOffset = 0L;
-                var rangeHeader = request.Headers["Range"].ToString();
-                if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
-                {
-                    var parts = rangeHeader.Substring("bytes=".Length).Split('-');
-                    if (long.TryParse(parts[0], out var parsedOffset))
-                    {
-                        startOffset = parsedOffset;
-                    }
-                }
-
-                var mode = startOffset > 0 ? FileMode.OpenOrCreate : FileMode.Create;
-                using (var destStream = new FileStream(destPath, mode, FileAccess.Write, FileShare.ReadWrite, 8192, useAsync: true))
-                {
-                    if (startOffset > 0 && destStream.Length >= startOffset)
-                    {
-                        destStream.Seek(startOffset, SeekOrigin.Begin);
-                    }
-                    await request.Body.CopyToAsync(destStream);
-                }
-
-                return Results.Ok();
             });
         }
     }

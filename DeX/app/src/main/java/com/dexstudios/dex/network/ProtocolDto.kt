@@ -47,22 +47,6 @@ data class PrepareUploadResponseDto(
     val files: Map<String, String>
 )
 
-@Serializable
-data class VStreamPrepareRequestDto(
-    val info: RegisterDto,
-    val totalSize: Long = 0L,
-    val totalFiles: Int = 0,
-    val items: List<VStreamItemDto> = emptyList()
-)
-
-@Serializable
-data class VStreamItemDto(
-    val id: String,
-    val relativePath: String = "",
-    val size: Long = 0L,
-    val token: String? = null
-)
-
 data class DiscoveredDevice(
     val ip: String,
     val info: RegisterDto,

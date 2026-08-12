@@ -44,7 +44,6 @@ class MessageHandler(
                 "pair-prompt" -> handlePairPrompt(dataElement)
                 "pair-cancelled" -> handlePairCancelled()
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
-                "vstream-prepare" -> handleVStreamPrepare(dataElement, senderIp)
                 "public-address" -> handlePublicAddress(dataElement)
                 "endpoint-info" -> handleEndpointInfo(dataElement)
                 "peer-endpoint" -> handlePeerEndpoint(dataElement)
@@ -146,45 +145,6 @@ class MessageHandler(
                 files,
                 dirUri,
                 fingerprint = uploadReq.info.fingerprint
-            )
-        }
-    }
-
-    private fun handleVStreamPrepare(dataElement: JsonElement, senderIp: String) {
-        val vReq = json.decodeFromJsonElement<VStreamPrepareRequestDto>(dataElement)
-        Timber.i("Incoming vstream-prepare via WebSocket from ${vReq.info.alias} for ${vReq.totalFiles} items (${vReq.totalSize} bytes)")
-
-        val sessionId = UUID.randomUUID().toString()
-        val deferred = CompletableDeferred<Boolean>()
-        TransferState.pendingPrompts[sessionId] = deferred
-        val notificationId = sessionId.hashCode()
-        notificationHelper.showIncomingFileNotification(sessionId, notificationId, vReq.totalFiles)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS.milliseconds) { deferred.await() } == true
-            TransferState.pendingPrompts.remove(sessionId)
-            if (!accepted) {
-                Timber.i("VStream transfer rejected or timed out")
-                return@launch
-            }
-
-            val dirUri = SafStorage.getDownloadsDexUri(context)
-            val files = vReq.items.map { item ->
-                PullFileDto(
-                    fileId = item.id,
-                    fileName = item.relativePath.ifBlank { "unnamed_file" },
-                    size = item.size,
-                    token = item.token ?: ""
-                )
-            }
-            TcpDownloadService.downloadBatch(
-                context,
-                senderIp,
-                vReq.info.port,
-                vReq.info.tcpFallbackPort,
-                files,
-                dirUri,
-                fingerprint = vReq.info.fingerprint
             )
         }
     }
