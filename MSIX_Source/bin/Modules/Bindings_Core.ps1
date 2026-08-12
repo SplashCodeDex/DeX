@@ -45,14 +45,10 @@ if ($ctxMenu) {
     })
 }
 
-$btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
-if ($btnQAConnect) {
-    $btnQAConnect.Add_Click({
-        if ($this.IsChecked) {
-            Invoke-MenuAction $actionConnect
-        } else {
-            Invoke-MenuAction $actionDisconnect
-        }
+$btnQADnd = $script:wpfWindow.FindName("btnQADnd")
+if ($btnQADnd) {
+    $btnQADnd.Add_Click({
+        Set-DndMode -Enable [bool]$this.IsChecked
     })
 }
 $btnQAMirror = $script:wpfWindow.FindName("btnQAMirror")

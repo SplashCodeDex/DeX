@@ -676,8 +676,8 @@
                             </Border>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                    <ToggleButton Name="btnQAConnect" Style="{StaticResource QuickActionBtn}" Margin="3,0" ToolTip="Connect ADB">
-                        <TextBlock Text="&#xE71B;" />
+                    <ToggleButton Name="btnQADnd" Style="{StaticResource QuickActionBtn}" Margin="3,0" ToolTip="Do Not Disturb">
+                        <TextBlock Text="&#xE711;" />
                     </ToggleButton>
                     <ToggleButton Name="btnQAMirror" Style="{StaticResource QuickActionBtn}" Margin="3,0" ToolTip="Mirror Phone">
                         <TextBlock Text="&#xE8EA;" />

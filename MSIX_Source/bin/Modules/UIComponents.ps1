@@ -1,4 +1,4 @@
-function Load-TrayIcon([string]$FileName) {
+﻿function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
     if (Test-Path $iconPath) {
@@ -229,19 +229,16 @@ function Update-WpfUI {
         $script:notifyIcon.Icon = $iconConnected
         $script:notifyIcon.Text = "Connected: $devName"
         $script:txtStatus.Text = "Status: Connected ($devName)"
-        try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
-        $btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
-        if ($null -ne $btnQAConnect) { $btnQAConnect.IsChecked = $true }
         $script:wpfWindow.FindName("btnCopyIP").Visibility = 'Visible'
     } else {
         $script:notifyIcon.Icon = $iconDisconnected
         $script:notifyIcon.Text = "DeX: Ready"
         $script:txtStatus.Text = "Status: Ready"
-        try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
-        $btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
-        if ($null -ne $btnQAConnect) { $btnQAConnect.IsChecked = $false }
         $script:wpfWindow.FindName("btnCopyIP").Visibility = 'Collapsed'
     }
+
+    $btnQADnd = $script:wpfWindow.FindName("btnQADnd")
+    if ($null -ne $btnQADnd) { $btnQADnd.IsChecked = [bool]$script:isDndEnabled }
 }
 #Export-ModuleMember -Function Update-WpfUI
 

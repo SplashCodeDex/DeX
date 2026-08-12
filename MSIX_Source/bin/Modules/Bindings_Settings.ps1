@@ -1,4 +1,4 @@
-
+﻿
 $btnCopyIP = $script:ce["btnCopyIP"]
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -107,27 +107,46 @@ if ($btnSettingsQrCode) {
     })
 }
 
-# DND toggle in settings
+# DND state & controller
 $script:isDndEnabled = $false
+
+function Set-DndMode([bool]$Enable) {
+    $script:isDndEnabled = $Enable
+    $stateStr = if ($script:isDndEnabled) { "true" } else { "false" }
+    try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dnd?enabled=$stateStr" -Method Post } catch {}
+    
+    # Sync Quick Action Button
+    $btnQADnd = $script:wpfWindow.FindName("btnQADnd")
+    if ($btnQADnd -and $btnQADnd.IsChecked -ne $script:isDndEnabled) {
+        $btnQADnd.IsChecked = $script:isDndEnabled
+    }
+
+    # Sync Settings Badge
+    $txtBadge = $script:ce["txtBadgeDnd"]
+    $badge = $script:ce["badgeDnd"]
+    if ($txtBadge -and $badge) {
+        $txtBadge.Text = if ($script:isDndEnabled) { "ON" } else { "OFF" }
+        if ($script:isDndEnabled) {
+            $badge.Background = $script:wpfWindow.FindResource("DangerBrush")
+            $txtBadge.Foreground = [System.Windows.Media.Brushes]::White
+        } else {
+            $badge.Background = $script:wpfWindow.FindResource("AccentBrush")
+            $txtBadge.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
+        }
+    }
+    
+    # Feedback notification
+    if ($script:isDndEnabled) {
+        Show-Toast -Title "Do Not Disturb" -Message "Enabled - Incoming pairing & transfer requests auto-declined."
+    } else {
+        Show-Toast -Title "Do Not Disturb" -Message "Disabled - Ready to receive pairing & transfer requests."
+    }
+}
+
 $btnSettingsDnd = $script:ce["btnSettingsDnd"]
 if ($btnSettingsDnd) {
     $btnSettingsDnd.Add_Click({
-        $script:isDndEnabled = -not $script:isDndEnabled
-        $stateStr = if ($script:isDndEnabled) { "true" } else { "false" }
-        try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/dnd?enabled=$stateStr" -Method Post } catch {}
-        
-        $txtBadge = $script:ce["txtBadgeDnd"]
-        $badge = $script:ce["badgeDnd"]
-        if ($txtBadge -and $badge) {
-            $txtBadge.Text = if ($script:isDndEnabled) { "ON" } else { "OFF" }
-            if ($script:isDndEnabled) {
-                $badge.Background = $script:wpfWindow.FindResource("DangerBrush")
-                $txtBadge.Foreground = [System.Windows.Media.Brushes]::White
-            } else {
-                $badge.Background = $script:wpfWindow.FindResource("AccentBrush")
-                $txtBadge.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
-            }
-        }
+        Set-DndMode -Enable (-not $script:isDndEnabled)
     })
 }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.3.0.0] - 2026-08-12
+### Changed
+- **[minor] Replaced 'Connect ADB' Quick Action with 'Do Not Disturb' (`btnQADnd`)**: Replaced the legacy `btnQAConnect` button in the spatial menu quick action bar with a native Do Not Disturb toggle (`btnQADnd`).
+- **[minor] Synchronized DND State Management**: Created `Set-DndMode` in `Bindings_Settings.ps1` to keep both the spatial menu quick action toggle and the Settings panel badge in 100% two-way sync, firing toast notifications and updating the local engine `/local/dnd` endpoint on toggle.
+
 ## [8.2.0.0] - 2026-08-12
 ### Changed
 - **[minor] Decouple ADB from Core Architecture**: Completely removed ADB as a mandatory dependency for ordinary consumers. ADB is no longer started at launch, polled in the background (`adb devices -l` / `adb mdns services`), or used as a clipboard broadcast fallback. Primary device discovery and status indicators now rely strictly on DeX's native C# network engine (WebSockets/mDNS/UDP).
