@@ -61,7 +61,7 @@ fun LiquidGlassIconButton(
     val pressProgress by animateFloatAsState(
         targetValue = if (isPressed) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f),
-        label = "liquidPress"
+        label = "liquidPress",
     )
 
     val glassModifier = if (backdrop != null) {
@@ -73,7 +73,7 @@ fun LiquidGlassIconButton(
                 shape = { config.shape },
                 effects = {
                     if (config.vibrancyEnabled) vibrancy()
-                    blur((config.blurRadius * (1f - 0.5f * pressProgress)).toPx())
+                    blur((config.blurRadius * (1f - (0.5f * pressProgress))).toPx())
                     if (config.lensHeight > 0.dp && config.lensAmount > 0.dp) {
                         // Resting refraction base + press boost
                         val refraction = config.restRefraction + (1f - config.restRefraction) * pressProgress

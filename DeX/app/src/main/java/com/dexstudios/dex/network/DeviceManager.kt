@@ -28,7 +28,7 @@ object DeviceManager {
     private fun loadPairedTokens() {
         val saved = prefs.getString(KEY_PAIRED_TOKENS, null) ?: return
         try {
-            val map = com.dexstudios.dex.network.TokenCodec.decode(saved)
+            val map = TokenCodec.decode(saved)
             AuthState.pairedTokens.clear()
             AuthState.pairedTokens.putAll(map)
         } catch (_: Exception) {}
@@ -41,15 +41,15 @@ object DeviceManager {
 
     fun savePairedToken(fingerprint: String, token: String) {
         AuthState.pairedTokens[fingerprint] = token
-        prefs.edit { putString(KEY_PAIRED_TOKENS, com.dexstudios.dex.network.TokenCodec.encode(AuthState.pairedTokens)) }
+        prefs.edit { putString(KEY_PAIRED_TOKENS, TokenCodec.encode(AuthState.pairedTokens)) }
     }
-    
+
     fun removePairedFingerprint(fingerprint: String) {
         AuthState.pairedFingerprints.remove(fingerprint)
         AuthState.pairedTokens.remove(fingerprint)
         prefs.edit {
             putStringSet(KEY_PAIRED_FINGERPRINTS, AuthState.pairedFingerprints.toSet())
-            putString(KEY_PAIRED_TOKENS, com.dexstudios.dex.network.TokenCodec.encode(AuthState.pairedTokens))
+            putString(KEY_PAIRED_TOKENS, TokenCodec.encode(AuthState.pairedTokens))
         }
     }
 }

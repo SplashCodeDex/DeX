@@ -39,12 +39,12 @@ fun LiquidGlassPanel(
             effects = {
                 if (config.vibrancyEnabled) vibrancy()
                 blur(config.blurRadius.toPx())
-                if (config.lensHeight > 0.dp && config.lensAmount > 0.dp) {
+                if ((config.lensHeight > 0.dp) && (config.lensAmount > 0.dp)) {
                     lens(
                         refractionHeight = config.lensHeight.toPx(),
                         refractionAmount = config.lensAmount.toPx(),
                         depthEffect = config.depthEffect,
-                        chromaticAberration = config.chromaticAberration
+                        chromaticAberration = config.chromaticAberration,
                     )
                 }
             },

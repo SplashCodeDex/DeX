@@ -1,6 +1,7 @@
 package com.dexstudios.dex.ui.components
 
 import android.os.SystemClock
+import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -43,7 +44,6 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 
@@ -221,7 +221,7 @@ private fun OnboardingWelcome(onNext: () -> Unit) {
 private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
-            icon = com.dexstudios.dex.ui.icons.MaterialSymbols.Wifi,
+            icon = DeXIcons.Wifi,
             isGranted = isGranted
         )
         Spacer(Modifier.height(24.dp))
@@ -253,7 +253,7 @@ private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
 private fun OnboardingNotifications(isGranted: Boolean, onAction: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
-            icon = com.dexstudios.dex.ui.icons.MaterialSymbols.Notifications,
+            icon = DeXIcons.Notifications,
             isGranted = isGranted
         )
         Spacer(Modifier.height(24.dp))
@@ -317,7 +317,7 @@ private fun OnboardingStorage(isGranted: Boolean, onAction: () -> Unit) {
 private fun OnboardingCompletion(onFinish: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
-            imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.CheckCircle,
+            imageVector = DeXIcons.CheckCircle,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = Color(0xFF4CAF50)
@@ -344,7 +344,7 @@ private fun OnboardingCompletion(onFinish: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingStepIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, isGranted: Boolean) {
+private fun OnboardingStepIcon(icon: ImageVector, isGranted: Boolean) {
     Box(contentAlignment = Alignment.Center) {
         Surface(
             shape = CircleShape,
@@ -365,7 +365,7 @@ private fun OnboardingStepIcon(icon: androidx.compose.ui.graphics.vector.ImageVe
                 modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
             ) {
                 Icon(
-                    imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.Check,
+                    imageVector = DeXIcons.Check,
                     contentDescription = null,
                     modifier = Modifier.padding(6.dp),
                     tint = Color.White
@@ -477,7 +477,7 @@ fun PairingRequestDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.Close,
+                        imageVector = DeXIcons.Close,
                         contentDescription = "Close",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -522,7 +522,7 @@ fun PairingRequestDialog(
                     ) { success ->
                         if (success) {
                             Icon(
-                                imageVector = MaterialSymbols.CheckCircle,
+                                imageVector = DeXIcons.CheckCircle,
                                 contentDescription = "Success",
                                 modifier = Modifier.size(64.dp),
                                 tint = Color(0xFF4CAF50)

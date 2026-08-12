@@ -12,8 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.dexstudios.dex.network.DexService
+import com.dexstudios.dex.network.KeepAliveWorker
 import com.dexstudios.dex.network.MirrorSession
 import com.dexstudios.dex.network.SafStorage
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import java.util.concurrent.TimeUnit
 import com.dexstudios.dex.ui.theme.DeXTheme
 import android.os.Build
 import android.Manifest
@@ -101,16 +107,16 @@ class MainActivity : ComponentActivity() {
     }
 
     // Start the DeX networking service
-    val serviceIntent = android.content.Intent(this, com.dexstudios.dex.network.DexService::class.java)
+    val serviceIntent = Intent(this, DexService::class.java)
     startForegroundService(serviceIntent)
 
     // Background keep-alive: the periodic worker restarts the service if the OS killed the
     // process, so the phone stays reachable for PC pushes up to 6 hours after last use.
-    androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-        com.dexstudios.dex.network.KeepAliveWorker.UNIQUE_NAME,
-        androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-        androidx.work.PeriodicWorkRequestBuilder<com.dexstudios.dex.network.KeepAliveWorker>(
-            15, java.util.concurrent.TimeUnit.MINUTES
+WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+        KeepAliveWorker.UNIQUE_NAME,
+        ExistingPeriodicWorkPolicy.UPDATE,
+        PeriodicWorkRequestBuilder<KeepAliveWorker>(
+            15, TimeUnit.MINUTES
         ).build()
     )
 

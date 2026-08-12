@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using DeXShareTarget.Endpoints;
+using DeXShareTarget.Models;
 
 namespace DeXShareTarget.Services
 {
@@ -46,7 +47,18 @@ namespace DeXShareTarget.Services
 
             var prepareReq = new
             {
-                info = new { alias = senderAlias, deviceModel = "PC", deviceType = "desktop", fingerprint = IdentityManager.Fingerprint, port = DeXConstants.HttpsPort, protocol = "localsend", download = false },
+                info = new RegisterDto 
+                { 
+                    Alias = senderAlias, 
+                    DeviceModel = "PC", 
+                    DeviceType = "desktop", 
+                    Fingerprint = IdentityManager.Fingerprint, 
+                    Port = DeXConstants.HttpsPort, 
+                    QuicPort = DeXConstants.QuicPort,
+                    TcpFallbackPort = DeXConstants.TcpFallbackPort,
+                    Protocol = "localsend", 
+                    Download = false 
+                },
                 files = fileMap
             };
             var json = JsonSerializer.Serialize(new { type = "prepare-upload", data = prepareReq },

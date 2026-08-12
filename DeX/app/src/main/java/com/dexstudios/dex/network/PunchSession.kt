@@ -389,8 +389,7 @@ class PunchSession(
 
             val remaining = file.size - resume
             val streamed = if (resume > 0) {
-                val afd = context.contentResolver.openAssetFileDescriptor(uris[index], "r")
-                if (afd == null) return TransferOutcome.DROP
+                val afd = context.contentResolver.openAssetFileDescriptor(uris[index], "r") ?: return TransferOutcome.DROP
                 afd.use { descriptor ->
                     val stream = descriptor.createInputStream()
                     stream.use { s ->
@@ -408,8 +407,7 @@ class PunchSession(
                     }
                 }
             } else {
-                val stream = context.contentResolver.openInputStream(uris[index])
-                if (stream == null) return TransferOutcome.DROP
+                val stream = context.contentResolver.openInputStream(uris[index]) ?: return TransferOutcome.DROP
                 stream.use { s ->
                     streamBytes(s, output, remaining) { bytes ->
                         sentNew += bytes

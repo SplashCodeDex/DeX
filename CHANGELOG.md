@@ -1,5 +1,9 @@
 # Changelog
 
+## [8.0.1.0] - 2026-08-12
+### Fixed
+- **[fix] UPnP and PC mDNS Dynamic Port Omissions**: Added UPnP IGD port mapping logic for the newly dynamic `TcpFallbackPort` to ensure WAN connections continue to work even when QUIC is blocked. Updated `RelayService.cs` to correctly pass the `quicPort` and `tcpFallbackPort` properties inside the `prepare-upload` WebSocket payload by using the `RegisterDto` instead of an anonymous object, fixing a bug where Android clients would fall back to static ports during PC-to-Android transfers. Additionally, patched the PC's mDNS `DiscoveryBackgroundService` to correctly parse `quicPort` and `tcpFallbackPort` from TXT records when discovering other PCs.
+
 ## [8.0.0.0] - 2026-08-11
 ### Changed
 - **[major] Dynamic Port Allocation & ADB Isolation**: Completely resolved port collisions for multi-instance Fast User Switching. The C# background server now dynamically allocates its HTTPS and QUIC ports at startup and updates Android peers via UDP Multicast and WebSocket broadcasts. Android app logic (including UDP Discovery, WebSocket Service, and UPnP WAN handling) was overhauled to read, persist, and utilize these dynamic PC ports natively. Additionally, the internal ADB daemon is now securely isolated to port `48427` to prevent conflicts with Android Studio and other developer tools.

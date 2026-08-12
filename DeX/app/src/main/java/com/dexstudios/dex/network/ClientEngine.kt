@@ -6,6 +6,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
@@ -139,10 +140,10 @@ class ClientEngine(
                 onUpload { bytesSentTotal, _ ->
                     kotlinx.coroutines.runBlocking { onProgress(bytesSentTotal) }
                 }
-                setBody(object : io.ktor.http.content.OutgoingContent.WriteChannelContent() {
-                    override val contentType = io.ktor.http.ContentType.Application.OctetStream
+setBody(object : OutgoingContent.WriteChannelContent() {
+                    override val contentType = ContentType.Application.OctetStream
                     override val contentLength = fileSize
-                    override suspend fun writeTo(channel: io.ktor.utils.io.ByteWriteChannel) {
+                    override suspend fun writeTo(channel: ByteWriteChannel) {
                         withContext(Dispatchers.IO) {
                             val buffer = ByteArray(81920)
                             var bytesRead = stream.read(buffer)

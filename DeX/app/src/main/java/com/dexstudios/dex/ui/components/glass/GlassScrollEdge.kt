@@ -59,7 +59,7 @@ fun GlassScrollEdge(
     )
 }
 
-private val GlassEdgeShader = """
+private const val GlassEdgeShader = """
     uniform shader content;
 
     uniform float2 size;

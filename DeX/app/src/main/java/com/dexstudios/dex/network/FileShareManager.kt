@@ -150,8 +150,8 @@ class FileShareManager(
             }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
             var sample = 1
-            var w = bounds.outWidth
-            var h = bounds.outHeight
+            val w = bounds.outWidth
+            val h = bounds.outHeight
             while (w / (sample * 2) >= THUMB_SIZE && h / (sample * 2) >= THUMB_SIZE) sample *= 2
             val opts = BitmapFactory.Options().apply { inSampleSize = sample }
             val bmp = context.contentResolver.openInputStream(e.uri.toUri())?.use {

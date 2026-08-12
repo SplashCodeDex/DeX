@@ -21,6 +21,8 @@ import kotlinx.serialization.json.putJsonObject
 import timber.log.Timber
 import java.util.UUID
 
+import kotlin.time.Duration.Companion.milliseconds
+
 class MessageHandler(
     private val deviceConfig: DeviceConfig,
     private val context: Context,
@@ -33,6 +35,7 @@ class MessageHandler(
 
     fun handleMessage(text: String, senderIp: String, senderPort: Int) {
         try {
+            Timber.d("Received message from $senderIp:$senderPort")
             val jsonObject = json.decodeFromString<JsonObject>(text)
             val type = jsonObject["type"]?.jsonPrimitive?.content ?: return
             val dataElement = jsonObject["data"] ?: return
@@ -80,7 +83,7 @@ class MessageHandler(
         notificationHelper.showPairingRequestNotification(pairReq.alias)
 
         CoroutineScope(Dispatchers.Main).launch {
-            val enteredPin = withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS) { info.deferred.await() }
+            val enteredPin = withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS.milliseconds) { info.deferred.await() }
             AuthState.incomingPairRequest.value = null
             // The dialog resolved by any path (PIN entered, ✕, or countdown timeout) — clear
             // the pairing notification so it never lingers in the shade.
@@ -121,7 +124,7 @@ class MessageHandler(
         notificationHelper.showIncomingFileNotification(sessionId, notificationId, uploadReq.files.size)
 
         CoroutineScope(Dispatchers.IO).launch {
-            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS) { deferred.await() } == true
+            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS.milliseconds) { deferred.await() } == true
             TransferState.pendingPrompts.remove(sessionId)
             if (!accepted) {
                 Timber.i("Incoming transfer rejected or timed out")
@@ -176,7 +179,7 @@ class MessageHandler(
     /** The PC resolved a punch target's public endpoint — completes the sender's pending request. */
     private fun handleEndpointInfo(dataElement: JsonElement) {
         val info = json.decodeFromJsonElement<EndpointInfoDto>(dataElement)
-        PunchState.pendingEndpointInfo.value?.let { it.complete(info) }
+        PunchState.pendingEndpointInfo.value?.complete(info)
         PunchState.pendingEndpointInfo.value = null
     }
 
@@ -184,7 +187,7 @@ class MessageHandler(
     private fun handlePeerEndpoint(dataElement: JsonElement) {
         val peer = json.decodeFromJsonElement<PeerEndpointDto>(dataElement)
         if (peer.ip.isNotBlank() && peer.port > 0) {
-            PunchState.incomingPeerEndpoints.value = PunchState.incomingPeerEndpoints.value + (peer.peerFingerprint to PunchEndpoint(peer.ip, peer.port))
+            PunchState.incomingPeerEndpoints.value += (peer.peerFingerprint to PunchEndpoint(peer.ip, peer.port))
             Timber.i("Peer endpoint announced: ${peer.peerFingerprint} at ${peer.ip}:${peer.port}")
         }
     }
@@ -232,7 +235,7 @@ class MessageHandler(
 
     /** The PC acknowledged (or failed) the relay-transfer fallback. */
     private fun handleRelayReply(success: Boolean) {
-        PunchState.pendingRelay.value?.let { it.complete(success) }
+        PunchState.pendingRelay.value?.complete(success)
         PunchState.pendingRelay.value = null
     }
 

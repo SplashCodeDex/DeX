@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
  * Custom Material Symbols Rounded icons for DeX.
  * These are converted from SVG paths to Compose ImageVectors.
  */
-public object MaterialSymbols {
-    public val Wifi: ImageVector
+object MaterialSymbols {
+    val Wifi: ImageVector
         get() = _wifi ?: ImageVector.Builder(
             name = "wifi",
             defaultWidth = 24.dp,
@@ -70,7 +70,7 @@ public object MaterialSymbols {
             }
         }.build().also { _wifi = it }
 
-    public val Battery1: ImageVector
+    val Battery1: ImageVector
         get() = _battery1 ?: batteryFrameBuilder("battery_1") {
             moveTo(4.29f, 14.71f)
             quadTo(4f, 14.43f, 4f, 14f)
@@ -86,7 +86,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery1 = it }
 
-    public val Battery2: ImageVector
+    val Battery2: ImageVector
         get() = _battery2 ?: batteryFrameBuilder("battery_2") {
             moveTo(4f, 14f)
             verticalLineTo(10f)
@@ -104,7 +104,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery2 = it }
 
-    public val Battery3: ImageVector
+    val Battery3: ImageVector
         get() = _battery3 ?: batteryFrameBuilder("battery_3") {
             moveTo(4f, 14f)
             verticalLineTo(10f)
@@ -122,7 +122,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery3 = it }
 
-    public val Battery4: ImageVector
+    val Battery4: ImageVector
         get() = _battery4 ?: batteryFrameBuilder("battery_4") {
             moveTo(4f, 14f)
             verticalLineTo(10f)
@@ -140,7 +140,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery4 = it }
 
-    public val Battery5: ImageVector
+    val Battery5: ImageVector
         get() = _battery5 ?: batteryFrameBuilder("battery_5") {
             moveTo(4f, 14f)
             verticalLineTo(10f)
@@ -158,7 +158,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery5 = it }
 
-    public val Battery6: ImageVector
+    val Battery6: ImageVector
         get() = _battery6 ?: batteryFrameBuilder("battery_6") {
             moveTo(4f, 14f)
             verticalLineTo(10f)
@@ -176,7 +176,7 @@ public object MaterialSymbols {
             close()
         }.build().also { _battery6 = it }
 
-    public val BatteryFull: ImageVector
+    val BatteryFull: ImageVector
         get() = _batteryFull ?: ImageVector.Builder(
             name = "battery_full",
             defaultWidth = 24.dp,
@@ -212,7 +212,7 @@ public object MaterialSymbols {
             }
         }.build().also { _batteryFull = it }
 
-    public val Notifications: ImageVector
+    val Notifications: ImageVector
         get() = _notifications ?: ImageVector.Builder(
             name = "notifications",
             defaultWidth = 24.dp,
@@ -250,7 +250,7 @@ public object MaterialSymbols {
             }
         }.build().also { _notifications = it }
 
-    public val Check: ImageVector
+    val Check: ImageVector
         get() = _check ?: ImageVector.Builder(
             name = "check",
             defaultWidth = 24.dp,
@@ -270,7 +270,7 @@ public object MaterialSymbols {
             }
         }.build().also { _check = it }
 
-    public val CheckCircle: ImageVector
+    val CheckCircle: ImageVector
         get() = _checkCircle ?: ImageVector.Builder(
             name = "check_circle",
             defaultWidth = 24.dp,
@@ -308,7 +308,7 @@ public object MaterialSymbols {
             }
         }.build().also { _checkCircle = it }
 
-    public val Close: ImageVector
+    val Close: ImageVector
         get() = _close ?: ImageVector.Builder(
             name = "close",
             defaultWidth = 24.dp,
@@ -346,7 +346,7 @@ public object MaterialSymbols {
             }
         }.build().also { _close = it }
 
-    public val Pin: ImageVector
+    val Pin: ImageVector
         get() = _pin ?: ImageVector.Builder(
             name = "pin",
             defaultWidth = 24.dp,
@@ -435,7 +435,7 @@ public object MaterialSymbols {
             }
         }.build().also { _pin = it }
 
-    public val Google: ImageVector
+    val Google: ImageVector
         get() = _google ?: ImageVector.Builder(
             name = "google",
             defaultWidth = 24.dp,

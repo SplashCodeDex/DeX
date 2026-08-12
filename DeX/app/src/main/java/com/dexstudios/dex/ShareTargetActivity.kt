@@ -1,5 +1,7 @@
 package com.dexstudios.dex
 
+import com.dexstudios.dex.network.DiscoveredDevice
+import com.dexstudios.dex.network.UploadWorker
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -58,14 +60,14 @@ class ShareTargetActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         val notificationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { _ -> }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
-        
+
         // Handle incoming intent
         when (intent?.action) {
             Intent.ACTION_SEND -> {
@@ -174,7 +176,7 @@ class ShareTargetActivity : ComponentActivity() {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
@@ -182,7 +184,7 @@ class ShareTargetActivity : ComponentActivity() {
             // LAN Devices
             Text("LAN Devices", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             if (devices.isEmpty()) {
                 Text(
                     text = "No local devices found.",
@@ -286,15 +288,15 @@ class ShareTargetActivity : ComponentActivity() {
                 Text("${(uploadState.aggregateProgress * 100).toInt()}% Total", style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
             } else if (uploadState.isSuccess) {
                 Text(
-                    "Successfully Uploaded ${uploadState.fileName}", 
-                    style = MaterialTheme.typography.bodyLarge, 
+                    "Successfully Uploaded ${uploadState.fileName}",
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             } else if (uploadState.error != null) {
                 Text(
-                    "Upload Failed: ${uploadState.error}", 
-                    style = MaterialTheme.typography.bodyLarge, 
+                    "Upload Failed: ${uploadState.error}",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -331,28 +333,28 @@ class ShareTargetActivity : ComponentActivity() {
         }
     }
 
-    private fun sendUrisToDevice(device: com.dexstudios.dex.network.DiscoveredDevice, uris: List<Uri>) {
+private fun sendUrisToDevice(device: DiscoveredDevice, uris: List<Uri>) {
         clientEngine.resetUploadState()
-        
+
         val urisJson = try {
             Json.encodeToString(sharedUris.map { it.toString() })
         } catch (e: Exception) {
             e.printStackTrace()
             return
         }
-        
+
         val inputData = workDataOf(
             "ip" to device.ip,
             "port" to device.info.port,
             "uris" to urisJson,
             "targetFingerprint" to device.info.fingerprint
         )
-        
-        val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.UploadWorker>()
+
+        val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
             .setInputData(inputData)
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-            
+
         clientEngine.activeWorkId = workRequest.id
         WorkManager.getInstance(this).enqueue(workRequest)
     }
@@ -378,7 +380,7 @@ class ShareTargetActivity : ComponentActivity() {
         }
         return result ?: "SharedFile_${System.currentTimeMillis()}"
     }
-    
+
     private fun getFileSize(uri: Uri): Long {
         var result: Long = 0
         if (uri.scheme == "content") {

@@ -21,6 +21,7 @@ namespace DeXShareTarget.Services
         private const string SsdpMulticast = "239.255.255.250";
         private static int DeXHttpsPort => DeXConstants.HttpsPort;
         private static int DeXQuicPort => DeXConstants.QuicPort;
+        private static int DeXTcpFallbackPort => DeXConstants.TcpFallbackPort;
 
         private static readonly string[] IgdServices =
         {
@@ -59,6 +60,8 @@ namespace DeXShareTarget.Services
             await AddPortMappingAsync(igd, DeXHttpsPort, "TCP", ct);
             await DeletePortMappingAsync(igd, DeXQuicPort, "UDP", ct);
             await AddPortMappingAsync(igd, DeXQuicPort, "UDP", ct);
+            await DeletePortMappingAsync(igd, DeXTcpFallbackPort, "TCP", ct);
+            await AddPortMappingAsync(igd, DeXTcpFallbackPort, "TCP", ct);
 
             // Legacy hygiene: releases before 7.4.1 mapped the old 53317 (TCP) and 53316 (UDP)
             // ports; drop those stale entries so routers with small mapping tables never

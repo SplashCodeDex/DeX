@@ -10,9 +10,13 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -151,7 +155,7 @@ class PunchSendWorker(
                     client.uploadFileQuic(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
                         val delta = bytes - perFile.getAndSet(bytes)
                         sent += delta
-                        reportProgress(sent.toFloat() / total, d.second, if (client.lastUploadProtocol().isNotEmpty()) client.lastUploadProtocol() else "quic", fileData.size)
+                        reportProgress(sent.toFloat() / total, d.second, client.lastUploadProtocol().ifEmpty { "quic" }, fileData.size)
                     }
                 } else {
                     client.uploadFile(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
@@ -166,10 +170,10 @@ class PunchSendWorker(
         }
 
         // Ask the PC to push the received files to the target device
-        val relayDeferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        val relayDeferred = CompletableDeferred<Boolean>()
         PunchState.pendingRelay.value = relayDeferred
         wsService.sendMessage(
-            kotlinx.serialization.json.buildJsonObject {
+            buildJsonObject {
                 put("type", "relay-transfer")
                 putJsonObject("data") {
                     put("targetFingerprint", targetFingerprint)

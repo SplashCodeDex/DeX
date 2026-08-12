@@ -124,11 +124,27 @@ namespace DeXShareTarget.Services
                             var googleSub = txt.Strings.FirstOrDefault(x => x.StartsWith("googleSub="))?.Split('=')[1];
                             var deviceModel = txt.Strings.FirstOrDefault(x => x.StartsWith("deviceModel="))?.Split('=')[1] ?? "Unknown";
                             var deviceType = txt.Strings.FirstOrDefault(x => x.StartsWith("deviceType="))?.Split('=')[1] ?? "unknown";
+                            var quicPortStr = txt.Strings.FirstOrDefault(x => x.StartsWith("quicPort="))?.Split('=')[1];
+                            var tcpFallbackPortStr = txt.Strings.FirstOrDefault(x => x.StartsWith("tcpFallbackPort="))?.Split('=')[1];
+                            
+                            int parsedQuicPort = int.TryParse(quicPortStr, out int qp) ? qp : DeXConstants.QuicPort;
+                            int parsedTcpFallbackPort = int.TryParse(tcpFallbackPortStr, out int tp) ? tp : DeXConstants.TcpFallbackPort;
                             var senderIp = a.Address.ToString();
                             
                             if (!string.IsNullOrEmpty(fp) && !IsSelf(fp, alias, senderIp))
                             {
-                                var dto = new RegisterDto { Fingerprint = fp, Alias = alias ?? "Unknown", Port = srv.Port, IdentityHash = identityHash, GoogleSub = googleSub, DeviceModel = deviceModel, DeviceType = deviceType };
+                                var dto = new RegisterDto 
+                                { 
+                                    Fingerprint = fp, 
+                                    Alias = alias ?? "Unknown", 
+                                    Port = srv.Port, 
+                                    QuicPort = parsedQuicPort,
+                                    TcpFallbackPort = parsedTcpFallbackPort,
+                                    IdentityHash = identityHash, 
+                                    GoogleSub = googleSub, 
+                                    DeviceModel = deviceModel, 
+                                    DeviceType = deviceType 
+                                };
                                 Devices[fp] = new DiscoveredDevice
                                 {
                                     Ip = senderIp,

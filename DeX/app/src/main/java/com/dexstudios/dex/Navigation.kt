@@ -2,6 +2,7 @@ package com.dexstudios.dex
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -181,10 +182,10 @@ fun MainNavigation() {
       }
     }
 
-    androidx.compose.animation.AnimatedVisibility(
+    AnimatedVisibility(
         visible = currentRoute == Main || currentRoute == History,
-        enter = androidx.compose.animation.fadeIn(),
-        exit = androidx.compose.animation.fadeOut(),
+        enter = fadeIn(),
+        exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopCenter)
     ) {
         Box {

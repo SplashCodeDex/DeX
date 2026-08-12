@@ -80,8 +80,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         onProgress: (bytesSent: Long) -> Unit = {},
         onResult: (Boolean, Int) -> Unit
     ): UrlRequest? {
-        val engine = engine
-        if (engine == null) return null
+        val engine = engine ?: return null
         val url = "https://$ip:$port/api/localsend/v2/upload" +
             "?sessionId=${enc(sessionId)}&fileId=${enc(fileId)}&token=${enc(token)}"
 
@@ -188,10 +187,8 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         onProgress: (bytesReceived: Long) -> Unit = {},
         onResult: (Boolean, Int, String) -> Unit
     ): UrlRequest? {
-        val engine = engine
-        if (engine == null) return null
-        val tokenQuery = if (!token.isNullOrEmpty()) "?token=${enc(token)}" else ""
-        val url = "https://$ip:$port/download/${enc(fileId)}$tokenQuery"
+        val engine = engine ?: return null
+        val url = "https://$ip:$port/download/${enc(fileId)}" + (if (!token.isNullOrEmpty()) "?token=${enc(token)}" else "")
 
         var receivedBytes = 0L
         var reported = false
