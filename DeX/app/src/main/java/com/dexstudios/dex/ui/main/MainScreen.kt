@@ -126,11 +126,17 @@ fun MainScreen(
                 val rawValue = barcode.rawValue
                 if (rawValue != null && rawValue.startsWith("http://")) {
                     val uri = rawValue.toUri()
-                    val ip = uri.host
+                    val mainIp = uri.host
                     val port = uri.port.takeIf { it > 0 } ?: DeXPorts.HTTPS
-                    if (ip != null) {
-                        Toast.makeText(context, context.getString(R.string.toast_scanned_ip, ip), Toast.LENGTH_SHORT).show()
-                        viewModel.discoveryEngine.sendManualDiscovery(ip, port)
+                    val extraIps = uri.getQueryParameter("ips")?.split(",") ?: emptyList()
+
+                    val allIps = listOfNotNull(mainIp) + extraIps
+
+                    if (allIps.isNotEmpty()) {
+                        Toast.makeText(context, context.getString(R.string.toast_scanned_ip, allIps.joinToString(", ")), Toast.LENGTH_SHORT).show()
+                        allIps.forEach { ip ->
+                            viewModel.discoveryEngine.sendManualDiscovery(ip, port)
+                        }
                     }
                 }
             }

@@ -1,5 +1,8 @@
 # Changelog
 
+## [8.6.5.0] - 2026-08-12
+### Added
+- **[minor] Multi-Adapter QR Code Payload**: Rewrote the pairing QR code generator to encode every active IPv4 address on the PC into a single JSON-like query payload (?ips=...). Android devices scanning the code will now extract all available IPs and fire discovery probes concurrently to all of them. This permanently solves the edge case where the QR code picks an unreachable IP (e.g. VirtualBox/Hyper-V/VPN) over the valid Wi-Fi IP, ensuring immediate pairing resilience regardless of active network adapters.
 ## [8.6.4.0] - 2026-08-12
 ### Fixed
 - **[fix] Resilient UDP Discovery Binding**: Made the primary UDP socket binding resilient against OS-level hypervisor port locks (e.g., WinNAT AccessDenied/AddressAlreadyInUse exceptions). DiscoveryBackgroundService now cleanly catches native socket exceptions and falls back to a random ephemeral port for broadcasting outbound UDP advertisements, ensuring the mDNS and legacy port listeners remain perfectly functional instead of crashing the entire background discovery thread.

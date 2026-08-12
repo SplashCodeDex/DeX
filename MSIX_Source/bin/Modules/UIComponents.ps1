@@ -1,4 +1,4 @@
-﻿function Load-TrayIcon([string]$FileName) {
+function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
     if (Test-Path $iconPath) {
@@ -376,9 +376,10 @@ function Show-QrCode {
     try {
         $dnsTask = [System.Net.Dns]::GetHostAddressesAsync([System.Net.Dns]::GetHostName())
         if (-not $dnsTask.Wait(2000)) { return $false }
-        $localIp = $dnsTask.Result |
+        $localIps = $dnsTask.Result |
             Where-Object { $_.AddressFamily -eq 'InterNetwork' -and -not [System.Net.IPAddress]::IsLoopback($_) } |
-            Select-Object -First 1 -ExpandProperty IPAddressToString
+            Select-Object -ExpandProperty IPAddressToString
+        $localIp = $localIps -join ','
     } catch { return $false }
     if (-not $localIp) { return $false }
 

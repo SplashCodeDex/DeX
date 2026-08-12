@@ -155,10 +155,16 @@ namespace DeXShareTarget.Endpoints
 
             app.MapGet("/local/qr", (HttpRequest request) => 
             {
-                var ip = request.Query["ip"].ToString();
-                if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
+                var ipQuery = request.Query["ip"].ToString();
+                if (string.IsNullOrEmpty(ipQuery)) return Results.BadRequest();
 
-                string payload = $"http://{ip}:{DeXConstants.HttpsPort}";
+                var ips = ipQuery.Split(',');
+                var mainIp = ips[0];
+                var extraIps = ips.Length > 1 ? string.Join(",", ips.Skip(1)) : "";
+
+                string payload = $"http://{mainIp}:{DeXConstants.HttpsPort}";
+                if (!string.IsNullOrEmpty(extraIps)) payload += $"?ips={extraIps}";
+
                 using var qrGenerator = new QRCoder.QRCodeGenerator();
                 using var qrCodeData = qrGenerator.CreateQrCode(payload, QRCoder.QRCodeGenerator.ECCLevel.M);
                 using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);
