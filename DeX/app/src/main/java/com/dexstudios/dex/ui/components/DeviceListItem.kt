@@ -65,7 +65,8 @@ fun DeviceListItem(
             wallpaper
         } else if (!device.viaWan && !device.viaRoster && device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
             val protocol = device.info.protocol.ifBlank { "https" }
-            "$protocol://${device.ip}:${device.info.port}/api/dex/wallpaper"
+            val host = if (device.ip.contains(":")) "[${device.ip}]" else device.ip
+            "$protocol://$host:${device.info.port}/api/dex/wallpaper"
         } else {
             R.drawable.wallpaper_fortress
         }

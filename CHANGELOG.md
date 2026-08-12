@@ -1,5 +1,9 @@
 # Changelog
 
+## [8.3.1.0] - 2026-08-12
+### Fixed
+- **[fix] Phase 2 Edge Case Optimizations & PoC Suite**: Implemented Windows environment path variable expansion (`%USERPROFILE%`, `%SystemRoot%`) for active wallpaper candidate paths. Added HTTP `ETag` generation (`W/"<ticks>-<size>"`) and HTTP `304 Not Modified` validation to `/api/dex/wallpaper` endpoints. Protected Large Object Heap (LOH) RAM allocations when processing 4K/8K images. Wrapped WPF bitmap decoding in isolated `FileFormatException`/`COMException` WIC exception guards for Windows 11 HDR image safety. Bracketed IPv6 host URLs (`[fe80::1]`) in Android `DeviceListItem` to prevent OkHttp URL parser crashes.
+
 ## [8.3.0.0] - 2026-08-12
 ### Changed
 - **[minor] Replaced 'Connect ADB' Quick Action with 'Do Not Disturb' (`btnQADnd`)**: Replaced the legacy `btnQAConnect` button in the spatial menu quick action bar with a native Do Not Disturb toggle (`btnQADnd`).

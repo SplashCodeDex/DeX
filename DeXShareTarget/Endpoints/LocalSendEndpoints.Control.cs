@@ -174,20 +174,38 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok(new { dnd = IsDndEnabled });
             });
 
-            // Live 480p Windows Desktop Wallpaper for device card backgrounds on mobile
-            app.MapGet("/api/dex/wallpaper", (HttpResponse response) =>
+            // Live 480p Windows Desktop Wallpaper for device card backgrounds on mobile with HTTP 304 ETag support
+            app.MapGet("/api/dex/wallpaper", (HttpRequest request, HttpResponse response) =>
             {
                 var wallpaper = WallpaperService.GetWallpaper480p();
                 if (wallpaper == null) return Results.NotFound();
+
+                response.Headers["ETag"] = wallpaper.Value.ETag;
                 response.Headers["Cache-Control"] = "public, max-age=300";
+
+                var clientEtag = request.Headers.IfNoneMatch.ToString();
+                if (!string.IsNullOrEmpty(clientEtag) && clientEtag == wallpaper.Value.ETag)
+                {
+                    return Results.StatusCode(304); // Not Modified
+                }
+
                 return Results.Bytes(wallpaper.Value.Bytes, contentType: wallpaper.Value.ContentType);
             });
 
-            app.MapGet("/api/localsend/v2/wallpaper", (HttpResponse response) =>
+            app.MapGet("/api/localsend/v2/wallpaper", (HttpRequest request, HttpResponse response) =>
             {
                 var wallpaper = WallpaperService.GetWallpaper480p();
                 if (wallpaper == null) return Results.NotFound();
+
+                response.Headers["ETag"] = wallpaper.Value.ETag;
                 response.Headers["Cache-Control"] = "public, max-age=300";
+
+                var clientEtag = request.Headers.IfNoneMatch.ToString();
+                if (!string.IsNullOrEmpty(clientEtag) && clientEtag == wallpaper.Value.ETag)
+                {
+                    return Results.StatusCode(304); // Not Modified
+                }
+
                 return Results.Bytes(wallpaper.Value.Bytes, contentType: wallpaper.Value.ContentType);
             });
         }
