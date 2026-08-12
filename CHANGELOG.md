@@ -1,5 +1,9 @@
 # Changelog
 
+## [8.6.1.0] - 2026-08-12
+### Fixed
+- **[fix] PowerShell Argument Mode Evaluation in `Bindings_Core`**: Enclosed `[bool]$this.IsChecked` in parentheses `([bool]$this.IsChecked)` when invoking `Set-DndMode -Enable`. Resolves PowerShell argument mode parsing error (`Cannot convert value "System.String" to type "System.Boolean"`) caused by unparenthesized string interpolation `[bool]@{IsChecked=True}.IsChecked`.
+
 ## [8.6.0.0] - 2026-08-12
 ### Added
 - **[minor] 7-Branch Security & Capability Matrix (`LocalSendEndpoints`)**: Enforced pairing authorization on `/api/dex/wallpaper` and `/api/localsend/v2/wallpaper` endpoints. Unpaired devices are denied live 480p desktop wallpaper access (returning HTTP 401) and display default fortress artwork.

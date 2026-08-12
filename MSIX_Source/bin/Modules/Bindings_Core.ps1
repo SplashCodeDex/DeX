@@ -1,4 +1,4 @@
-﻿
+
 $script:txtStatus = $script:wpfWindow.FindName("txtStatus")
 $script:pnlAdbStatus = $script:wpfWindow.FindName("pnlAdbStatus")
 $script:topActionsPanel = $script:wpfWindow.FindName("TopActionsPanel")
@@ -48,7 +48,7 @@ if ($ctxMenu) {
 $btnQADnd = $script:wpfWindow.FindName("btnQADnd")
 if ($btnQADnd) {
     $btnQADnd.Add_Click({
-        Set-DndMode -Enable [bool]$this.IsChecked
+        Set-DndMode -Enable ([bool]$this.IsChecked)
     })
 }
 $btnQAMirror = $script:wpfWindow.FindName("btnQAMirror")
