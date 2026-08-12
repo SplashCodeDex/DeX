@@ -169,7 +169,7 @@ namespace DeXShareTarget
         {
             try
             {
-                var l = new TcpListener(IPAddress.Loopback, port);
+                var l = new TcpListener(IPAddress.Any, port);
                 l.Start();
                 l.Stop();
                 return port;

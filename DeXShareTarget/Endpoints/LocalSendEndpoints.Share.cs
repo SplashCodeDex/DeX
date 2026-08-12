@@ -27,7 +27,20 @@ namespace DeXShareTarget.Endpoints
         /// <summary>Registers the LocalSend v2 transfer endpoints (info, register, prepare-upload, upload, punch, download).</summary>
         public static void MapShareEndpoints(this WebApplication app)
         {
-            app.MapGet("/api/localsend/v2/info", () => Results.Json(new RegisterDto { IdentityHash = IdentityManager.IdentityHash }));
+            app.MapGet("/api/localsend/v2/info", () => Results.Json(new RegisterDto 
+            { 
+                Alias = IdentityManager.DeviceAlias,
+                Fingerprint = IdentityManager.Fingerprint,
+                IdentityHash = IdentityManager.IdentityHash,
+                GoogleSub = string.IsNullOrEmpty(IdentityManager.GoogleSub) ? null : IdentityManager.GoogleSub,
+                DeviceModel = Environment.MachineName,
+                DeviceType = "desktop",
+                Port = DeXConstants.HttpsPort,
+                QuicPort = DeXConstants.QuicPort,
+                TcpFallbackPort = DeXConstants.TcpFallbackPort,
+                Protocol = "https",
+                Version = "2.0"
+            }));
             
             app.MapPost("/api/localsend/v2/register", (RegisterDto req) => 
             {

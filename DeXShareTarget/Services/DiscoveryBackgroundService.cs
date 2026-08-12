@@ -159,7 +159,14 @@ namespace DeXShareTarget.Services
                 } catch { }
             };
 
-            mdns.Start();
+            try
+            {
+                mdns.Start();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DISC] mDNS start failed (port 5353 occupied or restricted): {ex.Message}");
+            }
 
             _ = Task.Run(async () =>
             {

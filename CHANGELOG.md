@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.6.6.0] - 2026-08-12
+### Fixed
+- **[fix] 60-Scenario Discovery Matrix Resilience**: 
+  - Wrapped mDNS service start (mdns.Start()) in a 	ry-catch block inside DiscoveryBackgroundService.cs so mDNS port 5353 socket locks (e.g. Apple Bonjour / iTunes / Avahi) do not halt UDP discovery.
+  - Updated TryPort in LocalSendServer.cs to test IPAddress.Any instead of IPAddress.Loopback, preventing startup crashes when TCP port 48424 is bound on external interfaces.
+  - Expanded /api/localsend/v2/info endpoint (LocalSendEndpoints.Share.cs) to return the full RegisterDto JSON payload.
+  - Upgraded Android sendManualDiscovery() (DiscoveryEngine.kt) to fire dual-port UDP probes (48424 + dynamic port) and execute an HTTP REST GET probe fallback to /api/localsend/v2/info, guaranteeing instant device discovery on AP-isolated Wi-Fi and strict corporate networks.
 ## [8.6.5.0] - 2026-08-12
 ### Added
 - **[minor] Multi-Adapter QR Code Payload**: Rewrote the pairing QR code generator to encode every active IPv4 address on the PC into a single JSON-like query payload (?ips=...). Android devices scanning the code will now extract all available IPs and fire discovery probes concurrently to all of them. This permanently solves the edge case where the QR code picks an unreachable IP (e.g. VirtualBox/Hyper-V/VPN) over the valid Wi-Fi IP, ensuring immediate pairing resilience regardless of active network adapters.

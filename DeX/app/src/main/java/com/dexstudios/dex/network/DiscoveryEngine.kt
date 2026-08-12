@@ -133,6 +133,7 @@ class DiscoveryEngine(
 
     fun sendManualDiscovery(ip: String, port: Int = DeXPorts.HTTPS) {
         scope.launch {
+            // 1. Dual-port UDP Probing (dynamic port + default 48424 port)
             runCatching {
                 val replyJson = JSONObject().apply {
                     put("alias", localInfo.alias)
@@ -149,8 +150,43 @@ class DiscoveryEngine(
                     localInfo.googleSub?.let { put("googleSub", it) }
                 }
                 val data = replyJson.toString().toByteArray(Charsets.UTF_8)
+                val targetPorts = setOf(port, DeXPorts.HTTPS)
                 DatagramSocket().use { ds ->
-                    ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), port))
+                    for (p in targetPorts) {
+                        ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), p))
+                    }
+                }
+            }
+
+            // 2. Direct HTTP REST Probe Fallback (solves AP isolation & UDP blockades)
+            runCatching {
+                val url = java.net.URL("http://$ip:$port/api/localsend/v2/info")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 2000
+                conn.readTimeout = 2000
+                conn.requestMethod = "GET"
+                if (conn.responseCode == 200) {
+                    val responseText = conn.inputStream.bufferedReader().readText()
+                    val json = JSONObject(responseText)
+                    val fp = json.optString("fingerprint")
+                    val alias = json.optString("alias", "PC Engine")
+                    if (fp.isNotBlank()) {
+                        val dto = RegisterDto(
+                            alias = alias,
+                            version = json.optString("version", "2.0"),
+                            deviceModel = json.optString("deviceModel", "Windows PC"),
+                            deviceType = json.optString("deviceType", "desktop"),
+                            fingerprint = fp,
+                            port = json.optInt("port", port),
+                            quicPort = json.optInt("quicPort", DeXPorts.QUIC),
+                            tcpFallbackPort = json.optInt("tcpFallbackPort", DeXPorts.PULL),
+                            protocol = json.optString("protocol", "https"),
+                            download = false,
+                            identityHash = json.optString("identityHash").ifBlank { null },
+                            googleSub = json.optString("googleSub").ifBlank { null }
+                        )
+                        addDevice(DiscoveredDevice(ip = ip, info = dto))
+                    }
                 }
             }
         }
