@@ -1,5 +1,8 @@
 # Changelog
 
+## [8.6.4.0] - 2026-08-12
+### Fixed
+- **[fix] Resilient UDP Discovery Binding**: Made the primary UDP socket binding resilient against OS-level hypervisor port locks (e.g., WinNAT AccessDenied/AddressAlreadyInUse exceptions). DiscoveryBackgroundService now cleanly catches native socket exceptions and falls back to a random ephemeral port for broadcasting outbound UDP advertisements, ensuring the mDNS and legacy port listeners remain perfectly functional instead of crashing the entire background discovery thread.
 ## [8.6.3.0] - 2026-08-12
 ### Fixed
 - **[fix] Bulletproof Discovery on Mobile Hotspot & Public Networks**: 
