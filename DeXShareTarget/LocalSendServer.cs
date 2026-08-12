@@ -110,6 +110,7 @@ namespace DeXShareTarget
             App.MapWebSocketEndpoints();
 
             await App.StartAsync();
+            WallpaperWatcherService.Initialize();
 
             // Port mappings are not needed for the certificate, so run them in the background
             // and re-run hourly so a changed LAN IP (DHCP) never silently breaks WAN.

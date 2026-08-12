@@ -51,6 +51,7 @@ class MessageHandler(
                 "relay-started" -> handleRelayReply(true)
                 "relay-error" -> handleRelayReply(false)
                 "set-clipboard" -> handleSetClipboard(dataElement)
+                "wallpaper-updated" -> WallpaperState.notifyUpdated()
                 "mirror-start" -> MirrorSession.requestStart()
                 "mirror-stop" -> MirrorSession.stop()
                 "list-shared-folders", "browse-folder", "pull-files", "grant-shared-folder" ->
@@ -131,22 +132,7 @@ class MessageHandler(
                 return@launch
             }
 
-            var dirUri = SafStorage.getDownloadsDexUri(context)
-            if (dirUri == null) {
-                Timber.w("Downloads/DeX folder grant missing, prompting user")
-                SafStorage.promptForDownloadsDexGrant(context)
-                // Wait for the user to grant the folder instead of silently dropping the transfer
-                val deadline = System.currentTimeMillis() + GRANT_WAIT_MS
-                while (System.currentTimeMillis() < deadline) {
-                    delay(500)
-                    dirUri = SafStorage.getDownloadsDexUri(context)
-                    if (dirUri != null) break
-                }
-                if (dirUri == null) {
-                    Timber.w("User did not grant Downloads/DeX folder; incoming transfer dropped")
-                    return@launch
-                }
-            }
+            val dirUri = SafStorage.getDownloadsDexUri(context)
 
             // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress).
             // The HTTPS port comes from the PC's advertised info; the TCP port is the legacy fallback.

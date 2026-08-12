@@ -28,6 +28,15 @@ namespace DeXShareTarget.Services
         private static DateTime _lastFetchTime = DateTime.MinValue;
         private static readonly object _lock = new object();
 
+        public static void InvalidateCache()
+        {
+            lock (_lock)
+            {
+                _cachedWallpaper = null;
+                _lastFetchTime = DateTime.MinValue;
+            }
+        }
+
         public static (byte[] Bytes, string ContentType, string ETag)? GetWallpaper480p()
         {
             // Fast lock-free path for cached requests

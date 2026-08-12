@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.4.0.0] - 2026-08-12
+### Added
+- **[minor] Live Debounced WebSocket Wallpaper Watcher (`WallpaperWatcherService`)**: Created a background file monitor on Windows using `FileSystemWatcher` targeting `TranscodedWallpaper` changes with 1-second debouncing and a 500ms post-write buffer safeguard. Broadcasts `wallpaper-updated` WebSocket messages to paired mobile devices when the desktop wallpaper changes.
+- **[minor] Mobile Lifecycle & ETag Invalidation (`WallpaperState`)**: Created `WallpaperState` in the Android app to collect WebSocket `wallpaper-updated` signals and invalidate local image keys (`?rev=<revision>`). Triggers smooth Coil crossfade transitions to the new 480p desktop wallpaper in real time.
+
 ## [8.3.1.0] - 2026-08-12
 ### Fixed
 - **[fix] Phase 2 Edge Case Optimizations & PoC Suite**: Implemented Windows environment path variable expansion (`%USERPROFILE%`, `%SystemRoot%`) for active wallpaper candidate paths. Added HTTP `ETag` generation (`W/"<ticks>-<size>"`) and HTTP `304 Not Modified` validation to `/api/dex/wallpaper` endpoints. Protected Large Object Heap (LOH) RAM allocations when processing 4K/8K images. Wrapped WPF bitmap decoding in isolated `FileFormatException`/`COMException` WIC exception guards for Windows 11 HDR image safety. Bracketed IPv6 host URLs (`[fe80::1]`) in Android `DeviceListItem` to prevent OkHttp URL parser crashes.

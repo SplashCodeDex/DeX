@@ -64,5 +64,22 @@ namespace DeXShareTarget.Services
         {
             return _sockets.ContainsKey(fingerprint);
         }
+
+        public static async Task BroadcastAsync(string payload)
+        {
+            var bytes = Encoding.UTF8.GetBytes(payload);
+            var segment = new System.ArraySegment<byte>(bytes);
+            foreach (var kvp in _sockets)
+            {
+                if (kvp.Value.State == WebSocketState.Open)
+                {
+                    try
+                    {
+                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    catch { }
+                }
+            }
+        }
     }
 }

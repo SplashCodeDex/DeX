@@ -34,6 +34,10 @@ import coil3.request.placeholder
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import androidx.compose.runtime.remember
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dexstudios.dex.network.WallpaperState
+
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 fun DeviceListItem(
@@ -46,6 +50,8 @@ fun DeviceListItem(
     onButtonClick: () -> Unit = onClick
 ) {
     val context = LocalContext.current
+    val wallpaperRevision by WallpaperState.revision.collectAsStateWithLifecycle()
+
     val batteryIcon = remember {
         val level = (1..7).random()
         when(level) {
@@ -60,13 +66,13 @@ fun DeviceListItem(
     }
 
     // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint if available on direct LAN
-    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol, device.viaWan, device.viaRoster) {
+    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol, device.viaWan, device.viaRoster, wallpaperRevision) {
         if (wallpaper != null) {
             wallpaper
         } else if (!device.viaWan && !device.viaRoster && device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
             val protocol = device.info.protocol.ifBlank { "https" }
             val host = if (device.ip.contains(":")) "[${device.ip}]" else device.ip
-            "$protocol://$host:${device.info.port}/api/dex/wallpaper"
+            "$protocol://$host:${device.info.port}/api/dex/wallpaper?rev=$wallpaperRevision"
         } else {
             R.drawable.wallpaper_fortress
         }
