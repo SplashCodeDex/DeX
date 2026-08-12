@@ -23,6 +23,7 @@ namespace DeXShareTarget.Endpoints
         // startup (the endpoints are registered a single time in MapLocalSendEndpoints).
         private static readonly ConcurrentDictionary<string, PrepareUploadRequestDto> ActiveUploadSessions = new();
         private static readonly ConcurrentDictionary<string, int> ActiveUploadSessionsProgress = new();
+        private static readonly ConcurrentDictionary<string, VStreamManifestDto> ActiveVStreamSessions = new();
 
         /// <summary>Registers the LocalSend v2 transfer endpoints (info, register, prepare-upload, upload, punch, download).</summary>
         public static void MapShareEndpoints(this WebApplication app)
@@ -223,6 +224,60 @@ namespace DeXShareTarget.Endpoints
                 HostedFileLastAccess[fileId] = DateTime.UtcNow;
                 // Range processing enables resumable downloads over flaky WAN connections
                 return Results.File(path, "application/octet-stream", enableRangeProcessing: true);
+            });
+
+            // DeX-VStream Protocol Endpoints (Virtual Directory Manifest Streaming)
+            app.MapPost("/api/localsend/v2/vstream-prepare", async (HttpRequest request, VStreamManifestDto req, CancellationToken ct) =>
+            {
+                if (IsDndEnabled) return Results.StatusCode(403);
+                var auth = request.Headers.Authorization.ToString();
+                var token = auth.StartsWith("Bearer ") ? auth.Substring("Bearer ".Length) : null;
+                bool isAutoTrusted = IdentityManager.IsIdentityToken(token);
+                bool isPaired = !string.IsNullOrEmpty(token) && IdentityManager.PairedTokens.TryGetValue(req.Info.Fingerprint, out var expectedToken) && expectedToken == token;
+                if (!isAutoTrusted && !isPaired) return Results.StatusCode(403);
+
+                var sessionId = Guid.NewGuid().ToString();
+                req.SessionId = sessionId;
+                ActiveVStreamSessions[sessionId] = req;
+
+                string downloadsFolder = DeXConstants.DownloadsFolder;
+                Directory.CreateDirectory(downloadsFolder);
+
+                // Prepare target directory structure upfront
+                foreach (var item in req.Items)
+                {
+                    string safeRel = SanitizeRelativePath(item.RelativePath);
+                    if (!string.IsNullOrEmpty(safeRel))
+                    {
+                        string destPath = Path.Combine(downloadsFolder, safeRel);
+                        string? parentDir = Path.GetDirectoryName(destPath);
+                        if (!string.IsNullOrEmpty(parentDir)) Directory.CreateDirectory(parentDir);
+                    }
+                }
+
+                return Results.Json(new { sessionId, totalFiles = req.TotalFiles, totalSize = req.TotalSize });
+            });
+
+            app.MapPost("/api/localsend/v2/vstream-data", async (HttpRequest request) =>
+            {
+                var sessionId = request.Query["sessionId"].ToString();
+                var itemId = request.Query["itemId"].ToString();
+                if (!ActiveVStreamSessions.TryGetValue(sessionId, out var sessionManifest)) return Results.BadRequest();
+                var item = sessionManifest.Items.FirstOrDefault(i => i.Id == itemId);
+                if (item == null) return Results.BadRequest();
+
+                string safeRel = SanitizeRelativePath(item.RelativePath);
+                string downloadsFolder = DeXConstants.DownloadsFolder;
+                string destPath = string.IsNullOrEmpty(safeRel)
+                    ? Path.Combine(downloadsFolder, "unnamed_file")
+                    : Path.Combine(downloadsFolder, safeRel);
+
+                using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 8192, useAsync: true))
+                {
+                    await request.Body.CopyToAsync(destStream);
+                }
+
+                return Results.Ok();
             });
         }
     }

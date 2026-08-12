@@ -2,6 +2,8 @@
 
 ## [8.5.0.0] - 2026-08-12
 ### Added
+- **[minor] DeX-VStream Virtual Directory Manifest Streaming Protocol**: Implemented high-speed virtual directory manifest streaming (`DeX-VStream`) inspired by Blip architecture. Replaced legacy per-file HTTP POST handshakes with a single continuous manifest stream (`vstream-prepare` and `vstream-data`), preserving relative folder trees directly on destination disks without pre-zipping or extra temporary storage overhead.
+- **[minor] C# PC Engine & Android Integration**: Added `VStreamManifestDto` models, registered `/api/localsend/v2/vstream-prepare` and `/api/localsend/v2/vstream-data` endpoints in `LocalSendEndpoints.Share.cs`, added `HostAndPushVStreamAsync` in `RelayService.cs`, updated `TransferWindow.cs`, and added Kotlin `VStreamPrepareRequestDto` and `handleVStreamPrepare` in `MessageHandler.kt`.
 - **[minor] Live Windows PC Battery & Wi-Fi Telemetry Synchronization (`PcTelemetryService`)**: Implemented `PcTelemetryService` in `DeXShareTarget` using Win32 `GetSystemPowerStatus` and `NetworkInterface` APIs with a 2-second in-memory TTL cache to query live Windows battery percentage (0–100%), AC power charging status, and Wi-Fi band (`5GHz`, `2.4GHz`, `6GHz`, or `LAN`).
 - **[minor] Android Card Telemetry Integration (`DeviceListItem`)**: Extended `RegisterDto` on PC and Android to transport live power and network telemetry. Replaced simulated random battery placeholders in Android's `DeviceListItem` card UI with real PC battery percentages, AC charging bolt icons (`BatteryCharging`), and actual Wi-Fi band tags.
 

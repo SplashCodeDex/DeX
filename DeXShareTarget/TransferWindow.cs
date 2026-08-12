@@ -159,9 +159,9 @@ namespace DeXShareTarget
                 return;
             }
 
-            txtStatus.Text = $"Notifying Android to pull {files.Count} files...";
+            txtStatus.Text = $"Notifying Android via DeX-VStream ({pairs.Count} items)...";
 
-            var pushed = await DeXShareTarget.Services.RelayService.HostAndPushAsync(device.Info.Fingerprint, pairs, Environment.MachineName);
+            var pushed = await DeXShareTarget.Services.RelayService.HostAndPushVStreamAsync(device.Info.Fingerprint, pairs, Environment.MachineName);
             if (!pushed)
             {
                 txtStatus.Text = "Error: Android device not paired or not connected via WebSocket.";
