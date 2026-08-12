@@ -29,7 +29,7 @@ namespace DeXShareTarget.Endpoints
         {
             app.MapGet("/api/localsend/v2/info", () => Results.Json(new RegisterDto 
             { 
-                Alias = IdentityManager.DeviceAlias,
+                Alias = Environment.MachineName,
                 Fingerprint = IdentityManager.Fingerprint,
                 IdentityHash = IdentityManager.IdentityHash,
                 GoogleSub = string.IsNullOrEmpty(IdentityManager.GoogleSub) ? null : IdentityManager.GoogleSub,
