@@ -204,6 +204,14 @@ namespace DeXShareTarget.Services
             return token == IdentityHash;
         }
 
+        /// <summary>Returns true if the presented token or fingerprint belongs to an authorized paired device.</summary>
+        public static bool IsPairedTokenOrFingerprint(string? token, string? fingerprint)
+        {
+            if (!string.IsNullOrEmpty(fingerprint) && PairedFingerprints.Contains(fingerprint)) return true;
+            if (!string.IsNullOrEmpty(token) && (IsIdentityToken(token) || PairedTokens.Values.Contains(token))) return true;
+            return false;
+        }
+
         private static void PersistIdentity()
         {
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");

@@ -174,9 +174,22 @@ namespace DeXShareTarget.Endpoints
                 return Results.Ok(new { dnd = IsDndEnabled });
             });
 
-            // Live 480p Windows Desktop Wallpaper for device card backgrounds on mobile with HTTP 304 ETag support
+            // Live 480p Windows Desktop Wallpaper for paired device card backgrounds on mobile with HTTP 304 ETag support
             app.MapGet("/api/dex/wallpaper", (HttpRequest request, HttpResponse response) =>
             {
+                var token = request.Query["token"].ToString();
+                var fingerprint = request.Query["fingerprint"].ToString();
+                var auth = request.Headers.Authorization.ToString();
+                if (!string.IsNullOrEmpty(auth) && auth.StartsWith("Bearer "))
+                {
+                    token = auth.Substring("Bearer ".Length);
+                }
+
+                if (!IdentityManager.IsPairedTokenOrFingerprint(token, fingerprint))
+                {
+                    return Results.StatusCode(401);
+                }
+
                 var wallpaper = WallpaperService.GetWallpaper480p();
                 if (wallpaper == null) return Results.NotFound();
 
@@ -194,6 +207,19 @@ namespace DeXShareTarget.Endpoints
 
             app.MapGet("/api/localsend/v2/wallpaper", (HttpRequest request, HttpResponse response) =>
             {
+                var token = request.Query["token"].ToString();
+                var fingerprint = request.Query["fingerprint"].ToString();
+                var auth = request.Headers.Authorization.ToString();
+                if (!string.IsNullOrEmpty(auth) && auth.StartsWith("Bearer "))
+                {
+                    token = auth.Substring("Bearer ".Length);
+                }
+
+                if (!IdentityManager.IsPairedTokenOrFingerprint(token, fingerprint))
+                {
+                    return Results.StatusCode(401);
+                }
+
                 var wallpaper = WallpaperService.GetWallpaper480p();
                 if (wallpaper == null) return Results.NotFound();
 

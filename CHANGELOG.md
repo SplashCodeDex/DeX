@@ -1,6 +1,16 @@
 # Changelog
 
+## [8.6.0.0] - 2026-08-12
+### Added
+- **[minor] 7-Branch Security & Capability Matrix (`LocalSendEndpoints`)**: Enforced pairing authorization on `/api/dex/wallpaper` and `/api/localsend/v2/wallpaper` endpoints. Unpaired devices are denied live 480p desktop wallpaper access (returning HTTP 401) and display default fortress artwork.
+- **[minor] Paired Telemetry & WebSocket Push Scoping (`WebSocketConnectionManager`)**: Restricted live WebSocket event broadcasts (`wallpaper-updated`, `telemetry-updated`) strictly to verified paired sockets (`requireVerified: true`). Unpaired device cards render standard `"Nearby"` tags, unlocking real PC battery percentage, AC charging bolt icons (`BatteryCharging`), and Wi-Fi band tags ONLY upon successful PIN pairing. Enabled WAN/cellular wallpaper streaming for paired devices.
+- **[minor] Active Transfer UI Progress Reveal on Exit**: Integrated active file transfer detection (`$script:activePulls` / `$script:mirrorProc`) into the 'Exit Engine' click workflow. Automatically restores window focus, expands the File Explorer panel, reveals `dockPullProgress`, and highlights real-time progress before allowing a confirmation exit.
+- **[minor] Surgical ADB Process Cleanup Scoping**: Updated `Invoke-ExitEngine` to inspect process `MainModule.FileName` on `adb.exe` instances, exclusively terminating ADB processes running from DeX's own binary directory while preserving external Android Studio and CLI ADB daemons.
+- **[minor] Session State Snapshot Persistence (`Save-EngineState` / `Restore-EngineState`)**: Implemented registry-backed session state snapshots (`HKCU:\Software\DeX`) saving active directory paths (`LastFolder`) and desktop window coordinates (`WindowLeft`, `WindowTop`) for instant context recovery on next launch.
+- **[minor] Non-Blocking WPF Exit Fade-Out**: Added a 150ms WPF DoubleAnimation opacity fade-out sequence to `$script:wpfWindow` upon exit before triggering background process and runspace teardown.
+
 ## [8.5.0.0] - 2026-08-12
+
 ### Added
 - **[minor] Adaptive Chunked Range Resuming (`VStream-AutoResume`)**: Implemented `/api/localsend/v2/vstream-progress` and `Range: bytes={offset}-` HTTP header seeking in `LocalSendEndpoints.Share.cs`. Automatically detects partially transferred byte offsets after network interruptions and resumes streaming directly from the last received byte, guaranteeing 100% SHA256 byte-hash integrity without restarting folder transfers from scratch.
 - **[minor] DeX-VStream Virtual Directory Manifest Streaming Protocol**: Implemented high-speed virtual directory manifest streaming (`DeX-VStream`) inspired by Blip architecture. Replaced legacy per-file HTTP POST handshakes with a single continuous manifest stream (`vstream-prepare` and `vstream-data`), preserving relative folder trees directly on destination disks without pre-zipping or extra temporary storage overhead.

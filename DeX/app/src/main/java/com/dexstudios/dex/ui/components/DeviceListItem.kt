@@ -73,14 +73,15 @@ fun DeviceListItem(
         }
     }
 
-    // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint if available on direct LAN
-    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol, device.viaWan, device.viaRoster, wallpaperRevision) {
+    // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint ONLY when paired (isTrusted)
+    val pairedToken = AuthState.pairedTokens[device.info.fingerprint] ?: ""
+    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol, isTrusted, wallpaperRevision) {
         if (wallpaper != null) {
             wallpaper
-        } else if (!device.viaWan && !device.viaRoster && device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
+        } else if (isTrusted && device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
             val protocol = device.info.protocol.ifBlank { "https" }
             val host = if (device.ip.contains(":")) "[${device.ip}]" else device.ip
-            "$protocol://$host:${device.info.port}/api/dex/wallpaper?rev=$wallpaperRevision"
+            "$protocol://$host:${device.info.port}/api/dex/wallpaper?rev=$wallpaperRevision&token=$pairedToken&fingerprint=${device.info.fingerprint}"
         } else {
             R.drawable.wallpaper_fortress
         }
@@ -178,16 +179,16 @@ fun DeviceListItem(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tags Row (Updated with Live Telemetry)
+                // Tags Row (Updated with Live Telemetry & Pairing Security Scoping)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     DeviceIconTag(icon = MaterialSymbols.Wifi)
-                    DeviceIconTag(icon = batteryIcon)
-                    DeviceTag(text = realWifiBand)
-                    if (realBattery != null) {
+                    if (isTrusted && realBattery != null) {
+                        DeviceIconTag(icon = batteryIcon)
+                        DeviceTag(text = realWifiBand)
                         DeviceTag(text = "$realBattery%")
-                    }
-                    if (isTrusted) {
                         DeviceTag(text = "Paired")
+                    } else {
+                        DeviceTag(text = "Nearby")
                     }
                 }
 

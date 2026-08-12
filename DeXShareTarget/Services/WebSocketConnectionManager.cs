@@ -65,12 +65,13 @@ namespace DeXShareTarget.Services
             return _sockets.ContainsKey(fingerprint);
         }
 
-        public static async Task BroadcastAsync(string payload)
+        public static async Task BroadcastAsync(string payload, bool requireVerified = false)
         {
             var bytes = Encoding.UTF8.GetBytes(payload);
             var segment = new System.ArraySegment<byte>(bytes);
             foreach (var kvp in _sockets)
             {
+                if (requireVerified && !IsVerified(kvp.Key)) continue;
                 if (kvp.Value.State == WebSocketState.Open)
                 {
                     try

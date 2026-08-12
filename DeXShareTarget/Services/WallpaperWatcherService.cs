@@ -89,7 +89,7 @@ namespace DeXShareTarget.Services
 
                 Console.WriteLine($"[WallpaperWatcher] Broadcasting debounced wallpaper update (ETag: {etag})");
 
-                await WebSocketConnectionManager.BroadcastAsync(payload);
+                await WebSocketConnectionManager.BroadcastAsync(payload, requireVerified: true);
             }
             catch (Exception ex)
             {
