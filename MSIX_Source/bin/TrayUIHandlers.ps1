@@ -88,27 +88,7 @@ function Get-ConnectedDeviceTarget {
 # tray action. Mirrors the non-blocking pattern used by the tray-icon click handler.
 function Update-WpfUIAsync {
     try {
-        $proc = New-Object System.Diagnostics.Process
-        $proc.StartInfo.FileName = "adb.exe"
-        $proc.StartInfo.Arguments = "devices -l"
-        $proc.StartInfo.UseShellExecute = $false
-        $proc.StartInfo.RedirectStandardOutput = $true
-        $proc.StartInfo.CreateNoWindow = $true
-        $proc.Start() | Out-Null
-
-        $timer = New-Object System.Windows.Threading.DispatcherTimer
-        $timer.Interval = [TimeSpan]::FromMilliseconds(50)
-        $timer.Add_Tick({
-            if ($proc.HasExited) {
-                $timer.Stop()
-                try {
-                    $out = $proc.StandardOutput.ReadToEnd() -split "`r?`n"
-                    Update-WpfUI -DevicesOutput $out
-                } catch {}
-                $proc.Dispose()
-            }
-        })
-        $timer.Start()
+        Update-WpfUI
     } catch { Write-Trace "Update-WpfUIAsync error: $_" }
 }
 $actionConnect = {
@@ -117,31 +97,25 @@ $actionConnect = {
         $script:currentTarget = $res.Target
         $script:notifyIcon.Icon = $iconConnected
         $script:notifyIcon.Text = "Connected: $($res.Name)"
-        $script:txtStatus.Text = "ADB Status: $($res.Name)"
+        $script:txtStatus.Text = "Developer ADB: $($res.Name)"
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
-        Show-Toast -Title "ADB Connected" -Message "Successfully connected to $($res.Name)"
+        Show-Toast -Title "ADB Connected" -Message "Developer ADB connected to $($res.Name)"
     } else {
-        $script:notifyIcon.Icon = $iconDisconnected
-        $script:notifyIcon.Text = "Disconnected"
-        $script:txtStatus.Text = "ADB Status: $($res.Message)"
-        try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
-        Show-Toast -Title "Connection Failed" -Message $res.Message
+        Show-Toast -Title "ADB Connection Failed" -Message $res.Message
     }
     Update-WpfUIAsync
 }
 $actionDisconnect = {
     $null = adb disconnect 2>&1
-    $script:notifyIcon.Icon = $iconDisconnected
-    $script:notifyIcon.Text = "Connect ADB: Disconnected"
-    $script:txtStatus.Text = "ADB Status: Disconnected"
+    $script:txtStatus.Text = "Status: Ready"
     try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
-    Show-Toast -Title "ADB Disconnected" -Message "Severed all wireless connections."
+    Show-Toast -Title "ADB Disconnected" -Message "Severed ADB terminal connection."
     Update-WpfUIAsync
 }
 
 
 $actionMirror = {
-    # Quick-action toggle: start/stop the ADB-free screen mirror
+    # Quick-action toggle: start/stop screen mirror via native WebSocket
     $mirrorActive = $false
     try {
         $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-state" -TimeoutSec 2 -ErrorAction Stop
@@ -149,21 +123,17 @@ $actionMirror = {
     } catch {}
     
     if ($mirrorActive) {
-        # Stop: close the mirror window; the server tells the phone to stop streaming
         try { Invoke-RestMethod -Uri "$global:DeXLocalApi/local/mirror-stop" -Method Post -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null } catch {}
         Show-Toast -Title "Mirroring Stopped" -Message "Screen mirror closed."
     } else {
-        # Start: resolve the active device (ADB target first, else the first paired device)
         $ip = $null
-        $currentTarget = Get-ConnectedDeviceTarget
-        if ($currentTarget) { $ip = ($currentTarget -replace ':.*','') }
-        if (-not $ip) {
-            try {
-                $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
-                $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
-                if ($target) { $ip = $target.ip }
-            } catch {}
-        }
+        try {
+            $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
+            $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+            if (-not $target -and $devices.Count -gt 0) { $target = $devices[0] }
+            if ($target) { $ip = $target.ip }
+        } catch {}
+        
         if ($ip) {
             Start-MirrorSession -Ip $ip
         } else {

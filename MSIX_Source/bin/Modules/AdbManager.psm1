@@ -1,5 +1,73 @@
-﻿
-function adb { & $global:AdbExePath @args }
+
+
+function Get-OrDownloadAdbBinary {
+    <#
+    .SYNOPSIS
+        Resolves or downloads the ADB binary for Developer Tools.
+    .DESCRIPTION
+        Checks if adb.exe exists locally or on system PATH. If missing, downloads official
+        Google platform-tools zip quietly and extracts adb.exe to local app data tools directory.
+    #>
+    if ($global:AdbExePath -and (Test-Path $global:AdbExePath)) {
+        return $global:AdbExePath
+    }
+
+    # 1. Check system PATH
+    $sysCmd = Get-Command "adb.exe" -ErrorAction SilentlyContinue
+    if ($sysCmd) {
+        $global:AdbExePath = $sysCmd.Source
+        return $global:AdbExePath
+    }
+
+    # 2. Check local data directory
+    $toolsDir = Join-Path $global:DeXDataRoot "tools"
+    $adbLocal = Join-Path $toolsDir "adb.exe"
+    if (Test-Path $adbLocal) {
+        $global:AdbExePath = $adbLocal
+        return $global:AdbExePath
+    }
+
+    # 3. Download from Google platform-tools
+    try {
+        if (-not (Test-Path $toolsDir)) { New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null }
+        $zipPath = Join-Path $toolsDir "platform-tools.zip"
+        $url = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+        
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        $webClient = New-Object System.Net.WebClient
+        $webClient.DownloadFile($url, $zipPath)
+        
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $tempExtract = Join-Path $toolsDir "extract_temp"
+        if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $tempExtract)
+        
+        $extractedAdbDir = Join-Path $tempExtract "platform-tools"
+        if (Test-Path $extractedAdbDir) {
+            Get-ChildItem -Path $extractedAdbDir | Copy-Item -Destination $toolsDir -Force
+        }
+        Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
+
+        if (Test-Path $adbLocal) {
+            $global:AdbExePath = $adbLocal
+            return $global:AdbExePath
+        }
+    } catch {
+        Write-Trace "Failed to download ADB binary: $_"
+    }
+
+    # Fallback to local execution directory if present
+    $fallback = Join-Path $PSScriptRoot "adb.exe"
+    $global:AdbExePath = $fallback
+    return $global:AdbExePath
+}
+Export-ModuleMember -Function Get-OrDownloadAdbBinary
+
+function adb { 
+    $exe = Get-OrDownloadAdbBinary
+    & $exe @args 
+}
 Export-ModuleMember -Function adb
 
 function Invoke-AdbConnect {
@@ -8,6 +76,11 @@ function Invoke-AdbConnect {
         [string]$Target,
         [switch]$ConnectOnly
     )
+
+    $exe = Get-OrDownloadAdbBinary
+    if (-not (Test-Path $exe)) {
+        return @{ Success = $false; Message = "ADB binary not available." }
+    }
 
     $GatewayIP = $null
     if ([string]::IsNullOrWhiteSpace($Target)) {
@@ -29,6 +102,7 @@ function Invoke-AdbConnect {
             }
         }
         
+        $TargetPort = 5555
         $Target = "${GatewayIP}:5555"
     } else {
         if ($Target -match '^([0-9\.]+):(\d+)$') {
@@ -58,7 +132,7 @@ function Invoke-AdbConnect {
         try {
             $client = [System.Net.Sockets.TcpClient]::new()
             $task = $client.ConnectAsync($GatewayIP, $TargetPort)
-            if (-not $task.Wait(500)) {
+            if (-not $task.Wait(400)) {
                 return @{ Success = $false; Message = "Device unreachable (TCP Ping timeout)." }
             }
         } catch {
@@ -76,6 +150,7 @@ function Invoke-AdbConnect {
     $result = adb connect $target 2>&1
     
     $devices = (adb devices -l 2>&1) | Out-String
+    
     if ($result -like "*connected to*" -or $devices -match ([regex]::Escape($target) + "\s+device")) {
         $devName = $target
         if ($devices -match ([regex]::Escape($target) + "\s+device.*?model:([^\s]+)")) {
@@ -96,54 +171,10 @@ function Start-MdnsDiscovery {
         [Parameter(Mandatory=$true)]
         [System.Collections.Concurrent.ConcurrentQueue[object]]$Queue
     )
-    Write-Trace "Starting Omni-Mesh Discovery Runspace (mDNS + UDP Multicast)..."
-    
-    $iss = [management.automation.runspaces.initialsessionstate]::CreateDefault2()
-    $ps = [powershell]::Create($iss)
-    
-    $script = {
-        param($adbPath, $computerName, $queue)
-        
-        try {
-            $lastMdns = [datetime]::MinValue
-
-            while ($true) {
-                $now = Get-Date
-
-                # A. ADB mDNS Services polling (every 15 seconds)
-                if ($now - $lastMdns -gt [timespan]::FromSeconds(15)) {
-                    $output = & $adbPath mdns services 2>&1
-                    if ($null -ne $output) {
-                        $lines = $output -split '`r?`n'
-                        foreach ($line in $lines) {
-                            if ($line -match '_adb-tls-connect\._tcp\.\s+([0-9\.]+:[0-9]+)') {
-                                [void]$queue.Enqueue(@{ Type = 'Connect'; IPPort = $matches[1] })
-                            }
-                            if ($line -match '_adb-tls-pairing\._tcp\.\s+([0-9\.]+:[0-9]+)') {
-                                [void]$queue.Enqueue(@{ Type = 'Pairing'; IPPort = $matches[1] })
-                            }
-                        }
-                    }
-                    $lastMdns = $now
-                }
-                
-                Start-Sleep -Milliseconds 100
-            }
-        } catch {
-            $queue.Enqueue([pscustomobject]@{ Type = 'Error'; Message = "mDNS polling error: $_" })
-        }
-    }
-    
-    [void]$ps.AddScript($script).AddArgument($global:AdbExePath).AddArgument($env:COMPUTERNAME).AddArgument($Queue)
-    
-    $asyncResult = $ps.BeginInvoke()
-    
-    return [PSCustomObject]@{
-        PowerShell = $ps
-        AsyncResult = $asyncResult
-    }
+    # Deprecated: mDNS & UDP discovery is handled natively by C# DiscoveryBackgroundService.
+    # Returns an empty handle for backwards compatibility.
+    return $null
 }
-
 Export-ModuleMember -Function Start-MdnsDiscovery
 
 function Invoke-AdbPair {
@@ -151,6 +182,9 @@ function Invoke-AdbPair {
         [Parameter(Mandatory=$true)][string]$Target,
         [Parameter(Mandatory=$true)][string]$Pin
     )
+    $exe = Get-OrDownloadAdbBinary
+    if (-not (Test-Path $exe)) { return $false }
+
     $GatewayIP = $null
     $TargetPort = $null
     if ($Target -match '^([0-9\.]+):(\d+)$') {
@@ -179,13 +213,11 @@ function Invoke-AdbPair {
 
     $null = adb start-server 2>&1
 
-    # Bounded adb pair: the pairing client can stall for tens of seconds against an
-    # unreachable/busy pairing service, and this runs on the engine's UI tick. Spawn it
-    # and kill it past 10s so the tray UI can never freeze on a hung pairing attempt.
+    # Bounded adb pair: spawn and kill past 10s
     $result = ""
     try {
         $proc = New-Object System.Diagnostics.Process
-        $proc.StartInfo.FileName = $global:AdbExePath
+        $proc.StartInfo.FileName = $exe
         $proc.StartInfo.Arguments = "pair `"$Target`" `"$Pin`""
         $proc.StartInfo.UseShellExecute = $false
         $proc.StartInfo.RedirectStandardOutput = $true
@@ -216,17 +248,6 @@ Export-ModuleMember -Function Invoke-AdbPair
 
 
 function Start-UiDataPolling {
-    <#
-    .SYNOPSIS
-        Background runspace that polls the local control API for UI state (discovered devices,
-        mirror activity, pending-pair PIN) and enqueues the results. Keeps the blocking HTTP
-        calls off the WPF UI thread so a slow localhost response can never freeze the interface.
-        Mirrors Start-MdnsDiscovery (same runspace + ConcurrentQueue pattern).
-    .PARAMETER Queue
-        ConcurrentQueue the runspace enqueues @{Type='Devices'|'Mirror'|'PendingPair'; ...} messages into.
-    .PARAMETER LocalApi
-        Base URL of the local control API (e.g. http://127.0.0.1:48425).
-    #>
     param(
         [Parameter(Mandatory=$true)]
         [System.Collections.Concurrent.ConcurrentQueue[object]]$Queue,
@@ -241,7 +262,7 @@ function Start-UiDataPolling {
         param($api, $queue)
         try {
             while ($true) {
-                # Discovered devices (independent of mDNS — the LocalSendServer UDP/gateway fallback)
+                # Discovered devices (independent of mDNS — LocalSendServer UDP/gateway fallback)
                 try {
                     $devices = Invoke-RestMethod -Uri "$api/local/devices" -TimeoutSec 2 -ErrorAction Stop
                     [void]$queue.Enqueue(@{ Type = 'Devices'; Data = $devices })
@@ -253,7 +274,7 @@ function Start-UiDataPolling {
                     [void]$queue.Enqueue(@{ Type = 'Mirror'; Active = [bool]$st.active })
                 } catch {}
 
-                # Phone-initiated pairing (surface the pending PIN; only when one exists)
+                # Phone-initiated pairing (surface the pending PIN)
                 try {
                     $pp = Invoke-RestMethod -Uri "$api/local/pending-pair" -TimeoutSec 1 -ErrorAction Stop
                     if ($pp -and $pp.pin) {
@@ -277,4 +298,5 @@ function Start-UiDataPolling {
     }
 }
 Export-ModuleMember -Function Start-UiDataPolling
+
 

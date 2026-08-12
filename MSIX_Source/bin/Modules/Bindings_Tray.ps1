@@ -21,28 +21,7 @@ $script:notifyIcon.Add_MouseUp({
         }
         
         try {
-            $proc = New-Object System.Diagnostics.Process
-            $proc.StartInfo.FileName = "adb.exe"
-            $proc.StartInfo.Arguments = "devices -l"
-            $proc.StartInfo.UseShellExecute = $false
-            $proc.StartInfo.RedirectStandardOutput = $true
-            $proc.StartInfo.CreateNoWindow = $true
-            $proc.Start() | Out-Null
-            
-            # Non-blocking poll on UI thread to avoid ThreadPool RunspaceStateException crashes
-            $timer = New-Object System.Windows.Threading.DispatcherTimer
-            $timer.Interval = [TimeSpan]::FromMilliseconds(50)
-            $timer.Add_Tick({
-                if ($proc.HasExited) {
-                    $timer.Stop()
-                    try {
-                        $out = $proc.StandardOutput.ReadToEnd() -split "`r?`n"
-                        Update-WpfUI -DevicesOutput $out
-                    } catch {}
-                    $proc.Dispose()
-                }
-            })
-            $timer.Start()
+            Update-WpfUI
         } catch { Write-Trace "Update-WpfUI error: $_" }
         
         # Edge Case 27 & 28: Dynamic work area bounds clipping protection & window activation focus

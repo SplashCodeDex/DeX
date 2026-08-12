@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.2.0.0] - 2026-08-12
+### Changed
+- **[minor] Decouple ADB from Core Architecture**: Completely removed ADB as a mandatory dependency for ordinary consumers. ADB is no longer started at launch, polled in the background (`adb devices -l` / `adb mdns services`), or used as a clipboard broadcast fallback. Primary device discovery and status indicators now rely strictly on DeX's native C# network engine (WebSockets/mDNS/UDP).
+- **[minor] Developer Tools & On-Demand ADB Provisioning**: Reframed ADB into an optional power-user utility under a dedicated "Developer Tools" section in Settings and device context menus (`Developer: Connect ADB`). Unbundled `adb.exe` from mandatory startup and implemented dynamic background downloading of official Google platform-tools `adb.exe` on demand when power-user features are accessed.
+
 ## [8.1.0.0] - 2026-08-12
 ### Added
 - **[minor] Live 480p Windows PC Wallpaper Streaming to Android Cards**: Replaced static placeholder drawables on Android device cards with real-time PC Windows desktop wallpaper streaming.

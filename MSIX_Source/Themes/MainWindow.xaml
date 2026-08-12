@@ -302,40 +302,6 @@
                     
                     <Border Background="{DynamicResource AccentBrush}" CornerRadius="16" Padding="4" Margin="0,0,0,12">
                         <StackPanel>
-                            <Button Name="btnSettingsAutoConnect" Style="{StaticResource SpatialListItem}" Margin="0,2">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="&#xE895;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="Auto-Connect ADB" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" />
-                                        <TextBlock Text="Auto-connect when joining phone hotspot" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                                    </StackPanel>
-                                    <Border Name="badgeAutoConnect" Grid.Column="2" Background="{DynamicResource SecondaryBrush}" CornerRadius="10" Padding="10,4" Margin="0,0,4,0">
-                                        <TextBlock Name="txtBadgeAutoConnect" Text="ON" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SecondaryForegroundBrush}" />
-                                    </Border>
-                                </Grid>
-                            </Button>
-                            
-                            <Button Name="btnSettingsConnectNow" Style="{StaticResource SpatialListItem}" Margin="0,2">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="&#xE71B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource SecondaryBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="Connect ADB Now" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" />
-                                        <TextBlock Text="Manually trigger ADB connection" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
-                                    </StackPanel>
-                                </Grid>
-                            </Button>
-                            
-
-                            
                             <Button Name="btnSettingsDnd" Style="{StaticResource SpatialListItem}" Margin="0,2">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -350,6 +316,45 @@
                                     </StackPanel>
                                     <Border Name="badgeDnd" Grid.Column="2" Background="{DynamicResource AccentBrush}" CornerRadius="10" Padding="10,4" Margin="0,0,4,0">
                                         <TextBlock Name="txtBadgeDnd" Text="OFF" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </Border>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Developer Tools -->
+                    <TextBlock Text="Developer Tools" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" Margin="4,8,0,8" />
+                    
+                    <Border Background="{DynamicResource AccentBrush}" CornerRadius="16" Padding="4" Margin="0,0,0,12">
+                        <StackPanel>
+                            <Button Name="btnSettingsConnectNow" Style="{StaticResource SpatialListItem}" Margin="0,2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE71B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource SecondaryBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Connect ADB" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <TextBlock Text="Enable ADB terminal debugging for power users" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <Button Name="btnSettingsAutoConnect" Style="{StaticResource SpatialListItem}" Margin="0,2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE895;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Auto-Connect ADB Hotspot" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <TextBlock Text="Auto-connect ADB daemon when joining phone hotspot" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                    <Border Name="badgeAutoConnect" Grid.Column="2" Background="{DynamicResource SecondaryBrush}" CornerRadius="10" Padding="10,4" Margin="0,0,4,0">
+                                        <TextBlock Name="txtBadgeAutoConnect" Text="ON" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SecondaryForegroundBrush}" />
                                     </Border>
                                 </Grid>
                             </Button>
@@ -690,9 +695,13 @@
                 
                 <StackPanel Name="pnlAdbStatus" Height="0" Opacity="0" ClipToBounds="True">
                     <Separator Background="{DynamicResource AccentBrush}" Height="1" Margin="16,0" />
-                    <StackPanel Orientation="Horizontal" Margin="24,10,24,10">
-                        <TextBlock Name="txtStatus" Text="ADB Status: Initializing..." Foreground="{DynamicResource SecondaryTextBrush}" FontSize="13" FontFamily="Segoe UI" VerticalAlignment="Center" />
-                        <Button Name="btnCopyIP" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" ToolTip="Copy IP:Port" Cursor="Hand" Visibility="Collapsed" VerticalAlignment="Center" Margin="6,0,0,0">
+                    <Grid Margin="24,10,24,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Name="txtStatus" Grid.Column="0" Text="Status: Ready" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="13" FontFamily="Segoe UI" VerticalAlignment="Center" MaxWidth="210" TextTrimming="CharacterEllipsis" ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
+                        <Button Name="btnCopyIP" Grid.Column="1" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" ToolTip="Copy IP:Port" Cursor="Hand" Visibility="Collapsed" VerticalAlignment="Center" Margin="6,0,0,0">
                             <TextBlock Text="&#xE8C8;" />
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
@@ -708,7 +717,7 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                    </StackPanel>
+                    </Grid>
                 </StackPanel>
                 <Separator Background="{DynamicResource AccentBrush}" Height="1" Margin="16,0" />
                     </StackPanel>

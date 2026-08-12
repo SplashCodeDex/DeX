@@ -11,14 +11,13 @@ function Send-ClipboardToDevice {
     .SYNOPSIS
         Pushes the PC clipboard to a specific device.
     .DESCRIPTION
-        Prefers the WebSocket channel (works without ADB, requires the DeX app on the
-        phone to be running). Falls back to the ADB SET_CLIPBOARD broadcast.
+        Pushes clipboard content via the native DeX WebSocket channel (no ADB required).
     .PARAMETER Ip
         IP address of the target device.
     .PARAMETER Quiet
-        Suppresses toasts (used by the automatic sync watcher).
+        Suppresses toasts (used by automatic sync watcher).
     .RETURNS
-        $true when the text was delivered, $false otherwise.
+        $true when text was delivered, $false otherwise.
     #>
     param(
         [Parameter(Mandatory)][string]$Ip,
@@ -31,26 +30,14 @@ function Send-ClipboardToDevice {
         return $false
     }
 
-    # 1. WebSocket path (no ADB): the local server forwards the text to the phone's app
     try {
         $null = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/clipboard-push?ip=$Ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
         if (-not $Quiet) { Show-Toast -Title "Clipboard Synced" -Message "Sent to $Ip." }
         return $true
     } catch {
-        # Fall through to the ADB broadcast path
+        if (-not $Quiet) { Show-Toast -Title "Clipboard Sync Failed" -Message "Open the DeX app on the phone and try again." }
+        return $false
     }
-
-    # 2. ADB fallback: SET_CLIPBOARD broadcast via the ADB transport
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
-    $b64 = [Convert]::ToBase64String($bytes)
-
-    $res = adb -s "${Ip}:5555" shell am broadcast -a com.dexstudios.dex.SET_CLIPBOARD -e text_b64 "$b64" 2>&1
-    if ($res -match "Broadcast completed") {
-        if (-not $Quiet) { Show-Toast -Title "Clipboard Synced" -Message "Sent to $Ip." }
-        return $true
-    }
-    if (-not $Quiet) { Show-Toast -Title "Clipboard Sync Failed" -Message "Open the DeX app on the phone (or connect ADB) and try again." }
-    return $false
 }
 
 function Start-MirrorSession {

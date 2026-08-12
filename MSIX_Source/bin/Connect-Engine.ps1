@@ -14,7 +14,6 @@ param(
 
 # Load shared constants (ports, paths) first so every subsequent module and binding can use them.
 . "$PSScriptRoot\DeX-Constants.ps1"
-[Environment]::SetEnvironmentVariable("ANDROID_ADB_SERVER_PORT", $global:DeXAdbPort, "Process")
 . "$PSScriptRoot\Modules\EngineUtils.ps1"
 Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"
@@ -26,8 +25,6 @@ $script:showUiEvent = New-Object System.Threading.EventWaitHandle($false, [Syste
 $script:engineMutex = New-Object System.Threading.Mutex($false, $mutexName)
 if (-not $script:engineMutex.WaitOne(0, $false)) {
     if (-not $Background -and -not $SelfTest) { $script:showUiEvent.Set() | Out-Null }
-    # Another instance is already running — trigger an immediate connection attempt
-    $null = Invoke-AdbConnect
     exit
 }
 
@@ -58,7 +55,7 @@ if ($ConnectOnly) {
 
 # Create System Tray Icon
 $script:notifyIcon = New-Object System.Windows.Forms.NotifyIcon
-$script:notifyIcon.Text = "Connect ADB: Initializing..."
+$script:notifyIcon.Text = "DeX: Initializing..."
 
 
 $iconConnected = Load-TrayIcon "app-icon-light.ico"
@@ -98,10 +95,10 @@ if ($null -eq $script:wpfWindow) {
     }
     [System.Windows.MessageBox]::Show("DeX could not load its spatial interface and is running in fallback mode.`n`n$script:WindowLoadError", "DeX - Fallback Mode", 'OK', 'Warning') | Out-Null
 
-    $script:notifyIcon.Text = "Connect ADB (Fallback Mode)"
+    $script:notifyIcon.Text = "DeX Engine (Fallback Mode)"
     $fallbackMenu = New-Object System.Windows.Forms.ContextMenuStrip
 
-    $miConnect = $fallbackMenu.Items.Add("Connect ADB Now")
+    $miConnect = $fallbackMenu.Items.Add("Connect ADB (Dev Tools)")
     $miConnect.Add_Click({
         $res = Invoke-AdbConnect
         if ($res.Success) {
@@ -252,12 +249,7 @@ if ($script:AutoConnectEnabled) {
 $script:transferQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 $script:mdnsQueue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
-# Start mDNS & ADB auto-discovery
 $script:mdnsJob = $null
-
-
-
-$script:mdnsJob = Start-MdnsDiscovery -Queue $script:mdnsQueue
 
 # Background UI-data poller: fetches /local/devices, /local/mirror-state and /local/pending-pair
 # off the UI thread and enqueues results, so blocking HTTP never freezes the spatial menu.
@@ -281,55 +273,10 @@ $mdnsTimer.Add_Tick({
                 Write-Trace $t.Message
             }
         }
-        
-        # 2. Check Discovery Job
-        $livePeers = @()
-        $received = @()
-        $m = $null
-        while ($script:mdnsQueue.TryDequeue([ref]$m)) {
-            $received += $m
-        }
-        
-        if ($received.Count -gt 0) {
-            $uniqueServices = $received | Sort-Object -Property Type, IPPort -Unique
-                
-                # Check for Pairing
-                $pairingTargets = $uniqueServices | Where-Object { $_.Type -eq 'Pairing' } | Select-Object -ExpandProperty IPPort
-                foreach ($pt in $pairingTargets) {
-                    Write-Trace "mDNS Poller found Pairing Target: $pt"
-                    if (-not $script:pairedHistory) { $script:pairedHistory = @{} }
-                    if (-not $script:pairedHistory[$pt]) {
-                        $pin = Show-PairingPrompt -IPPort $pt
-                        if ($pin) {
-                            $success = Invoke-AdbPair -Target $pt -Pin $pin
-                            # Mark the target regardless of the outcome: an unreachable pairing
-                            # service (e.g. "Unable to start pairing client") otherwise re-prompts
-                            # this modal dialog every 2s tick, locking the whole UI.
-                            $script:pairedHistory[$pt] = $true
-                            if ($success) {
-                                Show-Toast -Title "ADB Paired" -Message "Device paired successfully."
-                            } else {
-                                Show-Toast -Title "Pairing Failed" -Message "Could not pair with $pt. The phone may not be in pairing mode."
-                            }
-                        } else {
-                            $script:pairedHistory[$pt] = $true
-                        }
-                    }
-                }
-
-                # Check for Connect
-                $connectTargets = $uniqueServices | Where-Object { $_.Type -eq 'Connect' } | Select-Object -ExpandProperty IPPort
-                foreach ($ct in $connectTargets) {
-                    Write-Trace "mDNS Poller found Connect Target: $ct"
-                    if ($script:currentTarget -ne $ct) {
-                        Invoke-AdbConnect -Target $ct
-                    }
-                }
-                
-            }
 
             # Apply data fetched by the background UI-data poller (devices / mirror / pending-pair).
             # The poller does the blocking HTTP; this tick only drains the queue and updates the UI.
+            $livePeers = @()
             $udpRes = $null
             $mirrorActive = $null
             $pendingPair = $null
@@ -561,28 +508,27 @@ $mdnsTimer.Add_Tick({
                             }
                             $script:lastUdpFingerprint = $newFingerprint
                         }
-                        }
-                        } finally {
-                            Restore-CardEffect
-                        }
-                        }
-            } catch { }
-                
-                # Keep the quick-action mirror toggle in sync with the actual mirror window state
-                # (state fetched by the background poller; $mirrorActive holds the latest value)
-                try {
-                    $btnMirror = $script:wpfWindow.FindName("btnQAMirror")
-                    if ($btnMirror -and $null -ne $mirrorActive) {
-                        $wanted = [bool]$mirrorActive
-                        if ($btnMirror.IsChecked -ne $wanted) { $btnMirror.IsChecked = $wanted }
                     }
-                } catch {}
-  } catch { }
+                } finally {
+                    Restore-CardEffect
+                }
+            }
+        } catch { }
+
+            # Keep the quick-action mirror toggle in sync with the actual mirror window state
+            try {
+                $btnMirror = $script:wpfWindow.FindName("btnQAMirror")
+                if ($btnMirror -and $null -ne $mirrorActive) {
+                    $wanted = [bool]$mirrorActive
+                    if ($btnMirror.IsChecked -ne $wanted) { $btnMirror.IsChecked = $wanted }
+                }
+            } catch {}
+        } catch {}
     })
     $mdnsTimer.Start()
 
 if ($Background) {
-    Show-Toast -Title "Connect ADB Active" -Message "Right-click tray icon to toggle Auto-Connect ON/OFF or Connect Now."
+    Show-Toast -Title "DeX Engine Active" -Message "DeX background engine is active and ready."
 }
 
 # Automatic clipboard sync (PC -> phone): push fresh local copies over the WebSocket.

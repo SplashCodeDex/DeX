@@ -38,7 +38,7 @@ function Show-Toast {
         $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
         $xml.LoadXml($xmlString)
         $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Connect ADB")
+        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("DeX")
         $notifier.Show($toast)
     } catch {}
 }
@@ -204,48 +204,39 @@ function Invoke-MenuAction([scriptblock]$Action) {
 #Export-ModuleMember -Function Invoke-MenuAction
 
 function Update-WpfUI {
-    param([string[]]$DevicesOutput)
+    param([object]$Devices)
     
     trap {
         Write-Trace "Update-WpfUI Trap: $($_.Exception.Message) at line $($_.InvocationInfo.ScriptLineNumber)"
         continue
     }
-    
-    if (-not $DevicesOutput) {
-        $DevicesOutput = adb devices -l 2>&1
+
+    $devList = @()
+    if ($Devices) {
+        $devList = @($Devices)
+    } else {
+        try {
+            $devList = @(Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 1 -ErrorAction SilentlyContinue)
+        } catch {}
     }
 
-    $brushConverter = New-Object System.Windows.Media.BrushConverter
-    
-    $connectedDevice = ($DevicesOutput | Where-Object { $_ -match ':5555\s+device' })
-    if (-not $connectedDevice) { $connectedDevice = ($DevicesOutput | Where-Object { $_ -match '\bdevice\b' -and $_ -notmatch 'List of devices' }) }
-    $connectedDevice = $connectedDevice | Select-Object -First 1
+    $activeDev = $devList | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+    if (-not $activeDev -and $devList.Count -gt 0) { $activeDev = $devList[0] }
 
-    $mainBorder = $script:wpfWindow.FindName("mainBorder")
-    $oldWidth = 0; $oldHeight = 0
-    if ($null -ne $mainBorder) {
-        $oldWidth = $mainBorder.ActualWidth
-        $oldHeight = $mainBorder.ActualHeight
-    }
-    
-    if ($connectedDevice) {
-        $target = $connectedDevice.Split()[0].Trim()
-        $devName = $target
-        if ($connectedDevice -match 'model:([^\s]+)') {
-            $devName = $Matches[1] -replace '_', ' '
-        }
-        $script:currentTarget = $target
+    if ($activeDev) {
+        $devName = if ($activeDev.info.alias) { $activeDev.info.alias } elseif ($activeDev.info.deviceType) { $activeDev.info.deviceType } else { $activeDev.ip }
+        $script:currentTarget = $activeDev.ip
         $script:notifyIcon.Icon = $iconConnected
         $script:notifyIcon.Text = "Connected: $devName"
-        $script:txtStatus.Text = "ADB Status: $devName"
+        $script:txtStatus.Text = "Status: Connected ($devName)"
         try { $script:topActionsPanel.FindResource("ShowAdbAnim").Begin($script:wpfWindow) } catch {}
         $btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
         if ($null -ne $btnQAConnect) { $btnQAConnect.IsChecked = $true }
         $script:wpfWindow.FindName("btnCopyIP").Visibility = 'Visible'
     } else {
         $script:notifyIcon.Icon = $iconDisconnected
-        $script:notifyIcon.Text = "Disconnected"
-        $script:txtStatus.Text = "ADB Status: Disconnected"
+        $script:notifyIcon.Text = "DeX: Ready"
+        $script:txtStatus.Text = "Status: Ready"
         try { $script:topActionsPanel.FindResource("HideAdbAnim").Begin($script:wpfWindow) } catch {}
         $btnQAConnect = $script:wpfWindow.FindName("btnQAConnect")
         if ($null -ne $btnQAConnect) { $btnQAConnect.IsChecked = $false }

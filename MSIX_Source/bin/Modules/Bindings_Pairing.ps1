@@ -110,12 +110,7 @@ $script:wpfWindow.AddHandler([System.Windows.Controls.MenuItem]::ClickEvent, [Sy
             "menuGuestConnect" {
                 $ip = $menuItem.Tag
                 if ($ip) {
-                    $res = Invoke-AdbConnect -Target $ip
-                    if ($res.Success) {
-                        Invoke-MenuAction $actionPull
-                    } else {
-                        Show-Toast -Title "Connection Failed" -Message $res.Message
-                    }
+                    Invoke-MenuAction $actionPull
                 }
             }
         }
