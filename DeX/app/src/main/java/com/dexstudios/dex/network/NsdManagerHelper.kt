@@ -6,7 +6,7 @@ import android.net.nsd.NsdServiceInfo
 import timber.log.Timber
 
 class NsdManagerHelper(
-    private val context: Context,
+    context: Context,
     private val localInfo: RegisterDto,
     private val onDeviceDiscovered: ((DiscoveredDevice) -> Unit)? = null
 ) {
@@ -40,14 +40,14 @@ class NsdManagerHelper(
             setAttribute("deviceModel", localInfo.deviceModel)
             setAttribute("deviceType", localInfo.deviceType)
         }
-        
+
         registrationListener = object : NsdManager.RegistrationListener {
-            override fun onServiceRegistered(NsdServiceInfo: NsdServiceInfo) {}
+            override fun onServiceRegistered(nsdServiceInfo: NsdServiceInfo) {}
             override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
             override fun onServiceUnregistered(arg0: NsdServiceInfo) {}
             override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
         }
-        
+
         runCatching { nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener) }
     }
 
@@ -70,17 +70,17 @@ class NsdManagerHelper(
                     val attributes = serviceInfo.attributes
                     val fp = attributes["fingerprint"]?.let { String(it) }
                     val alias = attributes["alias"]?.let { String(it) }
-                    
+
                     if (fp.isNullOrEmpty() || fp == localInfo.fingerprint) return
-                    
+
                     val identityHash = attributes["identityHash"]?.let { String(it) }
                     val googleSub = attributes["googleSub"]?.let { String(it) }
                     val deviceModel = attributes["deviceModel"]?.let { String(it) } ?: "Unknown"
                     val deviceType = attributes["deviceType"]?.let { String(it) } ?: "unknown"
-                    
+
                     val quicPort = attributes["quicPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.QUIC
                     val tcpFallbackPort = attributes["tcpFallbackPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.PULL
-                    
+
                     val dto = RegisterDto(
                         alias = alias ?: "Unknown",
                         version = "2.0",
@@ -95,7 +95,7 @@ class NsdManagerHelper(
                         identityHash = identityHash,
                         googleSub = googleSub
                     )
-                    
+
                     val ip = serviceInfo.host?.hostAddress
                     if (!ip.isNullOrEmpty()) {
                         val device = DiscoveredDevice(
@@ -114,7 +114,7 @@ class NsdManagerHelper(
                 }
             }
         }
-        
+
         runCatching { nsdManager.resolveService(nextService, resolveListener) }.onFailure {
             Timber.e(it, "Failed to start NSD resolve")
             isResolving = false
@@ -140,7 +140,7 @@ class NsdManagerHelper(
                 runCatching { nsdManager.stopServiceDiscovery(this) }
             }
         }
-        
+
         runCatching { nsdManager.discoverServices("_dex._udp", NsdManager.PROTOCOL_DNS_SD, discoveryListener) }
     }
 }

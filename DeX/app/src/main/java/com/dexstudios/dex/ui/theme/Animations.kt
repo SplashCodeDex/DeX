@@ -20,15 +20,15 @@ object SpatialPhysics {
     // Amplitudes
     const val POP_IN_AMPLITUDE = 3.53f
     const val HOVER_AMPLITUDE = 1.22f
-    
+
     // Scales
     const val POP_IN_INITIAL_SCALE = 0.90f
     const val HOVER_EXIT_TARGET_SCALE = 0.96f
-    
+
     // Offsets
     const val POP_IN_INITIAL_OFFSET_Y = 35
     const val HOVER_EXIT_TARGET_OFFSET_Y = 30
-    
+
     // Durations
     const val POP_IN_DURATION_MS = 600
     const val POP_IN_FADE_DURATION_MS = 400
@@ -37,14 +37,12 @@ object SpatialPhysics {
 
 /**
  * Creates a bespoke BackEaseOut physics curve (equivalent to WPF's BackEase EaseOut).
- * 
+ *
  * @param amplitude The magnitude of the overshoot effect.
  */
-fun createBackEaseOut(amplitude: Float): Easing = object : Easing {
-    override fun transform(fraction: Float): Float {
-        val t = fraction - 1f
-        return 1f + t * t * ((amplitude + 1f) * t + amplitude)
-    }
+fun createBackEaseOut(amplitude: Float): Easing = Easing { fraction ->
+    val t = fraction - 1f
+    1f + t * t * ((amplitude + 1f) * t + amplitude)
 }
 
 // Predefined bespoke easing curves
@@ -54,7 +52,7 @@ val HoverEase = createBackEaseOut(SpatialPhysics.HOVER_AMPLITUDE)
 /**
  * Spatial Menu Entrance Transition
  * Starts scaled down and explodes outward with a bounce, along with a parallax slide-up.
- * 
+ *
  * @param initialScale The starting scale size before exploding outward.
  * @param initialOffsetY The starting Y-axis parallax slide-up offset.
  * @param animationDuration The time taken for the structural enter animations.
@@ -82,7 +80,7 @@ fun spatialMenuEnter(
 /**
  * Spatial Menu Exit Transition
  * Subtly slides back out of frame and shrinks slightly.
- * 
+ *
  * @param targetScale The shrink size target when exiting.
  * @param targetOffsetY The downward slide exit target offset.
  * @param animationDuration The time taken for the overall exit transition.

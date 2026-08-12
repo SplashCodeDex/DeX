@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 import timber.log.Timber
 
 /**
@@ -53,8 +54,6 @@ object MirrorSession {
 
     /** Set to true when the PC asks to start mirroring; observed by MainActivity. */
     val pendingConsent = MutableStateFlow(false)
-
-    val isActive: Boolean get() = active
 
     /** The PC asked to mirror; surface the consent dialog to the user. */
     fun requestStart() {
@@ -97,16 +96,15 @@ object MirrorSession {
         frameJob = CoroutineScope(Dispatchers.Default).launch {
             val frameIntervalMs = 1000L / TARGET_FPS
             while (isActive && active) {
-                val image = reader.acquireLatestImage()
-                if (image != null) {
+                reader.acquireLatestImage()?.use { image ->
                     try {
-                        val jpeg = imageToJpeg(image, streamWidth, streamHeight)
+                        val jpeg = imageToJpeg(image, streamHeight)
                         if (jpeg != null) frameSender?.invoke(jpeg)
-                    } finally {
-                        image.close()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error processing frame")
                     }
                 }
-                delay(frameIntervalMs)
+                delay(frameIntervalMs.milliseconds)
             }
         }
     }
@@ -137,7 +135,8 @@ object MirrorSession {
         stop()
     }
 
-    private fun imageToJpeg(image: android.media.Image, width: Int, height: Int): ByteArray? {
+    private fun imageToJpeg(image: android.media.Image, height: Int): ByteArray? {
+        val width = TARGET_WIDTH
         try {
             val plane = image.planes[0]
             val buffer = plane.buffer

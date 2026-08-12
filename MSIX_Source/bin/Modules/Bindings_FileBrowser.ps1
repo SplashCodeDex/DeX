@@ -1,4 +1,4 @@
-
+﻿
 $script:btnUpDir = $script:ce["btnUpDir"]
 $script:currentDirPath = ""
 $script:explorerMode = $false

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     DeX - Device Telemetry
 .DESCRIPTION

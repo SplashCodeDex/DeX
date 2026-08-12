@@ -1,23 +1,22 @@
 <resources>
     <string name="app_name">DeX</string>
-    <string name="settings_title">Settings</string>
     <string name="settings_account_title">Account</string>
     <string name="settings_connectivity_title">Connectivity</string>
-    <string name="settings_appearance_title">Appearance</string>
     <string name="settings_about_title">About</string>
     <string name="settings_sign_out">Sign Out</string>
     <string name="settings_app_version">Version</string>
     <string name="settings_device_fingerprint">Device Fingerprint</string>
     <string name="settings_ip_address">IP Address</string>
-    <string name="settings_dark_mode">Dark Mode</string>
-    <string name="trust_identity_title">Trust &amp; Identity</string>
+    <string name="settings_device_alias">Device Name</string>
+    <string name="settings_device_alias_hint">How others see you</string>
+    <string name="settings_clipboard_sync">Clipboard Sync</string>
+    <string name="settings_clipboard_sync_desc">Auto-share copied text with connected PC</string>
     <string name="trust_identity_desc">Devices signed in with the same Google account will automatically trust each other.</string>
     <!-- Share Target -->
     <string name="share_no_files">No files to share</string>
     <string name="share_pc_offline">PC offline. Saved to Sandbox instead.</string>
 
     <!-- Main Screen -->
-    <string name="scan_qr">Scan QR</string>
     <string name="downloading">Downloading…</string>
     <string name="cancel">Cancel</string>
     <string name="download_success">Successfully Downloaded %1$s</string>
@@ -30,18 +29,23 @@
     <string name="error_upload_all">Upload failed. Check the PC is on and reachable.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_grant">Grant Permission</string>
+    <string name="onboarding_open_settings">Open Settings</string>
     <string name="onboarding_select_folder">Select Folder</string>
     <string name="onboarding_done">Start Using DeX</string>
+    <string name="onboarding_skip">Skip for now</string>
     <string name="onboarding_step_connectivity_title">Stay Connected</string>
     <string name="onboarding_step_connectivity_desc">DeX needs to scan for nearby devices to find your PC on the local network.</string>
+    <string name="onboarding_step_connectivity_rationale">DeX cannot find devices without this permission. Please enable it in Settings to continue.</string>
     <string name="onboarding_step_notifications_title">Never Miss a File</string>
     <string name="onboarding_step_notifications_desc">Get notified when a PC wants to send you files or when transfers complete.</string>
+    <string name="onboarding_step_notifications_rationale">DeX needs notifications to alert you of incoming files. Please enable them in Settings to continue.</string>
+    <string name="onboarding_step_identity_title">Verified Identity</string>
+    <string name="onboarding_step_identity_desc">Sign in with Google to automatically trust your other devices and bypass pairing PINs.</string>
     <string name="onboarding_step_storage_title">File Storage</string>
     <string name="onboarding_step_storage_desc">DeX needs a folder to save incoming files. We recommend selecting your Downloads folder.</string>
     <string name="onboarding_step_welcome_title">Welcome to DeX</string>
     <string name="onboarding_step_welcome_desc">Seamlessly share files and clipboard between your Android device and PC.</string>
     <string name="google_sign_in">Sign in with Google</string>
-    <string name="google_sign_in_not_configured">Google Sign-In is not configured for this build.</string>
     <string name="google_signed_in_as">Signed in as %1$s</string>
     <string name="google_sign_in_failed">Google Sign-In failed. Try again.</string>
     <plurals name="uploading_progress">
@@ -84,7 +88,6 @@
     <!-- Error Handling -->
     <string name="error_network_title">Network Error</string>
     <string name="dismiss">Dismiss</string>
-    <string name="accept">Accept</string>
 
     <!-- Pairing Toasts & Dialogs -->
     <string name="pairing_with">Pairing with %1$s…</string>
@@ -102,9 +105,12 @@
     <string name="history_received">Received</string>
     <string name="history_no_source">Original file is no longer available</string>
     <string name="history_open_failed">Couldn\'t open this file</string>
+    <string name="history_clear_all">Clear All</string>
+    <string name="history_clear_confirm_title">Clear History?</string>
+    <string name="history_clear_confirm_desc">This will remove all transfer records from your history. This cannot be undone.</string>
+    <string name="history_delete">Delete</string>
 
     <!-- Devices -->
-    <string name="device_not_paired">Not paired</string>
     <string name="device_unknown">Unknown device</string>
     <string name="device_send_file">Send File</string>
     <string name="device_forget">Forget</string>
@@ -117,4 +123,12 @@
     <string name="device_protocol">Protocol</string>
     <string name="device_version">Version</string>
     <string name="device_fingerprint">Fingerprint</string>
+
+    <!-- Discovery Guidance -->
+    <string name="discovery_help_hint">Can\'t find your PC?</string>
+    <string name="discovery_help_title">Connection Tips</string>
+    <string name="discovery_help_step1">Make sure DeX is open and active on your PC.</string>
+    <string name="discovery_help_step2">Check that both devices are on the same Wi-Fi network.</string>
+    <string name="discovery_help_step3">If using a public Wi-Fi (like a cafe), discovery might be blocked by the network.</string>
+    <string name="discovery_help_close">Got it</string>
 </resources>

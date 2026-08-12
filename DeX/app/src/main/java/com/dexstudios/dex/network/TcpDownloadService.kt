@@ -11,9 +11,15 @@ import androidx.work.WorkManager
 import kotlinx.serialization.json.Json
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 data class DownloadState(
     val fileName: String = "",
@@ -29,10 +35,14 @@ data class DownloadState(
 )
 
 object TcpDownloadService {
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private var resetJob: Job? = null
+
     private val _downloadState = MutableStateFlow(DownloadState())
     val downloadState = _downloadState.asStateFlow()
 
     fun resetDownloadState() {
+        resetJob?.cancel()
         _downloadState.value = DownloadState()
     }
 
@@ -40,6 +50,13 @@ object TcpDownloadService {
 
     fun updateState(state: DownloadState) {
         _downloadState.value = state
+        if (state.isSuccess) {
+            resetJob?.cancel()
+            resetJob = scope.launch {
+                delay(5.seconds)
+                resetDownloadState()
+            }
+        }
     }
 
     /**
@@ -51,7 +68,7 @@ object TcpDownloadService {
      * @param tcpPort the legacy raw-TCP pull server port used as fallback
      * @param fingerprint the fingerprint of the source device (for UI sorting/tracking)
      */
-    fun downloadBatch(context: Context, ip: String, httpsPort: Int, tcpPort: Int, files: List<PullFileDto>, destDirUri: Uri, fingerprint: String? = null) {
+    fun downloadBatch(context: Context, ip: String, httpsPort: Int, tcpPort: Int, files: List<PullFileDto>, destDirUri: Uri?, fingerprint: String? = null) {
         val totalBytes = files.sumOf { it.size }
         _downloadState.value = DownloadState(
             fileName = if (files.isNotEmpty()) files.first().fileName else "",
@@ -67,7 +84,7 @@ object TcpDownloadService {
             .putInt("port", tcpPort)
             .putString("files", Json.encodeToString(files))
             .putLong("totalBytes", totalBytes)
-            .putString("destDirUri", destDirUri.toString())
+            .putString("destDirUri", destDirUri?.toString())
             .putString("sourceFingerprint", fingerprint)
             .build()
 

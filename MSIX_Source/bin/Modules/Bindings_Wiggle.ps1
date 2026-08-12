@@ -1,4 +1,4 @@
-
+﻿
 # --- Wiggle-to-Open Feature ---
 try {
     Add-Type -TypeDefinition @"

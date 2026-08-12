@@ -13,9 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -43,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong
 class FileShareManager(
     private val deviceConfig: DeviceConfig,
     private val client: ClientEngine,
-    private val context: Context
+    private val context: Context,
 ) : KoinComponent {
     private val wsService: WebSocketClientService by inject()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -73,7 +75,7 @@ class FileShareManager(
         val seen = mutableSetOf<String>()
         val result = mutableListOf<SharedFolderDto>()
         val downloads = SafStorage.getDownloadsDexUri(context)
-        if (downloads != null && seen.add(downloads.toString())) {
+        if ((downloads != null && seen.add(downloads.toString()))) {
             result.add(SharedFolderDto(
                 id = "downloads",
                 name = SafStorage.sharedFolderName(context, downloads),
@@ -157,7 +159,7 @@ class FileShareManager(
             val bmp = context.contentResolver.openInputStream(e.uri.toUri())?.use {
                 BitmapFactory.decodeStream(it, null, opts)
             } ?: return null
-            val scaled = bmp.scale(THUMB_SIZE, THUMB_SIZE, true)
+            val scaled = bmp.scale(width = THUMB_SIZE, height = THUMB_SIZE, filter = true)
             if (bmp !== scaled) bmp.recycle()
             val out = ByteArrayOutputStream()
             scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, out)
@@ -242,7 +244,7 @@ class FileShareManager(
                         // Per-file retry: re-attempt a failed file once before reporting it.
                         var ok = false
                         var reason = "upload failed"
-                        for (attempt in 1..MAX_FILE_RETRIES) {
+                        for (i in 1..MAX_FILE_RETRIES) {
                             if (!scope.isActive || isStopped(requestId)) { cancelled = true; reason = "cancelled"; break }
                             val stream = runCatching { context.contentResolver.openInputStream(m.uri.toUri()) }.getOrNull()
                             if (stream == null) { reason = "unreadable"; break }
@@ -276,7 +278,7 @@ class FileShareManager(
                     }
                 }
             }
-            jobs.forEach { it.join() }
+            jobs.joinAll()
         }
 
         sendPullReply(requestId, saved.toList(), failed.entries.map { it.key to it.value }, cancelled)
@@ -357,7 +359,7 @@ class FileShareManager(
         // Open the SAF picker and wait for the user to pick (or cancel) a folder.
         val deferred = SharedFolderGrantState.register()
         SafStorage.promptForSharedFolderGrant(context)
-        val granted = withTimeoutOrNull(GRANT_WAIT_MS) { deferred.await() }
+        val granted = withTimeoutOrNull(GRANT_WAIT_MS.milliseconds) { deferred.await() }
         val name = granted?.name ?: ""
         val uri = granted?.uri ?: ""
         send(buildJsonObject {
@@ -401,7 +403,8 @@ object SharedFolderGrantState {
     /** The SAF picker returned; complete the pending request (null when cancelled). */
     fun complete(uri: Uri?, name: String) {
         synchronized(lock) {
-            pending?.complete(if (uri != null) SharedFolderDto(name = name, uri = uri.toString()) else null)
+            val dto = uri?.let { SharedFolderDto(name = name, uri = it.toString()) }
+            pending?.complete(dto)
             pending = null
         }
     }

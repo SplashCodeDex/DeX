@@ -75,7 +75,7 @@ class ShareTargetActivity : ComponentActivity() {
                     intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 } else {
                     @Suppress("DEPRECATION")
-                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
                 }
                 uri?.let { sharedUris.add(it) }
             }
@@ -84,7 +84,7 @@ class ShareTargetActivity : ComponentActivity() {
                     intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 } else {
                     @Suppress("DEPRECATION")
-                    intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
                 }
                 uris?.let { sharedUris.addAll(it) }
             }
@@ -305,22 +305,33 @@ class ShareTargetActivity : ComponentActivity() {
 
     private fun saveToSandbox() {
         val dirUri = SafStorage.getDownloadsDexUri(this)
-        if (dirUri == null) {
-            Toast.makeText(this, "Grant Downloads/DeX folder first", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 try {
+                    var successCount = 0
                     sharedUris.forEach { uri ->
                         val fileName = getFileName(uri)
                         contentResolver.openInputStream(uri)?.use { input ->
-                            SafStorage.writeFile(this@ShareTargetActivity, dirUri, fileName, input)
+                            val ok = if (dirUri != null) {
+                                SafStorage.writeFile(this@ShareTargetActivity, dirUri, fileName, input)
+                            } else {
+                                val mediaUri = SafStorage.createMediaStoreUri(this@ShareTargetActivity, fileName)
+                                if (mediaUri != null) {
+                                    contentResolver.openOutputStream(mediaUri)?.use { out -> input.copyTo(out) }
+                                    true
+                                } else false
+                            }
+                            if (ok) successCount++
                         }
                     }
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ShareTargetActivity, "Saved to DeX Sandbox", Toast.LENGTH_SHORT).show()
+                        if (successCount == sharedUris.size) {
+                            Toast.makeText(this@ShareTargetActivity, "Saved to DeX Sandbox", Toast.LENGTH_SHORT).show()
+                        } else if (successCount > 0) {
+                            Toast.makeText(this@ShareTargetActivity, "Saved $successCount of ${sharedUris.size} files", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@ShareTargetActivity, "Failed to save files. Grant folder access in Settings.", Toast.LENGTH_LONG).show()
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

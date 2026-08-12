@@ -1,4 +1,4 @@
-$script:txtSearch = $script:ce["txtSearch"]
+﻿$script:txtSearch = $script:ce["txtSearch"]
 if ($script:txtSearch) {
     # The placeholder text varies by mode ("Search transfers..." / "Search files...").
     function Test-SearchPlaceholder([string]$Text) {

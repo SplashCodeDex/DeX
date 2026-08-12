@@ -39,6 +39,17 @@ object TransferHistory {
         _items.value = read(context)
     }
 
+    fun delete(context: Context, id: String) {
+        val updated = _items.value.filter { it.id != id }
+        _items.value = updated
+        write(context, updated)
+    }
+
+    fun clear(context: Context) {
+        _items.value = emptyList()
+        write(context, emptyList())
+    }
+
     fun log(context: Context, name: String, size: Long, direction: String, uri: String? = null) {
         val record = TransferRecord(
             id = UUID.randomUUID().toString(),

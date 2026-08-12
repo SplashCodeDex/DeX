@@ -7,4 +7,5 @@ import androidx.compose.runtime.setValue
 object TopAppBarState {
     var isProfileExpanded by mutableStateOf(false)
     var isSearchExpanded by mutableStateOf(false)
+    var isOnboardingVisible by mutableStateOf(false)
 }

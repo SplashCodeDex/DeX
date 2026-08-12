@@ -30,15 +30,34 @@ if ($btnExit) {
     $txtExitBtn = $script:wpfWindow.FindName("txtExitBtn")
     $btnProfileBottom = $script:wpfWindow.FindName("btnProfileBottom")
     $isShift = [System.Windows.Input.Keyboard]::Modifiers -match 'Shift'
+    $hasActivePull = ($null -ne $script:activePulls -and $script:activePulls.Count -gt 0)
+    $hasActiveMirror = ($null -ne $script:mirrorProc -and -not $script:mirrorProc.HasExited)
     
     if ($isShift) {
         # Proceed to exit immediately
     } elseif ($txtExitBtn.Text -eq "Exit Engine") {
+        # Return/show the UI showing active transfer progress if a transfer or mirror is active
+        if ($hasActivePull -or $hasActiveMirror) {
+            if (-not $script:wpfWindow.IsVisible) { $script:wpfWindow.Show() }
+            $script:wpfWindow.Activate()
+            $fileExplorer = $script:wpfWindow.FindName("FileExplorer")
+            if ($null -ne $fileExplorer) { $fileExplorer.Visibility = 'Visible' }
+            if ($hasActivePull) {
+                Refresh-PullDock
+                $dock = $script:wpfWindow.FindName("dockPullProgress")
+                if ($null -ne $dock) {
+                    $dock.Visibility = 'Visible'
+                    $dock.Opacity = 1.0
+                }
+            }
+        }
+
         $btnExit = $script:wpfWindow.FindName("btnExit")
         $parentGrid = $btnExit.Parent
         $parentGrid.Width = $parentGrid.ActualWidth # Prevent layout popping
         
-        $txtExitBtn.Text = "Cancel / Shift+Click Exit"
+        $txtExitBtn.Text = if ($hasActivePull -or $hasActiveMirror) { "Transfer Active! Click to Force Exit" } else { "Cancel / Shift+Click Exit" }
+
         
         $ease = New-Object System.Windows.Media.Animation.CubicEase; $ease.EasingMode = 'EaseOut'
         

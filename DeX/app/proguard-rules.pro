@@ -17,41 +17,34 @@
 }
 
 # -- Ktor (CIO engine + ContentNegotiation) --
--keep class io.ktor.** { *; }
+# Broad keep rules for Ktor are usually not needed as it ships with consumer rules.
+# Only keep specific things if reflection-based discovery is used and not covered.
 -dontwarn io.ktor.**
 
 # -- OkHttp / Okio (WebSocket) --
--keep class okhttp3.** { *; }
--keep class okio.** { *; }
 -dontwarn okhttp3.**
 -dontwarn okio.**
 
 # -- Cronet (native library) --
--keep class org.chromium.net.** { *; }
 -dontwarn org.chromium.**
 
 # -- Koin (DI) --
--keep class org.koin.** { *; }
+# Koin 3+ usually doesn't need broad keep rules if using DSL.
 
 # -- Timber --
 -dontwarn timber.log.**
 
-# -- Coil (image loading) --
--keep class coil3.** { *; }
-
 # -- Compose --
--keep class androidx.compose.** { *; }
+# Compose is designed to work with R8; broad keep rules are not needed.
 
 # -- Google Play Services (Sign-In, QR scanner) --
--keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
 
 # -- ML Kit (QR barcode scanner) --
--keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
 
 # -- Backdrop (glass library) --
--keep class com.kyant.backdrop.** { *; }
+-keep class com.kyant.backdrop.**
 
 # -- App-specific: keep data classes and DTOs that are JSON-serialized --
 -keep class com.dexstudios.dex.network.**Dto { *; }

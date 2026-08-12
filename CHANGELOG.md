@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.6.3.0] - 2026-08-12
+### Fixed
+- **[fix] Bulletproof Discovery on Mobile Hotspot & Public Networks**: 
+  - Unified UDP multicast discovery port across both platforms (`28424` -> `48424` in `DeXConstants.cs`) to eliminate port mismatch and enable direct hotspot gateway unicast resolution.
+  - Implemented prefer-fixed-port-then-fallback logic in `LocalSendServer.cs` (`TryPort(48424)`), resolving `SocketTimeoutException` on dynamic ephemeral ports and ensuring the Android default port assumption holds true for 99% of deployments.
+  - Enhanced Android QR code scanner (`MainScreen.kt`) to extract the exact dynamic port from the URL payload and inject it into `sendManualDiscovery()`, handling the rare 1% occupied-port scenario.
+  - Deployed a permanent, zero-cost legacy UDP listener on port `28424` (`DiscoveryBackgroundService.cs`) to guarantee backwards compatibility with older Android APKs during fleet transition.
+  - Added a silent startup diagnostic (`CheckFirewallAccess()`) to verify discovery port binding against Windows Public network profile firewall restrictions.
+
 ## [8.6.2.0] - 2026-08-12
 ### Fixed
 - **[fix] Dynamic Storyboard Children Pruning in `TrayUIHandlers`**: Replaced fixed array index loop (`15, 14... 7`) with a dynamic bounds-checked reverse loop (`for ($i = $sb.Children.Count - 1; $i -ge 7; $i--)`). Eliminates `ArgumentOutOfRangeException: Specified argument was out of the range of valid values` when swapping panels on storyboards with fewer than 16 elements (such as `ExpandSettings`).

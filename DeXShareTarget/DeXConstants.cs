@@ -16,12 +16,12 @@ namespace DeXShareTarget
     public static int QuicPort { get; set; } = 48423;
 
     /// <summary>Unencrypted localhost-only control API port used by the PowerShell GUI.</summary>
-    public const int LocalApiPort = 48425;
+    public const int LocalApiPort = 28425;
 
     /// <summary>Plain-TCP fallback transfer port (hosted file pulls).</summary>
     public static int TcpFallbackPort { get; set; } = 48426;
 
-    /// <summary>Fixed UDP multicast discovery port (must match both sides).</summary>
+    /// <summary>Fixed UDP multicast discovery port (must match Android's DeXPorts.HTTPS = 48424).</summary>
     public const int DiscoveryPort = 48424;
 
     /// <summary>Localhost base URL for the control API.</summary>

@@ -13,6 +13,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -44,7 +45,7 @@ class PunchSession(
     private val deviceConfig: DeviceConfig,
     private val wsService: WebSocketClientService,
     private val notificationHelper: NotificationHelper,
-    private val context: Context
+    private val context: Context,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverSocket: ServerSocket? = null
@@ -76,13 +77,13 @@ class PunchSession(
             // Register our public endpoint and refresh before the PC's 5-minute TTL expires
             while (isActive) {
                 registerEndpoint()
-                delay(120_000)
+                delay(120_000.milliseconds)
             }
         }
         scope.launch {
             // Prune stale resume sessions (dropped transfers we gave up waiting for)
             while (isActive) {
-                delay(60_000)
+                delay(60_000.milliseconds)
                 PunchResumeState.prune()
             }
         }
@@ -136,20 +137,20 @@ class PunchSession(
         }
     }
 
-    private suspend fun handleIncoming(socket: Socket) {
+    private suspend fun handleIncoming(socket: Socket) = withContext(Dispatchers.IO) {
         try {
             val input = socket.getInputStream()
             val output = socket.getOutputStream()
 
-            val manifestLine = withTimeoutOrNull(10_000) { withContext(Dispatchers.IO) { readLine(input) } }
-                ?: return closeQuietly(socket)
+            val manifestLine = withTimeoutOrNull(10_000.milliseconds) { readLine(input) }
+                ?: return@withContext closeQuietly(socket)
             val manifest = json.decodeFromString<PunchManifestDto>(manifestLine)
 
             // Same-email only: the sender's identity must match ours
-            if (manifest.identityHash.isBlank() || manifest.identityHash != deviceConfig.identityHash) {
+            if ((manifest.identityHash.isBlank() || manifest.identityHash != deviceConfig.identityHash)) {
                 writeLine(output, """{"type":"reject","reason":"identity"}""")
                 Timber.w("Rejected punch transfer from non-same-email device ${manifest.alias}")
-                return closeQuietly(socket)
+                return@withContext closeQuietly(socket)
             }
 
             val sessionId = manifest.sessionId
@@ -162,11 +163,11 @@ class PunchSession(
                 val notificationId = sessionId.hashCode()
                 notificationHelper.showIncomingFileNotification(sessionId, notificationId, manifest.files.size)
 
-                val accepted = withTimeoutOrNull(60_000) { deferred.await() } == true
+                val accepted = withTimeoutOrNull(60_000.milliseconds) { deferred.await() } == true
                 TransferState.pendingPrompts.remove(sessionId)
                 if (!accepted) {
                     writeLine(output, """{"type":"reject","reason":"declined"}""")
-                    return closeQuietly(socket)
+                    return@withContext closeQuietly(socket)
                 }
                 PunchResumeState.markAccepted(sessionId)
             }
@@ -174,25 +175,15 @@ class PunchSession(
             // Tell the sender how many bytes we already have per file, so it resumes — not restarts
             val resumeInfo = PunchResumeInfoDto(
                 sessionId = sessionId,
-                files = manifest.files.associate { file -> file.id to (resumeMap[file.id]?.received ?: 0L) }
+                files = manifest.files.associateBy({ it.id }, { resumeMap[it.id]?.received ?: 0L })
             )
             writeLine(output, json.encodeToString(resumeInfo))
 
-            var dirUri = SafStorage.getDownloadsDexUri(context)
-            if (dirUri == null) {
-                SafStorage.promptForDownloadsDexGrant(context)
-                val deadline = System.currentTimeMillis() + 180_000
-                while (System.currentTimeMillis() < deadline) {
-                    delay(500)
-                    dirUri = SafStorage.getDownloadsDexUri(context)
-                    if (dirUri != null) break
-                }
-                if (dirUri == null) return closeQuietly(socket)
-            }
+            val dirUri = SafStorage.getDownloadsDexUri(context)
 
             var doneFiles = manifest.files.count { file -> (resumeMap[file.id]?.received ?: 0L) >= file.size }
             for (file in manifest.files) {
-                val headerLine = withTimeoutOrNull(30_000) { withContext(Dispatchers.IO) { readLine(input) } }
+                val headerLine = withTimeoutOrNull(30_000.milliseconds) { readLine(input) }
                     ?: break
                 val header = json.decodeFromString<PunchFileHeaderDto>(headerLine)
 
@@ -203,10 +194,14 @@ class PunchSession(
                 }
 
                 // Folder bundles: recreate the relative path structure under Downloads/DeX
-                val docUri = existing?.docUri ?: if (!file.relativePath.isNullOrBlank()) {
-                    SafStorage.createDocumentWithPath(context, dirUri, file.relativePath)
+                val docUri = existing?.docUri ?: if (dirUri != null) {
+                    if (!file.relativePath.isNullOrBlank()) {
+                        SafStorage.createDocumentWithPath(context, dirUri, file.relativePath)
+                    } else {
+                        SafStorage.createDocumentUri(context, dirUri, file.fileName)
+                    }
                 } else {
-                    SafStorage.createDocumentUri(context, dirUri, file.fileName)
+                    SafStorage.createMediaStoreUri(context, file.fileName, file.relativePath)
                 } ?: continue
                 val out = context.contentResolver.openOutputStream(docUri, "wa")
                     ?: continue
@@ -245,7 +240,7 @@ class PunchSession(
             }
 
             // Await the sender's completion marker, then clear the resume state
-            withTimeoutOrNull(10_000) { withContext(Dispatchers.IO) { readLine(input) } }
+            withTimeoutOrNull(10_000.milliseconds) { readLine(input) }
             PunchResumeState.complete(sessionId)
             TcpDownloadService.updateState(DownloadState(fileName = "$doneFiles of ${manifest.files.size} files", progress = 1f, isSuccess = true, doneFiles = doneFiles, totalFiles = manifest.files.size))
             Timber.i("Punch transfer received: $doneFiles files from ${manifest.alias}")
@@ -294,7 +289,7 @@ class PunchSession(
         var lastError: String? = null
         repeat(maxTransferAttempts) { attempt ->
             if (isCancelled()) return@withContext "Transfer cancelled"
-            if (attempt > 0) delay(1500)
+            if (attempt > 0) delay(1500.milliseconds)
 
             registerEndpoint()
 
@@ -307,7 +302,7 @@ class PunchSession(
                     putJsonObject("data") { put("targetFingerprint", targetFingerprint) }
                 }.toString()
             )
-            val info = withTimeoutOrNull(15_000) { deferred.await() }
+            val info = withTimeoutOrNull(15_000.milliseconds) { deferred.await() }
             PunchState.pendingEndpointInfo.value = null
             if (info == null || info.ip.isBlank() || info.port <= 0) {
                 return@withContext "The target device is offline or not registered"
@@ -322,8 +317,7 @@ class PunchSession(
 
             // 3. Transfer with resume support; a mid-transfer drop retries the whole session
             try {
-                val outcome = runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress)
-                when (outcome) {
+                when (runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress)) {
                     TransferOutcome.SUCCESS -> return@withContext null
                     TransferOutcome.REJECTED -> return@withContext "The recipient declined the transfer"
                     TransferOutcome.DROP -> {
@@ -331,8 +325,8 @@ class PunchSession(
                         Timber.i("Punch connection dropped mid-transfer; retrying (attempt ${attempt + 1}/$maxTransferAttempts)")
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Punch transfer failed; retrying")
+            } catch (_: Exception) {
+                Timber.e("Punch transfer failed; retrying")
                 lastError = "Connection lost — resuming transfer"
             } finally {
                 closeQuietly(socket)
@@ -351,7 +345,7 @@ class PunchSession(
         totalSize: Long,
         isCancelled: () -> Boolean,
         onProgress: suspend (Float, String) -> Unit
-    ): TransferOutcome {
+    ): TransferOutcome = withContext(Dispatchers.IO) {
         val output = socket.getOutputStream()
         val input = socket.getInputStream()
 
@@ -365,9 +359,9 @@ class PunchSession(
         )
         writeLine(output, json.encodeToString(manifest))
 
-        val reply = withTimeoutOrNull(60_000) { withContext(Dispatchers.IO) { readLine(input) } }
-            ?: return TransferOutcome.DROP
-        if (reply.contains("\"reject\"")) return TransferOutcome.REJECTED
+        val reply = withTimeoutOrNull(60_000.milliseconds) { readLine(input) }
+            ?: return@withContext TransferOutcome.DROP
+        if (reply.contains("\"reject\"")) return@withContext TransferOutcome.REJECTED
 
         // The receiver tells us how many bytes it already has per file
         val resumeInfo = try {
@@ -381,7 +375,7 @@ class PunchSession(
         var sentNew = 0L
 
         for ((index, file) in files.withIndex()) {
-            if (isCancelled()) return TransferOutcome.DROP
+            if (isCancelled()) return@withContext TransferOutcome.DROP
 
             val resume = minOf(resumeInfo.files[file.id] ?: 0L, file.size)
             writeLine(output, json.encodeToString(PunchFileHeaderDto(fileId = file.id, size = file.size, offset = resume)))
@@ -389,7 +383,7 @@ class PunchSession(
 
             val remaining = file.size - resume
             val streamed = if (resume > 0) {
-                val afd = context.contentResolver.openAssetFileDescriptor(uris[index], "r") ?: return TransferOutcome.DROP
+                val afd = context.contentResolver.openAssetFileDescriptor(uris[index], "r") ?: return@withContext TransferOutcome.DROP
                 afd.use { descriptor ->
                     val stream = descriptor.createInputStream()
                     stream.use { s ->
@@ -407,7 +401,7 @@ class PunchSession(
                     }
                 }
             } else {
-                val stream = context.contentResolver.openInputStream(uris[index]) ?: return TransferOutcome.DROP
+                val stream = context.contentResolver.openInputStream(uris[index]) ?: return@withContext TransferOutcome.DROP
                 stream.use { s ->
                     streamBytes(s, output, remaining) { bytes ->
                         sentNew += bytes
@@ -415,27 +409,27 @@ class PunchSession(
                     }
                 }
             }
-            if (streamed != true) return TransferOutcome.DROP
+            if (!streamed) return@withContext TransferOutcome.DROP
             TransferHistory.log(context, file.fileName, file.size, "sent", uris[index].toString())
         }
 
         writeLine(output, json.encodeToString(PunchDoneDto(sessionId = sessionId)))
-        return TransferOutcome.SUCCESS
+        TransferOutcome.SUCCESS
     }
 
     /** Copies [length] bytes from [input] to [output], reporting the delta per chunk. */
-    private suspend fun streamBytes(input: InputStream, output: OutputStream, length: Long, onDelta: suspend (Long) -> Unit): Boolean {
+    private suspend fun streamBytes(input: InputStream, output: OutputStream, length: Long, onDelta: suspend (Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
         val buffer = ByteArray(64 * 1024)
         var sent = 0L
         while (sent < length) {
             val toRead = minOf(buffer.size.toLong(), length - sent).toInt()
             val n = input.read(buffer, 0, toRead)
-            if (n <= 0) return false
+            if (n <= 0) return@withContext false
             output.write(buffer, 0, n)
             sent += n
             onDelta(n.toLong())
         }
-        return true
+        true
     }
 
     /**
@@ -471,7 +465,7 @@ class PunchSession(
             } catch (e: Exception) {
                 if (!scope.isActive) return@withContext null
             }
-            delay(250)
+            delay(250.milliseconds)
         }
         Timber.w("Punch failed for $ip:$port")
         null

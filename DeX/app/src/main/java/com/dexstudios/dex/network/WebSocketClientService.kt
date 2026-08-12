@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -23,7 +25,7 @@ private const val RSSI_INVALID = -127
  * Returns null when there is nothing to report (no battery, no wifi).
  */
 internal fun buildTelemetryPayload(battery: Int, ssid: String?, rssi: Int): String? {
-    if (battery < 0 && ssid == null && rssi == RSSI_INVALID) return null
+    if ((battery < 0 && ssid == null && rssi == RSSI_INVALID)) return null
     return buildJsonObject {
         put("type", "telemetry")
         putJsonObject("data") {
@@ -38,7 +40,7 @@ class WebSocketClientService(
     private val deviceConfig: DeviceConfig,
     private val discoveryEngine: DiscoveryEngine,
     private val messageHandler: MessageHandler,
-    private val context: Context
+    private val context: Context,
 ) {
     // The PC serves wss:// with an ephemeral self-signed certificate, so we trust all certs on the LAN
     @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
@@ -121,7 +123,7 @@ class WebSocketClientService(
         serviceScope.launch {
             // Keep the same-email roster fresh so devices that come online later show up
             while (isActive) {
-                delay(60_000)
+                delay(1.minutes)
                 if (isRunning && activeSocket != null) {
                     sendMessage("""{"type":"device-roster","data":{}}""")
                     sendTelemetry()
@@ -239,7 +241,7 @@ class WebSocketClientService(
                 _connectedFingerprint = pcFingerprint
                 // Same-email trust is permanent, not session-scoped: remember the device so
                 // future transfers and UI trust badges work without another handshake
-                if (token == googleSub || (token == identityHash && !identityHash.isNullOrEmpty())) {
+                if (token == googleSub || (token == identityHash && identityHash.isNotEmpty())) {
                     DeviceManager.savePairedFingerprint(pcFingerprint)
                     DeviceManager.savePairedToken(pcFingerprint, token)
                 }
@@ -289,7 +291,7 @@ class WebSocketClientService(
     private fun scheduleReconnect() {
         // Simple backoff before trying again; the collectLatest block also retries on new discovery
         serviceScope.launch {
-            delay(5000)
+            delay(5.seconds)
             if (isRunning && activeSocket == null) {
                 findTargetPc(discoveryEngine.devices.value.values)?.let { connectToPC(it) }
             }
@@ -337,13 +339,13 @@ class WebSocketClientService(
         if (activeSocket != null) {
             activeSocket?.close(1000, "Switching to tapped PC")
         }
-        connectToPC(targetPc, onConnected = {
+        connectToPC(targetPc) {
             finish(sendPairRequest(fp))
-        })
+        }
         // If the connect never opens within the cap, report failure so the UI can reset
         // its pairing state instead of spinning forever.
         serviceScope.launch {
-            delay(6000)
+            delay(6.seconds)
             finish(false)
         }
     }

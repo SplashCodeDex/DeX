@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -50,6 +52,8 @@ import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import org.koin.compose.koinInject
 
 private var isProfileExpanded: Boolean
@@ -68,8 +72,9 @@ fun FloatingTopAppBar(
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    val density = LocalDensity.current
+    val containerSize = LocalWindowInfo.current.containerSize
+    val screenWidth = with(density) { containerSize.width.toDp() }
     val expandedWidth = screenWidth - 32.dp
 
     // Dynamic Island bouncy expansion (Avatar)
@@ -110,7 +115,7 @@ fun FloatingTopAppBar(
     LaunchedEffect(profile.email) {
         if (lastProfileEmail.isBlank() && profile.email.isNotBlank()) {
             isProfileExpanded = true
-            delay(3000)
+            delay(3.seconds)
             isProfileExpanded = false
         }
         lastProfileEmail = profile.email
@@ -118,7 +123,7 @@ fun FloatingTopAppBar(
 
     LaunchedEffect(isSearchExpanded) {
         if (isSearchExpanded) {
-            delay(100) // Wait for animation to start
+            delay(100.milliseconds) // Wait for animation to start
             searchFocusRequester.requestFocus()
         } else {
             keyboardController?.hide()

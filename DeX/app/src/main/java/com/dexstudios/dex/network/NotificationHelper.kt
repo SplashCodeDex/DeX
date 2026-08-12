@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.dexstudios.dex.R
 
@@ -69,17 +68,6 @@ class NotificationHelper(private val context: Context) {
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(notificationId, notification)
-    }
-
-    fun showFileReceivedNotification(originalFileName: String) {
-        val successNotification = NotificationCompat.Builder(context, channelId)
-            .setContentTitle(context.getString(R.string.notif_file_received_title))
-            .setContentText(context.getString(R.string.notif_file_received_desc, originalFileName))
-            .setSmallIcon(R.drawable.ic_stat_dex)
-            .setAutoCancel(true)
-            .build()
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(originalFileName.hashCode(), successNotification)
     }
 
     fun showPairingRequestNotification(alias: String) {

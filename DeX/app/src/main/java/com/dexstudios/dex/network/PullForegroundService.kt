@@ -30,7 +30,7 @@ class PullForegroundService : Service() {
     }
 
     private fun startForegroundNotification(requestId: String, count: Int) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, "DeX File Pull", NotificationManager.IMPORTANCE_LOW)
         )

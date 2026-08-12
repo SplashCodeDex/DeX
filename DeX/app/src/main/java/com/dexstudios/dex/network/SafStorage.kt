@@ -16,6 +16,32 @@ object SafStorage {
 
     // --- Downloads/DeX folder grant (incoming transfers) ---
 
+    fun createMediaStoreUri(context: Context, fileName: String, relativePath: String? = null): Uri? {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return null
+
+        val resolver = context.contentResolver
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+
+            val base = "Download/DeX"
+            val subPath = if (!relativePath.isNullOrBlank()) {
+                val parts = relativePath.trim('/').split('/').filter { it.isNotBlank() && it != ".." }
+                if (parts.size > 1) {
+                    "/" + parts.dropLast(1).joinToString("/")
+                } else ""
+            } else ""
+
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, base + subPath)
+        }
+
+        return try {
+            resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun getDownloadsDexUri(context: Context): Uri? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val s = prefs.getString(KEY_DOWNLOADS_DEX_URI, null) ?: return null

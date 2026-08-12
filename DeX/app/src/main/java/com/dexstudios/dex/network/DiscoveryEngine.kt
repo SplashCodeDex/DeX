@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -28,27 +29,27 @@ class DiscoveryEngine(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var cleanupJob: Job? = null
     private var identityWatchJob: Job? = null
-    
+
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
 
     // Side-map: always holds the latest seen payload + timestamp per fingerprint so the
     // TTL cleanup stays accurate even when we skip a StateFlow emission for duplicate payloads.
     private val seenDevices = ConcurrentHashMap<String, DiscoveredDevice>()
-    
+
     private var nsdManagerHelper: NsdManagerHelper? = null
     private var udpManager: UdpMulticastManager? = null
 
     private fun getDeviceName(): String {
         return runCatching {
-            android.provider.Settings.Global.getString(context.contentResolver, android.provider.Settings.Global.DEVICE_NAME) 
+            android.provider.Settings.Global.getString(context.contentResolver, android.provider.Settings.Global.DEVICE_NAME)
                 ?: android.provider.Settings.Secure.getString(context.contentResolver, "bluetooth_name")
         }.getOrNull() ?: android.os.Build.MODEL ?: "Android Device"
     }
 
     private val localInfo: RegisterDto
         get() = RegisterDto(
-            alias = getDeviceName(),
+            alias = deviceConfig.alias.ifBlank { getDeviceName() },
             version = "2.0",
             deviceModel = android.os.Build.MODEL ?: "Android",
             deviceType = "mobile",
@@ -68,7 +69,7 @@ class DiscoveryEngine(
 
         cleanupJob = scope.launch {
             while (isActive) {
-                delay(10000)
+                delay(10.seconds)
                 val now = System.currentTimeMillis()
                 _devices.update { map ->
                     map.filterKeys { fp ->
@@ -82,22 +83,18 @@ class DiscoveryEngine(
             }
         }
 
-        // Re-advertise whenever the trusted identity changes (Google sign-in/sign-out)
-        // so the LAN advertisement always carries the current identityHash/googleSub.
-        // Only restart when the pair actually differs from what the managers already
-        // advertise: DataStore's init writes email then googleSub separately, which fired
-        // this twice on every cold start — each restart tears down and re-binds the UDP
-        // multicast socket, and that churn could leave the phone's listener dead so the
-        // PC only sees it on mDNS cadence (15-31s) and it vanishes from the GUI's 10s
-        // freshness window.
+        // Re-advertise whenever the trusted identity or alias changes
+        // so the LAN advertisement always carries the current identityHash/googleSub/alias.
         identityWatchJob = scope.launch {
-            var lastAdvertised = deviceConfig.email to deviceConfig.googleSub
-            combine(deviceConfig.emailFlow, deviceConfig.googleSubFlow) { email, sub -> email to sub }
+            var lastAdvertised = Triple(deviceConfig.email, deviceConfig.googleSub, deviceConfig.alias)
+            combine(deviceConfig.emailFlow, deviceConfig.googleSubFlow, deviceConfig.aliasFlow) { email, sub, alias ->
+                Triple(email, sub, alias)
+            }
                 .drop(1)
-                .collectLatest { pair ->
-                    if (pair != lastAdvertised) {
-                        lastAdvertised = pair
-                        Timber.i("Trusted identity changed; re-advertising NSD + UDP")
+                .collectLatest { triple ->
+                    if (triple != lastAdvertised) {
+                        lastAdvertised = triple
+                        Timber.i("Trusted identity or alias changed; re-advertising NSD + UDP")
                         nsdManagerHelper?.stop()
                         nsdManagerHelper = NsdManagerHelper(context, localInfo) { device -> addDevice(device) }.apply { start() }
                         udpManager?.stop()
@@ -134,7 +131,7 @@ class DiscoveryEngine(
         identityWatchJob?.cancel()
     }
 
-    fun sendManualDiscovery(ip: String) {
+    fun sendManualDiscovery(ip: String, port: Int = DeXPorts.HTTPS) {
         scope.launch {
             runCatching {
                 val replyJson = JSONObject().apply {
@@ -153,7 +150,7 @@ class DiscoveryEngine(
                 }
                 val data = replyJson.toString().toByteArray(Charsets.UTF_8)
                 DatagramSocket().use { ds ->
-                    ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), DeXPorts.HTTPS))
+                    ds.send(DatagramPacket(data, data.size, InetAddress.getByName(ip), port))
                 }
             }
         }

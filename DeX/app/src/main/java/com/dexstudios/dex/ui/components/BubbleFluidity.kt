@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
  * When touched, the component scales down (squishes).
  * When swiped/dragged, the component slightly pulls towards the finger.
  * When released, it bounces back with high elasticity.
- * 
+ *
  * @param targetScale The scale to squish down to on press.
  * @param pullFactor How much the bubble pulls towards the finger (0.0 to 1.0).
  */
@@ -29,9 +29,9 @@ fun Modifier.bubbleFluidity(
     val scale = remember { Animatable(1f) }
     val translationX = remember { Animatable(0f) }
     val translationY = remember { Animatable(0f) }
-    
+
     val coroutineScope = rememberCoroutineScope()
-    
+
     this
         .graphicsLayer {
             scaleX = scale.value
@@ -41,8 +41,8 @@ fun Modifier.bubbleFluidity(
         }
         .pointerInput(Unit) {
             awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false)
-                
+                awaitFirstDown(requireUnconsumed = false)
+
                 // On Press: Shrink and squish (Liquid compression)
                 coroutineScope.launch {
                     scale.animateTo(
@@ -53,17 +53,17 @@ fun Modifier.bubbleFluidity(
                         )
                     )
                 }
-                
+
                 // Track drag/swipe without consuming so clickable still works
                 var pointerEvent = awaitPointerEvent()
                 while (pointerEvent.changes.any { it.pressed }) {
                     val change = pointerEvent.changes.first()
                     val position = change.position
-                    
+
                     // Calculate offset from center of the component
                     val offsetX = position.x - size.width / 2f
                     val offsetY = position.y - size.height / 2f
-                    
+
                     // Pull effect
                     coroutineScope.launch {
                         translationX.animateTo(
@@ -75,10 +75,10 @@ fun Modifier.bubbleFluidity(
                             animationSpec = spring(stiffness = Spring.StiffnessMedium)
                         )
                     }
-                    
+
                     pointerEvent = awaitPointerEvent()
                 }
-                
+
                 // On Release: Elastic bounce back
                 coroutineScope.launch {
                     launch {

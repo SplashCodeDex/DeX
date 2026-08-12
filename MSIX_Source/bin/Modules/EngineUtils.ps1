@@ -820,3 +820,37 @@ function global:Write-Trace($msg) {    # Rotate: keep the log forensically usefu
     Out-File -FilePath $tracePath -InputObject "[$(Get-Date -Format 'HH:mm:ss.fff')] $msg" -Append
 }
 
+function Save-EngineState {
+    try {
+        if (-not (Test-Path "HKCU:\Software\DeX")) {
+            New-Item -Path "HKCU:\Software\DeX" -Force | Out-Null
+        }
+        if ($script:currentDirPath) {
+            Set-ItemProperty -Path "HKCU:\Software\DeX" -Name "LastFolder" -Value $script:currentDirPath -ErrorAction SilentlyContinue
+        }
+        if ($null -ne $script:wpfWindow) {
+            Set-ItemProperty -Path "HKCU:\Software\DeX" -Name "WindowLeft" -Value ([int]$script:wpfWindow.Left) -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\DeX" -Name "WindowTop" -Value ([int]$script:wpfWindow.Top) -ErrorAction SilentlyContinue
+        }
+    } catch {}
+}
+
+function Restore-EngineState {
+    try {
+        $reg = Get-ItemProperty "HKCU:\Software\DeX" -ErrorAction SilentlyContinue
+        if ($null -ne $reg) {
+            if ($reg.LastFolder -and (Test-Path $reg.LastFolder)) {
+                $script:currentDirPath = $reg.LastFolder
+            }
+            if ($null -ne $reg.WindowLeft -and $null -ne $reg.WindowTop -and $null -ne $script:wpfWindow) {
+                $screen = [System.Windows.Forms.Screen]::FromPoint([System.Drawing.Point]::new([int]$reg.WindowLeft, [int]$reg.WindowTop))
+                if ($null -ne $screen) {
+                    $script:wpfWindow.Left = [double]$reg.WindowLeft
+                    $script:wpfWindow.Top = [double]$reg.WindowTop
+                }
+            }
+        }
+    } catch {}
+}
+
+

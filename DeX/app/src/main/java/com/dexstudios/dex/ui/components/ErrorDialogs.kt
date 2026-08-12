@@ -2,9 +2,11 @@ package com.dexstudios.dex.ui.components
 
 import android.os.SystemClock
 import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,11 +43,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
+import com.dexstudios.dex.network.DeviceConfig
+import com.dexstudios.dex.network.GoogleSignInManager
+import com.dexstudios.dex.network.PermissionManager
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 
 @Composable
 fun NetworkErrorDialog(
@@ -96,12 +103,16 @@ fun NetworkErrorDialog(
 
 @Composable
 fun OnboardingDialog(onDismiss: () -> Unit) {
-    var currentStep by remember { mutableIntStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val deviceConfig: DeviceConfig = koinInject()
+    val googleProfile by deviceConfig.googleProfileFlow.collectAsStateWithLifecycle()
 
     // State to trigger re-checks when returning to app
     var refreshTrigger by remember { mutableIntStateOf(0) }
+
+    val nearbyPermanentlyDenied by PermissionManager.nearbyPermanentlyDenied.collectAsStateWithLifecycle()
+    val notificationsPermanentlyDenied by PermissionManager.notificationsPermanentlyDenied.collectAsStateWithLifecycle()
 
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -128,14 +139,39 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
         } else true
     }
 
-    val folderGranted = remember(refreshTrigger) {
-        com.dexstudios.dex.network.SafStorage.getDownloadsDexUri(context) != null
+    LaunchedEffect(nearbyGranted) {
+        if (nearbyGranted) PermissionManager.setNearbyPermanentlyDenied(false)
+    }
+
+    LaunchedEffect(notificationsGranted) {
+        if (notificationsGranted) PermissionManager.setNotificationsPermanentlyDenied(false)
+    }
+
+    // Determine the steps sequence
+    val steps = remember(nearbyGranted, notificationsGranted, googleProfile.email) {
+        mutableListOf<Int>().apply {
+            add(0) // Welcome
+            if (!nearbyGranted) add(1) // Connectivity
+            if (!notificationsGranted) add(2) // Notifications
+            if (googleProfile.email.isBlank()) add(3) // Identity
+            add(4) // Completion
+        }.toList()
+    }
+
+    var currentStepIdx by remember { mutableIntStateOf(0) }
+    val currentStep = steps.getOrElse(currentStepIdx) { 4 }
+
+    var visible by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        visible = true
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
+            .background(Color.Black.copy(alpha = 0.6f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -143,43 +179,75 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        DeXPanel(
-            shape = RoundedCornerShape(32.dp),
-            modifier = Modifier
-                .widthIn(max = 400.dp)
-                .fillMaxWidth(0.9f)
-                .bubbleFluidity(targetScale = 0.98f)
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(500)) + scaleIn(tween(500, easing = BackOut), initialScale = 0.9f),
+            exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.9f)
         ) {
-            AnimatedContent(
-                targetState = currentStep,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
-                    } else {
-                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(slideOutHorizontally { width -> width } + fadeOut())
-                    }.using(SizeTransform(clip = false))
-                },
-                label = "onboarding_steps"
-            ) { step ->
+            DeXPanel(
+                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth(0.9f)
+                    .bubbleFluidity(targetScale = 0.98f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consume clicks on card
+                    )
+            ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    when (step) {
-                        0 -> OnboardingWelcome { currentStep++ }
-                        1 -> OnboardingConnectivity(nearbyGranted) {
-                            if (nearbyGranted) currentStep++
-                            else com.dexstudios.dex.network.PermissionManager.triggerNearby()
+                    Box(modifier = Modifier.weight(1f, fill = false)) {
+                        AnimatedContent(
+                            targetState = currentStep,
+                            transitionSpec = {
+                                if (targetState > initialState) {
+                                    (slideInHorizontally { width -> width } + fadeIn()).togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
+                                } else {
+                                    (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(slideOutHorizontally { width -> width } + fadeOut())
+                                }.using(SizeTransform(clip = false))
+                            },
+                            label = "onboarding_steps"
+                        ) { step ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                when (step) {
+                                    0 -> OnboardingWelcome { currentStepIdx++ }
+                                    1 -> OnboardingConnectivity(
+                                        isGranted = nearbyGranted,
+                                        isPermanentlyDenied = nearbyPermanentlyDenied
+                                    ) {
+                                        if (nearbyGranted) currentStepIdx++
+                                        else PermissionManager.triggerNearby()
+                                    }
+                                    2 -> OnboardingNotifications(
+                                        isGranted = notificationsGranted,
+                                        isPermanentlyDenied = notificationsPermanentlyDenied
+                                    ) {
+                                        if (notificationsGranted) currentStepIdx++
+                                        else PermissionManager.triggerNotifications()
+                                    }
+                                    3 -> OnboardingIdentity(googleProfile.email) { currentStepIdx++ }
+                                    4 -> OnboardingCompletion {
+                                        visible = false
+                                        scope.launch {
+                                            delay(300.milliseconds)
+                                            onDismiss()
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        2 -> OnboardingNotifications(notificationsGranted) {
-                            if (notificationsGranted) currentStep++
-                            else com.dexstudios.dex.network.PermissionManager.triggerNotifications()
-                        }
-                        3 -> OnboardingStorage(folderGranted) {
-                            if (folderGranted) currentStep++
-                            else com.dexstudios.dex.network.PermissionManager.triggerFolder()
-                        }
-                        4 -> OnboardingCompletion(onDismiss)
+                    }
+
+                    if (currentStep != 4) { // Don't show dots on completion
+                        Spacer(Modifier.height(24.dp))
+                        OnboardingProgressDots(
+                            count = steps.size,
+                            selectedIndex = currentStepIdx
+                        )
                     }
                 }
             }
@@ -188,13 +256,42 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
+private fun OnboardingProgressDots(count: Int, selectedIndex: Int) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(count) { index ->
+            val isSelected = index == selectedIndex
+            val width by animateDpAsState(
+                targetValue = if (isSelected) 16.dp else 6.dp,
+                animationSpec = spring(Spring.DampingRatioMediumBouncy),
+                label = "dotWidth"
+            )
+            val color by animateColorAsState(
+                targetValue = if (isSelected) MaterialTheme.colorScheme.primary
+                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                label = "dotColor"
+            )
+
+            Box(
+                modifier = Modifier
+                    .width(width)
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+        }
+    }
+}
+
+@Composable
 private fun OnboardingWelcome(onNext: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            painter = painterResource(R.drawable.ic_stat_dex),
+        Image(
+            painter = painterResource(R.drawable.dex_logo),
             contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
+            modifier = Modifier.size(64.dp)
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -218,7 +315,19 @@ private fun OnboardingWelcome(onNext: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
+private fun OnboardingConnectivity(
+    isGranted: Boolean,
+    isPermanentlyDenied: Boolean,
+    onAction: () -> Unit
+) {
+    LaunchedEffect(isGranted) {
+        if (isGranted) {
+            delay(600.milliseconds)
+            onAction()
+        }
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
             icon = DeXIcons.Wifi,
@@ -233,16 +342,32 @@ private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.onboarding_step_connectivity_desc),
+            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_connectivity_rationale)
+            else stringResource(R.string.onboarding_step_connectivity_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
-        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        DeXButton(
+            onClick = {
+                if (isPermanentlyDenied && !isGranted) {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = android.net.Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                } else {
+                    onAction()
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
             Text(
-                if (isGranted) stringResource(R.string.onboarding_next)
-                else stringResource(R.string.onboarding_grant),
+                when {
+                    isGranted -> stringResource(R.string.onboarding_next)
+                    isPermanentlyDenied -> stringResource(R.string.onboarding_open_settings)
+                    else -> stringResource(R.string.onboarding_grant)
+                },
                 fontWeight = FontWeight.Bold
             )
         }
@@ -250,7 +375,19 @@ private fun OnboardingConnectivity(isGranted: Boolean, onAction: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingNotifications(isGranted: Boolean, onAction: () -> Unit) {
+private fun OnboardingNotifications(
+    isGranted: Boolean,
+    isPermanentlyDenied: Boolean,
+    onAction: () -> Unit
+) {
+    LaunchedEffect(isGranted) {
+        if (isGranted) {
+            delay(600.milliseconds)
+            onAction()
+        }
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
             icon = DeXIcons.Notifications,
@@ -265,16 +402,32 @@ private fun OnboardingNotifications(isGranted: Boolean, onAction: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.onboarding_step_notifications_desc),
+            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_notifications_rationale)
+            else stringResource(R.string.onboarding_step_notifications_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
-        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        DeXButton(
+            onClick = {
+                if (isPermanentlyDenied && !isGranted) {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = android.net.Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                } else {
+                    onAction()
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
             Text(
-                if (isGranted) stringResource(R.string.onboarding_next)
-                else stringResource(R.string.onboarding_grant),
+                when {
+                    isGranted -> stringResource(R.string.onboarding_next)
+                    isPermanentlyDenied -> stringResource(R.string.onboarding_open_settings)
+                    else -> stringResource(R.string.onboarding_grant)
+                },
                 fontWeight = FontWeight.Bold
             )
         }
@@ -282,33 +435,72 @@ private fun OnboardingNotifications(isGranted: Boolean, onAction: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingStorage(isGranted: Boolean, onAction: () -> Unit) {
+private fun OnboardingIdentity(
+    email: String,
+    onNext: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val deviceConfig: DeviceConfig = koinInject()
+    val resources = androidx.compose.ui.platform.LocalResources.current
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
-            icon = ImageVector.vectorResource(R.drawable.ic_folder),
-            isGranted = isGranted
+            icon = ImageVector.vectorResource(R.drawable.ic_account_circle),
+            isGranted = email.isNotBlank()
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            stringResource(R.string.onboarding_step_storage_title),
+            stringResource(R.string.onboarding_step_identity_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.onboarding_step_storage_desc),
+            stringResource(R.string.onboarding_step_identity_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
-        DeXButton(onClick = onAction, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(
-                if (isGranted) stringResource(R.string.onboarding_next)
-                else stringResource(R.string.onboarding_select_folder),
-                fontWeight = FontWeight.Bold
-            )
+        if (email.isBlank()) {
+            DeXButton(
+                onClick = {
+                    val activity = context as? android.app.Activity
+                    if (activity != null) {
+                        scope.launch {
+                            val credential = GoogleSignInManager.signIn(activity)
+                            val result = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                            if (result != null) {
+                                android.widget.Toast.makeText(context, resources.getString(R.string.google_signed_in_as, result), android.widget.Toast.LENGTH_LONG).show()
+                                onNext()
+                            } else {
+                                android.widget.Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.Google,
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(stringResource(R.string.google_sign_in), fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            DeXTextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.onboarding_skip), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            DeXButton(onClick = onNext, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text(stringResource(R.string.onboarding_next), fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -398,19 +590,19 @@ fun PairingRequestDialog(
         if (isSuccess) {
             // Domino effect: 100ms per slot
             repeat(5) {
-                delay(80)
+                delay(80.milliseconds)
                 greenSlotsCount++
             }
-            delay(200) // pause for merging
+            delay(200.milliseconds) // pause for merging
             // The morph happens via AnimatedContent triggered by isSuccess later
-            delay(1200) // Allow full animation to play
+            delay(1200.milliseconds) // Allow full animation to play
             onAccept(enteredPin)
         }
     }
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(300)
+        delay(300.milliseconds)
         focusRequester.requestFocus()
     }
 
@@ -426,7 +618,7 @@ fun PairingRequestDialog(
             progress = (remainingMs.toFloat() / durationMs).coerceIn(0f, 1f)
 
             if (remainingMs <= 0) break
-            delay(100) // Smoother progress updates
+            delay(100.milliseconds) // Smoother progress updates
         }
         onReject()
     }
@@ -648,41 +840,10 @@ private fun ConfirmButtonContent(isComplete: Boolean, isSuccess: Boolean = false
     }
 }
 
-@Composable
-fun AnimatedWaitingDots() {
-    val infiniteTransition = rememberInfiniteTransition()
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(3) { index ->
-            val scale by infiniteTransition.animateFloat(
-                initialValue = 0.8f,
-                targetValue = 1.2f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600, delayMillis = index * 200, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                )
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(8.dp) // Big (not too big)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .background(Color.Black, CircleShape)
-            )
-        }
-    }
-}
-
 val BackOut = Easing { fraction ->
     val s = 1.70158f
     val t = fraction - 1.0f
-    t * t * ((s + 1.0f) * t + s) + 1.0f
+    (t * t * ((s + 1.0f) * t + s) + 1.0f)
 }
 
 @Composable
@@ -828,11 +989,11 @@ fun Modifier.shake(enabled: Boolean): Modifier = composed {
                 targetValue = 0f,
                 animationSpec = keyframes {
                     durationMillis = 300
-                    -10f at 50
-                    10f at 100
-                    -10f at 150
-                    10f at 200
-                    -5f at 250
+                    10f at 50
+                    (-10f) at 100
+                    10f at 150
+                    (-10f) at 200
+                    5f at 250
                     0f at 300
                 }
             )

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,12 +14,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.TransferHistory
 import com.dexstudios.dex.network.TransferRecord
+import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
+import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.text.DateFormat
@@ -50,6 +49,8 @@ fun HistoryScreen(
     val items by TransferHistory.items.collectAsStateWithLifecycle()
     val sentIcon = ImageVector.vectorResource(R.drawable.ic_send)
     val receivedIcon = ImageVector.vectorResource(R.drawable.ic_folder)
+
+    var showClearConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         TransferHistory.refresh(context)
@@ -80,15 +81,33 @@ fun HistoryScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = stringResource(R.string.history_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 24.dp, top = 96.dp, bottom = 8.dp)
-                )
+                        .padding(start = 24.dp, end = 24.dp, top = 96.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.history_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    if (items.isNotEmpty()) {
+                        com.dexstudios.dex.ui.components.DeXTextButton(
+                            onClick = { showClearConfirm = true }
+                        ) {
+                            Text(
+                                stringResource(R.string.history_clear_all),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
 
                 if (items.isEmpty()) {
                     Box(
@@ -112,29 +131,95 @@ fun HistoryScreen(
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
+                            top = 8.dp, // Small top padding for the first card
                             bottom = 88.dp - navBarInset
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(items, key = { it.id }) { record ->
-                            HistoryRow(record = record, sentIcon = sentIcon, receivedIcon = receivedIcon, onClick = { openRecord(context, record) })
+                            var showItemMenu by remember { mutableStateOf(false) }
+
+                            Box(modifier = Modifier.animateItem()) {
+                                HistoryRow(
+                                    record = record,
+                                    sentIcon = sentIcon,
+                                    receivedIcon = receivedIcon,
+                                    onClick = { openRecord(context, record) },
+                                    onLongClick = { showItemMenu = true }
+                                )
+
+                                DropdownMenu(
+                                    expanded = showItemMenu,
+                                    onDismissRequest = { showItemMenu = false },
+                                    offset = androidx.compose.ui.unit.DpOffset(x = 16.dp, y = 0.dp)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.history_delete)) },
+                                        onClick = {
+                                            TransferHistory.delete(context, record.id)
+                                            showItemMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                DeXIcons.Close,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text(stringResource(R.string.history_clear_confirm_title)) },
+            text = { Text(stringResource(R.string.history_clear_confirm_desc)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        TransferHistory.clear(context)
+                        showClearConfirm = false
+                    }
+                ) {
+                    Text(stringResource(R.string.history_clear_all), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun HistoryRow(record: TransferRecord, sentIcon: ImageVector, receivedIcon: ImageVector, onClick: () -> Unit) {
+private fun HistoryRow(
+    record: TransferRecord,
+    sentIcon: ImageVector,
+    receivedIcon: ImageVector,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     val isSent = record.direction == "sent"
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable(onClick = onClick)
+            .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.1f)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

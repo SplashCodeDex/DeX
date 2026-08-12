@@ -244,6 +244,57 @@ namespace DeXShareTarget.Services
                   } catch (OperationCanceledException) { break; } catch { }
                 }
             }, stoppingToken);
+
+            // Permanent backward-compat: listen on the old discovery port (28424) for phones
+            // running older APKs that still broadcast there. One idle socket, zero cost.
+            if (DeXConstants.DiscoveryPort != 28424)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var legacyUdp = new UdpClient();
+                        legacyUdp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                        legacyUdp.Client.Bind(new IPEndPoint(IPAddress.Any, 28424));
+                        legacyUdp.JoinMulticastGroup(multicastAddress);
+                        while (!stoppingToken.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                var result = await legacyUdp.ReceiveAsync(stoppingToken);
+                                var msg = Encoding.UTF8.GetString(result.Buffer);
+                                var doc = JsonDocument.Parse(msg);
+                                var root = doc.RootElement;
+                                var fp = root.TryGetProperty("fingerprint", out var f) ? f.GetString() : "";
+                                var senderIp = result.RemoteEndPoint.Address.ToString();
+                                var alias = root.TryGetProperty("alias", out var al) ? al.GetString() : null;
+                                if (!string.IsNullOrEmpty(fp) && !IsSelf(fp, alias, senderIp))
+                                {
+                                    var dto = new RegisterDto
+                                    {
+                                        Fingerprint = fp,
+                                        Alias = alias ?? "Unknown",
+                                        Port = root.TryGetProperty("port", out var p) ? p.GetInt32() : DeXConstants.DiscoveryPort,
+                                        DeviceModel = root.TryGetProperty("deviceModel", out var dm) ? (dm.GetString() ?? "Unknown") : "Unknown",
+                                        DeviceType = root.TryGetProperty("deviceType", out var dt) ? (dt.GetString() ?? "unknown") : "unknown",
+                                        IdentityHash = root.TryGetProperty("identityHash", out var ih) ? ih.GetString() : null
+                                    };
+                                    Devices[fp] = new DiscoveredDevice
+                                    {
+                                        Ip = senderIp,
+                                        Info = dto,
+                                        LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                                        IsPaired = IdentityManager.PairedFingerprints.Contains(fp),
+                                        IsAutoTrusted = !string.IsNullOrEmpty(dto.IdentityHash) && dto.IdentityHash == myInfo.IdentityHash
+                                    };
+                                }
+                            } catch (OperationCanceledException) { break; } catch { }
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) { Console.WriteLine($"[DISC] Legacy port 28424 listener failed: {ex.Message}"); }
+                }, stoppingToken);
+            }
             
             while (!stoppingToken.IsCancellationRequested)
             {

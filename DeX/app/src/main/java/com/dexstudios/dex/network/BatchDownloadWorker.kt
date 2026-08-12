@@ -1,3 +1,5 @@
+@file:Suppress("GrazieStyle")
+
 package com.dexstudios.dex.network
 
 import android.content.Context
@@ -36,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class BatchDownloadWorker(
     private val context: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : CoroutineWorker(context, params), KoinComponent {
 
     private val client by inject<ClientEngine>()
@@ -44,9 +46,6 @@ class BatchDownloadWorker(
     private val notificationId = 1002
     private val channelId = "download_channel"
     private val completeNotificationId = 1003
-
-    // PC's HTTPS host port: serves /download over HTTP/1.1 (TCP 48424) and, via Alt-Svc, HTTP/3 (UDP 48423)
-    private val httpsPort = DeXPorts.HTTPS
 
     // Cap of concurrent QUIC streams per session
     private val maxConcurrent = 3
@@ -95,15 +94,15 @@ class BatchDownloadWorker(
         val tcpPort = inputData.getInt("port", -1)
         val filesJson = inputData.getString("files") ?: return@withContext Result.failure()
         val totalBytes = inputData.getLong("totalBytes", 0L)
-        val destDirUri = inputData.getString("destDirUri") ?: return@withContext Result.failure()
+        val destDirUri = inputData.getString("destDirUri")
 
         val files = try {
             Json.decodeFromString<List<PullFileDto>>(filesJson)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return@withContext Result.failure()
         }
-        if (files.isEmpty() || httpsPort == -1 || tcpPort == -1) return@withContext Result.failure()
-        val dirUri = destDirUri.toUri()
+        if ((files.isEmpty() || httpsPort == -1 || tcpPort == -1)) return@withContext Result.failure()
+        val dirUri = destDirUri?.toUri()
 
         setForeground(createForegroundInfo(0, "Preparing download..."))
 
@@ -186,7 +185,7 @@ class BatchDownloadWorker(
         ip: String,
         httpsPort: Int,
         tcpPort: Int,
-        dirUri: Uri,
+        dirUri: Uri?,
         totalReceived: AtomicLong,
         doneCount: AtomicInteger,
         totalFiles: Int,
@@ -196,43 +195,46 @@ class BatchDownloadWorker(
         if (isStopped) return FileOutcome(file.fileName, null, ok = false, error = "Download cancelled")
 
         // Folder bundles: recreate the relative path structure under Downloads/DeX
-        val docUri = if (!file.relativePath.isNullOrBlank()) {
-            SafStorage.createDocumentWithPath(context, dirUri, file.relativePath)
+        val docUri = if (dirUri != null) {
+            if (!file.relativePath.isNullOrBlank()) {
+                SafStorage.createDocumentWithPath(context, dirUri, file.relativePath)
+            } else {
+                SafStorage.createDocumentUri(context, dirUri, file.fileName)
+            }
         } else {
-            SafStorage.createDocumentUri(context, dirUri, file.fileName)
+            SafStorage.createMediaStoreUri(context, file.fileName, file.relativePath)
         }
+
         if (docUri == null) {
             return FileOutcome(file.fileName, null, ok = false, error = "Cannot write to Downloads/DeX")
         }
         createdDocs.add(docUri)
 
         val out = context.contentResolver.openOutputStream(docUri)
-        if (out == null) {
+        if (out != null) {
+            out.use { o ->
+                val perFileReceived = AtomicLong(0L)
+                val onBytes: suspend (Long) -> Unit = { bytes ->
+                    val delta = bytes - perFileReceived.getAndSet(bytes)
+                    reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
+                }
+
+                val result = if (client.quicAvailable()) {
+                    quicDownload(ip, httpsPort, file, o, onBytes)
+                } else {
+                    tcpDownload(ip, tcpPort, file, o, onBytes)
+                }
+
+                if (result.ok) {
+                    doneCount.incrementAndGet()
+                    reportProgress(doneCount.get(), totalFiles, totalReceived.get(), totalBytes, file.fileName)
+                    return FileOutcome(file.fileName, docUri, ok = true, bytes = perFileReceived.get())
+                }
+                return FileOutcome(file.fileName, docUri, ok = false, retryable = result.retryable, error = result.error)
+            }
+        } else {
             deleteDocs(listOf(docUri))
             return FileOutcome(file.fileName, null, ok = false, error = "Cannot write to Downloads/DeX")
-        }
-
-        try {
-            val perFileReceived = AtomicLong(0L)
-            val onBytes: suspend (Long) -> Unit = { bytes ->
-                val delta = bytes - perFileReceived.getAndSet(bytes)
-                reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
-            }
-
-            val result = if (client.quicAvailable()) {
-                quicDownload(ip, httpsPort, file, out, onBytes)
-            } else {
-                tcpDownload(ip, tcpPort, file, out, onBytes)
-            }
-
-            if (result.ok) {
-                doneCount.incrementAndGet()
-                reportProgress(doneCount.get(), totalFiles, totalReceived.get(), totalBytes, file.fileName)
-                return FileOutcome(file.fileName, docUri, ok = true, bytes = perFileReceived.get())
-            }
-            return FileOutcome(file.fileName, docUri, ok = false, retryable = result.retryable, error = result.error)
-        } finally {
-            out.close()
         }
     }
 
@@ -243,9 +245,11 @@ class BatchDownloadWorker(
         out: java.io.OutputStream,
         onBytes: suspend (Long) -> Unit
     ): DownloadResult {
-        val result = client.downloadFileQuic(ip, httpsPort, file.fileId, file.token, out, onProgress = { bytes ->
+        val result = client.downloadFileQuic(
+            ip, httpsPort, file.fileId, file.token, out,
+        ) { bytes ->
             onBytes(bytes)
-        })
+        }
 
         if (result.protocol.isNotEmpty()) {
             Timber.i("Download negotiated protocol: ${result.protocol}")
@@ -271,7 +275,7 @@ class BatchDownloadWorker(
         file: PullFileDto,
         out: java.io.OutputStream,
         onBytes: suspend (Long) -> Unit
-    ): DownloadResult {
+    ): DownloadResult = withContext(Dispatchers.IO) {
         var downloaded = 0L
         try {
             val socketChannel = SocketChannel.open(InetSocketAddress(ip, port))
@@ -279,8 +283,8 @@ class BatchDownloadWorker(
             val buffer = ByteBuffer.wrap(fileIdBytes)
             while (buffer.hasRemaining()) {
                 if (isStopped) {
-                    socketChannel.close()
-                    return DownloadResult(ok = false, error = "Download cancelled")
+                    withContext(Dispatchers.IO) { socketChannel.close() }
+                    return@withContext DownloadResult(ok = false, error = "Download cancelled")
                 }
                 socketChannel.write(buffer)
             }
@@ -288,8 +292,8 @@ class BatchDownloadWorker(
             val ioBuffer = ByteBuffer.allocateDirect(81920)
             while (socketChannel.read(ioBuffer) != -1) {
                 if (isStopped) {
-                    socketChannel.close()
-                    return DownloadResult(ok = false, error = "Download cancelled")
+                    withContext(Dispatchers.IO) { socketChannel.close() }
+                    return@withContext DownloadResult(ok = false, error = "Download cancelled")
                 }
 
                 ioBuffer.flip()
@@ -303,12 +307,12 @@ class BatchDownloadWorker(
                 onBytes(downloaded)
             }
 
-            socketChannel.close()
+            withContext(Dispatchers.IO) { socketChannel.close() }
             transferProtocol = "tcp"
-            return DownloadResult(ok = true, bytes = downloaded)
+            DownloadResult(ok = true, bytes = downloaded)
         } catch (e: Exception) {
             e.printStackTrace()
-            return DownloadResult(ok = false, error = e.message, retryable = true)
+            DownloadResult(ok = false, error = e.message, retryable = true)
         }
     }
 

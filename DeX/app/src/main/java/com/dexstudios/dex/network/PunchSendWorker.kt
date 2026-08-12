@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -181,9 +182,9 @@ class PunchSendWorker(
                 }
             }.toString()
         )
-        val pushed = withTimeoutOrNull(10_000) { relayDeferred.await() } == true
+        val pushed = withTimeoutOrNull(10_000.milliseconds) { relayDeferred.await() } == true
         PunchState.pendingRelay.value = null
-        if (pushed != true) return@withContext "The target device is offline"
+        if (!pushed) return@withContext "The target device is offline"
         null
     }
 

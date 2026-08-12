@@ -1,4 +1,4 @@
-
+﻿
 $script:notifyIcon.Add_MouseUp({
     param($sender, $e)
     Write-Trace "MouseUp fired! Button: $($e.Button)"

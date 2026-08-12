@@ -2,6 +2,7 @@ package com.dexstudios.dex.ui.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -35,9 +36,15 @@ fun SettingsScreen(
     deviceConfig: DeviceConfig = koinInject()
 ) {
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
+    val alias by deviceConfig.aliasFlow.collectAsState()
+    val clipboardSyncEnabled by deviceConfig.clipboardSyncEnabledFlow.collectAsState()
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val resources = LocalResources.current
+
+    var showAliasDialog by remember { mutableStateOf(false) }
+    var tempAlias by remember { mutableStateOf("") }
 
     val contentBackdrop = rememberLayerBackdrop()
     val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -128,6 +135,22 @@ fun SettingsScreen(
                 // Connectivity Section
                 item {
                     SettingsGroup(title = stringResource(R.string.settings_connectivity_title)) {
+                        SettingsClickableRow(
+                            title = stringResource(R.string.settings_device_alias),
+                            subtitle = alias.ifBlank { com.dexstudios.dex.network.getDeviceName(context) },
+                            icon = ImageVector.vectorResource(R.drawable.ic_smartphone),
+                            onClick = {
+                                tempAlias = alias.ifBlank { com.dexstudios.dex.network.getDeviceName(context) }
+                                showAliasDialog = true
+                            }
+                        )
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.settings_clipboard_sync),
+                            subtitle = stringResource(R.string.settings_clipboard_sync_desc),
+                            icon = MaterialSymbols.CheckCircle, // Placeholder for clipboard
+                            checked = clipboardSyncEnabled,
+                            onCheckedChange = { deviceConfig.clipboardSyncEnabled = it }
+                        )
                         SettingsInfoRow(
                             title = stringResource(R.string.settings_ip_address),
                             value = deviceConfig.publicAddress.ifBlank { "Unknown" },
@@ -158,6 +181,80 @@ fun SettingsScreen(
             modifier = Modifier.align(Alignment.TopCenter),
             backdrop = contentBackdrop,
             showSearch = false
+        )
+    }
+
+    if (showAliasDialog) {
+        AlertDialog(
+            onDismissRequest = { showAliasDialog = false },
+            title = { Text(stringResource(R.string.settings_device_alias)) },
+            text = {
+                OutlinedTextField(
+                    value = tempAlias,
+                    onValueChange = { if (it.length <= 32) tempAlias = it },
+                    label = { Text(stringResource(R.string.settings_device_alias_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    deviceConfig.alias = tempAlias
+                    showAliasDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAliasDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

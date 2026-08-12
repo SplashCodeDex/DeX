@@ -109,7 +109,7 @@ dependencies {
   testImplementation(libs.mockk)
   testImplementation(libs.koin.test.junit4)
   testImplementation(libs.ktor.client.mock)
-  testImplementation("org.json:json:20240303")
+  testImplementation(libs.json.org)
 
   // Instrumented tests: jUnit rules and runners
   androidTestImplementation(libs.androidx.test.core)
@@ -125,8 +125,6 @@ dependencies {
 
   // Serialization
   implementation(libs.kotlinx.serialization.json)
-
-  // Ktor Server
   implementation(libs.ktor.serialization.kotlinx.json)
 
   // OkHttp (WebSocket client)

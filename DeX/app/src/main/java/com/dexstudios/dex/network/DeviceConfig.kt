@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,25 +41,27 @@ class DeviceConfig(private val context: Context) {
         val GOOGLE_NAME_KEY = stringPreferencesKey("google_name")
         val GOOGLE_PICTURE_KEY = stringPreferencesKey("google_picture")
         val GOOGLE_SUB_KEY = stringPreferencesKey("google_sub")
+        val ALIAS_KEY = stringPreferencesKey("alias")
+        val CLIPBOARD_SYNC_ENABLED_KEY = booleanPreferencesKey("clipboard_sync_enabled")
     }
 
     private val _emailFlow = MutableStateFlow("")
     val emailFlow: StateFlow<String> = _emailFlow.asStateFlow()
 
-    private val _profileNameFlow = MutableStateFlow("")
-    val profileNameFlow: StateFlow<String> = _profileNameFlow.asStateFlow()
+    private val _aliasFlow = MutableStateFlow("")
+    val aliasFlow: StateFlow<String> = _aliasFlow.asStateFlow()
 
+    private val _clipboardSyncEnabledFlow = MutableStateFlow(true)
+    val clipboardSyncEnabledFlow: StateFlow<Boolean> = _clipboardSyncEnabledFlow.asStateFlow()
+
+    private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
-    val profilePictureFlow: StateFlow<String> = _profilePictureFlow.asStateFlow()
 
     private val _googleSubFlow = MutableStateFlow("")
     val googleSubFlow: StateFlow<String> = _googleSubFlow.asStateFlow()
 
     private val _fingerprintFlow = MutableStateFlow("")
-    val fingerprintFlow: StateFlow<String> = _fingerprintFlow.asStateFlow()
-
     private val _identityHashFlow = MutableStateFlow("")
-
     private val _publicAddressFlow = MutableStateFlow("")
 
     /** Single combined flow — replacing three individual collectAsState() reads in the UI. */
@@ -93,6 +96,29 @@ class DeviceConfig(private val context: Context) {
             }
         }
 
+    var alias: String
+        get() = _aliasFlow.value
+        set(value) {
+            val trimmed = value.trim().take(32)
+            _aliasFlow.value = trimmed
+            scope.launch {
+                context.dataStore.edit { prefs ->
+                    prefs[ALIAS_KEY] = trimmed
+                }
+            }
+        }
+
+    var clipboardSyncEnabled: Boolean
+        get() = _clipboardSyncEnabledFlow.value
+        set(value) {
+            _clipboardSyncEnabledFlow.value = value
+            scope.launch {
+                context.dataStore.edit { prefs ->
+                    prefs[CLIPBOARD_SYNC_ENABLED_KEY] = value
+                }
+            }
+        }
+
     /** Fingerprint, computed once. First access during cold start blocks until DataStore loads. */
     val fingerprint: String
         get() {
@@ -109,12 +135,6 @@ class DeviceConfig(private val context: Context) {
 
     val identityHash: String
         get() = _identityHashFlow.value
-
-    val profileName: String
-        get() = _profileNameFlow.value
-
-    val profilePicture: String
-        get() = _profilePictureFlow.value
 
     /** Google account ID (sub) — the unguessable same-email trust key when signed in with Google. */
     val googleSub: String
@@ -173,6 +193,8 @@ class DeviceConfig(private val context: Context) {
             _profileNameFlow.value = prefs[GOOGLE_NAME_KEY] ?: ""
             _profilePictureFlow.value = prefs[GOOGLE_PICTURE_KEY] ?: ""
             _googleSubFlow.value = prefs[GOOGLE_SUB_KEY] ?: ""
+            _aliasFlow.value = prefs[ALIAS_KEY] ?: ""
+            _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
             Timber.i("DeviceConfig fully initialized.")
         }
     }

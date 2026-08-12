@@ -17,14 +17,20 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
 
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.onUpload
+import kotlin.time.Duration.Companion.seconds
 
 class ClientEngine(
     engine: HttpClientEngine? = null,
     private val quicClient: QuicClient? = null,
     private val deviceConfig: DeviceConfig? = null
 ) {
+    private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
+    private var resetJob: Job? = null
+
     // LocalSend uses self-signed certificates, so we must trust all certificates on the local network
     @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
     private val trustAllManager = object : X509TrustManager {
@@ -49,6 +55,13 @@ class ClientEngine(
     /** Progress/final state updates from transfer workers (parallel uploads own the math). */
     fun updateUploadState(state: UploadState) {
         _uploadState.value = state
+        if (state.isSuccess) {
+            resetJob?.cancel()
+            resetJob = scope.launch {
+                delay(5.seconds)
+                resetUploadState()
+            }
+        }
     }
 
     /** Negotiated protocol ("h3", "http/1.1", ...) of the last completed QUIC upload. */
@@ -57,6 +70,7 @@ class ClientEngine(
     var activeWorkId: java.util.UUID? = null
 
     fun resetUploadState() {
+        resetJob?.cancel()
         _uploadState.value = UploadState()
     }
 
@@ -80,6 +94,11 @@ class ClientEngine(
                 isSuccess = true,
                 fileName = "$successCount of $totalFiles files"
             )
+            resetJob?.cancel()
+            resetJob = scope.launch {
+                delay(5.seconds)
+                resetUploadState()
+            }
         } else {
             _uploadState.value = _uploadState.value.copy(
                 isUploading = false,

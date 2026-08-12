@@ -23,16 +23,35 @@ import java.util.concurrent.TimeUnit
 import com.dexstudios.dex.ui.theme.DeXTheme
 import android.os.Build
 import android.Manifest
-import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private var lastRequestedPermission: String? = null
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    ) { isGranted ->
+        val permission = lastRequestedPermission ?: return@registerForActivityResult
+        if (!isGranted) {
+            if (!androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                when (permission) {
+                    Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION ->
+                        com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(true)
+                    Manifest.permission.POST_NOTIFICATIONS ->
+                        com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(true)
+                }
+            }
+        } else {
+            when (permission) {
+                Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION ->
+                    com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(false)
+                Manifest.permission.POST_NOTIFICATIONS ->
+                    com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(false)
+            }
+        }
+    }
 
     private val downloadsDexGrantLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -78,17 +97,24 @@ class MainActivity : ComponentActivity() {
     // Trigger permissions from the UI flow
     lifecycleScope.launch {
         com.dexstudios.dex.network.PermissionManager.requestNearby.collect {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestPermissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.NEARBY_WIFI_DEVICES
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                Manifest.permission.ACCESS_FINE_LOCATION
+            } else null
+
+            permission?.let {
+                lastRequestedPermission = it
+                requestPermissionLauncher.launch(it)
             }
         }
     }
     lifecycleScope.launch {
         com.dexstudios.dex.network.PermissionManager.requestNotifications.collect {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                val permission = Manifest.permission.POST_NOTIFICATIONS
+                lastRequestedPermission = permission
+                requestPermissionLauncher.launch(permission)
             }
         }
     }
@@ -140,7 +166,7 @@ WorkManager.getInstance(this).enqueueUniquePeriodicWork(
   override fun onResume() {
     super.onResume()
     // Refresh the keep-alive window: the phone stays reachable for 6h after the last app use
-    getSharedPreferences(com.dexstudios.dex.network.KeepAliveWorker.PREFS, MODE_PRIVATE)
+    getSharedPreferences(KeepAliveWorker.PREFS, MODE_PRIVATE)
         .edit {
             putLong(com.dexstudios.dex.network.KeepAliveWorker.KEY_LAST_ACTIVE, System.currentTimeMillis())
         }

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     DeX - Device Actions
 .DESCRIPTION

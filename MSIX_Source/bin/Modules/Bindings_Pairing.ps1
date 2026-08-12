@@ -1,4 +1,4 @@
-# --- PIN Pairing Handlers ---
+﻿# --- PIN Pairing Handlers ---
 $btnPinCancel = $script:ce["btnPinCancel"]
 if ($btnPinCancel) {
     $btnPinCancel.Add_Click({

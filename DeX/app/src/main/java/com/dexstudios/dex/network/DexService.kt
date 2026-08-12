@@ -15,24 +15,27 @@ class DexService : Service() {
     private val notificationHelper: NotificationHelper by inject()
     private val punchSession: PunchSession by inject()
     private val clipboardSyncManager: ClipboardSyncManager by inject()
-    
+
     private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun onCreate() {
         super.onCreate()
         instance = this
-        
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceCompat.startForeground(
                 this, 1, notificationHelper.getForegroundServiceNotification(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            startForeground(1, notificationHelper.getForegroundServiceNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(1, notificationHelper.getForegroundServiceNotification())
         }
-        
+
         // Acquire Multicast lock to ensure UDP broadcasts are received
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager
         multicastLock = wifiManager?.createMulticastLock("DexMulticastLock")
         multicastLock?.setReferenceCounted(true)
         multicastLock?.acquire()
@@ -51,7 +54,7 @@ class DexService : Service() {
         webSocketClientService.stop()
         discoveryEngine.stopDiscovery()
         punchSession.stop()
-        
+
         multicastLock?.let {
             if (it.isHeld) {
                 it.release()
@@ -84,10 +87,14 @@ class DexService : Service() {
          */
         fun setMirroring(mirroring: Boolean) {
             val svc = instance ?: return
-            val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
-                if (mirroring) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
-            ServiceCompat.startForeground(svc, 1, svc.notificationHelper.getForegroundServiceNotification(), types)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
+                        if (mirroring) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
+                ServiceCompat.startForeground(svc, 1, svc.notificationHelper.getForegroundServiceNotification(), types)
+            } else {
+                svc.startForeground(1, svc.notificationHelper.getForegroundServiceNotification())
+            }
         }
     }
 }

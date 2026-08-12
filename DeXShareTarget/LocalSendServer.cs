@@ -53,10 +53,14 @@ namespace DeXShareTarget
 
             ServerCert = GetOrCreateServerCertificate();
 
-            // Auto-update ports dynamically
-            DeXConstants.HttpsPort = GetAvailableTcpPort();
-            DeXConstants.QuicPort = GetAvailableUdpPort();
-            DeXConstants.TcpFallbackPort = GetAvailableTcpPort();
+            // Prefer the well-known ports so the phone's PcMemory defaults work reliably.
+            // Only fall back to a random ephemeral port if the default is already occupied
+            // (another process, or a second DeX instance).
+            DeXConstants.HttpsPort = TryPort(48424) ?? GetAvailableTcpPort();
+            DeXConstants.QuicPort = TryUdpPort(48423) ?? GetAvailableUdpPort();
+            DeXConstants.TcpFallbackPort = TryPort(48426) ?? GetAvailableTcpPort();
+
+            CheckFirewallAccess();
 
             // Note: UPnP port mapping moved to the bottom of this method so it maps the correct dynamic ports
 
@@ -158,6 +162,45 @@ namespace DeXShareTarget
         {
             using var u = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
             return ((IPEndPoint)u.Client.LocalEndPoint!).Port;
+        }
+
+        /// <summary>Returns the port if it's available for TCP binding, or null if occupied.</summary>
+        private static int? TryPort(int port)
+        {
+            try
+            {
+                var l = new TcpListener(IPAddress.Loopback, port);
+                l.Start();
+                l.Stop();
+                return port;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Returns the port if it's available for UDP binding, or null if occupied.</summary>
+        private static int? TryUdpPort(int port)
+        {
+            try
+            {
+                using var u = new UdpClient(new IPEndPoint(IPAddress.Any, port));
+                return port;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Silent startup diagnostic: verifies the discovery port is bindable (firewall/conflict check).</summary>
+        private static void CheckFirewallAccess()
+        {
+            try
+            {
+                using var testSocket = new UdpClient(new IPEndPoint(IPAddress.Any, DeXConstants.DiscoveryPort));
+                Console.WriteLine($"[NET] Discovery port {DeXConstants.DiscoveryPort} is available");
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"[NET] WARNING: Cannot bind discovery port {DeXConstants.DiscoveryPort}: {ex.Message}");
+                Console.WriteLine("[NET] Firewall or another process may be blocking discovery");
+            }
         }
 
         /// <summary>The public (WAN) address the phone should reach this PC at; pushed to phones on connect.</summary>

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,52 +63,49 @@ fun FloatingPillNavBar(
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull()
                             if (change != null) {
-                                if (change.pressed) {
-                                    dragX = change.position.x
+                                dragX = if (change.pressed) {
+                                    change.position.x
                                 } else {
-                                    dragX = null
+                                    null
                                 }
                             }
                         }
                     }
                 }
         ) {
-            val itemWidth = maxWidth / items.size
+            val density = LocalDensity.current
+            val totalWidth = maxWidth
+            val itemWidth = totalWidth / items.size
 
             // 1. Target Bounds Calculation
-            // If dragging, center the blob on the finger.
-            // If not dragging but pressing, peek slightly (handled by the drag logic if we treat press as dragX).
-            // Otherwise, target the selected index.
-            val targetLeft: Dp
-            val targetRight: Dp
-
-            if (dragX != null) {
-                val centerDp = with(LocalDensity.current) { dragX!!.toDp() }
-                // During drag, we stretch the blob slightly if it's far from the center of an item?
-                // For now, let's just make it follow the finger with a fixed width,
-                // and the "stretching" will come from the independent springs.
-                targetLeft = centerDp - (itemWidth / 2f)
-                targetRight = centerDp + (itemWidth / 2f)
-            } else {
-                targetLeft = itemWidth * selectedIndex
-                targetRight = itemWidth * (selectedIndex + 1)
+            val targetLeft by remember(dragX, selectedIndex, itemWidth) {
+                derivedStateOf {
+                    if (dragX != null) {
+                        val centerDp = with(density) { dragX!!.toDp() }
+                        centerDp - (itemWidth / 2f)
+                    } else {
+                        itemWidth * selectedIndex
+                    }
+                }
             }
+            val targetRight = targetLeft + itemWidth
 
             // 2. Elastic Animations
-            // The "leading" side should be stiffer, "trailing" side lazier to create the stretch.
             var lastTargetLeft by remember { mutableStateOf(targetLeft) }
-            var direction by remember { mutableIntStateOf(0) } // 1 for right, -1 for left
+            var direction by remember { mutableIntStateOf(0) }
 
-            if (targetLeft != lastTargetLeft) {
-                direction = if (targetLeft > lastTargetLeft) 1 else -1
-                lastTargetLeft = targetLeft
+            SideEffect {
+                if (targetLeft != lastTargetLeft) {
+                    direction = if (targetLeft > lastTargetLeft) 1 else -1
+                    lastTargetLeft = targetLeft
+                }
             }
 
             val leftBound by animateDpAsState(
                 targetValue = targetLeft,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = if (direction <= 0) Spring.StiffnessMedium else Spring.StiffnessLow
+                    stiffness = if (direction <= 0) 1200f else 600f
                 ),
                 label = "navLeftBound"
             )
@@ -116,7 +114,7 @@ fun FloatingPillNavBar(
                 targetValue = targetRight,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = if (direction >= 0) Spring.StiffnessMedium else Spring.StiffnessLow
+                    stiffness = if (direction >= 0) 1200f else 600f
                 ),
                 label = "navRightBound"
             )
@@ -130,14 +128,14 @@ fun FloatingPillNavBar(
                 label = "navIndicatorScale"
             )
 
-            // 3. Shared Animated Highlighter (Liquid Glass or Solid Fallback)
+            // 1. Shared Animated Highlighter (Liquid Glass or Solid Fallback)
+            // Drawn BEFORE the icons to ensure the icons are on top.
             val indicatorModifier = Modifier
                 .offset { IntOffset(leftBound.roundToPx(), 0) }
                 .width(rightBound - leftBound)
                 .graphicsLayer {
                     scaleX = indicatorScale
                     scaleY = indicatorScale
-                    // Ensure the scale happens from the center of the current width
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
                 }
                 .fillMaxHeight()
@@ -163,7 +161,7 @@ fun FloatingPillNavBar(
                 )
             }
 
-            // 2. Icons Row
+            // 2. Icons Row (Drawn on top of the highlighter)
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -172,7 +170,6 @@ fun FloatingPillNavBar(
                 items.forEachIndexed { index, item ->
                     NavBarIcon(
                         item = item,
-                        isGlass = backdrop != null,
                         onPressedChanged = { isPressed ->
                             pressedIndex = if (isPressed) index else null
                         },
@@ -207,7 +204,6 @@ fun FloatingPillNavBar(
 @Composable
 private fun NavBarIcon(
     item: NavBarItem,
-    isGlass: Boolean,
     onPressedChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -218,16 +214,9 @@ private fun NavBarIcon(
         onPressedChanged(isPressed)
     }
 
-    // When using glass, we use the primary color for the "selected" state to pop through the lens.
-    // When using a solid background, we use onPrimary for contrast.
-    val targetContentColor = if (item.isSelected) {
-        if (isGlass) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
+    // Restore animated visuals based on selection
     val contentColor by animateColorAsState(
-        targetValue = targetContentColor,
+        targetValue = if (item.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "navContentColor"
     )
     val currentIcon = if (item.isSelected) item.selectedIcon else item.unselectedIcon
@@ -255,7 +244,7 @@ private fun NavBarIcon(
             text = item.contentDescription,
             color = contentColor,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = if (item.isSelected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }

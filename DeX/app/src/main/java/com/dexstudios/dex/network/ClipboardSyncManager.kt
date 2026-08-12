@@ -40,6 +40,7 @@ class ClipboardSyncManager(
     }
 
     private fun onClipboardChanged() {
+        if (!deviceConfig.clipboardSyncEnabled) return
         try {
             val clip = clipboard?.primaryClip ?: return
             if (clip.itemCount == 0) return

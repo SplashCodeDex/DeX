@@ -147,13 +147,13 @@ class QuicClient(private val context: Context) : java.io.Closeable {
                 report(ok, info.httpStatusCode)
             }
 
-            override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
-                lastUploadProtocol = info?.negotiatedProtocol ?: ""
+            override fun onFailed(request: UrlRequest, info: UrlResponseInfo, error: CronetException) {
+                lastUploadProtocol = info.negotiatedProtocol ?: ""
                 Timber.e(error, "QUIC upload failed")
                 report(false, -1)
             }
 
-            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
+            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo) {
                 report(false, -1)
             }
         }
@@ -238,12 +238,12 @@ class QuicClient(private val context: Context) : java.io.Closeable {
                 report(true, info.httpStatusCode, info.negotiatedProtocol ?: "")
             }
 
-            override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: CronetException) {
+            override fun onFailed(request: UrlRequest, info: UrlResponseInfo, error: CronetException) {
                 Timber.e(error, "QUIC download failed")
-                report(false, -1, info?.negotiatedProtocol ?: "")
+                report(false, -1, info.negotiatedProtocol ?: "")
             }
 
-            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
+            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo) {
                 report(false, -1, "")
             }
         }

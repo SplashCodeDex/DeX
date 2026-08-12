@@ -29,7 +29,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,17 +46,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.R
 import com.dexstudios.dex.ui.components.FloatingPillNavBar
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.NavBarItem
+import com.dexstudios.dex.ui.components.OnboardingDialog
 import com.dexstudios.dex.ui.state.TopAppBarState
 import com.dexstudios.dex.ui.history.HistoryScreen
 import com.dexstudios.dex.ui.main.MainScreen
 import com.dexstudios.dex.ui.settings.SettingsScreen
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.runtime.mutableStateOf
 
 /** The top-level tab destinations, in navbar order. */
 private val tabs = listOf(Main, History, Settings)
@@ -72,9 +78,7 @@ fun MainNavigation() {
   val devicesFilled = ImageVector.vectorResource(R.drawable.ic_devices_filled)
   val devicesOutlined = ImageVector.vectorResource(R.drawable.ic_devices_outlined)
   val historyFilled = ImageVector.vectorResource(R.drawable.ic_history_filled)
-  val historyOutlined = ImageVector.vectorResource(R.drawable.ic_history_outlined)
   val tuneFilled = ImageVector.vectorResource(R.drawable.ic_tune_filled)
-  val tuneOutlined = ImageVector.vectorResource(R.drawable.ic_tune_outlined)
 
   val navItems = listOf(
     NavBarItem(
@@ -82,21 +86,21 @@ fun MainNavigation() {
       unselectedIcon = devicesOutlined,
       contentDescription = "Devices",
       isSelected = currentRoute == Main,
-      onClick = { selectedTabIndex = 0 }
+      onClick = { selectedTabIndex = 0 },
     ),
     NavBarItem(
       selectedIcon = historyFilled,
-      unselectedIcon = historyOutlined,
+      unselectedIcon = historyFilled, // Standardized to filled for performance
       contentDescription = "History",
       isSelected = currentRoute == History,
-      onClick = { selectedTabIndex = 1 }
+      onClick = { selectedTabIndex = 1 },
     ),
     NavBarItem(
       selectedIcon = tuneFilled,
-      unselectedIcon = tuneOutlined,
+      unselectedIcon = tuneFilled, // Standardized to filled for performance
       contentDescription = "Settings",
       isSelected = currentRoute == Settings,
-      onClick = { selectedTabIndex = 2 }
+      onClick = { selectedTabIndex = 2 },
     )
   )
 
@@ -107,9 +111,10 @@ fun MainNavigation() {
     // subtree — a backdrop that captures the glass sampling it is a render loop
     // and crashes (SIGSEGV).
     val contentBackdrop = rememberLayerBackdrop()
-    val incomingPairRequest by com.dexstudios.dex.network.AuthState.incomingPairRequest.collectAsStateWithLifecycle()
+    val incomingPairRequest by AuthState.incomingPairRequest.collectAsStateWithLifecycle()
 
-    val isDimmed = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded || incomingPairRequest != null
+    val isDimmed = (TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded ||
+                    TopAppBarState.isOnboardingVisible || incomingPairRequest != null)
     val globalDimAlpha by animateFloatAsState(
         targetValue = if (isDimmed) 0.75f else 0f,
         animationSpec = tween(500),
@@ -118,6 +123,13 @@ fun MainNavigation() {
 
     val context = LocalContext.current
     val resources = LocalResources.current
+
+    val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
+    var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
+
+    LaunchedEffect(showOnboarding) {
+        TopAppBarState.isOnboardingVisible = showOnboarding
+    }
 
     Box(
       modifier = Modifier
@@ -190,10 +202,14 @@ fun MainNavigation() {
     ) {
         Box {
             val activeListState = if (currentRoute == Main) mainListState else historyListState
-            val scrollOffset = if (activeListState.firstVisibleItemIndex == 0) {
-                activeListState.firstVisibleItemScrollOffset.toFloat()
-            } else {
-                500f
+            val scrollOffset by remember {
+                derivedStateOf {
+                    if (activeListState.firstVisibleItemIndex == 0) {
+                        activeListState.firstVisibleItemScrollOffset.toFloat()
+                    } else {
+                        500f
+                    }
+                }
             }
 
             Box(
@@ -214,7 +230,6 @@ fun MainNavigation() {
                     contentDescription = "DeX Logo",
                     modifier = Modifier
                         .height(60.dp)
-                        .blur(radius = (scrollOffset / 25f).coerceIn(0f, 12f).dp)
                         .bubbleFluidity(targetScale = 0.85f, pullFactor = 0.25f),
                     contentScale = ContentScale.Fit
                 )
@@ -240,6 +255,15 @@ fun MainNavigation() {
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
             },
             deadlineElapsedMs = req.deadlineElapsedMs
+        )
+    }
+
+    if (showOnboarding) {
+        OnboardingDialog(
+            onDismiss = {
+                onboardingPrefs.edit { putBoolean("onboarding_done", true) }
+                showOnboarding = false
+            }
         )
     }
   }

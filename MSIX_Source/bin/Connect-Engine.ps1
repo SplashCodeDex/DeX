@@ -136,10 +136,9 @@ if ($null -eq $script:wpfWindow) {
 
     $miExit = $fallbackMenu.Items.Add("Exit Engine")
     $miExit.Add_Click({
-        $script:notifyIcon.Visible = $false
-        $script:notifyIcon.Dispose()
-        [System.Windows.Forms.Application]::Exit()
+        Invoke-ExitEngine
     })
+
 
     $script:notifyIcon.ContextMenuStrip = $fallbackMenu
     [System.Windows.Forms.Application]::Run()

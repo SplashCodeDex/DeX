@@ -13,12 +13,9 @@ class FileTransferReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val sessionId = intent.getStringExtra("SESSION_ID") ?: return
         val action = intent.action
-        
-        val deferred = TransferState.pendingPrompts.remove(sessionId)
-        if (deferred != null) {
-            deferred.complete(action == "com.dexstudios.dex.ACCEPT_TRANSFER")
-        }
-        
+
+        TransferState.pendingPrompts.remove(sessionId)?.complete(action == "com.dexstudios.dex.ACCEPT_TRANSFER")
+
         // Cancel notification
         val notificationId = intent.getIntExtra("NOTIFICATION_ID", 0)
         if (notificationId != 0) {
