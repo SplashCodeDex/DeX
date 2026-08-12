@@ -258,6 +258,26 @@ namespace DeXShareTarget.Endpoints
                 return Results.Json(new { sessionId, totalFiles = req.TotalFiles, totalSize = req.TotalSize });
             });
 
+            app.MapGet("/api/localsend/v2/vstream-progress", (string sessionId) =>
+            {
+                if (!ActiveVStreamSessions.TryGetValue(sessionId, out var sessionManifest)) return Results.BadRequest();
+                string downloadsFolder = DeXConstants.DownloadsFolder;
+                var progress = new Dictionary<string, long>();
+
+                foreach (var item in sessionManifest.Items)
+                {
+                    string safeRel = SanitizeRelativePath(item.RelativePath);
+                    string destPath = string.IsNullOrEmpty(safeRel)
+                        ? Path.Combine(downloadsFolder, "unnamed_file")
+                        : Path.Combine(downloadsFolder, safeRel);
+
+                    long existingBytes = File.Exists(destPath) ? new FileInfo(destPath).Length : 0L;
+                    progress[item.Id] = existingBytes;
+                }
+
+                return Results.Json(new { sessionId, progress });
+            });
+
             app.MapPost("/api/localsend/v2/vstream-data", async (HttpRequest request) =>
             {
                 var sessionId = request.Query["sessionId"].ToString();
@@ -272,8 +292,24 @@ namespace DeXShareTarget.Endpoints
                     ? Path.Combine(downloadsFolder, "unnamed_file")
                     : Path.Combine(downloadsFolder, safeRel);
 
-                using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 8192, useAsync: true))
+                long startOffset = 0L;
+                var rangeHeader = request.Headers["Range"].ToString();
+                if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
                 {
+                    var parts = rangeHeader.Substring("bytes=".Length).Split('-');
+                    if (long.TryParse(parts[0], out var parsedOffset))
+                    {
+                        startOffset = parsedOffset;
+                    }
+                }
+
+                var mode = startOffset > 0 ? FileMode.OpenOrCreate : FileMode.Create;
+                using (var destStream = new FileStream(destPath, mode, FileAccess.Write, FileShare.ReadWrite, 8192, useAsync: true))
+                {
+                    if (startOffset > 0 && destStream.Length >= startOffset)
+                    {
+                        destStream.Seek(startOffset, SeekOrigin.Begin);
+                    }
                     await request.Body.CopyToAsync(destStream);
                 }
 
