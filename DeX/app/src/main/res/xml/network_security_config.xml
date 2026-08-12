@@ -2,7 +2,7 @@
 <network-security-config>
     <!-- Every DeX PC's certificate is signed by the bundled DeX root CA, so Cronet
          (HTTP/3/QUIC) trusts every PC automatically — no user setup needed. -->
-    <base-config>
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
             <certificates src="@raw/dex_ca"/>

@@ -1,5 +1,18 @@
 # Changelog
 
+## [8.1.0.0] - 2026-08-12
+### Added
+- **[minor] Live 480p Windows PC Wallpaper Streaming to Android Cards**: Replaced static placeholder drawables on Android device cards with real-time PC Windows desktop wallpaper streaming.
+- **[minor] Windows Wallpaper Extractor (`WallpaperService`)**: Created a high-performance wallpaper extraction service in `DeXShareTarget` that reads active desktop wallpaper from Windows Shell (`%APPDATA%\Microsoft\Windows\Themes\TranscodedWallpaper`) with non-exclusive `FileShare.ReadWrite` streams, multi-tier fallbacks (Win32 `SPI_GETDESKWALLPAPER`, Registry `HKCU\Control Panel\Desktop\Wallpaper`, and cached theme files), and auto-detects magic bytes (`JPEG`/`PNG`).
+- **[minor] 480p Ultra-Lightweight Downscaling**: Downscales high-res 4K/8K PC wallpapers to 480p JPEG (~120KB) in memory using WPF's `TransformedBitmap` and `JpegBitmapEncoder`, eliminating Wi-Fi latency and memory overhead.
+- **[minor] Endpoint & Android Integration**: Added `/api/dex/wallpaper` and `/api/localsend/v2/wallpaper` endpoints with 5-second server-side TTL caching and HTTP `Cache-Control`. Updated Android `DeviceListItem` and `AsyncImage` with Coil `crossfade` and `placeholder`/`error` fallbacks. Enabled local subnet cleartext permits in `network_security_config.xml`.
+
+## [8.0.4.0] - 2026-08-12
+### Fixed
+- **[fix] ADB Connection Freeze**: Resolved a severe 30-second UI freeze when connecting ADB. The issue was caused by a known Windows `WinNAT` bug (triggered by Hyper-V/WSL) silently hijacking the `44000-48999` port range, instantly crashing the isolated ADB daemon on port 48427. Fixed by dynamically allocating the ADB daemon port (`Get-FreePort`) at startup, completely eliminating port collisions.
+- **[fix] Port Range Shift**: Shifted the remaining static ports (`DiscoveryPort` and `LocalApiPort`) down to the safe `28xxx` block (`28424`, `28425`) to permanently evade the Windows dynamic port exclusion blast radius.
+- **[fix] ADB Fast TCP Ping**: Restored the Fast TCP Ping timeout to a highly aggressive `400ms` and removed the 15-second fallback ADB daemon restart block to ensure instant failure feedback.
+
 ## [8.0.1.0] - 2026-08-12
 ### Fixed
 - **[fix] UPnP and PC mDNS Dynamic Port Omissions**: Added UPnP IGD port mapping logic for the newly dynamic `TcpFallbackPort` to ensure WAN connections continue to work even when QUIC is blocked. Updated `RelayService.cs` to correctly pass the `quicPort` and `tcpFallbackPort` properties inside the `prepare-upload` WebSocket payload by using the `RegisterDto` instead of an anonymous object, fixing a bug where Android clients would fall back to static ports during PC-to-Android transfers. Additionally, patched the PC's mDNS `DiscoveryBackgroundService` to correctly parse `quicPort` and `tcpFallbackPort` from TXT records when discovering other PCs.

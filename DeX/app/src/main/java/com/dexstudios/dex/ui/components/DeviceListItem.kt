@@ -23,8 +23,14 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
 
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.request.error
+import coil3.request.fallback
+import coil3.request.placeholder
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import androidx.compose.runtime.remember
 
@@ -39,6 +45,7 @@ fun DeviceListItem(
     wallpaper: Any? = null, // Allow passing a custom image source
     onButtonClick: () -> Unit = onClick
 ) {
+    val context = LocalContext.current
     val batteryIcon = remember {
         val level = (1..7).random()
         when(level) {
@@ -52,8 +59,28 @@ fun DeviceListItem(
         }
     }
 
-    // Default Wallpaper (Hwaseong Fortress)
-    val wallpaperSource = wallpaper ?: R.drawable.wallpaper_fortress
+    // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint if available
+    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol) {
+        if (wallpaper != null) {
+            wallpaper
+        } else if (device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
+            val protocol = device.info.protocol.ifBlank { "https" }
+            "$protocol://${device.ip}:${device.info.port}/api/dex/wallpaper"
+        } else {
+            R.drawable.wallpaper_fortress
+        }
+    }
+
+    val imageRequest = remember(resolvedWallpaper, context) {
+        ImageRequest.Builder(context)
+            .data(resolvedWallpaper)
+            .crossfade(true)
+            .placeholder(R.drawable.wallpaper_fortress)
+            .error(R.drawable.wallpaper_fortress)
+            .fallback(R.drawable.wallpaper_fortress)
+            .build()
+    }
+
     val cardShape = RoundedCornerShape(48.dp)
 
     DeXPanel(
@@ -68,9 +95,9 @@ fun DeviceListItem(
         shadowRadius = 16.dp
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
-            // 1. Wallpaper (AsyncImage with local resource or custom source)
+            // 1. Wallpaper (AsyncImage with live PC wallpaper endpoint or fallback)
             AsyncImage(
-                model = wallpaperSource,
+                model = imageRequest,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()

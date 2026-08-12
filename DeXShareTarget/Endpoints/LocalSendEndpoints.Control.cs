@@ -173,6 +173,23 @@ namespace DeXShareTarget.Endpoints
                 IsDndEnabled = enabled;
                 return Results.Ok(new { dnd = IsDndEnabled });
             });
+
+            // Live 480p Windows Desktop Wallpaper for device card backgrounds on mobile
+            app.MapGet("/api/dex/wallpaper", (HttpResponse response) =>
+            {
+                var wallpaper = WallpaperService.GetWallpaper480p();
+                if (wallpaper == null) return Results.NotFound();
+                response.Headers["Cache-Control"] = "public, max-age=300";
+                return Results.Bytes(wallpaper.Value.Bytes, contentType: wallpaper.Value.ContentType);
+            });
+
+            app.MapGet("/api/localsend/v2/wallpaper", (HttpResponse response) =>
+            {
+                var wallpaper = WallpaperService.GetWallpaper480p();
+                if (wallpaper == null) return Results.NotFound();
+                response.Headers["Cache-Control"] = "public, max-age=300";
+                return Results.Bytes(wallpaper.Value.Bytes, contentType: wallpaper.Value.ContentType);
+            });
         }
     }
 }
