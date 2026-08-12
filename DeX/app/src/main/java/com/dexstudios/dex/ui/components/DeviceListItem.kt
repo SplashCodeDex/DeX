@@ -52,16 +52,24 @@ fun DeviceListItem(
     val context = LocalContext.current
     val wallpaperRevision by WallpaperState.revision.collectAsStateWithLifecycle()
 
-    val batteryIcon = remember {
-        val level = (1..7).random()
-        when(level) {
-            1 -> MaterialSymbols.Battery1
-            2 -> MaterialSymbols.Battery2
-            3 -> MaterialSymbols.Battery3
-            4 -> MaterialSymbols.Battery4
-            5 -> MaterialSymbols.Battery5
-            6 -> MaterialSymbols.Battery6
-            else -> MaterialSymbols.BatteryFull
+    val realBattery = device.info.battery
+    val isCharging = device.info.isCharging == true
+    val realWifiBand = device.info.wifiBand?.ifBlank { "5GHz" } ?: "5GHz"
+
+    val batteryIcon = remember(realBattery, isCharging) {
+        if (isCharging) {
+            MaterialSymbols.BatteryCharging
+        } else if (realBattery != null) {
+            when {
+                realBattery <= 15 -> MaterialSymbols.Battery1
+                realBattery <= 35 -> MaterialSymbols.Battery2
+                realBattery <= 50 -> MaterialSymbols.Battery3
+                realBattery <= 70 -> MaterialSymbols.Battery4
+                realBattery <= 85 -> MaterialSymbols.Battery5
+                else -> MaterialSymbols.BatteryFull
+            }
+        } else {
+            MaterialSymbols.BatteryFull
         }
     }
 
@@ -170,11 +178,14 @@ fun DeviceListItem(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tags Row (Updated with Icons)
+                // Tags Row (Updated with Live Telemetry)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     DeviceIconTag(icon = MaterialSymbols.Wifi)
                     DeviceIconTag(icon = batteryIcon)
-                    DeviceTag(text = "5GHz")
+                    DeviceTag(text = realWifiBand)
+                    if (realBattery != null) {
+                        DeviceTag(text = "$realBattery%")
+                    }
                     if (isTrusted) {
                         DeviceTag(text = "Paired")
                     }

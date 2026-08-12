@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.5.0.0] - 2026-08-12
+### Added
+- **[minor] Live Windows PC Battery & Wi-Fi Telemetry Synchronization (`PcTelemetryService`)**: Implemented `PcTelemetryService` in `DeXShareTarget` using Win32 `GetSystemPowerStatus` and `NetworkInterface` APIs with a 2-second in-memory TTL cache to query live Windows battery percentage (0–100%), AC power charging status, and Wi-Fi band (`5GHz`, `2.4GHz`, `6GHz`, or `LAN`).
+- **[minor] Android Card Telemetry Integration (`DeviceListItem`)**: Extended `RegisterDto` on PC and Android to transport live power and network telemetry. Replaced simulated random battery placeholders in Android's `DeviceListItem` card UI with real PC battery percentages, AC charging bolt icons (`BatteryCharging`), and actual Wi-Fi band tags.
+
 ## [8.4.0.0] - 2026-08-12
 ### Added
 - **[minor] Live Debounced WebSocket Wallpaper Watcher (`WallpaperWatcherService`)**: Created a background file monitor on Windows using `FileSystemWatcher` targeting `TranscodedWallpaper` changes with 1-second debouncing and a 500ms post-write buffer safeguard. Broadcasts `wallpaper-updated` WebSocket messages to paired mobile devices when the desktop wallpaper changes.

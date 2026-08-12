@@ -545,8 +545,21 @@ object MaterialSymbols {
         }
     }
 
+    val BatteryCharging: ImageVector
+        get() = _batteryCharging ?: batteryFrameBuilder("battery_charging") {
+            moveTo(11f, 15f)
+            lineTo(13f, 12f)
+            horizontalLineTo(10f)
+            lineTo(12f, 9f)
+            horizontalLineTo(9f)
+            lineTo(7f, 12f)
+            horizontalLineTo(10f)
+            close()
+        }.build().also { _batteryCharging = it }
+
     private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
+    private var _batteryCharging: ImageVector? = null
     private var _battery1: ImageVector? = null
     private var _battery2: ImageVector? = null
     private var _battery3: ImageVector? = null

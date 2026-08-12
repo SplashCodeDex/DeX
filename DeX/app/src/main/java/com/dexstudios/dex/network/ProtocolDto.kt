@@ -15,7 +15,11 @@ data class RegisterDto(
     val protocol: String,
     val download: Boolean,
     val identityHash: String? = null,
-    val googleSub: String? = null
+    val googleSub: String? = null,
+    val battery: Int? = null,
+    val isCharging: Boolean? = null,
+    val wifiBand: String? = null,
+    val wifiSsid: String? = null
 )
 
 @Serializable
