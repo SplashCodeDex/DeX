@@ -59,11 +59,11 @@ fun DeviceListItem(
         }
     }
 
-    // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint if available
-    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol) {
+    // Dynamic Wallpaper Resolution: Fetch 480p desktop wallpaper from PC endpoint if available on direct LAN
+    val resolvedWallpaper = remember(wallpaper, device.ip, device.info.port, device.info.protocol, device.viaWan, device.viaRoster) {
         if (wallpaper != null) {
             wallpaper
-        } else if (device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
+        } else if (!device.viaWan && !device.viaRoster && device.ip.isNotBlank() && device.ip != "0.0.0.0" && device.info.port > 0) {
             val protocol = device.info.protocol.ifBlank { "https" }
             "$protocol://${device.ip}:${device.info.port}/api/dex/wallpaper"
         } else {

@@ -9,6 +9,7 @@ namespace DeXShareTarget.Services
 {
     /// <summary>
     /// Serves the active Windows desktop wallpaper resized to 480p for ultra-lightweight network transmission to mobile devices.
+    /// Includes double-checked lock-free cache reads, multi-monitor slideshow support, and precise MIME content type tracking.
     /// </summary>
     public static class WallpaperService
     {
@@ -17,20 +18,28 @@ namespace DeXShareTarget.Services
         private const int SPI_GETDESKWALLPAPER = 0x0073;
 
         private static byte[]? _cachedWallpaper;
+        private static string _cachedContentType = "image/jpeg";
         private static DateTime _lastFetchTime = DateTime.MinValue;
         private static readonly object _lock = new object();
 
         public static (byte[] Bytes, string ContentType)? GetWallpaper480p()
         {
+            // Fast lock-free read path for cached wallpaper (eliminates lock contention on concurrent requests)
+            var cached = _cachedWallpaper;
+            if (cached != null && (DateTime.UtcNow - _lastFetchTime).TotalSeconds < 5)
+            {
+                return (cached, _cachedContentType);
+            }
+
             lock (_lock)
             {
-                // Cache for 5 seconds to eliminate disk and downscaling overhead on rapid requests
+                // Double-check after acquiring lock
                 if (_cachedWallpaper != null && (DateTime.UtcNow - _lastFetchTime).TotalSeconds < 5)
                 {
-                    return (_cachedWallpaper, "image/jpeg");
+                    return (_cachedWallpaper, _cachedContentType);
                 }
 
-                var rawBytes = TryReadRawWallpaperBytes();
+                var (rawBytes, detectedContentType) = TryReadRawWallpaperBytes();
                 if (rawBytes == null || rawBytes.Length == 0)
                 {
                     return null;
@@ -40,40 +49,55 @@ namespace DeXShareTarget.Services
                 {
                     var resized = ResizeTo480p(rawBytes);
                     _cachedWallpaper = resized;
+                    _cachedContentType = "image/jpeg";
                     _lastFetchTime = DateTime.UtcNow;
-                    return (resized, "image/jpeg");
+                    return (resized, _cachedContentType);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[WallpaperService] Error resizing wallpaper: {ex.Message}");
-                    // Fallback to raw bytes if resize fails for any reason
+                    Console.WriteLine($"[WallpaperService] Downscaling fallback: {ex.Message}");
+                    // Fallback to raw bytes with accurate detected MIME type
                     _cachedWallpaper = rawBytes;
+                    _cachedContentType = detectedContentType;
                     _lastFetchTime = DateTime.UtcNow;
-                    return (rawBytes, GetContentType(rawBytes));
+                    return (rawBytes, detectedContentType);
                 }
             }
         }
 
-        private static byte[]? TryReadRawWallpaperBytes()
+        private static (byte[]? Bytes, string ContentType) TryReadRawWallpaperBytes()
         {
-            // 1. Try TranscodedWallpaper in AppData (most reliable on Windows 10/11)
-            try
-            {
-                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string transcoded = Path.Combine(appData, "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string themesDir = Path.Combine(appData, "Microsoft", "Windows", "Themes");
 
-                if (File.Exists(transcoded))
-                {
-                    using var fs = new FileStream(transcoded, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var ms = new MemoryStream();
-                    fs.CopyTo(ms);
-                    var bytes = ms.ToArray();
-                    if (bytes.Length > 0) return bytes;
-                }
-            }
-            catch (Exception ex)
+            // 1. Try TranscodedWallpaper or multi-monitor variants (TranscodedWallpaper_000, etc.)
+            string[] candidateFiles = new[]
             {
-                Console.WriteLine($"[WallpaperService] Could not read TranscodedWallpaper: {ex.Message}");
+                Path.Combine(themesDir, "TranscodedWallpaper"),
+                Path.Combine(themesDir, "TranscodedWallpaper_000"),
+                Path.Combine(themesDir, "TranscodedWallpaper_001")
+            };
+
+            foreach (var candidate in candidateFiles)
+            {
+                try
+                {
+                    if (File.Exists(candidate))
+                    {
+                        using var fs = new FileStream(candidate, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        using var ms = new MemoryStream();
+                        fs.CopyTo(ms);
+                        var bytes = ms.ToArray();
+                        if (bytes.Length > 0)
+                        {
+                            return (bytes, GetContentType(bytes));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WallpaperService] File read notice ({candidate}): {ex.Message}");
+                }
             }
 
             // 2. Try Registry Wallpaper Path
@@ -87,12 +111,15 @@ namespace DeXShareTarget.Services
                     using var ms = new MemoryStream();
                     fs.CopyTo(ms);
                     var bytes = ms.ToArray();
-                    if (bytes.Length > 0) return bytes;
+                    if (bytes.Length > 0)
+                    {
+                        return (bytes, GetContentType(bytes));
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WallpaperService] Could not read Registry wallpaper: {ex.Message}");
+                Console.WriteLine($"[WallpaperService] Registry read notice: {ex.Message}");
             }
 
             // 3. Try SystemParametersInfo API
@@ -108,16 +135,19 @@ namespace DeXShareTarget.Services
                         using var ms = new MemoryStream();
                         fs.CopyTo(ms);
                         var bytes = ms.ToArray();
-                        if (bytes.Length > 0) return bytes;
+                        if (bytes.Length > 0)
+                        {
+                            return (bytes, GetContentType(bytes));
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WallpaperService] Could not read SPI wallpaper: {ex.Message}");
+                Console.WriteLine($"[WallpaperService] SPI API read notice: {ex.Message}");
             }
 
-            // 4. Try CachedFiles directory
+            // 4. Try CachedFiles directory (Windows slideshow cache)
             try
             {
                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -125,19 +155,25 @@ namespace DeXShareTarget.Services
                 if (Directory.Exists(cachedDir))
                 {
                     var files = Directory.GetFiles(cachedDir);
-                    if (files.Length > 0 && File.Exists(files[0]))
+                    foreach (var file in files)
                     {
-                        using var fs = new FileStream(files[0], FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                        using var ms = new MemoryStream();
-                        fs.CopyTo(ms);
-                        var bytes = ms.ToArray();
-                        if (bytes.Length > 0) return bytes;
+                        if (File.Exists(file))
+                        {
+                            using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                            using var ms = new MemoryStream();
+                            fs.CopyTo(ms);
+                            var bytes = ms.ToArray();
+                            if (bytes.Length > 0)
+                            {
+                                return (bytes, GetContentType(bytes));
+                            }
+                        }
                     }
                 }
             }
             catch { }
 
-            return null;
+            return (null, "image/jpeg");
         }
 
         private static byte[] ResizeTo480p(byte[] originalBytes)
