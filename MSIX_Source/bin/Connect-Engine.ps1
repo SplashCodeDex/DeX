@@ -15,6 +15,7 @@ param(
 # Load shared constants (ports, paths) first so every subsequent module and binding can use them.
 . "$PSScriptRoot\DeX-Constants.ps1"
 . "$PSScriptRoot\Modules\EngineUtils.ps1"
+. "$PSScriptRoot\Modules\ClipboardManager.ps1"
 Import-Module "$PSScriptRoot\Modules\AdbManager.psm1" -Force
 . "$PSScriptRoot\Modules\TaskScheduler.ps1"
 . "$PSScriptRoot\Modules\UIComponents.ps1"
@@ -569,19 +570,25 @@ $uiTimer.Add_Tick({
 $uiTimer.Start()
 if (-not $Background -and -not $SelfTest) { $script:showUiEvent.Set() | Out-Null }
 
-[System.Windows.Forms.Application]::add_ApplicationExit({
-    if ($script:mdnsJob -and $script:mdnsJob.PowerShell) {
-        Write-Trace "Disposing mDNS Runspace..."
-        $script:mdnsJob.PowerShell.Dispose()
-    }
-    if ($script:uiPollJob -and $script:uiPollJob.PowerShell) {
-        Write-Trace "Disposing UI-data poller Runspace..."
-        $script:uiPollJob.PowerShell.Dispose()
-    }
-    # Clipboard STA runspace: stop + dispose so the background loop exits cleanly
-    Stop-ClipboardSyncWorker
-    # Transfer server is hosted by DeXShareTarget.exe (C# LocalSendServer) — no PS runspace to dispose
-})
+$script:cleanExitBlock = {
+    try {
+        if ($script:mdnsJob -and $script:mdnsJob.PowerShell) {
+            $script:mdnsJob.PowerShell.Dispose()
+        }
+        if ($script:uiPollJob -and $script:uiPollJob.PowerShell) {
+            $script:uiPollJob.PowerShell.Dispose()
+        }
+        if (Get-Command Stop-ClipboardSyncWorker -ErrorAction SilentlyContinue) {
+            Stop-ClipboardSyncWorker
+        }
+        if (Get-Command Invoke-ExitEngine -ErrorAction SilentlyContinue) {
+            Invoke-ExitEngine
+        }
+    } catch {}
+}
+
+[System.Windows.Forms.Application]::add_ApplicationExit($script:cleanExitBlock)
+[System.AppDomain]::CurrentDomain.add_ProcessExit($script:cleanExitBlock)
 
 [System.Windows.Forms.Application]::Run()
 
