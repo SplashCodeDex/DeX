@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     DeX - Device Actions
 .DESCRIPTION
@@ -78,15 +78,19 @@ function Start-PinPairing {
 
     $alias = ""
     if (-not $Ip) {
-        try {
-            $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
-            $target = $devices | Where-Object { $_.info.fingerprint -eq $Fingerprint } | Select-Object -First 1
-            if (-not $target) { throw "Device not found in the local device list." }
-            $Ip = $target.ip
-            $alias = $target.info.alias
-        } catch {
-            Show-Toast -Title "Device Not Found" -Message "The phone is not currently discoverable."
-            return
+        if ($script:activeOutboundPairIp -and $script:activeOutboundPairFp -eq $Fingerprint) {
+            $Ip = $script:activeOutboundPairIp
+        } else {
+            try {
+                $devices = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                $target = $devices | Where-Object { $_.info.fingerprint -eq $Fingerprint } | Select-Object -First 1
+                if (-not $target) { throw "Device not found in the local device list." }
+                $Ip = $target.ip
+                $alias = $target.info.alias
+            } catch {
+                Show-Toast -Title "Device Not Found" -Message "The phone is not currently discoverable."
+                return
+            }
         }
     }
 

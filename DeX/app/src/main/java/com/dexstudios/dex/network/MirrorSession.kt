@@ -32,7 +32,8 @@ object MirrorSession {
     const val JPEG_QUALITY = 70
 
     @Volatile
-    private var active = false
+    var active = false
+        private set
 
     // Per-frame allocations cached to avoid ~4MB of bitmap churn per 15fps frame
     private var cachedBitmap: Bitmap? = null

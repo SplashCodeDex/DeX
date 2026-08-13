@@ -30,11 +30,11 @@ namespace DeXShareTarget.Services
 
             if (!string.IsNullOrEmpty(imageBase64))
             {
-                await SetWindowsClipboardImageAsync(imageBase64);
+                SetWindowsClipboardImage(imageBase64);
             }
             else
             {
-                await SetWindowsClipboardTextAsync(textToSet);
+                SetWindowsClipboardText(textToSet);
             }
 
             return Results.Ok();
@@ -109,40 +109,60 @@ namespace DeXShareTarget.Services
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         }
 
-        private static async Task SetWindowsClipboardImageAsync(string imageBase64)
+        private static void SetWindowsClipboardImage(string imageBase64)
         {
             try
             {
-                var tempPath = Path.Combine(Path.GetTempPath(), $"dex_clip_{Guid.NewGuid():N}.png");
                 var imageBytes = Convert.FromBase64String(imageBase64);
-                await File.WriteAllBytesAsync(tempPath, imageBytes);
+                using var ms = new MemoryStream(imageBytes);
+                var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(
+                    ms,
+                    System.Windows.Media.Imaging.BitmapCreateOptions.None,
+                    System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                var frame = decoder.Frames[0];
+                frame.Freeze();
 
-                var script = $"Add-Type -AssemblyName System.Windows.Forms, System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('{tempPath.Replace("'", "''")}'))";
-                var psi = new System.Diagnostics.ProcessStartInfo("powershell", $"-Sta -NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
+                if (System.Windows.Application.Current?.Dispatcher != null)
                 {
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                System.Diagnostics.Process.Start(psi);
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        System.Windows.Clipboard.SetImage(frame);
+                    });
+                }
+                else
+                {
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try { System.Windows.Clipboard.SetImage(frame); } catch { }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.Start();
+                    thread.Join(1000);
+                }
             }
             catch { }
         }
 
-        private static async Task SetWindowsClipboardTextAsync(string text)
+        private static void SetWindowsClipboardText(string text)
         {
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo("powershell", "-NoProfile -Command \"$input | Set-Clipboard\"")
+                if (System.Windows.Application.Current?.Dispatcher != null)
                 {
-                    RedirectStandardInput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                var p = System.Diagnostics.Process.Start(psi);
-                if (p != null)
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        System.Windows.Clipboard.SetText(text);
+                    });
+                }
+                else
                 {
-                    await p.StandardInput.WriteAsync(text);
-                    p.StandardInput.Close();
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try { System.Windows.Clipboard.SetText(text); } catch { }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.Start();
+                    thread.Join(1000);
                 }
             }
             catch { }

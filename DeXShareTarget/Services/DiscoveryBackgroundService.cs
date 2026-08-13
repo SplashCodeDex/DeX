@@ -79,9 +79,10 @@ namespace DeXShareTarget.Services
                 }
             } catch { }
 
-            NetworkChange.NetworkAddressChanged += (s, e) => {
+            NetworkAddressChangedEventHandler netHandler = (s, e) => {
                 Devices.Clear();
             };
+            NetworkChange.NetworkAddressChanged += netHandler;
 
             bool IsSelf(string? fp, string? alias, string? senderIp = null) {
                 if (!string.IsNullOrEmpty(fp) && fp == myInfo.Fingerprint) return true;
@@ -327,8 +328,18 @@ namespace DeXShareTarget.Services
                 try { await Task.Delay(2000, stoppingToken); } catch (OperationCanceledException) { break; }
             }
             
-            sd.Unadvertise(service);
-            mdns.Stop();
+            try
+            {
+                NetworkChange.NetworkAddressChanged -= netHandler;
+            }
+            catch { }
+            
+            try
+            {
+                sd.Unadvertise(service);
+                mdns.Stop();
+            }
+            catch { }
           } catch (OperationCanceledException) { /* normal shutdown */ } catch { /* prevent host crash */ }
         }
     }

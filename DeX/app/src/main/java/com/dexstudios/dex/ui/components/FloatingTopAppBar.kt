@@ -70,8 +70,6 @@ fun FloatingTopAppBar(
     backdrop: Backdrop? = null,
     showSearch: Boolean = true,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-
     val density = LocalDensity.current
     val containerSize = LocalWindowInfo.current.containerSize
     val screenWidth = with(density) { containerSize.width.toDp() }
@@ -127,6 +125,7 @@ fun FloatingTopAppBar(
             searchFocusRequester.requestFocus()
         } else {
             keyboardController?.hide()
+            TopAppBarState.searchQuery = "" // Clear search when collapsed
         }
     }
 
@@ -197,8 +196,8 @@ fun FloatingTopAppBar(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 androidx.compose.foundation.text.BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
+                                    value = TopAppBarState.searchQuery,
+                                    onValueChange = { TopAppBarState.searchQuery = it },
                                     modifier = Modifier
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
@@ -209,7 +208,7 @@ fun FloatingTopAppBar(
                                     ),
                                     cursorBrush = SolidColor(Color.White),
                                     decorationBox = { innerTextField ->
-                                        if (searchQuery.isEmpty()) {
+                                        if (TopAppBarState.searchQuery.isEmpty()) {
                                             Text(
                                                 "Search devices...",
                                                 color = Color.White.copy(alpha = 0.5f),

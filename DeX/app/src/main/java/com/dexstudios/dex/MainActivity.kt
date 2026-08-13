@@ -26,6 +26,7 @@ import android.Manifest
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+  @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
@@ -159,7 +161,8 @@ WorkManager.getInstance(this).enqueueUniquePeriodicWork(
     }
 
     setContent {
-      DeXTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      val windowSizeClass = androidx.compose.material3.windowsizeclass.calculateWindowSizeClass(this)
+      DeXTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation(windowSizeClass) } }
     }
   }
 

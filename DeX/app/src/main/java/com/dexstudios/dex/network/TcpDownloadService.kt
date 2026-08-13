@@ -67,8 +67,18 @@ object TcpDownloadService {
      * @param httpsPort the PC's advertised HTTPS port (serves /download over HTTP/1.1 and, via Alt-Svc, HTTP/3)
      * @param tcpPort the legacy raw-TCP pull server port used as fallback
      * @param fingerprint the fingerprint of the source device (for UI sorting/tracking)
+     * @param sourceAlias the display name of the source device
      */
-    fun downloadBatch(context: Context, ip: String, httpsPort: Int, tcpPort: Int, files: List<PullFileDto>, destDirUri: Uri?, fingerprint: String? = null) {
+    fun downloadBatch(
+        context: Context,
+        ip: String,
+        httpsPort: Int,
+        tcpPort: Int,
+        files: List<PullFileDto>,
+        destDirUri: Uri?,
+        fingerprint: String? = null,
+        sourceAlias: String? = null
+    ) {
         val totalBytes = files.sumOf { it.size }
         _downloadState.value = DownloadState(
             fileName = if (files.isNotEmpty()) files.first().fileName else "",
@@ -86,6 +96,7 @@ object TcpDownloadService {
             .putLong("totalBytes", totalBytes)
             .putString("destDirUri", destDirUri?.toString())
             .putString("sourceFingerprint", fingerprint)
+            .putString("sourceAlias", sourceAlias)
             .build()
 
         val constraints = Constraints.Builder()

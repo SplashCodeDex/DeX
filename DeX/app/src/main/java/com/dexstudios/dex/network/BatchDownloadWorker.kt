@@ -42,6 +42,7 @@ class BatchDownloadWorker(
 ) : CoroutineWorker(context, params), KoinComponent {
 
     private val client by inject<ClientEngine>()
+    private val notificationHelper by inject<NotificationHelper>()
 
     private val notificationId = 1002
     private val channelId = "download_channel"
@@ -95,6 +96,7 @@ class BatchDownloadWorker(
         val filesJson = inputData.getString("files") ?: return@withContext Result.failure()
         val totalBytes = inputData.getLong("totalBytes", 0L)
         val destDirUri = inputData.getString("destDirUri")
+        val sourceAlias = inputData.getString("sourceAlias")
 
         val files = try {
             Json.decodeFromString<List<PullFileDto>>(filesJson)
@@ -137,7 +139,7 @@ class BatchDownloadWorker(
 
         if (outcomes.all { it.ok }) {
             outcomes.forEach { outcome ->
-                TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", outcome.docUri.toString())
+                TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", outcome.docUri.toString(), peerDevice = sourceAlias)
             }
             TcpDownloadService.updateState(
                 DownloadState(
@@ -148,7 +150,11 @@ class BatchDownloadWorker(
                     totalFiles = files.size
                 )
             )
-            showCompletionNotification(files.size)
+            if (outcomes.size == 1 && outcomes.first().docUri != null) {
+                notificationHelper.showTransferCompleteNotification(outcomes.first().fileName, outcomes.first().docUri!!)
+            } else {
+                showCompletionNotification(files.size)
+            }
             Result.success()
         } else {
             val failed = outcomes.filter { !it.ok }
@@ -165,6 +171,9 @@ class BatchDownloadWorker(
             } else {
                 // Keep successful files, remove only partial/failed ones
                 deleteDocs(failed.mapNotNull { it.docUri })
+                failed.forEach { outcome ->
+                    TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", null, peerDevice = sourceAlias, status = "failed")
+                }
                 val firstError = failed.firstNotNullOfOrNull { it.error } ?: "Download failed"
                 TcpDownloadService.updateState(
                     DownloadState(

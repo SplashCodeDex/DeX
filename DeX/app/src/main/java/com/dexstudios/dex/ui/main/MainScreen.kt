@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import com.dexstudios.dex.R
 import androidx.compose.ui.res.stringResource
@@ -61,6 +63,10 @@ import com.dexstudios.dex.ui.components.NetworkErrorDialog
 import com.dexstudios.dex.ui.components.TransferProgressOverlay
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.*
+import com.dexstudios.dex.ui.main.components.ScanToAddDeviceCard
+import com.dexstudios.dex.ui.main.components.DummyDeviceCard
+import com.dexstudios.dex.ui.main.components.MainScreenCompact
+import com.dexstudios.dex.ui.main.components.MainScreenGrid
 import com.dexstudios.dex.ui.components.glass.GlassScrollEdge
 import androidx.compose.ui.text.style.TextAlign
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -75,6 +81,7 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(),
     viewModel: MainScreenViewModel = koinViewModel(),
+    windowSizeClass: WindowSizeClass
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -168,6 +175,7 @@ fun MainScreen(
                 .setInputData(
                     workDataOf(
                         "targetFingerprint" to rosterTarget.info.fingerprint,
+                        "targetAlias" to rosterTarget.info.alias,
                         "uris" to urisJson
                     )
                 )
@@ -194,7 +202,8 @@ fun MainScreen(
                 "ip" to device.ip,
                 "port" to device.info.port,
                 "uris" to urisJson,
-                "targetFingerprint" to device.info.fingerprint
+                "targetFingerprint" to device.info.fingerprint,
+                "targetAlias" to device.info.alias
             ).let { base ->
                 val identityHash = device.info.identityHash
                 val googleSub = device.info.googleSub
@@ -270,142 +279,74 @@ fun MainScreen(
                 }
 
                 // Consolidated and prioritized: Real Trusted Devices (Active Transfer > Recency)
-                val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint) {
+                val search = com.dexstudios.dex.ui.state.TopAppBarState.searchQuery
+                val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint, search) {
                     val map = mutableMapOf<String, DiscoveredDevice>()
                     // WAN devices baseline
                     rosterDevices.forEach { map[it.info.fingerprint] = it }
                     // Local trusted devices overwrite roster (LAN is preferred/faster)
                     trustedLocal.forEach { map[it.info.fingerprint] = it }
 
-                    map.values.sortedWith(
-                        compareByDescending<DiscoveredDevice> {
-                            (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
-                        }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
-                         .thenByDescending { it.lastSeenTimestamp }
-                    ).toList()
+                    map.values.filter { it.info.alias.contains(search, ignoreCase = true) }
+                        .sortedWith(
+                            compareByDescending<DiscoveredDevice> {
+                                (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
+                            }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
+                             .thenByDescending { it.lastSeenTimestamp }
+                        ).toList()
                 }
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    // Content scrolls edge-to-edge — behind the native status bar
-                    // (top) and the native nav bar (bottom); the edge fades keep it
-                    // readable. The last card rests exactly at the floating
-                    // navbar's top line (72dp + 16dp margin from the screen bottom).
-                    contentPadding = PaddingValues(
-                        top = 0.dp,
-                        bottom = 88.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // 1. "My Devices" Section (Horizontal Carousel)
-                    item {
-                        // Top padding rests the "My Devices" title visibly right under
-                        // the glass avatar button (which clears the status bar);
-                        // it still scrolls up beneath the header like the rest.
-                        Column(modifier = Modifier.padding(top = statusBarHeight + 64.dp, bottom = 8.dp)) {
-                            Text(
-                                text = "My Devices",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // A. Real Trusted Devices (Sorted)
-                                items(consolidatedTrusted, key = { it.info.fingerprint }) { device ->
-                                    DeviceListItem(
-                                        modifier = Modifier.width(300.dp),
-                                        device = device,
-                                        isTrusted = true,
-                                        onClick = {},
-                                        onButtonClick = {
-                                            if (device.viaRoster) {
-                                                selectedRosterDevice = device
-                                            } else {
-                                                selectedDevice = device
-                                            }
-                                            filePickerLauncher.launch(arrayOf("*/*"))
-                                        },
-                                        onLongClick = {
-                                            contextMenuDevice = device
-                                        }
-                                    )
-                                }
+                val filteredUntrusted = remember(untrustedDevices, search) {
+                    untrustedDevices.filter { it.info.alias.contains(search, ignoreCase = true) }
+                }
 
-                                // B. Dummy Devices (Placeholders at the end)
-                                item {
-                                    DummyDeviceCard(
-                                        alias = "Gaming PC",
-                                        model = "Custom Build (RTX 4090)",
-                                        wallpaper = R.drawable.wallpaper_gaming
-                                    )
-                                }
-                                item {
-                                    DummyDeviceCard(
-                                        alias = "Home Server",
-                                        model = "TrueNAS Core",
-                                        wallpaper = R.drawable.wallpaper_server
-                                    )
-                                }
-                                item {
-                                    DummyDeviceCard(
-                                        alias = "Work Laptop",
-                                        model = "MacBook Pro M3",
-                                        wallpaper = R.drawable.wallpaper_laptop
-                                    )
-                                }
+                if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact) {
+                    MainScreenCompact(
+                        listState = listState,
+                        consolidatedTrusted = consolidatedTrusted,
+                        untrustedDevices = filteredUntrusted,
+                        search = search,
+                        showHelpHint = showHelpHint,
+                        onTrustedDeviceButtonClick = { device ->
+                            if (device.viaRoster) {
+                                selectedRosterDevice = device
+                            } else {
+                                selectedDevice = device
                             }
-                        }
-                    }
-
-                    // 2. "Discovered" Section Title
-                    item {
-                        Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                            Text(
-                                text = "Discovered",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // A. Real Discovered Devices (Untrusted)
-                                items(untrustedDevices, key = { it.info.fingerprint }) { device ->
-                                    DeviceListItem(
-                                        modifier = Modifier.width(300.dp),
-                                        device = device,
-                                        isTrusted = false,
-                                        onClick = {},
-                                        onButtonClick = {
-                                            // Show connection options (PIN vs QR)
-                                            connectOptionsDevice = device
-                                        },
-                                        onLongClick = {
-                                            // Long-press opens the device context menu
-                                            contextMenuDevice = device
-                                        }
-                                    )
-                                }
-
-                                // B. Permanent "Scan to add Device" Card
-                                item {
-                                    ScanToAddDeviceCard(
-                                        showHelpHint = showHelpHint,
-                                        onScanClick = { launchQrScanner() }
-                                    )
-                                }
+                            filePickerLauncher.launch(arrayOf("*/*"))
+                        },
+                        onUntrustedDeviceButtonClick = { device ->
+                            connectOptionsDevice = device
+                        },
+                        onDeviceLongClick = { device ->
+                            contextMenuDevice = device
+                        },
+                        onScanClick = { launchQrScanner() },
+                        statusBarHeight = statusBarHeight
+                    )
+                } else {
+                    MainScreenGrid(
+                        consolidatedTrusted = consolidatedTrusted,
+                        untrustedDevices = filteredUntrusted,
+                        search = search,
+                        showHelpHint = showHelpHint,
+                        onTrustedDeviceButtonClick = { device ->
+                            if (device.viaRoster) {
+                                selectedRosterDevice = device
+                            } else {
+                                selectedDevice = device
                             }
-                        }
-                    }
+                            filePickerLauncher.launch(arrayOf("*/*"))
+                        },
+                        onUntrustedDeviceButtonClick = { device ->
+                            connectOptionsDevice = device
+                        },
+                        onDeviceLongClick = { device ->
+                            contextMenuDevice = device
+                        },
+                        onScanClick = { launchQrScanner() },
+                        statusBarHeight = statusBarHeight
+                    )
                 }
             }
 
@@ -492,7 +433,6 @@ fun MainScreen(
     connectOptionsDevice?.let { device ->
         ConnectionOptionsDialog(
             device = device,
-            backdrop = contentBackdrop,
             onPinCode = {
                 // Original pairing logic
                 if (AuthState.incomingPairRequest.value != null) return@ConnectionOptionsDialog
@@ -512,210 +452,6 @@ fun MainScreen(
             onDismiss = { connectOptionsDevice = null }
         )
     }
-}
-
-@Composable
-private fun ScanToAddDeviceCard(
-    showHelpHint: Boolean,
-    onScanClick: () -> Unit
-) {
-    var showHelpContent by remember { mutableStateOf(false) }
-
-    val cardShape = RoundedCornerShape(48.dp)
-    DeXPanel(
-        shape = cardShape,
-        modifier = Modifier
-            .width(300.dp)
-            .height(340.dp)
-            .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
-    ) {
-        AnimatedContent(
-            targetState = showHelpContent,
-            transitionSpec = {
-                (fadeIn(tween(400)) + scaleIn(initialScale = 0.95f)).togetherWith(fadeOut(tween(400)) + scaleOut(targetScale = 0.95f))
-            },
-            label = "scan_card_content"
-        ) { isHelp ->
-            if (isHelp) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        stringResource(R.string.discovery_help_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        DiscoveryHelpStep(number = "1", text = stringResource(R.string.discovery_help_step1))
-                        DiscoveryHelpStep(number = "2", text = stringResource(R.string.discovery_help_step2))
-                        DiscoveryHelpStep(number = "3", text = stringResource(R.string.discovery_help_step3))
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    DeXButton(
-                        onClick = { showHelpContent = false },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = CircleShape
-                    ) {
-                        Text(stringResource(R.string.discovery_help_close), fontWeight = FontWeight.Bold)
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Bottom,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Icon centered in the top area
-                    Box(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(110.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
-                                contentDescription = "Scan",
-                                modifier = Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Scan to add Device",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = showHelpHint) { showHelpContent = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AnimatedContent(
-                            targetState = showHelpHint,
-                            transitionSpec = {
-                                fadeIn() togetherWith fadeOut()
-                            },
-                            label = "hint_text"
-                        ) { hintActive ->
-                            if (hintActive) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.CheckCircle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.discovery_help_hint),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    text = "QRCode must be triggered from PC",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 20.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    DeXButton(
-                        onClick = onScanClick,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onSurface,
-                            contentColor = MaterialTheme.colorScheme.surface
-                        )
-                    ) {
-                        Text("Scan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DiscoveryHelpStep(number: String, text: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(24.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = number,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun DummyDeviceCard(alias: String, model: String, wallpaper: Any) {
-    val dummyDevice = remember(alias, model) {
-        DiscoveredDevice(
-            ip = "0.0.0.0",
-            info = RegisterDto(
-                alias = alias,
-                version = "1.0",
-                deviceModel = model,
-                deviceType = "pc",
-                fingerprint = alias,
-                port = 0,
-                protocol = "https",
-                download = true
-            )
-        )
-    }
-    DeviceListItem(
-        device = dummyDevice,
-        onClick = {}, // Do nothing as requested
-        modifier = Modifier.width(300.dp),
-        isTrusted = true,
-        wallpaper = wallpaper
-    )
 }
 
 @Composable

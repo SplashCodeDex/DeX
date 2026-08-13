@@ -144,7 +144,8 @@ class MessageHandler(
                 uploadReq.info.tcpFallbackPort,
                 files,
                 dirUri,
-                fingerprint = uploadReq.info.fingerprint
+                fingerprint = uploadReq.info.fingerprint,
+                sourceAlias = uploadReq.info.alias
             )
         }
     }

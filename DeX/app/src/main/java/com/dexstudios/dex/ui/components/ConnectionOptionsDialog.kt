@@ -23,17 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
-import com.kyant.backdrop.Backdrop
 
 @Composable
 fun ConnectionOptionsDialog(
     device: DiscoveredDevice,
-    backdrop: Backdrop,
     onPinCode: () -> Unit,
     onQrCode: () -> Unit,
     onDismiss: () -> Unit,
@@ -65,7 +61,7 @@ fun ConnectionOptionsDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f))
+                .background(Color.Black.copy(alpha = 0.4f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -73,10 +69,8 @@ fun ConnectionOptionsDialog(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            LiquidGlassPanel(
-                backdrop = backdrop,
-                config = LiquidGlassPresets.DynamicIsland,
-                shape = RoundedCornerShape(40.dp),
+            DeXPanel(
+                shape = RoundedCornerShape(48.dp),
                 modifier = Modifier
                     .widthIn(max = 340.dp)
                     .fillMaxWidth()
@@ -91,15 +85,24 @@ fun ConnectionOptionsDialog(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
                         text = stringResource(R.string.connect_device_title, device.info.alias),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
                     ConnectionOptionItem(
                         icon = MaterialSymbols.Pin,
@@ -107,7 +110,7 @@ fun ConnectionOptionsDialog(
                         onClick = { onPinCode(); dismiss() }
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     ConnectionOptionItem(
                         icon = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
@@ -126,22 +129,24 @@ private fun ConnectionOptionItem(
     label: String,
     onClick: () -> Unit
 ) {
-    Surface(
+    DeXButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().height(64.dp),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.1f),
-        contentColor = Color.White
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -153,9 +158,8 @@ private fun ConnectionOptionItem(
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = label,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }

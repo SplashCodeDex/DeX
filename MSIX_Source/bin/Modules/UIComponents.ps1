@@ -1,4 +1,4 @@
-﻿function Load-TrayIcon([string]$FileName) {
+function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
     if (Test-Path $iconPath) {
@@ -522,6 +522,8 @@ function Show-PinPanel {
 
     $pinViewPanel = $w.FindName("pinViewPanel")
     if ($pinViewPanel.Visibility -eq 'Visible' -and $pinViewPanel.Opacity -gt 0) {
+        $w.FindName("pinCodeContent").Visibility = 'Visible'
+        $w.FindName("qrCodeContent").Visibility = 'Visible'
         try { $w.FindName("menuViewsContainer").FindResource("SwitchQrToPinAnim").Stop($w) } catch {}
         try { $w.FindName("menuViewsContainer").FindResource("SwitchPinToQrAnim").Stop($w) } catch {}
         $pinT = $w.FindName("pinContentTrans")

@@ -176,6 +176,41 @@ namespace DeXShareTarget.Endpoints
 
                 return Results.Bytes(wallpaper.Value.Bytes, contentType: wallpaper.Value.ContentType);
             });
+
+            app.MapGet("/local/transfer-status", () =>
+            {
+                return Results.Json(new { activeCount = ActiveUploadSessions.Count });
+            });
+
+            app.MapPost("/local/shutdown", (Microsoft.Extensions.Hosting.IHostApplicationLifetime lifetime) =>
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(100);
+                    await LocalSendServer.StopAsync();
+                    try
+                    {
+                        lifetime.StopApplication();
+                    }
+                    catch { }
+
+                    try
+                    {
+                        if (System.Windows.Application.Current != null)
+                        {
+                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                System.Windows.Application.Current.Shutdown();
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        Environment.Exit(0);
+                    }
+                });
+                return Results.Ok(new { status = "shutting_down" });
+            });
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,7 +67,7 @@ import androidx.compose.runtime.mutableStateOf
 private val tabs = listOf(Main, History, Settings)
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(windowSizeClass: WindowSizeClass) {
   // Tabs are siblings, not a navigation stack: switching replaces the selected
   // tab, and back on any tab falls through to the system (exit).
   var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -149,7 +150,8 @@ fun MainNavigation() {
           when (tab) {
             Main -> MainScreen(
               modifier = Modifier,
-              listState = mainListState
+              listState = mainListState,
+              windowSizeClass = windowSizeClass
             )
             History -> HistoryScreen(
               modifier = Modifier.safeDrawingPadding(),

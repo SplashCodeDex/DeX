@@ -11,8 +11,13 @@ import java.util.concurrent.ConcurrentHashMap
 
 class FileTransferReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val sessionId = intent.getStringExtra("SESSION_ID") ?: return
         val action = intent.action
+        if (action == NotificationHelper.ACTION_STOP_MIRRORING) {
+            MirrorSession.stop()
+            return
+        }
+
+        val sessionId = intent.getStringExtra("SESSION_ID") ?: return
 
         TransferState.pendingPrompts.remove(sessionId)?.complete(action == "com.dexstudios.dex.ACCEPT_TRANSFER")
 

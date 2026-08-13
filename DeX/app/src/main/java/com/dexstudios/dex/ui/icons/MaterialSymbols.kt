@@ -322,6 +322,46 @@ object MaterialSymbols {
             }
         }.build().also { _checkCircle = it }
 
+    val CheckCircleOutlined: ImageVector
+        get() = _checkCircleOutlined ?: ImageVector.Builder(
+            name = "check_circle_outlined",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 22f)
+                quadToRelative(-2.075f, 0f, -3.9f, -0.788f)
+                reflectiveQuadToRelative(-3.175f, -2.137f)
+                quadToRelative(-1.35f, -1.35f, -2.137f, -3.175f)
+                reflectiveQuadTo(2f, 12f)
+                quadToRelative(0f, -2.075f, 0.788f, -3.9f)
+                reflectiveQuadToRelative(2.137f, -3.175f)
+                quadToRelative(1.35f, -1.35f, 3.175f, -2.137f)
+                reflectiveQuadTo(12f, 2f)
+                quadToRelative(2.075f, 0f, 3.9f, 0.788f)
+                reflectiveQuadToRelative(3.175f, 2.137f)
+                quadToRelative(1.35f, 1.35f, 2.137f, 3.175f)
+                reflectiveQuadTo(22f, 12f)
+                quadToRelative(0f, 2.075f, -0.788f, 3.9f)
+                reflectiveQuadToRelative(-2.137f, 3.175f)
+                quadToRelative(-1.35f, 1.35f, -3.175f, 2.137f)
+                reflectiveQuadTo(12f, 22f)
+                close()
+                moveTo(12f, 20f)
+                quadToRelative(3.325f, 0f, 5.663f, -2.337f)
+                reflectiveQuadTo(20f, 12f)
+                reflectiveQuadToRelative(-2.337f, -5.663f)
+                reflectiveQuadTo(12f, 4f)
+                reflectiveQuadToRelative(-5.663f, 2.337f)
+                reflectiveQuadTo(4f, 12f)
+                reflectiveQuadToRelative(2.337f, 5.663f)
+                reflectiveQuadTo(12f, 20f)
+                close()
+            }
+        }.build().also { _checkCircleOutlined = it }
+
     val Close: ImageVector
         get() = _close ?: ImageVector.Builder(
             name = "close",
@@ -571,6 +611,384 @@ object MaterialSymbols {
             close()
         }.build().also { _batteryCharging = it }
 
+    val Share: ImageVector
+        get() = _share ?: ImageVector.Builder(
+            name = "share",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(18f, 22f)
+                quadToRelative(-1.25f, 0f, -2.125f, -0.875f)
+                reflectiveQuadTo(15f, 19f)
+                quadToRelative(0f, -0.1f, 0.025f, -0.25f)
+                reflectiveQuadToRelative(0.075f, -0.3f)
+                lineToRelative(-7.05f, -4.1f)
+                quadToRelative(-0.425f, 0.425f, -0.987f, 0.638f)
+                reflectiveQuadTo(6f, 15f)
+                quadToRelative(-1.25f, 0f, -2.125f, -0.875f)
+                reflectiveQuadTo(3f, 12f)
+                reflectiveQuadToRelative(0.875f, -2.125f)
+                reflectiveQuadTo(6f, 9f)
+                quadToRelative(0.575f, 0f, 1.138f, 0.213f)
+                reflectiveQuadToRelative(0.987f, 0.637f)
+                lineToRelative(7.05f, -4.1f)
+                quadToRelative(-0.05f, -0.15f, -0.075f, -0.3f)
+                reflectiveQuadTo(15f, 5f)
+                quadToRelative(0f, -1.25f, 0.875f, -2.125f)
+                reflectiveQuadTo(18f, 2f)
+                reflectiveQuadToRelative(2.125f, 0.875f)
+                reflectiveQuadTo(23f, 5f)
+                reflectiveQuadToRelative(-0.875f, 2.125f)
+                reflectiveQuadTo(18f, 8f)
+                quadToRelative(-0.575f, 0f, -1.137f, -0.212f)
+                reflectiveQuadToRelative(-0.988f, -0.638f)
+                lineToRelative(-7.05f, 4.1f)
+                quadToRelative(0.05f, 0.15f, 0.075f, 0.3f)
+                reflectiveQuadTo(9f, 12f)
+                reflectiveQuadToRelative(-0.025f, 0.25f)
+                reflectiveQuadToRelative(-0.075f, 0.3f)
+                lineToRelative(7.05f, 4.1f)
+                quadToRelative(0.425f, -0.425f, 0.988f, -0.637f)
+                reflectiveQuadTo(18f, 16f)
+                quadToRelative(1.25f, 0f, 2.125f, 0.875f)
+                reflectiveQuadTo(23f, 19f)
+                reflectiveQuadToRelative(-0.875f, 2.125f)
+                reflectiveQuadTo(18f, 22f)
+                close()
+            }
+        }.build().also { _share = it }
+
+    val Sort: ImageVector
+        get() = _sort ?: ImageVector.Builder(
+            name = "sort",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(3f, 18f)
+                verticalLineToRelative(-2f)
+                horizontalLineToRelative(6f)
+                verticalLineToRelative(2f)
+                horizontalLineTo(3f)
+                close()
+                moveTo(3f, 13f)
+                verticalLineToRelative(-2f)
+                horizontalLineToRelative(12f)
+                verticalLineToRelative(2f)
+                horizontalLineTo(3f)
+                close()
+                moveTo(3f, 8f)
+                verticalLineTo(6f)
+                horizontalLineToRelative(18f)
+                verticalLineToRelative(2f)
+                horizontalLineTo(3f)
+                close()
+            }
+        }.build().also { _sort = it }
+
+    val ExpandMore: ImageVector
+        get() = _expandMore ?: ImageVector.Builder(
+            name = "expand_more",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 15.4f)
+                lineToRelative(-6f, -6f)
+                lineToRelative(1.4f, -1.4f)
+                lineToRelative(4.6f, 4.6f)
+                lineToRelative(4.6f, -4.6f)
+                lineTo(18f, 9.4f)
+                close()
+            }
+        }.build().also { _expandMore = it }
+
+    val Photo: ImageVector
+        get() = _photo ?: ImageVector.Builder(
+            name = "photo",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(19f, 19f)
+                horizontalLineTo(5f)
+                verticalLineTo(5f)
+                horizontalLineTo(19f)
+                verticalLineTo(19f)
+                close()
+                moveTo(5f, 21f)
+                quadTo(4.15f, 21f, 3.58f, 20.43f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineTo(5f)
+                quadToRelative(0f, -0.85f, 0.58f, -1.43f)
+                reflectiveQuadTo(5f, 3f)
+                horizontalLineTo(19f)
+                quadToRelative(0.85f, 0f, 1.43f, 0.58f)
+                reflectiveQuadTo(21f, 5f)
+                verticalLineTo(19f)
+                quadToRelative(0f, 0.85f, -0.58f, 1.43f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(5f)
+                close()
+                moveTo(16f, 13f)
+                lineTo(13.5f, 16.5f)
+                lineTo(11.75f, 14.15f)
+                lineTo(9f, 18f)
+                horizontalLineTo(17f)
+                lineTo(16f, 13f)
+                close()
+            }
+        }.build().also { _photo = it }
+
+    val VideoCamera: ImageVector
+        get() = _videoCamera ?: ImageVector.Builder(
+            name = "video_camera",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(14f, 13f)
+                verticalLineTo(8f)
+                quadToRelative(0f, -0.825f, -0.588f, -1.413f)
+                reflectiveQuadTo(12f, 6f)
+                horizontalLineTo(4f)
+                quadToRelative(-0.825f, 0f, -1.413f, 0.588f)
+                reflectiveQuadTo(2f, 8f)
+                verticalLineTo(16f)
+                quadToRelative(0f, 0.825f, 0.588f, 1.413f)
+                reflectiveQuadTo(4f, 18f)
+                horizontalLineTo(12f)
+                quadToRelative(0.825f, 0f, 1.413f, -0.588f)
+                reflectiveQuadTo(14f, 16f)
+                verticalLineTo(11f)
+                lineToRelative(4f, 4f)
+                verticalLineTo(9f)
+                lineTo(14f, 13f)
+                close()
+            }
+        }.build().also { _videoCamera = it }
+
+    val Article: ImageVector
+        get() = _article ?: ImageVector.Builder(
+            name = "article",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(5f, 21f)
+                quadTo(4.15f, 21f, 3.58f, 20.43f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineTo(5f)
+                quadToRelative(0f, -0.85f, 0.58f, -1.43f)
+                reflectiveQuadTo(5f, 3f)
+                horizontalLineTo(19f)
+                quadToRelative(0.85f, 0f, 1.43f, 0.58f)
+                reflectiveQuadTo(21f, 5f)
+                verticalLineTo(19f)
+                quadToRelative(0f, 0.85f, -0.58f, 1.43f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(5f)
+                close()
+                moveTo(5f, 19f)
+                horizontalLineTo(19f)
+                verticalLineTo(5f)
+                horizontalLineTo(5f)
+                verticalLineTo(19f)
+                close()
+                moveTo(7f, 17f)
+                horizontalLineTo(17f)
+                verticalLineTo(15f)
+                horizontalLineTo(7f)
+                verticalLineTo(17f)
+                close()
+                moveTo(7f, 13f)
+                horizontalLineTo(17f)
+                verticalLineTo(11f)
+                horizontalLineTo(7f)
+                verticalLineTo(13f)
+                close()
+                moveTo(7f, 9f)
+                horizontalLineTo(13f)
+                verticalLineTo(7f)
+                horizontalLineTo(7f)
+                verticalLineTo(9f)
+                close()
+            }
+        }.build().also { _article = it }
+
+    val Inventory: ImageVector
+        get() = _inventory ?: ImageVector.Builder(
+            name = "inventory",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(5f, 22f)
+                quadToRelative(-0.825f, 0f, -1.413f, -0.588f)
+                reflectiveQuadTo(3f, 20f)
+                verticalLineTo(6f)
+                quadToRelative(0f, -0.825f, 0.588f, -1.413f)
+                reflectiveQuadTo(5f, 4f)
+                horizontalLineTo(7.1f)
+                quadToRelative(0.4f, -1.15f, 1.413f, -1.825f)
+                reflectiveQuadTo(11f, 1.5f)
+                quadToRelative(1.175f, 0f, 2.188f, 0.675f)
+                reflectiveQuadTo(14.6f, 4f)
+                horizontalLineTo(17f)
+                quadToRelative(0.825f, 0f, 1.413f, 0.588f)
+                reflectiveQuadTo(19f, 6f)
+                verticalLineTo(20f)
+                quadToRelative(0f, 0.825f, -0.588f, 1.413f)
+                reflectiveQuadTo(17f, 22f)
+                horizontalLineTo(5f)
+                close()
+                moveTo(11f, 4.5f)
+                quadToRelative(0.425f, 0f, 0.713f, -0.288f)
+                reflectiveQuadTo(12f, 3.5f)
+                reflectiveQuadToRelative(-0.288f, -0.712f)
+                reflectiveQuadTo(11f, 2.5f)
+                reflectiveQuadToRelative(-0.712f, 0.288f)
+                reflectiveQuadTo(10f, 3.5f)
+                reflectiveQuadToRelative(0.288f, 0.713f)
+                reflectiveQuadTo(11f, 4.5f)
+                close()
+            }
+        }.build().also { _inventory = it }
+
+    val History: ImageVector
+        get() = _history ?: ImageVector.Builder(
+            name = "history",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(13f, 3f)
+                quadToRelative(4.15f, 0f, 7.075f, 2.925f)
+                reflectiveQuadTo(23f, 13f)
+                reflectiveQuadToRelative(-2.925f, 7.075f)
+                reflectiveQuadTo(13f, 23f)
+                reflectiveQuadToRelative(-7.075f, -2.925f)
+                reflectiveQuadTo(3f, 13f)
+                horizontalLineTo(1f)
+                lineTo(4f, 10f)
+                lineTo(7f, 13f)
+                horizontalLineTo(5f)
+                quadToRelative(0f, 3.325f, 2.338f, 5.663f)
+                reflectiveQuadTo(13f, 21f)
+                reflectiveQuadToRelative(5.663f, -2.337f)
+                reflectiveQuadTo(21f, 13f)
+                reflectiveQuadToRelative(-2.337f, -5.663f)
+                reflectiveQuadTo(13f, 5f)
+                quadToRelative(-1.725f, 0f, -3.225f, 0.725f)
+                reflectiveQuadTo(7.2f, 7.7f)
+                lineTo(5.8f, 6.3f)
+                quadToRelative(1.175f, -1.25f, 2.738f, -1.975f)
+                reflectiveQuadTo(13f, 3f)
+                close()
+                moveTo(12f, 14f)
+                horizontalLineTo(16.5f)
+                verticalLineTo(12f)
+                horizontalLineTo(14f)
+                verticalLineTo(8f)
+                horizontalLineTo(12f)
+                verticalLineTo(14f)
+                close()
+            }
+        }.build().also { _history = it }
+
+    val Folder: ImageVector
+        get() = _folder ?: ImageVector.Builder(
+            name = "folder",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(4f, 20f)
+                quadToRelative(-0.825f, 0f, -1.413f, -0.588f)
+                reflectiveQuadTo(2f, 18f)
+                verticalLineTo(6f)
+                quadToRelative(0f, -0.825f, 0.588f, -1.413f)
+                reflectiveQuadTo(4f, 4f)
+                horizontalLineToRelative(6f)
+                lineToRelative(2f, 2f)
+                horizontalLineToRelative(8f)
+                quadToRelative(0.825f, 0f, 1.413f, 0.588f)
+                reflectiveQuadTo(22f, 8f)
+                verticalLineToRelative(10f)
+                quadToRelative(0f, 0.825f, -0.588f, 1.413f)
+                reflectiveQuadTo(20f, 20f)
+                horizontalLineTo(4f)
+                close()
+            }
+        }.build().also { _folder = it }
+
+    val Delete: ImageVector
+        get() = _delete ?: ImageVector.Builder(
+            name = "delete",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(7f, 21f)
+                quadToRelative(-0.825f, 0f, -1.413f, -0.588f)
+                reflectiveQuadTo(5f, 19f)
+                verticalLineTo(6f)
+                horizontalLineTo(4f)
+                verticalLineTo(4f)
+                horizontalLineTo(8f)
+                verticalLineTo(3f)
+                horizontalLineTo(16f)
+                verticalLineTo(4f)
+                horizontalLineTo(20f)
+                verticalLineTo(6f)
+                horizontalLineTo(19f)
+                verticalLineTo(19f)
+                quadToRelative(0f, 0.825f, -0.588f, 1.413f)
+                reflectiveQuadTo(17f, 21f)
+                horizontalLineTo(7f)
+                close()
+                moveTo(17f, 6f)
+                horizontalLineTo(7f)
+                verticalLineTo(19f)
+                horizontalLineTo(17f)
+                verticalLineTo(6f)
+                close()
+                moveTo(9f, 17f)
+                horizontalLineTo(11f)
+                verticalLineTo(8f)
+                horizontalLineTo(9f)
+                verticalLineTo(17f)
+                close()
+                moveTo(13f, 17f)
+                horizontalLineTo(15f)
+                verticalLineTo(8f)
+                horizontalLineTo(13f)
+                verticalLineTo(17f)
+                close()
+            }
+        }.build().also { _delete = it }
+
     private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
     private var _batteryCharging: ImageVector? = null
@@ -584,6 +1002,17 @@ object MaterialSymbols {
     private var _notifications: ImageVector? = null
     private var _check: ImageVector? = null
     private var _checkCircle: ImageVector? = null
+    private var _checkCircleOutlined: ImageVector? = null
     private var _close: ImageVector? = null
     private var _pin: ImageVector? = null
+    private var _share: ImageVector? = null
+    private var _sort: ImageVector? = null
+    private var _expandMore: ImageVector? = null
+    private var _photo: ImageVector? = null
+    private var _videoCamera: ImageVector? = null
+    private var _article: ImageVector? = null
+    private var _inventory: ImageVector? = null
+    private var _history: ImageVector? = null
+    private var _folder: ImageVector? = null
+    private var _delete: ImageVector? = null
 }

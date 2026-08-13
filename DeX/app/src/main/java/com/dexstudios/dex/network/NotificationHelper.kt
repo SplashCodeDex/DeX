@@ -6,10 +6,15 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.dexstudios.dex.R
 
 class NotificationHelper(private val context: Context) {
+
+    companion object {
+        const val ACTION_STOP_MIRRORING = "com.dexstudios.dex.STOP_MIRRORING"
+    }
 
     private val channelId = "dex_service_channel"
 
@@ -28,11 +33,22 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun getForegroundServiceNotification(): Notification {
-        return NotificationCompat.Builder(context, channelId)
+        val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.notif_bg_title))
             .setContentText(context.getString(R.string.notif_bg_desc))
             .setSmallIcon(R.drawable.ic_stat_dex)
-            .build()
+
+        if (MirrorSession.active) {
+            val stopIntent = Intent(context, FileTransferReceiver::class.java).apply {
+                action = ACTION_STOP_MIRRORING
+            }
+            val stopPendingIntent = PendingIntent.getBroadcast(
+                context, 10, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop Mirroring", stopPendingIntent)
+        }
+
+        return builder.build()
     }
 
     fun showIncomingFileNotification(sessionId: String, notificationId: Int, fileCount: Int) {
@@ -103,5 +119,28 @@ class NotificationHelper(private val context: Context) {
     fun cancelPairingNotification() {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel("pairing".hashCode())
+    }
+
+    fun showTransferCompleteNotification(fileName: String, uri: Uri) {
+        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, context.contentResolver.getType(uri) ?: "application/octet-stream")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            context, fileName.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setContentTitle("Transfer Complete")
+            .setContentText("Successfully received $fileName")
+            .setSmallIcon(R.drawable.ic_stat_dex)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(openPendingIntent)
+            .addAction(android.R.drawable.ic_menu_view, "Open", openPendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(fileName.hashCode(), notification)
     }
 }

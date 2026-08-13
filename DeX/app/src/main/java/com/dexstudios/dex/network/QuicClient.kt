@@ -14,6 +14,7 @@ import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * HTTP/3 (QUIC) client for the DeX PC, backed by Cronet (Chromium's network stack).
@@ -27,6 +28,14 @@ class QuicClient(private val context: Context) : java.io.Closeable {
 
     override fun close() {
         executor.shutdown()
+        try {
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                executor.shutdownNow()
+            }
+        } catch (e: InterruptedException) {
+            executor.shutdownNow()
+            Thread.currentThread().interrupt()
+        }
     }
     private var engine: CronetEngine? = null
 

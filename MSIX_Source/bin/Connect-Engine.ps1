@@ -40,6 +40,135 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName PresentationFramework
 
+if (-not ('DeX.Wpf.ElementCache' -as [type])) {
+    Add-Type @'
+using System;
+using System.Collections;
+
+namespace DeX.Wpf
+{
+    public class ElementCache : IDictionary
+    {
+        private readonly Func<string, object> _finder;
+        private readonly Hashtable _cache = new Hashtable(StringComparer.OrdinalIgnoreCase);
+
+        public ElementCache(Func<string, object> finder)
+        {
+            _finder = finder;
+        }
+
+        public object this[object key]
+        {
+            get
+            {
+                if (key == null) return null;
+                string name = key.ToString();
+                if (!_cache.ContainsKey(name))
+                {
+                    object val = _finder != null ? _finder(name) : null;
+                    if (val != null)
+                    {
+                        _cache[name] = val;
+                    }
+                }
+                return _cache[name];
+            }
+            set
+            {
+                if (key != null)
+                {
+                    _cache[key.ToString()] = value;
+                }
+            }
+        }
+
+        public bool Contains(object key)
+        {
+            return this[key] != null;
+        }
+
+        public void Add(object key, object value)
+        {
+            if (key != null)
+            {
+                _cache[key.ToString()] = value;
+            }
+        }
+
+        public void Clear()
+        {
+            _cache.Clear();
+        }
+
+        public IDictionaryEnumerator GetEnumerator()
+        {
+            return _cache.GetEnumerator();
+        }
+
+        public void Remove(object key)
+        {
+            if (key != null)
+            {
+                _cache.Remove(key.ToString());
+            }
+        }
+
+        public bool IsFixedSize
+        {
+            get { return false; }
+        }
+
+        public bool IsReadOnly
+        {
+            get { return false; }
+        }
+
+        public ICollection Keys
+        {
+            get { return _cache.Keys; }
+        }
+
+        public ICollection Values
+        {
+            get { return _cache.Values; }
+        }
+
+        public void CopyTo(Array array, int index)
+        {
+            _cache.CopyTo(array, index);
+        }
+
+        public int Count
+        {
+            get { return _cache.Count; }
+        }
+
+        public bool IsSynchronized
+        {
+            get { return false; }
+        }
+
+        public object SyncRoot
+        {
+            get { return _cache.SyncRoot; }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return _cache.GetEnumerator();
+        }
+    }
+}
+'@
+}
+
+if (-not ('DeXWin32.Fg' -as [type])) {
+    Add-Type -Namespace DeXWin32 -Name Fg -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+}
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $env:ADB_MDNS_OPENSCREEN = 1
 $TaskName = "AutoConnectADB_Hotspot"
@@ -170,33 +299,19 @@ if ($global:AppThemeMode -eq "System") {
     }
 })
 
-# Lazy element cache: FindName walks the visual tree every call. Cache results
-# in a hashtable so hot-path code (show, drag, deactivate) doesn't re-walk.
-# Aliased as $script:ce for the pre-existing callers that used it directly.
-$script:dxEl = @{}
-function dxEl([string]$name) {
-    if (-not $script:dxEl.ContainsKey($name)) {
-        $script:dxEl[$name] = $script:wpfWindow.FindName($name)
-    }
-    return $script:dxEl[$name]
+# Dynamic element cache: intercepts indexer and property lookups in O(1) time.
+# If an element has not been accessed yet, it automatically calls FindName on the WPF
+# Window, caches the live control in memory, and returns it. Works transparently for both
+# $script:ce["name"] and $script:ce.name with zero manual $initElements maintenance.
+$finder = [Func[string, object]]{
+    param($name)
+    if ($null -ne $script:wpfWindow) { $script:wpfWindow.FindName($name) } else { $null }
 }
-$script:ce = $script:dxEl  # wire pre-existing direct-hashtable callers
-
-# Pre-load every element that has a handler attached at init time.
-# $script:ce was never initialized before, so $script:ce["X"] always threw
-# and every handler in Bindings_Pairing, Bindings_FileBrowser, Bindings_Settings,
-# and Bindings_Search was silently skipped.
-$initElements = @(
-    'btnPinCancel', 'btnUpDir', 'btnCancelPull', 'btnToggleExplorerMode',
-    'btnChangeDownloadPath', 'btnPushFiles', 'btnPushFolder',
-    'btnCopyIP', 'btnSettingsAutoConnect', 'btnSettingsConnectNow',
-    'btnSettingsQrCode', 'btnSettingsDnd', 'btnSettingsTheme',
-    'btnSettingsWiggleToggle', 'btnSettingsDownloadPath', 'btnSettingsAbout',
-    'btnSettingsResetIdentity', 'btnSettingsSignOut', 'btnSettingsGoogleSignIn',
-    'btnProfileTop', 'btnProfileBottom', 'btnProfileTopSettings',
-    'txtSearch', 'btnQADnd', 'btnQAPull', 'btnQAClipboard', 'FileExplorer', 'txtPinSubtitle'
-)
-foreach ($elName in $initElements) { $null = dxEl $elName }
+$script:ce = New-Object DeX.Wpf.ElementCache($finder)
+$script:dxEl = $script:ce
+function dxEl([string]$name) {
+    return $script:ce[$name]
+}
 
     # Load UI Bindings in current scope
     . "$PSScriptRoot\TrayUIBindings.ps1"
@@ -325,13 +440,6 @@ $mdnsTimer.Add_Tick({
                             # (the "flicker" the user never sees the PIN in). Force it to the
                             # foreground with the Win32 API.
                             try {
-                                if (-not $script:fgApiAdded) {
-                                    Add-Type -Namespace DeXWin32 -Name Fg -MemberDefinition @"
-[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-"@
-                                    $script:fgApiAdded = $true
-                                }
                                 $hwnd = [System.Windows.Interop.WindowInteropHelper]::new($w).Handle
                                 [DeXWin32.Fg]::ShowWindow($hwnd, 9) | Out-Null   # SW_RESTORE
                                 [DeXWin32.Fg]::SetForegroundWindow($hwnd) | Out-Null
@@ -580,9 +688,6 @@ $script:cleanExitBlock = {
         }
         if (Get-Command Stop-ClipboardSyncWorker -ErrorAction SilentlyContinue) {
             Stop-ClipboardSyncWorker
-        }
-        if (Get-Command Invoke-ExitEngine -ErrorAction SilentlyContinue) {
-            Invoke-ExitEngine
         }
     } catch {}
 }

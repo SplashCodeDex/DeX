@@ -1,4 +1,4 @@
-﻿
+
 $btnCopyIP = $script:ce["btnCopyIP"]
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -87,7 +87,7 @@ if ($btnSettingsQrCode) {
                 Show-Toast -Title "Pairing in Progress" -Message "Already requesting a PIN from the device."
                 return
             }
-            Start-PinPairing -Fingerprint $fp
+            Start-PinPairing -Fingerprint $fp -Ip $script:activeOutboundPairIp
         } else {
             # User clicked "QR CODE" to go back: cancel the pending pairing server-side
             # (pair-cancel, NOT unpair — going back must never revoke an existing trust)
@@ -107,6 +107,7 @@ if ($btnSettingsQrCode) {
             # Restore the QR-view hint (Show-PinPanel cleared it when entering the PIN view).
             $txtPinSub = $script:ce["txtPinSubtitle"]
             if ($txtPinSub) { $txtPinSub.Text = "Scan this code with your phone, or tap PIN CODE" }
+            $script:ce["pinCodeContent"].Visibility = 'Visible'
             # Slide the QR view back in over the PIN view (mirror of the Request PIN switch).
             try { $script:ce["menuViewsContainer"].FindResource("SwitchPinToQrAnim").Begin($script:wpfWindow) } catch {}
             # This is a fresh idle QR phase: re-arm its 60s expiry.

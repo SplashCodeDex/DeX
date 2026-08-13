@@ -1,4 +1,4 @@
-﻿if (-not ("ThumbHelper" -as [type])) {
+if (-not ("ThumbHelper" -as [type])) {
     $thumbCode = @"
 using System;
 using System.Runtime.InteropServices;
@@ -45,18 +45,6 @@ $script:thumbCacheMax = 200
 # keeps the Load-Directory reentrancy guard armed while a phone browse is in flight.
 $script:dirLoadSeq = 0
 $script:asyncBrowsePending = $false
-
-# Clipboard sync STA worker. Get-Clipboard only works on an STA thread, but running it on the
-        }
-        try { $script:clipWorkerPs.Dispose() } catch {}
-        if ($null -ne $script:clipWorkerRs) {
-            try { $script:clipWorkerRs.Dispose() } catch {}
-        }
-    } catch {}
-    $script:clipWorkerPs = $null
-    $script:clipWorkerRs = $null
-    $script:clipWorkerAsync = $null
-}
 
 function Load-ThumbnailAsync($targetItem, $fullPath, $fileName, $isDir, $metaStr) {
     if ($isDir -or -not ("ThumbHelper" -as [type])) { return }

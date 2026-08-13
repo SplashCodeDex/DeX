@@ -135,6 +135,7 @@ class UploadWorker(
         client.resetUploadState()
 
         val targetFingerprint = inputData.getString("targetFingerprint")
+        val targetAlias = inputData.getString("targetAlias")
         val targetIdentityHash = inputData.getString("targetIdentityHash")
         val targetGoogleSub = inputData.getString("targetGoogleSub")
         val token = client.authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
@@ -165,7 +166,7 @@ class UploadWorker(
                             }
                             if (fileToken == "[SKIP]") {
                                 doneCount.incrementAndGet()
-                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
                                 outcomes.add(id to UploadOutcome(true))
                                 return@launch
                             }
@@ -193,7 +194,9 @@ class UploadWorker(
 
                                 if (outcome.ok) {
                                     doneCount.incrementAndGet()
-                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
+                                } else {
+                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
                                 }
                                 outcomes.add(id to outcome)
                             }

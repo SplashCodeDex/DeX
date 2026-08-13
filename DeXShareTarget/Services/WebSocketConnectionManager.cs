@@ -82,5 +82,35 @@ namespace DeXShareTarget.Services
                 }
             }
         }
+        public static async Task CloseAllAsync()
+        {
+            try
+            {
+                var shutdownPayload = "{\"type\":\"server-shutdown\",\"data\":{}}";
+                await BroadcastAsync(shutdownPayload, requireVerified: false);
+            }
+            catch { }
+
+            var sockets = _sockets.ToArray();
+            _sockets.Clear();
+            _verified.Clear();
+
+            foreach (var kvp in sockets)
+            {
+                try
+                {
+                    if (kvp.Value.State == WebSocketState.Open || kvp.Value.State == WebSocketState.CloseReceived)
+                    {
+                        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                        await kvp.Value.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", cts.Token);
+                    }
+                }
+                catch { }
+                finally
+                {
+                    try { kvp.Value.Dispose(); } catch { }
+                }
+            }
+        }
     }
 }

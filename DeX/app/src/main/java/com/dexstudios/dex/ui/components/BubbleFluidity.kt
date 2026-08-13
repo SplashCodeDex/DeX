@@ -81,31 +81,26 @@ fun Modifier.bubbleFluidity(
 
                 // On Release: Elastic bounce back
                 coroutineScope.launch {
+                    val bounceSpec = spring<Float>(
+                        dampingRatio = Spring.DampingRatioHighBouncy,
+                        stiffness = 800f // Custom "liquid" stiffness
+                    )
                     launch {
                         scale.animateTo(
                             targetValue = 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioHighBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
+                            animationSpec = bounceSpec
                         )
                     }
                     launch {
                         translationX.animateTo(
                             targetValue = 0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioHighBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
+                            animationSpec = bounceSpec
                         )
                     }
                     launch {
                         translationY.animateTo(
                             targetValue = 0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioHighBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
+                            animationSpec = bounceSpec
                         )
                     }
                 }

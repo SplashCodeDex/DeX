@@ -149,6 +149,52 @@ namespace DeXShareTarget
             });
         }
 
+        public static async Task StopAsync()
+        {
+            try
+            {
+                await WebSocketConnectionManager.CloseAllAsync();
+            }
+            catch { }
+
+            try
+            {
+                MirrorWindowHost.StopActive();
+            }
+            catch { }
+
+            try
+            {
+                WallpaperWatcherService.Stop();
+            }
+            catch { }
+
+            try
+            {
+                if (System.Windows.Application.Current?.Dispatcher != null)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                        {
+                            try { win.Close(); } catch { }
+                        }
+                    });
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (App != null)
+                {
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    await App.StopAsync(cts.Token);
+                }
+            }
+            catch { }
+        }
+
         private static int GetAvailableTcpPort()
         {
             var l = new TcpListener(IPAddress.Loopback, 0);

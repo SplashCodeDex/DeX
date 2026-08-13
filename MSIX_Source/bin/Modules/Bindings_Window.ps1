@@ -1,4 +1,4 @@
-﻿# Win32 interop for premium window drag. GetCursorPos tracks physical cursor
+# Win32 interop for premium window drag. GetCursorPos tracks physical cursor
 # position; GetDpiForWindow returns the correct DPI for whatever monitor the
 # window is on mid-drag (critical on mixed-DPI multi-monitor setups).
 if (-not $script:dragWin32Added) {
@@ -607,6 +607,14 @@ $script:wpfWindow.Add_Deactivated({
             $script:wpfWindow.Hide()
             $script:lastDeactivated = $now
         }
+    }
+})
+
+$script:wpfWindow.Add_Closing({
+    param($sender, $e)
+    if (-not $script:isExiting) {
+        $e.Cancel = $true
+        $script:wpfWindow.Hide()
     }
 })
 

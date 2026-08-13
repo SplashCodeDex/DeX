@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation"
@@ -37,9 +38,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
-        <service 
-            android:name=".network.DexService" 
+
+        <service
+            android:name=".network.DexService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice|dataSync|mediaProjection" />
 
@@ -53,7 +54,7 @@
             android:foregroundServiceType="dataSync"
             android:exported="false"
             tools:node="merge" />
-            
+
         <receiver android:name=".network.FileTransferReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="com.dexstudios.dex.ACCEPT_TRANSFER" />
@@ -66,7 +67,7 @@
                 <action android:name="com.dexstudios.dex.SET_CLIPBOARD" />
             </intent-filter>
         </receiver>
-        
+
         <activity
             android:name=".ShareTargetActivity"
             android:exported="true"
@@ -82,6 +83,33 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <service
+            android:name=".DeXAppFunctionService"
+            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE"
+            android:exported="true"
+            tools:targetApi="36">
+            <intent-filter>
+                <action android:name="android.app.appfunctions.AppFunctionService" />
+            </intent-filter>
+            <property
+                android:name="android.app.appfunctions.ID_APP_FUNCTION_XML"
+                android:resource="@xml/dex_app_functions" />
+        </service>
+
+        <service
+            android:name=".network.ClipboardSyncTileService"
+            android:exported="true"
+            android:label="Clipboard Sync"
+            android:icon="@drawable/ic_stat_dex"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
 
     </application>
 

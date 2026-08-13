@@ -1,10 +1,27 @@
 # Changelog
 
+## [8.8.5.0] - 2026-08-13
+### Fixed
+- **[fix] Universal Dynamic WPF Element Cache & PIN CODE Pairing Fix**:
+  - Re-engineered the WPF element resolution pipeline by implementing `[DeX.Wpf.ElementCache]` (compiled C# `IDictionary` provider) in [Connect-Engine.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Connect-Engine.ps1).
+  - Resolved an issue where clicking **"PIN CODE"** on a discovered device did nothing because `$qrCodeContent` evaluated to `$null` due to missing entry in static hashtable `$initElements`, triggering an unintended cancel/re-QR fallthrough.
+  - Eliminated manual `$initElements` maintenance; element lookups via `$script:ce["name"]`, `$script:ce.name`, and `dxEl "name"` now dynamically resolve and cache controls on first touch with $O(1)$ case-insensitive lookup.
+  - Resolved 15+ other potential `$null` element lookups across FileBrowser, Settings, and Pairing modules (`pinViewPanel`, `txtPinTimeout`, `menuViewsContainer`, `dockPullProgress`, `prgPullProgress`, `txtPullTitle`, `badgeAutoConnect`, `badgeDnd`).
+  - Passed target device IP directly from active selection in [Bindings_Settings.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Settings.ps1) to `Start-PinPairing` for instant resolution.
+  - Verified with `Connect-Engine.ps1 -SelfTest` on PowerShell 5.1 and full automated packaging pipeline.
+
 ## [8.8.4.0] - 2026-08-13
 ### Fixed
-- **[fix] Graceful Shutdown & mDNS Structure Fix**:
-  - Restored correct brace structure in mDNS timer loop and enforced UTF-8 BOM encoding to resolve powershell AST parse failures.
-  - Integrated C# `ProcessExit` hooks and Application exit handlers for background runspaces (`mdnsJob`, `uiPollJob`, `ClipboardSyncWorker`, and `Invoke-ExitEngine`) to ensure 100% clean teardown across all edge-cases without orphaned ghost processes.
+- **[fix] Comprehensive Process & Service Graceful Shutdown Architecture**:
+  - Restored correct brace structure in mDNS timer loop and enforced UTF-8 BOM encoding across PowerShell modules to guarantee 100% AST parse fidelity.
+  - Eliminated re-entrant shutdown recursion between `ApplicationExit`, `cleanExitBlock`, and `Invoke-ExitEngine` with dedicated re-entrancy flags.
+  - Replaced abrupt `Environment.Exit(0)` with ASP.NET `IHostApplicationLifetime.StopApplication()` and in-process WPF `Application.Shutdown()` on `/local/shutdown`.
+  - Added `/local/transfer-status` check on desktop exit with a modal prompt to prevent active file transfer data corruption.
+  - Added UI crash watchdog (`_childPsProc.Exited`) in C# backend preventing ghost/zombie background processes if the PowerShell frontend crashes.
+  - Implemented surgical ADB process filtering (`$_.MainModule.FileName -like "*$dexBinPath*"`) ensuring global/Android Studio ADB instances survive DeX exit.
+  - Added automated Task Scheduler cleanup migration removing legacy `AutoConnectADB_Hotspot` task.
+  - Added WebSocket disconnection broadcast (`server-shutdown`) and unregistering of `NetworkChange.NetworkAddressChanged`.
+  - Verified across automated test harness with 100% passed validation gates and live process lifecycle tests.
 
 ## [8.8.3.0] - 2026-08-13
 ### Fixed

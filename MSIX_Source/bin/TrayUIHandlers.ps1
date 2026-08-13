@@ -1,4 +1,4 @@
-﻿. "$PSScriptRoot\Modules\UIComponents.ps1"
+. "$PSScriptRoot\Modules\UIComponents.ps1"
 function Reset-SpatialPanels {
     try {
         $script:wpfWindow.FindResource("ExpandMenu").Stop($script:wpfWindow)
@@ -60,16 +60,43 @@ function Reset-SpatialPanels {
 }
 
 function Invoke-ExitEngine {
-    # Save session state snapshot before shutdown
-    Save-EngineState
+    if ($script:isExiting) { return }
 
-    # Edge Case 20: Job and process cleanup on exit
+    # 0. Active Transfer Check & User Prompt
+    try {
+        $api = if ($global:DeXLocalApi) { $global:DeXLocalApi } else { "http://127.0.0.1:28425" }
+        $status = Invoke-RestMethod -Uri "$api/local/transfer-status" -TimeoutSec 1 -ErrorAction SilentlyContinue
+        if ($status -and $status.activeCount -gt 0) {
+            $choice = [System.Windows.MessageBox]::Show(
+                "A file transfer is currently in progress.`n`nClick OK to cancel the transfer and exit, or Cancel to wait.",
+                "DeX - Active Transfer",
+                [System.Windows.MessageBoxButton]::OKCancel,
+                [System.Windows.MessageBoxImage]::Warning)
+            if ($choice -eq [System.Windows.MessageBoxResult]::Cancel) {
+                return
+            }
+        }
+    } catch {}
+
+    $script:isExiting = $true
+
+    # 1. Save session state snapshot (isolated against save errors)
+    try { Save-EngineState } catch {}
+
+    # 2. Stop clipboard background worker runspace
+    try { if (Get-Command Stop-ClipboardSyncWorker -ErrorAction SilentlyContinue) { Stop-ClipboardSyncWorker } } catch {}
+
+    # 3. Stop active background jobs and ADB polling process
     Get-Job | ForEach-Object { try { Stop-Job $_; Remove-Job $_ } catch {} }
     if ($script:adbLsProc -and -not $script:adbLsProc.HasExited) {
-        try { $script:adbLsProc.Kill() } catch {}
+        try { $script:adbLsProc.Kill(); $script:adbLsProc.Dispose() } catch {}
     }
 
-    # Smooth 150ms WPF fade-out if window is active
+    # 4. Stop WPF Dispatcher timers
+    try { if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() } } catch {}
+    try { if ($script:downloadToastTimer) { $script:downloadToastTimer.Stop() } } catch {}
+
+    # 5. Smooth 150ms WPF fade-out if window is active
     if ($null -ne $script:wpfWindow -and $script:wpfWindow.IsVisible) {
         try {
             $animFade = New-Object System.Windows.Media.Animation.DoubleAnimation
@@ -79,12 +106,21 @@ function Invoke-ExitEngine {
         } catch {}
     }
 
+    # 6. Gracefully notify C# DeXShareTarget backend to shutdown Kestrel / mDNS / WebSockets
+    try {
+        $api = if ($global:DeXLocalApi) { $global:DeXLocalApi } else { "http://127.0.0.1:28425" }
+        $null = Invoke-RestMethod -Uri "$api/local/shutdown" -Method Post -TimeoutSec 1 -ErrorAction SilentlyContinue
+    } catch {}
+
+    # 7. Safely dispose notification tray icon
     if ($null -ne $script:notifyIcon) {
-        $script:notifyIcon.Visible = $false
-        $script:notifyIcon.Dispose()
+        try {
+            $script:notifyIcon.Visible = $false
+            $script:notifyIcon.Dispose()
+        } catch {}
     }
 
-    # Surgical ADB cleanup: only terminate adb.exe processes running from DeX's own bin path
+    # 8. Surgical ADB cleanup: terminate adb.exe processes running from DeX's own bin path
     try {
         $dexBinPath = $PSScriptRoot
         Get-Process -Name "adb" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -92,14 +128,26 @@ function Invoke-ExitEngine {
                 if ($_.MainModule.FileName -like "*$dexBinPath*" -or $_.Path -like "*$dexBinPath*") {
                     $_ | Stop-Process -Force -ErrorAction SilentlyContinue
                 }
-            } catch {
-                $_ | Stop-Process -Force -ErrorAction SilentlyContinue
-            }
+            } catch {}
         }
-    } catch {
-        Stop-Process -Name "adb" -ErrorAction SilentlyContinue
+    } catch {}
+
+    Stop-Process -Name "scrcpy" -ErrorAction SilentlyContinue
+
+    # 9. Release Global PowerShell Engine Mutex & ShowUI EventWaitHandle
+    if ($script:engineMutex) {
+        try {
+            $script:engineMutex.ReleaseMutex()
+            $script:engineMutex.Close()
+            $script:engineMutex.Dispose()
+        } catch {}
     }
-    Stop-Process -Name "scrcpy", "DeXShareTarget" -ErrorAction SilentlyContinue
+    if ($script:showUiEvent) {
+        try {
+            $script:showUiEvent.Close()
+            $script:showUiEvent.Dispose()
+        } catch {}
+    }
 
     [System.Windows.Forms.Application]::Exit()
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<appfunctions>
+    <appfunction>
+        <id>com.dexstudios.dex.BaseDeXAppFunctionService#sendLastFileToPc</id>
+        <enabledByDefault>true</enabledByDefault>
+        <response>
+            <id>unused</id>
+            <valueType>
+                <id>unused</id>
+                <isNullable>false</isNullable>
+                <type>8</type>
+            </valueType>
+        </response>
+        <functionId>com.dexstudios.dex.BaseDeXAppFunctionService#sendLastFileToPc</functionId>
+    </appfunction>
+</appfunctions>

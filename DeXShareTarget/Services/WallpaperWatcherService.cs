@@ -101,5 +101,33 @@ namespace DeXShareTarget.Services
         {
             Console.WriteLine($"[WallpaperWatcher] Buffer error notice: {e.GetException()?.Message}");
         }
+
+        public static void Stop()
+        {
+            lock (_lock)
+            {
+                try
+                {
+                    if (_watcher != null)
+                    {
+                        _watcher.EnableRaisingEvents = false;
+                        _watcher.Changed -= OnWallpaperFileChanged;
+                        _watcher.Created -= OnWallpaperFileChanged;
+                        _watcher.Renamed -= OnWallpaperFileChanged;
+                        _watcher.Error -= OnWatcherError;
+                        _watcher.Dispose();
+                        _watcher = null;
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    _debounceTimer?.Dispose();
+                    _debounceTimer = null;
+                }
+                catch { }
+            }
+        }
     }
 }

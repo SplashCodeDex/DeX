@@ -17,7 +17,9 @@ data class TransferRecord(
     val size: Long,
     val timestamp: Long,
     val direction: String,
-    val uri: String? = null
+    val uri: String? = null,
+    val peerDevice: String? = null,
+    val status: String = "success"
 )
 
 object TransferHistory {
@@ -50,14 +52,25 @@ object TransferHistory {
         write(context, emptyList())
     }
 
-    fun log(context: Context, name: String, size: Long, direction: String, uri: String? = null) {
+    fun log(
+        context: Context,
+        name: String,
+        size: Long,
+        direction: String,
+        uri: String? = null,
+        peerDevice: String? = null,
+        status: String = "success",
+        timestamp: Long = System.currentTimeMillis()
+    ) {
         val record = TransferRecord(
             id = UUID.randomUUID().toString(),
             name = name,
             size = size,
-            timestamp = System.currentTimeMillis(),
+            timestamp = timestamp,
             direction = direction,
-            uri = uri
+            uri = uri,
+            peerDevice = peerDevice,
+            status = status
         )
         val updated = (listOf(record) + _items.value).take(MAX_ENTRIES)
         _items.value = updated
@@ -78,7 +91,9 @@ object TransferHistory {
                             size = o.optLong("size", 0L),
                             timestamp = o.optLong("timestamp", 0L),
                             direction = o.optString("direction", "received"),
-                            uri = if (o.has("uri")) o.optString("uri") else null
+                            uri = if (o.has("uri")) o.optString("uri") else null,
+                            peerDevice = if (o.has("peerDevice")) o.optString("peerDevice") else null,
+                            status = o.optString("status", "success")
                         )
                     )
                 }
@@ -98,6 +113,8 @@ object TransferHistory {
             o.put("timestamp", r.timestamp)
             o.put("direction", r.direction)
             r.uri?.let { o.put("uri", it) }
+            r.peerDevice?.let { o.put("peerDevice", it) }
+            o.put("status", r.status)
             arr.put(o)
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {

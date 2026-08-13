@@ -1,5 +1,11 @@
 package com.dexstudios.dex.ui.settings
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.BuildConfig
 import com.dexstudios.dex.R
+import com.dexstudios.dex.network.ClipboardSyncTileService
 import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.icons.MaterialSymbols
@@ -161,6 +168,62 @@ fun SettingsScreen(
                             value = deviceConfig.fingerprint,
                             icon = ImageVector.vectorResource(R.drawable.ic_smartphone)
                         )
+                    }
+                }
+
+                // Reliability Section
+                item {
+                    SettingsGroup(title = "Reliability") {
+                        val isIgnoring = remember(context) {
+                            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                            pm.isIgnoringBatteryOptimizations(context.packageName)
+                        }
+                        SettingsClickableRow(
+                            title = "Background Optimization",
+                            subtitle = if (isIgnoring) "Unrestricted" else "Optimized",
+                            icon = MaterialSymbols.BatteryCharging,
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            SettingsClickableRow(
+                                title = "Add Quick Settings Tile",
+                                subtitle = "Quickly toggle Clipboard Sync",
+                                icon = ImageVector.vectorResource(R.drawable.ic_clipboard_sync),
+                                onClick = {
+                                    val sbm = context.getSystemService("statusbar")
+                                    try {
+                                        val method = sbm?.javaClass?.getMethod(
+                                            "requestAddTileService",
+                                            android.content.ComponentName::class.java,
+                                            CharSequence::class.java,
+                                            android.graphics.drawable.Icon::class.java,
+                                            java.util.concurrent.Executor::class.java,
+                                            java.util.function.Consumer::class.java
+                                        )
+                                        val componentName = android.content.ComponentName(
+                                            context,
+                                            ClipboardSyncTileService::class.java
+                                        )
+                                        method?.invoke(
+                                            sbm,
+                                            componentName,
+                                            "Clipboard Sync",
+                                            android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_stat_dex),
+                                            context.mainExecutor,
+                                            java.util.function.Consumer<Int> { }
+                                        )
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 

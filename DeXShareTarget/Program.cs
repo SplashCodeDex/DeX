@@ -18,6 +18,7 @@ namespace DeXShareTarget
     class Program
     {
         private static Mutex? _instanceMutex;
+        private static Process? _childPsProc;
 
         private static void LogCrash(Exception ex, string context)
         {
@@ -50,6 +51,8 @@ namespace DeXShareTarget
                 return;
             }
 
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => CleanupOnExit();
+
             try 
             {
                 var program = new Program();
@@ -59,6 +62,44 @@ namespace DeXShareTarget
             {
                 LogCrash(ex, "Global Main");
             }
+            finally
+            {
+                CleanupOnExit();
+            }
+        }
+
+        private static void CleanupOnExit()
+        {
+            try
+            {
+                if (_childPsProc != null && !_childPsProc.HasExited)
+                {
+                    if (!Environment.HasShutdownStarted)
+                    {
+                        try
+                        {
+                            _childPsProc.WaitForExit(1000);
+                        }
+                        catch { }
+                    }
+                    if (!_childPsProc.HasExited)
+                    {
+                        _childPsProc.Kill();
+                    }
+                    _childPsProc.Dispose();
+                    _childPsProc = null;
+                }
+            } catch { }
+
+            try
+            {
+                if (_instanceMutex != null)
+                {
+                    _instanceMutex.ReleaseMutex();
+                    _instanceMutex.Dispose();
+                    _instanceMutex = null;
+                }
+            } catch { }
         }
 
         public void Run(string[] args)
@@ -127,6 +168,13 @@ namespace DeXShareTarget
             {
                 string exeDir = AppDomain.CurrentDomain.BaseDirectory;
                 string ps1Path = Path.Combine(exeDir, "bin", "Connect-Engine.ps1");
+                if (!File.Exists(ps1Path))
+                {
+                    string fallback1 = Path.Combine(exeDir, "Connect-Engine.ps1");
+                    string fallback2 = Path.GetFullPath(Path.Combine(exeDir, "..\\..\\..\\..\\MSIX_Source\\bin\\Connect-Engine.ps1"));
+                    if (File.Exists(fallback1)) ps1Path = fallback1;
+                    else if (File.Exists(fallback2)) ps1Path = fallback2;
+                }
                 string extraArgs = (activatedArgs != null && activatedArgs.Kind == ActivationKind.StartupTask) ? " -Background" : "";
                 var startInfo = new ProcessStartInfo
                 {
@@ -136,9 +184,31 @@ namespace DeXShareTarget
                     UseShellExecute = false
                 };
                 
-                var proc = Process.Start(startInfo);
+                _childPsProc = Process.Start(startInfo);
                 
                 var app = new System.Windows.Application();
+                app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+                if (_childPsProc != null)
+                {
+                    _childPsProc.EnableRaisingEvents = true;
+                    _childPsProc.Exited += (s, e) =>
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await LocalSendServer.StopAsync();
+                            }
+                            catch { }
+                            try
+                            {
+                                app.Dispatcher.Invoke(() => app.Shutdown());
+                            }
+                            catch { }
+                        });
+                    };
+                }
                 app.Startup += (s, e) => 
                 {
                     // Run the server and observe its completion so a startup failure is
