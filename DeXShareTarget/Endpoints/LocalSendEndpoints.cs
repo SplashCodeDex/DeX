@@ -28,14 +28,12 @@ namespace DeXShareTarget.Endpoints
     public static partial class LocalSendEndpoints
     {
         public static ConcurrentDictionary<string, string> HostedFiles = new();
-        // Most recent clipboard text pushed by a phone (text + UTC timestamp). Powers the
-        // PC-side auto-sync watcher, which must not echo the phone's text back to it.
-        public static (string Text, DateTime At)? LastPhoneClipboard { get; private set; }
-
-        // Master switch for automatic clipboard sync, controlled by the desktop quick-action
-        // toggle. When off, phone clipboard pushes are accepted but dropped (no PC clipboard
-        // write, no echo state). Manual PC -> phone pushes are NOT affected.
-        public static bool ClipboardSyncEnabled { get; set; } = false;
+        public static (string Text, DateTime At)? LastPhoneClipboard => ClipboardService.LastPhoneClipboard;
+        public static bool ClipboardSyncEnabled
+        {
+            get => ClipboardService.IsSyncEnabled;
+            set => ClipboardService.IsSyncEnabled = value;
+        }
         // Per-file pull tokens: the phone must present the token to download a hosted file
         public static ConcurrentDictionary<string, string> HostedFileTokens = new();
         // Last time each hosted file was served, used for sliding expiry so slow pulls don't 404

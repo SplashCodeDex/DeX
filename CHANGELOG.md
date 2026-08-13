@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.8.1.0] - 2026-08-13
+### Refactored
+- **[fix] Modularization & Centralization of Cross-Device Clipboard Engine**:
+  - Implemented dedicated C# service `ClipboardService.cs` ([DeXShareTarget/Services/ClipboardService.cs](file:///w:/CodeDeX/DeX/DeXShareTarget/Services/ClipboardService.cs)) to centralize rich-media payload parsing, image decoding, loopback tracking, and STA Windows Clipboard injection.
+  - Refactored `LocalSendEndpoints.Control.cs` to delegate all clipboard routes (`/api/dex/clipboard`, `/local/clipboard-push`, `/local/clipboard-sync`, `/local/clipboard-state`) into single-line service calls.
+  - Created dedicated PowerShell module `ClipboardManager.ps1` ([MSIX_Source/bin/Modules/ClipboardManager.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/ClipboardManager.ps1)) encapsulating `Get-DeXClipboardContent`, `Set-DeXClipboardContent`, `Start-ClipboardSyncWorker`, and `Stop-ClipboardSyncWorker`.
+  - Removed duplicate inline worker code from `EngineUtils.ps1` and dot-sourced `ClipboardManager.ps1` in `Connect-Engine.ps1`.
+
 ## [8.8.0.0] - 2026-08-13
 ### Added
 - **[minor] Rich-Media Cross-Device Shared Clipboard (Images & File Blobs)**:

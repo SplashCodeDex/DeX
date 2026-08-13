@@ -202,6 +202,7 @@ foreach ($elName in $initElements) { $null = dxEl $elName }
 
 
 . "$PSScriptRoot\Modules\SettingsManager.ps1"
+. "$PSScriptRoot\Modules\ClipboardManager.ps1"
 
 # Passive sync initial state on startup
 $script:AutoConnectEnabled = Get-AutoConnectStatus
