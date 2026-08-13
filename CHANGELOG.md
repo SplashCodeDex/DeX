@@ -1,5 +1,18 @@
 # Changelog
 
+## [8.8.4.0] - 2026-08-13
+### Fixed
+- **[fix] Graceful Shutdown & mDNS Structure Fix**:
+  - Restored correct brace structure in mDNS timer loop and enforced UTF-8 BOM encoding to resolve powershell AST parse failures.
+  - Integrated C# `ProcessExit` hooks and Application exit handlers for background runspaces (`mdnsJob`, `uiPollJob`, `ClipboardSyncWorker`, and `Invoke-ExitEngine`) to ensure 100% clean teardown across all edge-cases without orphaned ghost processes.
+
+## [8.8.3.0] - 2026-08-13
+### Fixed
+- **[fix] PowerShell Parser Recovery & Engine Initialization**:
+  - Cleaned up orphaned code snippet leftovers on lines 49-59 in [EngineUtils.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/EngineUtils.ps1#L49-L59) caused by previous clipboard worker modularization.
+  - Resolved `Unexpected token '}'` parser exception, restoring clean dot-sourcing of `EngineUtils.ps1` during engine boot.
+  - Fixed `Write-Trace: The term 'Write-Trace' is not recognized` downstream errors across `Bindings_Tray.ps1` and `Bindings_Window.ps1` by ensuring `global:Write-Trace` is reliably parsed and registered.
+
 ## [8.8.2.0] - 2026-08-13
 ### Fixed
 - **[fix] Clipboard Service Edge-Case Hardening & Pipeline Safety**:
