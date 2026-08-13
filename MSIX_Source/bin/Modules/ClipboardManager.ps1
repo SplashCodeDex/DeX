@@ -201,16 +201,22 @@ function Start-ClipboardSyncWorker {
 }
 
 function Stop-ClipboardSyncWorker {
-    if ($null -ne $script:clipWorkerControl) {
-        $script:clipWorkerControl.Enqueue(@{ Stop = $true })
-    }
-    if ($null -ne $script:clipWorkerPs) {
+    if ($null -eq $script:clipWorkerPs) { return }
+    try {
+        if ($null -ne $script:clipWorkerControl) {
+            $script:clipWorkerControl.Enqueue(@{ Stop = $true })
+        }
+        if ($null -ne $script:clipWorkerAsync) {
+            try { $script:clipWorkerAsync.AsyncWaitHandle.WaitOne(2000) | Out-Null } catch {}
+        }
+        try { $script:clipWorkerPs.Stop() } catch {}
+        if ($null -ne $script:clipWorkerAsync) {
+            try { $script:clipWorkerPs.EndInvoke($script:clipWorkerAsync) } catch {}
+        }
         try { $script:clipWorkerPs.Dispose() } catch {}
-        $script:clipWorkerPs = $null
-    }
-    if ($null -ne $script:clipWorkerRs) {
         try { $script:clipWorkerRs.Dispose() } catch {}
-        $script:clipWorkerRs = $null
-    }
+    } catch {}
+    $script:clipWorkerPs = $null
+    $script:clipWorkerRs = $null
     $script:clipWorkerAsync = $null
 }

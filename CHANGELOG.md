@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.2.0] - 2026-08-13
+### Fixed
+- **[fix] Clipboard Service Edge-Case Hardening & Pipeline Safety**:
+  - Restored initial default `IsSyncEnabled = false` in `ClipboardService.cs` to match desktop toggle state before startup sync initialization.
+  - Added explicit `-Sta` CLI flag to PowerShell child processes in `SetWindowsClipboardImageAsync` to guarantee STA apartment state for Win32 clipboard API calls across Windows PowerShell 5.1 and PowerShell 7.
+  - Restored robust 2-second async pipeline wait handle & `.Stop()` termination sequence in `Stop-ClipboardSyncWorker` ([ClipboardManager.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/ClipboardManager.ps1)) to prevent runspace disposal thread blocks on app exit.
+
 ## [8.8.1.0] - 2026-08-13
 ### Refactored
 - **[fix] Modularization & Centralization of Cross-Device Clipboard Engine**:

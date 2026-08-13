@@ -9,7 +9,7 @@ namespace DeXShareTarget.Services
 {
     public static class ClipboardService
     {
-        public static bool IsSyncEnabled { get; set; } = true;
+        public static bool IsSyncEnabled { get; set; } = false;
         public static (string Text, DateTime At)? LastPhoneClipboard { get; set; }
 
         public static async Task<IResult> HandlePhonePushAsync(HttpRequest request)
@@ -118,7 +118,7 @@ namespace DeXShareTarget.Services
                 await File.WriteAllBytesAsync(tempPath, imageBytes);
 
                 var script = $"Add-Type -AssemblyName System.Windows.Forms, System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('{tempPath.Replace("'", "''")}'))";
-                var psi = new System.Diagnostics.ProcessStartInfo("powershell", $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
+                var psi = new System.Diagnostics.ProcessStartInfo("powershell", $"-Sta -NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true
