@@ -1,4 +1,4 @@
-﻿if (-not ("ThumbHelper" -as [type])) {
+if (-not ("ThumbHelper" -as [type])) {
     $thumbCode = @"
 using System;
 using System.Runtime.InteropServices;
@@ -92,33 +92,80 @@ function Start-ClipboardSyncWorker {
                             }
                         } catch {}
 
-                        # 2. Detect a fresh local clipboard change and push it to a trusted device
-                        $text = Get-Clipboard -Raw -ErrorAction Ignore
-                        if (-not [string]::IsNullOrWhiteSpace($text) -and
-                            $text -ne $clipLastPushed -and
-                            $text -ne $clipLastReceived) {
-
-                            $ip = $null
+                        # 2. Detect a fresh local clipboard change (Image or Text) and push to a trusted device
+                        Add-Type -AssemblyName System.Windows.Forms, System.Drawing -ErrorAction SilentlyContinue
+                        
+                        $hasImage = [System.Windows.Forms.Clipboard]::ContainsImage()
+                        if ($hasImage) {
                             try {
-                                $devices = Invoke-RestMethod -Uri "$apiUrl/local/devices" -TimeoutSec 2 -ErrorAction Stop
-                                $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
-                                if ($target) { $ip = $target.ip }
-                            } catch {}
+                                $img = [System.Windows.Forms.Clipboard]::GetImage()
+                                if ($img) {
+                                    $ms = New-Object System.IO.MemoryStream
+                                    $img.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+                                    $imgBytes = $ms.ToArray()
+                                    $ms.Dispose()
+                                    $img.Dispose()
 
-                            if ($ip) {
-                                # WebSocket push first; adb broadcast fallback (same as Send-ClipboardToDevice)
-                                $delivered = $false
-                                try {
-                                    $null = Invoke-RestMethod -Uri "$apiUrl/local/clipboard-push?ip=$ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
-                                    $delivered = $true
-                                } catch {}
-                                if (-not $delivered) {
-                                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
-                                    $b64 = [Convert]::ToBase64String($bytes)
-                                    $res = & $adb -s "${ip}:5555" shell am broadcast -a com.dexstudios.dex.SET_CLIPBOARD -e text_b64 "$b64" 2>&1
-                                    if ($res -match "Broadcast completed") { $delivered = $true }
+                                    $imgB64 = [Convert]::ToBase64String($imgBytes)
+                                    $sha = [System.Security.Cryptography.SHA256]::Create()
+                                    $hashBytes = $sha.ComputeHash($imgBytes)
+                                    $sha.Dispose()
+                                    $imgHash = "IMG:" + ([System.BitConverter]::ToString($hashBytes)).Replace("-", "")
+
+                                    if ($imgHash -ne $clipLastPushed -and $imgHash -ne $clipLastReceived) {
+                                        $ip = $null
+                                        try {
+                                            $devices = Invoke-RestMethod -Uri "$apiUrl/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                                            $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+                                            if ($target) { $ip = $target.ip }
+                                        } catch {}
+
+                                        if ($ip) {
+                                            $payloadObj = @{
+                                                type = "set-clipboard"
+                                                data = @{
+                                                    type = "image"
+                                                    mime = "image/png"
+                                                    imageBase64 = $imgB64
+                                                }
+                                            }
+                                            $jsonPayload = $payloadObj | ConvertTo-Json -Depth 3 -Compress
+                                            try {
+                                                $null = Invoke-RestMethod -Uri "$apiUrl/local/clipboard-push?ip=$ip" -Method Post -Body $jsonPayload -ContentType "application/json" -TimeoutSec 5 -ErrorAction Stop
+                                                $clipLastPushed = $imgHash
+                                            } catch {}
+                                        }
+                                    }
                                 }
-                                if ($delivered) { $clipLastPushed = $text }
+                            } catch {}
+                        } else {
+                            $text = Get-Clipboard -Raw -ErrorAction Ignore
+                            if (-not [string]::IsNullOrWhiteSpace($text) -and
+                                $text -ne $clipLastPushed -and
+                                $text -ne $clipLastReceived) {
+
+                                $ip = $null
+                                try {
+                                    $devices = Invoke-RestMethod -Uri "$apiUrl/local/devices" -TimeoutSec 2 -ErrorAction Stop
+                                    $target = $devices | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+                                    if ($target) { $ip = $target.ip }
+                                } catch {}
+
+                                if ($ip) {
+                                    # WebSocket push first; adb broadcast fallback (same as Send-ClipboardToDevice)
+                                    $delivered = $false
+                                    try {
+                                        $null = Invoke-RestMethod -Uri "$apiUrl/local/clipboard-push?ip=$ip" -Method Post -Body $text -ContentType "text/plain" -TimeoutSec 3 -ErrorAction Stop
+                                        $delivered = $true
+                                    } catch {}
+                                    if (-not $delivered) {
+                                        $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+                                        $b64 = [Convert]::ToBase64String($bytes)
+                                        $res = & $adb -s "${ip}:5555" shell am broadcast -a com.dexstudios.dex.SET_CLIPBOARD -e text_b64 "$b64" 2>&1
+                                        if ($res -match "Broadcast completed") { $delivered = $true }
+                                    }
+                                    if ($delivered) { $clipLastPushed = $text }
+                                }
                             }
                         }
                     } catch {}

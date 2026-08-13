@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.0.0] - 2026-08-13
+### Added
+- **[minor] Rich-Media Cross-Device Shared Clipboard (Images & File Blobs)**:
+  - Enhanced `Start-ClipboardSyncWorker` in `EngineUtils.ps1` to detect Windows Clipboard images (`System.Windows.Forms.Clipboard.ContainsImage()`), convert them to Base64 PNG payloads, and compute SHA256 content hashes for loopback prevention.
+  - Upgraded `/api/dex/clipboard` and `/local/clipboard-push` endpoints in `LocalSendEndpoints.Control.cs` to ingest structured JSON payloads (`image/png`, `image/jpeg`).
+  - Added native Windows Clipboard image injection (`[System.Windows.Forms.Clipboard]::SetImage`), allowing instant `Ctrl+V` pasting of copied Android images directly into Photoshop, Word, Paint, Discord, or web browsers.
+
 ## [8.7.1.0] - 2026-08-13
 ### Fixed
 - **[fix] SpatialListItem ControlTemplate Click Hit-Test Resolution**:
