@@ -47,7 +47,13 @@ try {
     }
 
     Write-Host "Copying build output to MSIX_Source..." -ForegroundColor Cyan
-    Copy-Item -Path "$SourceDir\*" -Destination (Join-Path $PSScriptRoot "MSIX_Source") -Force -Recurse
+    Get-ChildItem -Path $SourceDir | ForEach-Object {
+        try {
+            Copy-Item -Path $_.FullName -Destination (Join-Path $PSScriptRoot "MSIX_Source") -Force -Recurse -ErrorAction Stop
+        } catch {
+            Write-Host "Warning: Skipping locked payload file '$($_.Name)' (in use by background engine)" -ForegroundColor Yellow
+        }
+    }
 
     # Prune stale payload so the package never ships duplicate/old-protocol binaries:
     # only the freshly copied root DeXShareTarget.* may exist (nothing references bin\DeXShareTarget.*

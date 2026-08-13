@@ -1,4 +1,4 @@
-﻿
+
 $btnCopyIP = $script:ce["btnCopyIP"]
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -17,10 +17,14 @@ if ($btnCopyIP) {
                         $timer = New-Object System.Windows.Threading.DispatcherTimer
                         $timer.Interval = [TimeSpan]::FromSeconds(1.5)
                         $timer.Add_Tick({
-                            $tb.Text = [char]0xE8C8
-                            $tb.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "SecondaryTextBrush")
-                            $timer.Stop()
-                        })
+                            if ($null -ne $tb) {
+                                $tb.Text = [char]0xE8C8
+                                $tb.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "SecondaryTextBrush")
+                            }
+                            if ($null -ne $timer) {
+                                $timer.Stop()
+                            }
+                        }.GetNewClosure())
                         $timer.Start()
                     }
                 }
