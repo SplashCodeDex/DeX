@@ -193,7 +193,7 @@ $initElements = @(
     'btnSettingsWiggleToggle', 'btnSettingsDownloadPath', 'btnSettingsAbout',
     'btnSettingsResetIdentity', 'btnSettingsSignOut', 'btnSettingsGoogleSignIn',
     'btnProfileTop', 'btnProfileBottom', 'btnProfileTopSettings',
-    'txtSearch', 'btnQADnd', 'btnQAPull', 'btnQAClipboard', 'FileExplorer'
+    'txtSearch', 'btnQADnd', 'btnQAPull', 'btnQAClipboard', 'FileExplorer', 'txtPinSubtitle'
 )
 foreach ($elName in $initElements) { $null = dxEl $elName }
 
