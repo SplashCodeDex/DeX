@@ -243,7 +243,7 @@
             </Grid>
             
             <!-- Settings Content -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" PanningMode="VerticalOnly" Margin="0,0,10,0">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" PanningMode="None" Margin="0,0,10,0">
                 <StackPanel>
                     <!-- Profile Section -->
                     <Border Background="{DynamicResource AccentBrush}" CornerRadius="16" Padding="20" Margin="0,0,0,12">

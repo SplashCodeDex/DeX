@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.7.1.0] - 2026-08-13
+### Fixed
+- **[fix] SpatialListItem ControlTemplate Click Hit-Test Resolution**:
+  - Stabilized `TranslateTransform.X` displacement during `PreviewMouseDown` in `SpatialListItem` control template (`AppStyles.xaml`), preventing WPF from invalidating mouse capture and dropping physical mouse clicks on Settings panel buttons.
+  - Set `ScrollViewer` `PanningMode="None"` in `MainWindow.xaml` to prevent Windows mouse/touch manipulation from swallowing button click events inside the settings container.
+
 ## [8.8.0.0] - 2026-08-13
 ### Added
 - **[minor] Modern Aesthetic ContextMenu UI/UX Redesign**:
