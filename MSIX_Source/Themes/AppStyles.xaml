@@ -573,25 +573,25 @@
                             <EventTrigger RoutedEvent="MouseEnter">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="6" Duration="0:0:0.5" EasingFunction="{StaticResource HoverEase}" />
+                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="6" Duration="0:0:0.3" EasingFunction="{StaticResource HoverEase}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
                             <EventTrigger RoutedEvent="PreviewMouseDown">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="0.96" Duration="0:0:0.1" />
-                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="0.96" Duration="0:0:0.1" />
-                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="12" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.08" />
+                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.08" />
+                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="6" Duration="0:0:0.08" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
                             <EventTrigger RoutedEvent="PreviewMouseUp">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.5" EasingFunction="{StaticResource HoverEase}" />
-                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.5" EasingFunction="{StaticResource HoverEase}" />
-                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="6" Duration="0:0:0.5" EasingFunction="{StaticResource HoverEase}" />
+                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}" />
+                                        <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}" />
+                                        <DoubleAnimation Storyboard.TargetName="btnTrans" Storyboard.TargetProperty="X" To="6" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
@@ -897,64 +897,103 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type MenuItem}">
-                        <Border x:Name="Bd"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="Transparent"
-                                BorderThickness="0"
-                                CornerRadius="10"
-                                Padding="{TemplateBinding Padding}"
-                                Margin="{TemplateBinding Margin}"
-                                SnapsToDevicePixels="True"
-                                RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform x:Name="ItemScale" ScaleX="1" ScaleY="1"/>
-                                    <TranslateTransform x:Name="ItemTrans" X="0"/>
-                                </TransformGroup>
-                            </Border.RenderTransform>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <ContentPresenter x:Name="Icon"
-                                                  ContentSource="Icon"
-                                                  Margin="0,0,8,0"
-                                                  VerticalAlignment="Center"
-                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                                
-                                <ContentPresenter Grid.Column="1"
-                                                  ContentSource="Header"
-                                                  RecognizesAccessKey="True"
-                                                  VerticalAlignment="Center"
-                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                                
-                                <TextBlock Grid.Column="2"
-                                           Text="{TemplateBinding InputGestureText}"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
-                                           Margin="16,0,0,0"
-                                           VerticalAlignment="Center"
-                                           FontSize="11"/>
-                                
-                                <Path x:Name="SubMenuArrow"
-                                      Grid.Column="3"
-                                      Data="M 0 0 L 4 4 L 0 8"
-                                      Stroke="{TemplateBinding Foreground}"
-                                      StrokeThickness="1.5"
-                                      Margin="8,0,0,0"
-                                      VerticalAlignment="Center"
-                                      Visibility="Collapsed"/>
-                            </Grid>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="10"
+                                    Padding="{TemplateBinding Padding}"
+                                    Margin="{TemplateBinding Margin}"
+                                    SnapsToDevicePixels="True"
+                                    RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform x:Name="ItemScale" ScaleX="1" ScaleY="1"/>
+                                        <TranslateTransform x:Name="ItemTrans" X="0"/>
+                                    </TransformGroup>
+                                </Border.RenderTransform>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <ContentPresenter x:Name="Icon"
+                                                      ContentSource="Icon"
+                                                      Margin="0,0,8,0"
+                                                      VerticalAlignment="Center"
+                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                    
+                                    <ContentPresenter Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      RecognizesAccessKey="True"
+                                                      VerticalAlignment="Center"
+                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                    
+                                    <TextBlock Grid.Column="2"
+                                               Text="{TemplateBinding InputGestureText}"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Margin="16,0,0,0"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"/>
+                                    
+                                    <Path x:Name="SubMenuArrow"
+                                          Grid.Column="3"
+                                          Data="M 0 0 L 4 4 L 0 8"
+                                          Stroke="{TemplateBinding Foreground}"
+                                          StrokeThickness="1.5"
+                                          Margin="8,0,0,0"
+                                          VerticalAlignment="Center"
+                                          Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Right"
+                                   PopupAnimation="None">
+                                <Border x:Name="SubMenuBorder"
+                                        Background="{DynamicResource PrimaryBrush}"
+                                        BorderBrush="{DynamicResource AccentBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="16"
+                                        Padding="6"
+                                        SnapsToDevicePixels="True"
+                                        RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <TransformGroup>
+                                            <ScaleTransform x:Name="SubMenuScale" ScaleX="0.93" ScaleY="0.93"/>
+                                            <TranslateTransform x:Name="SubMenuTranslate" X="-4"/>
+                                        </TransformGroup>
+                                    </Border.RenderTransform>
+                                    <ScrollViewer x:Name="SubMenuScrollViewer" Focusable="False">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                        Grid.IsSharedSizeScope="True"
+                                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        
                         <ControlTemplate.Triggers>
                             <Trigger Property="Role" Value="SubmenuHeader">
                                 <Setter TargetName="SubMenuArrow" Property="Visibility" Value="Visible"/>
                             </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SecondaryHoverBrush}"/>
+                            </Trigger>
                             <Trigger Property="IsHighlighted" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SecondaryHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SecondarySelectedBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource SecondarySelectedBorderBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="1"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SecondarySelectedBrush}"/>
