@@ -23,6 +23,7 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
 
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -83,17 +84,15 @@ fun DeviceListItem(
             val host = if (device.ip.contains(":")) "[${device.ip}]" else device.ip
             "$protocol://$host:${device.info.port}/api/dex/wallpaper?rev=$wallpaperRevision&token=$pairedToken&fingerprint=${device.info.fingerprint}"
         } else {
-            R.drawable.wallpaper_fortress
+            null
         }
     }
 
     val imageRequest = remember(resolvedWallpaper, context) {
+        if (resolvedWallpaper == null) return@remember null
         ImageRequest.Builder(context)
             .data(resolvedWallpaper)
             .crossfade(true)
-            .placeholder(R.drawable.wallpaper_fortress)
-            .error(R.drawable.wallpaper_fortress)
-            .fallback(R.drawable.wallpaper_fortress)
             .build()
     }
 
@@ -111,15 +110,34 @@ fun DeviceListItem(
         shadowRadius = 16.dp
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
-            // 1. Wallpaper (AsyncImage with live PC wallpaper endpoint or fallback)
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentScale = ContentScale.Crop
-            )
+            // 1. Wallpaper or Placeholder
+            if (imageRequest != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .offset(y = (-32).dp)
+                            .alpha(0.15f),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
 
             // 2. Glassy Gradient Overlay
             Box(
@@ -153,19 +171,6 @@ fun DeviceListItem(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
-                        contentColor = MaterialTheme.colorScheme.inverseOnSurface
-                    ) {
-                        Text(
-                            text = if (isTrusted) "Online" else "Nearby",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -187,8 +192,6 @@ fun DeviceListItem(
                         DeviceTag(text = realWifiBand)
                         DeviceTag(text = "$realBattery%")
                         DeviceTag(text = "Paired")
-                    } else {
-                        DeviceTag(text = "Nearby")
                     }
                 }
 

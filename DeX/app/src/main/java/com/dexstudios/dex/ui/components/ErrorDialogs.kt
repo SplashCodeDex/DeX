@@ -285,22 +285,32 @@ private fun OnboardingProgressDots(count: Int, selectedIndex: Int) {
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+private fun OnboardingWelcomePreview() {
+    MaterialTheme {
+        Box(Modifier.padding(24.dp)) {
+            OnboardingWelcome(onNext = {})
+        }
+    }
+}
+
 @Composable
 private fun OnboardingWelcome(onNext: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Image(
-            painter = painterResource(R.drawable.dex_logo),
-            contentDescription = null,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(Modifier.height(24.dp))
         Text(
             stringResource(R.string.onboarding_step_welcome_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+        Image(
+            painter = painterResource(R.drawable.dex_logo),
+            contentDescription = null,
+            modifier = Modifier.size(72.dp) // Slightly bigger logo as it's the centerpiece
+        )
+        Spacer(Modifier.height(24.dp))
         Text(
             stringResource(R.string.onboarding_step_welcome_desc),
             style = MaterialTheme.typography.bodyMedium,

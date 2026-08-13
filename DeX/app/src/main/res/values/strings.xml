@@ -34,7 +34,7 @@
     <string name="onboarding_done">Start Using DeX</string>
     <string name="onboarding_skip">Skip for now</string>
     <string name="onboarding_step_connectivity_title">Stay Connected</string>
-    <string name="onboarding_step_connectivity_desc">DeX needs to scan for nearby devices to find your PC on the local network.</string>
+    <string name="onboarding_step_connectivity_desc">DeX needs to scan for devices to find your PC on the local network.</string>
     <string name="onboarding_step_connectivity_rationale">DeX cannot find devices without this permission. Please enable it in Settings to continue.</string>
     <string name="onboarding_step_notifications_title">Never Miss a File</string>
     <string name="onboarding_step_notifications_desc">Get notified when a PC wants to send you files or when transfers complete.</string>
@@ -43,7 +43,7 @@
     <string name="onboarding_step_identity_desc">Sign in with Google to automatically trust your other devices and bypass pairing PINs.</string>
     <string name="onboarding_step_storage_title">File Storage</string>
     <string name="onboarding_step_storage_desc">DeX needs a folder to save incoming files. We recommend selecting your Downloads folder.</string>
-    <string name="onboarding_step_welcome_title">Welcome to DeX</string>
+    <string name="onboarding_step_welcome_title">Welcome to</string>
     <string name="onboarding_step_welcome_desc">Seamlessly share files and clipboard between your Android device and PC.</string>
     <string name="google_sign_in">Sign in with Google</string>
     <string name="google_signed_in_as">Signed in as %1$s</string>

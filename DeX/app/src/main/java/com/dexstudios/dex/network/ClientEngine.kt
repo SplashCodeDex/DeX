@@ -109,7 +109,7 @@ class ClientEngine(
 
     fun cancelUpload(context: android.content.Context) {
         activeWorkId?.let {
-            androidx.work.WorkManager.getInstance(context).cancelWorkById(it)
+            runCatching { androidx.work.WorkManager.getInstance(context).cancelWorkById(it) }
         }
         activeWorkId = null
         _uploadState.value = _uploadState.value.copy(
