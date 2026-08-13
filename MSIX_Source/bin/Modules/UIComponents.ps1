@@ -161,8 +161,10 @@ function Show-DownloadDockToast([string]$pathText) {
             $fadeOut.Duration = [TimeSpan]::FromSeconds(0.35)
             $fadeOut.EasingFunction = $easeIn
             $fadeOut.Add_Completed({
-                $dock.Visibility = 'Collapsed'
-            })
+                if ($null -ne $dock) {
+                    $dock.Visibility = 'Collapsed'
+                }
+            }.GetNewClosure())
             
             $dock.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
             if ($null -ne $dockTrans) {

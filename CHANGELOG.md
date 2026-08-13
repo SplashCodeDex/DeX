@@ -2,6 +2,8 @@
 
 ## [8.6.7.0] - 2026-08-12
 ### Fixed
+- **[fix] PowerShell UI Toast Animation Closure Scoping**:
+  - Bound `.GetNewClosure()` and added `$null` check to the `$fadeOut.Add_Completed` event callback in `UIComponents.ps1`, preventing `$null.Visibility` runtime exceptions when the download toast auto-dismisses on dispatcher threads.
 - **[fix] Mobile Hotspot & Ephemeral Socket Discovery Resilience**:
   - Ensured DiscoveryBackgroundService.cs maintains active UDP packet listening (canReceiveMain = true) when falling back to ephemeral sockets.
   - Added Hotspot gateway unicast delivery for UDP discovery datagrams over Android Mobile Hotspot networks.
