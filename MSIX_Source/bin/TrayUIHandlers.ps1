@@ -1,4 +1,4 @@
-. "$PSScriptRoot\Modules\UIComponents.ps1"
+﻿. "$PSScriptRoot\Modules\UIComponents.ps1"
 function Reset-SpatialPanels {
     try {
         $script:wpfWindow.FindResource("ExpandMenu").Stop($script:wpfWindow)

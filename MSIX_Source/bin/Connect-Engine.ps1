@@ -201,8 +201,11 @@ foreach ($elName in $initElements) { $null = dxEl $elName }
     . "$PSScriptRoot\TrayUIBindings.ps1"
 
 
+. "$PSScriptRoot\Modules\SettingsManager.ps1"
+
 # Passive sync initial state on startup
 $script:AutoConnectEnabled = Get-AutoConnectStatus
+Apply-DeXSettingsToUI
 Update-WpfUI
 
 if ($SelfTest) {

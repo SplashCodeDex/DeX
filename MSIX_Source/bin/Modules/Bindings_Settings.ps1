@@ -1,4 +1,4 @@
-
+﻿
 $btnCopyIP = $script:ce["btnCopyIP"]
 if ($btnCopyIP) {
     $btnCopyIP.Add_Click({
@@ -44,8 +44,8 @@ if ($btnSettingsAutoConnect) {
         # Update badge after toggle
         $txtBadge = $script:ce["txtBadgeAutoConnect"]
         $badge = $script:ce["badgeAutoConnect"]
+        $isEnabled = Get-AutoConnectStatus
         if ($txtBadge -and $badge) {
-            $isEnabled = Get-AutoConnectStatus
             $txtBadge.Text = if ($isEnabled) { "ON" } else { "OFF" }
             if ($isEnabled) {
                 $badge.Background = $script:wpfWindow.FindResource("SecondaryBrush")
@@ -54,6 +54,9 @@ if ($btnSettingsAutoConnect) {
                 $badge.Background = $script:wpfWindow.FindResource("DangerBrush")
                 $txtBadge.Foreground = [System.Windows.Media.Brushes]::White
             }
+        }
+        if (Get-Command "Save-DeXSettings" -ErrorAction SilentlyContinue) {
+            Save-DeXSettings @{ AutoConnect = $isEnabled }
         }
     })
 }
@@ -140,6 +143,10 @@ function Set-DndMode([bool]$Enable) {
         }
     }
     
+    if (Get-Command "Save-DeXSettings" -ErrorAction SilentlyContinue) {
+        Save-DeXSettings @{ DndEnabled = $script:isDndEnabled }
+    }
+
     # Feedback notification
     if ($script:isDndEnabled) {
         Show-Toast -Title "Do Not Disturb" -Message "Enabled - Incoming pairing & transfer requests auto-declined."
@@ -165,6 +172,9 @@ if ($btnSettingsTheme) {
         } else {
             Set-AppTheme "DarkTheme"
         }
+        if (Get-Command "Save-DeXSettings" -ErrorAction SilentlyContinue) {
+            Save-DeXSettings @{ CurrentTheme = $global:CurrentTheme; AppThemeMode = $global:AppThemeMode }
+        }
     })
 }
 
@@ -176,6 +186,9 @@ if ($btnSettingsWiggleToggle) {
         $txtSettingsWiggleToggle = $script:ce["txtSettingsWiggleToggle"]
         if ($txtSettingsWiggleToggle) {
             $txtSettingsWiggleToggle.Text = if ($script:wiggleEnabled) { "Enabled" } else { "Disabled" }
+        }
+        if (Get-Command "Save-DeXSettings" -ErrorAction SilentlyContinue) {
+            Save-DeXSettings @{ WiggleEnabled = $script:wiggleEnabled }
         }
     })
 }
@@ -192,6 +205,9 @@ if ($btnSettingsDownloadPath) {
             $txtDlPath = $script:ce["txtSettingsDownloadPath"]
             if ($txtDlPath) {
                 $txtDlPath.Text = $script:customDownloadPath
+            }
+            if (Get-Command "Save-DeXSettings" -ErrorAction SilentlyContinue) {
+                Save-DeXSettings @{ DownloadPath = $script:customDownloadPath }
             }
             Show-Toast -Title "Download Location" -Message "Files will be saved to: $($script:customDownloadPath)"
         }

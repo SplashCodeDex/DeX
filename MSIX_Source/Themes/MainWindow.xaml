@@ -12,33 +12,12 @@
             </ResourceDictionary.MergedDictionaries>
         <!-- Shared card shadow: a resource so the engine can suspend/re-apply it during resize transitions. -->
         <DropShadowEffect x:Key="MainShadow" BlurRadius="14" ShadowDepth="8" Direction="270" Color="Black" Opacity="0.5" />
-        <ContextMenu x:Key="TransferContextMenu" Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="4">
-            <ContextMenu.Resources>
-                <Style TargetType="MenuItem">
-                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="Padding" Value="10,6" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="MenuItem">
-                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}" Margin="0,2">
-                                    <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsHighlighted" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SecondaryHoverBrush}" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ContextMenu.Resources>
+        <ContextMenu x:Key="TransferContextMenu">
             <MenuItem Header="Open" Name="CtxOpen" />
             <MenuItem Header="Open Containing Folder" Name="CtxOpenFolder" />
             <MenuItem Header="Copy Path" Name="CtxCopyPath" />
-            <Separator Background="{DynamicResource AccentBrush}" Margin="0,4" />
-            <MenuItem Header="Delete" Name="CtxDelete" Foreground="#FF6B6B" />
+            <Separator />
+            <MenuItem Header="Delete" Name="CtxDelete" Foreground="{DynamicResource DangerBrush}" />
         </ContextMenu>
         </ResourceDictionary>
     
@@ -744,11 +723,11 @@
                                     <DataTemplate>
                                         <Button Style="{StaticResource SpatialListItem}" Margin="0,2,0,2" Tag="{Binding [Ip]}">
                                             <Button.ContextMenu>
-                                                <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
+                                                <ContextMenu>
                                                     <MenuItem Name="menuPair" Header="PIN CODE (Pair)" Tag="{Binding [Fingerprint]}" />
                                                     <MenuItem Name="menuGuestConnect" Header="Connect ADB" Tag="{Binding [Ip]}" />
                                                     <MenuItem Name="menuGuestCopyIp" Header="Copy IP Address" Tag="{Binding [Ip]}" />
-                                                    <Separator Background="{DynamicResource PrimaryTextBrush}" />
+                                                    <Separator />
                                                     <MenuItem Name="menuGuestForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
                                                 </ContextMenu>
                                             </Button.ContextMenu>
@@ -851,13 +830,13 @@
                                     </EventTrigger>
                                 </RadioButton.Triggers>
                                 <RadioButton.ContextMenu>
-                                    <ContextMenu Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource AccentBrush}">
+                                    <ContextMenu>
                                         <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />
                                         <MenuItem Name="menuMirror" Header="Mirror Screen" Tag="{Binding [IP]}" />
                                         <MenuItem Name="menuCopyIp" Header="Copy IP Address" Tag="{Binding [IP]}" />
                                         <MenuItem Name="menuConnectAdb" Header="Connect ADB" Tag="{Binding [IP]}" Visibility="{Binding [ConnectAdbVisibility]}" />
                                         <MenuItem Name="menuDisconnectAdb" Header="Disconnect ADB" Tag="{Binding [IP]}" Visibility="{Binding [DisconnectAdbVisibility]}" />
-                                        <Separator Background="{DynamicResource PrimaryTextBrush}" />
+                                        <Separator />
                                         <MenuItem Name="menuRename" Header="Rename / Alias" Tag="{Binding [Fingerprint]}" />
                                         <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
                                     </ContextMenu>

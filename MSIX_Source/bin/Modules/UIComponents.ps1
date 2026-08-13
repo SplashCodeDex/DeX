@@ -1,4 +1,4 @@
-function Load-TrayIcon([string]$FileName) {
+﻿function Load-TrayIcon([string]$FileName) {
     $binRoot = Split-Path $PSScriptRoot -Parent
     $iconPath = Join-Path $binRoot $FileName
     if (Test-Path $iconPath) {

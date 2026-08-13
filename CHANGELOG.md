@@ -1,5 +1,24 @@
 # Changelog
 
+## [8.8.0.0] - 2026-08-13
+### Added
+- **[minor] Modern Aesthetic ContextMenu UI/UX Redesign**:
+  - Implemented implicit global WPF `ContextMenu`, `MenuItem`, and `Separator` design system styles in `AppStyles.xaml`.
+  - Added heavy rounded corners (`CornerRadius="16"` on menu container, `CornerRadius="10"` on menu items).
+  - Integrated smooth entrance scale (`0.93` -> `1.0`), fade (`0` -> `1.0`), and slide (-4px -> 0px) storyboard animations (`0.18s` `CubicEase` `EaseOut`).
+  - Added micro-interaction hover shift transitions (`TranslateX` 2px) and background highlights on `MenuItem` hover (`SecondaryHoverBrush`) and press (`SecondarySelectedBrush`).
+  - Refactored `MainWindow.xaml` context menus (`TransferContextMenu`, `icUdpPeers`, `RadioButton`) to consume implicit global styles.
+  - Eliminated hardcoded hex colors (replaced `#FF6B6B` with `{DynamicResource DangerBrush}`), gradients, and glows.
+
+## [8.7.0.0] - 2026-08-13
+### Added
+- **[minor] Settings Persistence & Windows Registry Sync Module**:
+  - Implemented `SettingsManager.ps1` to serialize user preferences (`CurrentTheme`, `AppThemeMode`, `DndEnabled`, `AutoConnect`, `WiggleEnabled`, `DownloadPath`) to `%LOCALAPPDATA%\DeX\settings.json`.
+  - Added real-time mirror sync to Windows Registry (`HKCU:\SOFTWARE\CodeDeX\DeX`).
+  - Integrated `Apply-DeXSettingsToUI` into `Connect-Engine.ps1` to automatically restore all visual badges, toggle switches, and theme preferences at application startup.
+- **[fix] QR View Switch Null Property Exception**:
+  - Added `'txtPinSubtitle'` to `$initElements` in `Connect-Engine.ps1` and added safe null-guards to `Bindings_Settings.ps1`, eliminating runtime property exceptions when returning to QR view.
+
 ## [8.6.7.0] - 2026-08-12
 ### Fixed
 - **[fix] PowerShell UI Toast & Copy IP Animation Closure Scoping**:
