@@ -287,6 +287,21 @@ namespace DeXShareTarget.Endpoints
                         return;
                     }
 
+                    // Task 2: Simultaneous Pairing Race Condition Tie-Breaker
+                    if (LocalSendEndpoints.PendingPairPins.ContainsKey(fingerprint))
+                    {
+                        if (string.Compare(fingerprint, IdentityManager.Fingerprint, StringComparison.Ordinal) > 0)
+                        {
+                            Console.WriteLine($"[WS] Race condition: ignored inbound pair-request from {fingerprint} (PC is initiator)");
+                            return;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[WS] Race condition: yielding to inbound pair-request from {fingerprint} (Android is initiator)");
+                            LocalSendEndpoints.ClearPendingPair(fingerprint);
+                        }
+                    }
+
                     // Phone-initiated pairing: generate a PIN and push the prompt back to the phone
                     var pin = await LocalSendEndpoints.PushPairPromptAsync(fingerprint, clientIp);
                     if (string.IsNullOrEmpty(pin))

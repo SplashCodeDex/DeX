@@ -84,8 +84,15 @@ class MessageHandler(
         }
 
         if (AuthState.incomingPairRequest.value != null) {
-            Timber.w("Pairing request already pending, ignoring duplicate")
-            return
+            // Task 2: Simultaneous Pairing Race Condition Tie-Breaker
+            val localFp = deviceConfig.fingerprint
+            if (pairReq.fingerprint > localFp) {
+                Timber.w("Race condition: ignoring inbound pair-prompt from ${pairReq.fingerprint} (Android is initiator)")
+                return
+            } else {
+                Timber.w("Race condition: yielding to inbound pair-prompt from ${pairReq.fingerprint} (PC is initiator)")
+                handlePairCancelled()
+            }
         }
 
         Timber.i("Incoming pair-prompt via WebSocket from ${pairReq.alias}")

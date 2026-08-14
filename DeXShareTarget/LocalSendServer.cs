@@ -124,7 +124,11 @@ namespace DeXShareTarget
                 await next();
             });
 
-            App.UseWebSockets();
+            var webSocketOptions = new WebSocketOptions
+            {
+                KeepAliveInterval = TimeSpan.FromSeconds(15)
+            };
+            App.UseWebSockets(webSocketOptions);
 
             App.MapLocalSendEndpoints();
             App.MapWebSocketEndpoints();
