@@ -1,5 +1,14 @@
 # Changelog
 
+## [9.2.0.0] - 2026-08-14
+### Changed
+- **[major] Comprehensive Trust System & Edge Case Hardening**: Fully addressed 16 distinct pairing and trust edge cases to align with industry-standard P2P security architectures:
+  - **Loopback & Malicious Unpair Protection**: Enforced strict `IPAddress.IsLoopback` checks on all control endpoints (e.g., `/local/unpair`) to block unauthenticated LAN exploits.
+  - **IP Fallback Deprecation**: Fully purged IP-address fallbacks for authentication in `TrySendDexRequestAsync` and all TCP/HTTP endpoints. Trust now mandates Cryptographic UUID `Fingerprint` matching exclusively, resolving DHCP race conditions, same-IP spoofing, and Cloned App conflicts.
+  - **Discovery Storm Cap (DoS)**: Implemented an LRU-style limit of 100 devices on both the Android `DiscoveryEngine` and PC `DiscoveryBackgroundService` to prevent OutOfMemory/CPU crashes during massive mDNS/UDP broadcast storms.
+  - **Rate Limiting & Brute Force Prevention**: Added robust `ConcurrentDictionary`-backed rate limiting (5 attempts / 5 mins) to `PushPairPromptAsync` and WebSocket inbound `pair-request` to mitigate PIN guessing and DDoS attacks.
+  - **WebSocket Teardown Sweep**: If the socket unexpectedly drops (Wi-Fi loss, background service kill), `PendingPairPins` are instantly cleared on the PC and UI prompts gracefully close.
+
 ## [9.1.1.12] - 2026-08-14
 ### Fixed
 - **[patch] Shimmer Animation Limit & Error Fix**: Constrained the typing Shimmer sweep to trigger exactly 2 times and then settle, preventing endless distracting loops while the user considers their next digit. Also resolved a fatal assignment exception that prevented the UI from successfully flashing red and shaking when a rejected/invalid PIN state (`$dc = -1`) was broadcasted from the Android device.

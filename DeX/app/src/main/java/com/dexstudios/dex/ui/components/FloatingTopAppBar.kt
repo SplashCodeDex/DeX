@@ -74,10 +74,6 @@ private var isSearchExpanded: Boolean
     get() = TopAppBarState.isSearchExpanded
     set(value) { TopAppBarState.isSearchExpanded = value }
 
-private var isTransferExpanded: Boolean
-    get() = TopAppBarState.isTransferExpanded
-    set(value) { TopAppBarState.isTransferExpanded = value }
-
 @Composable
 fun FloatingTopAppBar(
     modifier: Modifier = Modifier,
@@ -89,7 +85,7 @@ fun FloatingTopAppBar(
     val screenWidth = with(density) { containerSize.width.toDp() }
     val expandedWidth = screenWidth - 32.dp
 
-    // Dynamic Island bouncy expansion (Avatar)
+    // Dynamic Island bouncy expansion (Avatar/Profile/Transfer)
     val islandWidth by animateDpAsState(
         targetValue = if (isProfileExpanded) expandedWidth else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
@@ -113,18 +109,6 @@ fun FloatingTopAppBar(
         label = "searchHeight"
     )
 
-    // Dynamic Island bouncy expansion (Transfer)
-    val transferWidth by animateDpAsState(
-        targetValue = if (isTransferExpanded) expandedWidth else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "transferWidth"
-    )
-    val transferHeight by animateDpAsState(
-        targetValue = if (isTransferExpanded) 80.dp else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "transferHeight"
-    )
-
     // Signed-in Google profile: single combined flow — one recomposition instead of three
     val deviceConfig: DeviceConfig = koinInject()
     val clientEngine: ClientEngine = koinInject()
@@ -136,12 +120,6 @@ fun FloatingTopAppBar(
     val isDownloading = downloadState.isDownloading
     val isUploading = uploadState.isUploading
     val isTransferActive = isDownloading || isUploading
-
-    val transferAlpha by animateFloatAsState(
-        targetValue = if (isTransferExpanded) 1f else 0f,
-        animationSpec = tween(400),
-        label = "transferAlpha"
-    )
 
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -160,13 +138,13 @@ fun FloatingTopAppBar(
         lastProfileEmail = profile.email
     }
 
-    // Auto-expand transfer island on start
+    // Auto-expand transfer details on start
     var wasTransferActive by remember { mutableStateOf(false) }
     LaunchedEffect(isTransferActive) {
         if (isTransferActive && !wasTransferActive) {
-            isTransferExpanded = true
+            isProfileExpanded = true
             delay(5.seconds)
-            isTransferExpanded = false
+            isProfileExpanded = false
         }
         wasTransferActive = isTransferActive
     }
@@ -182,12 +160,12 @@ fun FloatingTopAppBar(
     }
 
     val avatarAlpha by animateFloatAsState(
-        targetValue = if (isSearchExpanded || isTransferExpanded) 0f else 1f,
+        targetValue = if (isSearchExpanded) 0f else 1f,
         animationSpec = tween(400),
         label = "avatarAlpha"
     )
     val searchAlpha by animateFloatAsState(
-        targetValue = if (isProfileExpanded || isTransferExpanded) 0f else 1f,
+        targetValue = if (isProfileExpanded) 0f else 1f,
         animationSpec = tween(400),
         label = "searchAlpha"
     )
@@ -216,97 +194,83 @@ fun FloatingTopAppBar(
             contentAlignment = Alignment.TopEnd
         ) {
             if (showSearch) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (isUploading) {
-                        TransferProgressRing(
-                            progress = uploadState.aggregateProgress,
-                            modifier = Modifier.size(64.dp)
-                        )
-                    }
-                    LiquidGlassIconButton(
-                        onClick = {
-                            if (isUploading) {
-                                isTransferExpanded = true
-                                isProfileExpanded = false
-                                isSearchExpanded = false
-                            } else {
-                                isSearchExpanded = !isSearchExpanded
-                                if (isSearchExpanded) isProfileExpanded = false
-                            }
+                LiquidGlassIconButton(
+                    onClick = {
+                        isSearchExpanded = !isSearchExpanded
+                        if (isSearchExpanded) isProfileExpanded = false
+                    },
+                    width = searchWidth,
+                    height = searchHeight,
+                    backdrop = backdrop,
+                    config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                ) {
+                    AnimatedContent(
+                        targetState = isSearchExpanded,
+                        transitionSpec = {
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                         },
-                        width = searchWidth,
-                        height = searchHeight,
-                        backdrop = backdrop,
-                        config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
-                    ) {
-                        AnimatedContent(
-                            targetState = isSearchExpanded,
-                            transitionSpec = {
-                                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
-                            },
-                            label = "searchContent"
-                        ) { expanded ->
-                            if (expanded) {
-                                Row(
+                        label = "searchContent"
+                    ) { expanded ->
+                        if (expanded) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Search,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                androidx.compose.foundation.text.BasicTextField(
+                                    value = TopAppBarState.searchQuery,
+                                    onValueChange = { TopAppBarState.searchQuery = it },
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Search,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    androidx.compose.foundation.text.BasicTextField(
-                                        value = TopAppBarState.searchQuery,
-                                        onValueChange = { TopAppBarState.searchQuery = it },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .focusRequester(searchFocusRequester),
-                                        textStyle = TextStyle(
-                                            color = Color.White,
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        cursorBrush = SolidColor(Color.White),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                                        decorationBox = { innerTextField ->
-                                            if (TopAppBarState.searchQuery.isEmpty()) {
-                                                Text(
-                                                    "Search devices...",
-                                                    color = Color.White.copy(alpha = 0.5f),
-                                                    fontSize = 18.sp
-                                                )
-                                            }
-                                            innerTextField()
-                                        }
-                                    )
-                                    if (TopAppBarState.searchQuery.isNotEmpty()) {
-                                        IconButton(
-                                            onClick = { TopAppBarState.searchQuery = "" },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = MaterialSymbols.Close,
-                                                contentDescription = "Clear",
-                                                tint = Color.White.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(20.dp)
+                                        .weight(1f)
+                                        .focusRequester(searchFocusRequester),
+                                    textStyle = TextStyle(
+                                        color = Color.White,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    cursorBrush = SolidColor(Color.White),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                                    decorationBox = { innerTextField ->
+                                        if (TopAppBarState.searchQuery.isEmpty()) {
+                                            Text(
+                                                "Search devices...",
+                                                color = Color.White.copy(alpha = 0.5f),
+                                                fontSize = 18.sp
                                             )
                                         }
+                                        innerTextField()
+                                    }
+                                )
+                                if (TopAppBarState.searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { TopAppBarState.searchQuery = "" },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.Close,
+                                            contentDescription = "Clear",
+                                            tint = Color.White.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
-                            } else {
-                                Icon(
-                                    imageVector = if (isUploading) MaterialSymbols.CloudUpload else MaterialSymbols.Search,
-                                    contentDescription = "Search",
-                                    tint = if (isUploading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(32.dp)
-                                )
                             }
+                        } else {
+                            Icon(
+                                imageVector = MaterialSymbols.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
                     }
                 }
@@ -326,24 +290,18 @@ fun FloatingTopAppBar(
             contentAlignment = Alignment.TopStart
         ) {
             Box(contentAlignment = Alignment.Center) {
-                if (isDownloading) {
+                if (isTransferActive) {
                     TransferProgressRing(
-                        progress = downloadState.progress,
+                        progress = if (isDownloading) downloadState.progress else uploadState.aggregateProgress,
                         modifier = Modifier.size(64.dp)
                     )
                 }
                 LiquidGlassIconButton(
                     onClick = {
-                        if (isDownloading) {
-                            isTransferExpanded = true
-                            isProfileExpanded = false
-                            isSearchExpanded = false
-                        } else {
-                            // Expansion strictly for Google accounts or Guests
-                            if (profile.email.isBlank() || profile.picture.isNotBlank()) {
-                                isProfileExpanded = !isProfileExpanded
-                                if (isProfileExpanded) isSearchExpanded = false
-                            }
+                        // Expansion strictly for Google accounts, Guests, or active transfers
+                        if (profile.email.isBlank() || profile.picture.isNotBlank() || isTransferActive) {
+                            isProfileExpanded = !isProfileExpanded
+                            if (isProfileExpanded) isSearchExpanded = false
                         }
                     },
                     width = islandWidth,
@@ -359,28 +317,40 @@ fun FloatingTopAppBar(
                         label = "islandContent"
                     ) { expanded ->
                         if (expanded) {
-                            ExpandedProfileContent(
-                                profile = profile,
-                                onSignIn = {
-                                    val activity = context as? android.app.Activity
-                                    if (activity != null) {
-                                        scope.launch {
-                                            val credential = GoogleSignInManager.signIn(activity)
-                                            val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
-                                            if (email != null) {
-                                                Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                            if (isTransferActive) {
+                                ExpandedTransferContent(
+                                    downloadState = downloadState,
+                                    uploadState = uploadState,
+                                    onCancel = {
+                                        if (isDownloading) TcpDownloadService.cancelDownload(context)
+                                        else clientEngine.cancelUpload(context)
+                                        isProfileExpanded = false
+                                    }
+                                )
+                            } else {
+                                ExpandedProfileContent(
+                                    profile = profile,
+                                    onSignIn = {
+                                        val activity = context as? android.app.Activity
+                                        if (activity != null) {
+                                            scope.launch {
+                                                val credential = GoogleSignInManager.signIn(activity)
+                                                val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                                if (email != null) {
+                                                    Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         } else {
-                            if (isDownloading) {
+                            if (isTransferActive) {
                                 Icon(
-                                    imageVector = MaterialSymbols.CloudDownload,
-                                    contentDescription = "Downloading",
+                                    imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
+                                    contentDescription = "Transferring",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -392,78 +362,64 @@ fun FloatingTopAppBar(
                 }
             }
         }
+    }
+}
 
-        // Active Transfer Dynamic Island (Center)
-        Box(
-            modifier = Modifier
-                .statusBarsPadding()
-                .align(Alignment.TopCenter)
-                .padding(top = 8.dp)
-                .zIndex(if (isTransferExpanded) 3f else 0f)
-                .graphicsLayer { alpha = transferAlpha },
-            contentAlignment = Alignment.TopCenter
-        ) {
-            LiquidGlassIconButton(
-                onClick = { isTransferExpanded = false },
-                width = transferWidth,
-                height = transferHeight,
-                backdrop = backdrop,
-                config = LiquidGlassPresets.DynamicIsland
+@Composable
+private fun ExpandedTransferContent(
+    downloadState: DownloadState,
+    uploadState: UploadState,
+    onCancel: () -> Unit
+) {
+    val isDownloading = downloadState.isDownloading
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (isDownloading) downloadState.fileName else uploadState.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (isDownloading) downloadState.fileName else uploadState.fileName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = if (isDownloading) "${(downloadState.progress * 100).toInt()}%" else "${(uploadState.aggregateProgress * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = formatSpeed(if (isDownloading) downloadState.speedBps else uploadState.speedBps),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = {
-                            if (isDownloading) TcpDownloadService.cancelDownload(context)
-                            else clientEngine.cancelUpload(context)
-                            isTransferExpanded = false
-                        }
-                    ) {
-                        Icon(
-                            imageVector = MaterialSymbols.Close,
-                            contentDescription = "Cancel",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = if (isDownloading) "${(downloadState.progress * 100).toInt()}%" else "${(uploadState.aggregateProgress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = formatSpeed(if (isDownloading) downloadState.speedBps else uploadState.speedBps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
             }
+        }
+        IconButton(
+            onClick = onCancel,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                imageVector = MaterialSymbols.Close,
+                contentDescription = "Cancel",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }

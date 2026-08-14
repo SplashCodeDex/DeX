@@ -105,6 +105,14 @@ class DiscoveryEngine(
     }
 
     fun addDevice(device: DiscoveredDevice) {
+        // Task 18: Cap discovered devices to prevent OutOfMemory / DoS from discovery storms
+        if (seenDevices.size >= 100 && !seenDevices.containsKey(device.info.fingerprint)) {
+            val oldest = seenDevices.minByOrNull { it.value.lastSeenTimestamp }
+            if (oldest != null) {
+                seenDevices.remove(oldest.key)
+            }
+        }
+
         val existing = seenDevices[device.info.fingerprint]
         // Always bump the timestamp in the side-map so the TTL cleanup stays accurate
         seenDevices[device.info.fingerprint] = device
@@ -119,7 +127,16 @@ class DiscoveryEngine(
         if (!changed) return
 
         _devices.update { map ->
-            map + (device.info.fingerprint to device)
+            if (map.size >= 100 && !map.containsKey(device.info.fingerprint)) {
+                val oldestFp = map.minByOrNull { it.value.lastSeenTimestamp }?.key
+                if (oldestFp != null) {
+                    (map - oldestFp) + (device.info.fingerprint to device)
+                } else {
+                    map + (device.info.fingerprint to device)
+                }
+            } else {
+                map + (device.info.fingerprint to device)
+            }
         }
     }
 

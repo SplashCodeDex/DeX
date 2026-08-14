@@ -108,6 +108,22 @@ namespace DeXShareTarget
                 await next();
             });
 
+            // Task 6: Unauthenticated Malicious "Unpair" Spoofing
+            // Restrict /local/ GUI endpoints strictly to Loopback (127.0.0.1 and ::1)
+            App.Use(async (context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/local"))
+                {
+                    var remoteIp = context.Connection.RemoteIpAddress;
+                    if (remoteIp != null && !System.Net.IPAddress.IsLoopback(remoteIp))
+                    {
+                        context.Response.StatusCode = 403;
+                        return;
+                    }
+                }
+                await next();
+            });
+
             App.UseWebSockets();
 
             App.MapLocalSendEndpoints();

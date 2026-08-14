@@ -67,6 +67,7 @@ object DeviceManager {
     }
 
     fun removePairedFingerprint(fingerprint: String) {
+        TcpDownloadService.cancelIfFingerprint(fingerprint)
         AuthState.pairedFingerprints.remove(fingerprint)
         AuthState.pairedTokens.remove(fingerprint)
         AuthState.pairedTimes.remove(fingerprint)

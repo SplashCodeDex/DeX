@@ -60,6 +60,31 @@ namespace DeXShareTarget.Services
             LoadPairedDevices();
             LoadDeviceAliases();
             LoadPairedTokens();
+            LoadPairedLastSeen();
+            GarbageCollectOrphanedDevices();
+        }
+
+        private static void GarbageCollectOrphanedDevices()
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var thirtyDaysMs = 30L * 24 * 60 * 60 * 1000;
+            var toRemove = new List<string>();
+            foreach (var fp in PairedFingerprints.ToList())
+            {
+                if (PairedLastSeen.TryGetValue(fp, out var lastSeen))
+                {
+                    if (now - lastSeen > thirtyDaysMs) toRemove.Add(fp);
+                }
+                else
+                {
+                    // If no LastSeen record exists, create one now to start the clock
+                    UpdateLastSeen(fp);
+                }
+            }
+            foreach (var fp in toRemove)
+            {
+                RemovePairedDevice(fp);
+            }
         }
 
         private static void LoadPairedDevices()
@@ -107,6 +132,43 @@ namespace DeXShareTarget.Services
                 {
                     File.WriteAllText(file, JsonSerializer.Serialize(PairedTokens));
                 }
+            }
+            if (PairedLastSeen.Remove(fp))
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+                var file = Path.Combine(dir, "paired_lastseen.json");
+                lock (_fileLock)
+                {
+                    File.WriteAllText(file, JsonSerializer.Serialize(PairedLastSeen));
+                }
+            }
+        }
+
+        public static Dictionary<string, long> PairedLastSeen { get; set; } = new();
+
+        private static void LoadPairedLastSeen()
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var file = Path.Combine(dir, "paired_lastseen.json");
+            if (File.Exists(file))
+            {
+                try {
+                    string json;
+                    lock (_fileLock) { json = File.ReadAllText(file); }
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, long>>(json);
+                    if (dict != null) PairedLastSeen = new Dictionary<string, long>(dict);
+                } catch {}
+            }
+        }
+
+        public static void UpdateLastSeen(string fp)
+        {
+            PairedLastSeen[fp] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var file = Path.Combine(dir, "paired_lastseen.json");
+            lock (_fileLock)
+            {
+                File.WriteAllText(file, JsonSerializer.Serialize(PairedLastSeen));
             }
         }
 

@@ -17,9 +17,9 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/dex/list-folders", async (HttpRequest request) =>
             {
                 var body = await request.ReadFromJsonAsync<JsonObject>();
-                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
-                if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
-                var (ok, requestId) = await TrySendDexRequestAsync(ip, "list-shared-folders", null);
+                var fp = body?["fingerprint"]?.GetValue<string>() ?? request.Query["fingerprint"].ToString();
+                if (string.IsNullOrEmpty(fp)) return Results.BadRequest();
+                var (ok, requestId) = await TrySendDexRequestAsync(fp, "list-shared-folders", null);
                 if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 25);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
@@ -28,11 +28,11 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/dex/browse", async (HttpRequest request) =>
             {
                 var body = await request.ReadFromJsonAsync<JsonObject>();
-                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                var fp = body?["fingerprint"]?.GetValue<string>() ?? request.Query["fingerprint"].ToString();
                 var folderUri = body?["folderUri"]?.GetValue<string>() ?? request.Query["folderUri"].ToString();
-                if (string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(folderUri)) return Results.BadRequest();
+                if (string.IsNullOrEmpty(fp) || string.IsNullOrEmpty(folderUri)) return Results.BadRequest();
                 var extra = new JsonObject { ["folderUri"] = folderUri };
-                var (ok, requestId) = await TrySendDexRequestAsync(ip, "browse-folder", extra);
+                var (ok, requestId) = await TrySendDexRequestAsync(fp, "browse-folder", extra);
                 if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 25);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
@@ -42,11 +42,11 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/dex/pull", async (HttpRequest request) =>
             {
                 var body = await request.ReadFromJsonAsync<JsonObject>();
-                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
+                var fp = body?["fingerprint"]?.GetValue<string>() ?? request.Query["fingerprint"].ToString();
                 var files = body?["files"];
-                if (string.IsNullOrEmpty(ip) || files == null) return Results.BadRequest();
+                if (string.IsNullOrEmpty(fp) || files == null) return Results.BadRequest();
                 var extra = new JsonObject { ["files"] = files.DeepClone() };
-                var (ok, requestId) = await TrySendDexRequestAsync(ip, "pull-files", extra);
+                var (ok, requestId) = await TrySendDexRequestAsync(fp, "pull-files", extra);
                 if (!ok) return Results.NotFound();
                 return Results.Json(new { requestId });
             });
@@ -88,9 +88,9 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/dex/grant-folder", async (HttpRequest request) =>
             {
                 var body = await request.ReadFromJsonAsync<JsonObject>();
-                var ip = body?["ip"]?.GetValue<string>() ?? request.Query["ip"].ToString();
-                if (string.IsNullOrEmpty(ip)) return Results.BadRequest();
-                var (ok, requestId) = await TrySendDexRequestAsync(ip, "grant-shared-folder", null);
+                var fp = body?["fingerprint"]?.GetValue<string>() ?? request.Query["fingerprint"].ToString();
+                if (string.IsNullOrEmpty(fp)) return Results.BadRequest();
+                var (ok, requestId) = await TrySendDexRequestAsync(fp, "grant-shared-folder", null);
                 if (!ok) return Results.NotFound();
                 var reply = await DexRequestStore.WaitAsync(requestId, 190);
                 return reply == null ? Results.NotFound() : Results.Json(reply);
@@ -103,11 +103,9 @@ namespace DeXShareTarget.Endpoints
         /// its requestId. Only verified (paired / same-email) phones are eligible — file browsing
         /// must never reach an untrusted device.
         /// </summary>
-        private static async Task<(bool Ok, string RequestId)> TrySendDexRequestAsync(string ip, string type, JsonObject? extra)
+        private static async Task<(bool Ok, string RequestId)> TrySendDexRequestAsync(string fp, string type, JsonObject? extra)
         {
-            var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
-            if (dev == null || dev.Info == null) return (false, "");
-            var fp = dev.Info.Fingerprint;
+            if (string.IsNullOrEmpty(fp)) return (false, "");
 
             var requestId = DexRequestStore.NewPending(type);
             var state = DexRequestStore.GetState(requestId);

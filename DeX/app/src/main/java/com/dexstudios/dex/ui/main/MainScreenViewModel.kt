@@ -33,6 +33,13 @@ class MainScreenViewModel(
           viewModelScope.launch { onResult(ok) }
       }
   }
+
+  fun requestUnpair(device: DiscoveredDevice, onResult: (Boolean) -> Unit = {}) {
+      // Asks the PC to forget this device from its paired_devices.json.
+      webSocketClientService.requestUnpairWith(device) { ok ->
+          viewModelScope.launch { onResult(ok) }
+      }
+  }
 }
 
 sealed interface MainScreenUiState {

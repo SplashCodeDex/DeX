@@ -18,6 +18,23 @@ namespace DeXShareTarget.Services
     {
         public static readonly ConcurrentDictionary<string, DiscoveredDevice> Devices = new();
 
+        public static void AddOrUpdateDevice(DiscoveredDevice device)
+        {
+            var fp = device.Info?.Fingerprint;
+            if (string.IsNullOrEmpty(fp)) return;
+
+            // Task 18: Cap discovered devices to prevent DoS from broadcast storms
+            if (Devices.Count >= 100 && !Devices.ContainsKey(fp))
+            {
+                var oldestFp = Devices.OrderBy(kv => kv.Value.LastSeen).FirstOrDefault().Key;
+                if (oldestFp != null)
+                {
+                    Devices.TryRemove(oldestFp, out _);
+                }
+            }
+            Devices[fp] = device;
+        }
+
         private static List<IPEndPoint> GetDirectedBroadcasts(int port)
         {
             var endpoints = new List<IPEndPoint> { new IPEndPoint(IPAddress.Broadcast, port) };
@@ -146,14 +163,14 @@ namespace DeXShareTarget.Services
                                     DeviceModel = deviceModel, 
                                     DeviceType = deviceType 
                                 };
-                                Devices[fp] = new DiscoveredDevice
+                                AddOrUpdateDevice(new DiscoveredDevice
                                 {
                                     Ip = senderIp,
                                     Info = dto,
                                     LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                                     IsPaired = IdentityManager.PairedFingerprints.Contains(fp),
                                     IsAutoTrusted = !string.IsNullOrEmpty(identityHash) && identityHash == myInfo.IdentityHash
-                                };
+                                });
                             }
                         }
                     }
@@ -236,14 +253,14 @@ namespace DeXShareTarget.Services
                                 DeviceType = root.TryGetProperty("deviceType", out var dt) ? (dt.GetString() ?? "unknown") : "unknown",
                                 IdentityHash = root.TryGetProperty("identityHash", out var ih) ? ih.GetString() : null
                             };
-                            Devices[fp] = new DiscoveredDevice
+                            AddOrUpdateDevice(new DiscoveredDevice
                             {
                                 Ip = senderIp,
                                 Info = dto,
                                 LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                                 IsPaired = IdentityManager.PairedFingerprints.Contains(fp),
                                 IsAutoTrusted = !string.IsNullOrEmpty(dto.IdentityHash) && dto.IdentityHash == myInfo.IdentityHash
-                            };
+                            });
                         }
                     } catch (OperationCanceledException) { break; } catch { }
                 }
@@ -306,14 +323,14 @@ namespace DeXShareTarget.Services
                                         DeviceType = root.TryGetProperty("deviceType", out var dt) ? (dt.GetString() ?? "unknown") : "unknown",
                                         IdentityHash = root.TryGetProperty("identityHash", out var ih) ? ih.GetString() : null
                                     };
-                                    Devices[fp] = new DiscoveredDevice
+                                    AddOrUpdateDevice(new DiscoveredDevice
                                     {
                                         Ip = senderIp,
                                         Info = dto,
                                         LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                                         IsPaired = IdentityManager.PairedFingerprints.Contains(fp),
                                         IsAutoTrusted = !string.IsNullOrEmpty(dto.IdentityHash) && dto.IdentityHash == myInfo.IdentityHash
-                                    };
+                                    });
                                 }
                             } catch (OperationCanceledException) { break; } catch { }
                         }

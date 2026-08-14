@@ -37,13 +37,7 @@ namespace DeXShareTarget.Endpoints
             app.MapPost("/local/mirror-stop", (HttpRequest request) =>
             {
                 // Stops the active mirror session (or the one for a specific device)
-                var ip = request.Query["ip"].ToString();
                 var fp = request.Query["fingerprint"].ToString();
-                if (string.IsNullOrEmpty(fp) && !string.IsNullOrEmpty(ip))
-                {
-                    var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
-                    if (dev != null) fp = dev.Info.Fingerprint;
-                }
                 if (string.IsNullOrEmpty(fp)) { MirrorWindowHost.StopActive(); }
                 else { MirrorWindowHost.Stop(fp); }
                 return Results.Ok();
@@ -53,13 +47,7 @@ namespace DeXShareTarget.Endpoints
             {
                 // Start a screen-mirror session: ask the phone to stream (it shows the
                 // MediaProjection consent) and open the desktop mirror window.
-                var ip = request.Query["ip"].ToString();
                 var fp = request.Query["fingerprint"].ToString();
-                if (string.IsNullOrEmpty(fp) && !string.IsNullOrEmpty(ip))
-                {
-                    var dev = DiscoveryBackgroundService.Devices.Values.FirstOrDefault(d => d.Ip == ip);
-                    if (dev != null) fp = dev.Info.Fingerprint;
-                }
                 if (string.IsNullOrEmpty(fp)) return Results.NotFound();
 
                 var alias = DiscoveryBackgroundService.Devices.TryGetValue(fp, out var d) && d.Info != null

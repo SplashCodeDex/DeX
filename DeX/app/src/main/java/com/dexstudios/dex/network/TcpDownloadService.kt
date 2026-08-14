@@ -47,6 +47,7 @@ object TcpDownloadService {
     }
 
     var activeWorkId: UUID? = null
+    private var lastContext: Context? = null
 
     fun updateState(state: DownloadState) {
         _downloadState.value = state
@@ -56,6 +57,12 @@ object TcpDownloadService {
                 delay(5.seconds)
                 resetDownloadState()
             }
+        }
+    }
+
+    fun cancelIfFingerprint(fingerprint: String) {
+        if (_downloadState.value.sourceFingerprint == fingerprint && _downloadState.value.isDownloading) {
+            lastContext?.let { cancelDownload(it) }
         }
     }
 
@@ -102,6 +109,7 @@ object TcpDownloadService {
         fingerprint: String? = null,
         sourceAlias: String? = null
     ) {
+        lastContext = context.applicationContext
         val totalBytes = files.sumOf { it.size }
         _downloadState.value = DownloadState(
             fileName = if (files.isNotEmpty()) files.first().fileName else "",

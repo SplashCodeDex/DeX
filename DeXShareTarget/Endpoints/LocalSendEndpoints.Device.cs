@@ -114,7 +114,7 @@ namespace DeXShareTarget.Endpoints
                             Info = info,
                             LastSeen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                         };
-                        DiscoveryBackgroundService.Devices[info.Fingerprint] = dev;
+                        DiscoveryBackgroundService.AddOrUpdateDevice(dev);
                         return Results.Ok(dev);
                     }
                 }
@@ -133,12 +133,21 @@ namespace DeXShareTarget.Endpoints
                 return Results.NotFound();
             });
 
-            app.MapPost("/local/unpair", (HttpRequest request) => 
+            app.MapPost("/local/unpair", async (HttpRequest request) => 
             {
                 var fp = request.Query["fingerprint"].ToString();
                 if (!string.IsNullOrEmpty(fp))
                 {
                     IdentityManager.RemovePairedDevice(fp);
+                    WebSocketConnectionManager.Unverify(fp);
+                    try
+                    {
+                        var msg = JsonSerializer.Serialize(new { type = "unpair", data = new { fingerprint = IdentityManager.Fingerprint } },
+                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        await WebSocketConnectionManager.SendAsync(fp, msg, requireVerified: false);
+                        await WebSocketConnectionManager.DisconnectAsync(fp);
+                    }
+                    catch { }
                     return Results.Ok();
                 }
                 return Results.BadRequest();
@@ -147,13 +156,7 @@ namespace DeXShareTarget.Endpoints
             {
                 // Resolve by fingerprint (preferred) or by IP (legacy callers).
                 var fp = request.Query["fingerprint"].ToString();
-                var ip = request.Query["ip"].ToString();
                 var targetFp = fp;
-                if (string.IsNullOrEmpty(targetFp) && !string.IsNullOrEmpty(ip))
-                {
-                    var entry = PendingPairPins.Values.FirstOrDefault(a => a.Ip == ip);
-                    targetFp = entry?.Fingerprint ?? "";
-                }
                 if (!string.IsNullOrEmpty(targetFp) && OutboundPairingStatus.TryGetValue(targetFp, out var status))
                 {
                     var digitCount = PendingPairDigitCount.TryGetValue(targetFp, out var count) ? count : 0;
@@ -205,12 +208,7 @@ namespace DeXShareTarget.Endpoints
             {
                 var targetIp = request.Query["ip"].ToString();
                 var targetFp = request.Query["fingerprint"].ToString();
-                // Resolve the attempt by fingerprint (preferred) or by IP (legacy callers).
                 var attemptFp = targetFp;
-                if (string.IsNullOrEmpty(attemptFp) && !string.IsNullOrEmpty(targetIp))
-                {
-                    attemptFp = PendingPairPins.Values.FirstOrDefault(a => a.Ip == targetIp)?.Fingerprint ?? "";
-                }
                 if (!string.IsNullOrEmpty(attemptFp))
                 {
                     OutboundPairingStatus[attemptFp] = "Cancelled";

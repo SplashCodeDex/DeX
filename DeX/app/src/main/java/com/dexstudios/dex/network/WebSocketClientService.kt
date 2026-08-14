@@ -208,10 +208,12 @@ class WebSocketClientService(
         val alias = java.net.URLEncoder.encode(getDeviceName(context), "UTF-8")
         val pcFingerprint = pcDevice.info.fingerprint
 
-        // Same-email devices are auto-trusted. Token order: Google account ID (unguessable)
+        // Auto-trust rules: the Google account sub is the highest priority authentication token
         // when both sides share it, then the identity hash, then the PIN-pairing token.
-        val identityHash = deviceConfig.identityHash
-        val googleSub = deviceConfig.googleSub
+        // Task 4: Email Auto-Trust De-synchronization. Enforce that incoming IdentityHash matches are ignored if authState.isLoggedIn == false
+        val isLoggedIn = AuthState.isLoggedIn.value
+        val identityHash = if (isLoggedIn) deviceConfig.identityHash else ""
+        val googleSub = if (isLoggedIn) deviceConfig.googleSub else ""
         val pcIdentityHash = pcDevice.info.identityHash
         val pcGoogleSub = pcDevice.info.googleSub
         val token = when {
@@ -247,6 +249,17 @@ class WebSocketClientService(
                 }
                 // Ask the PC which of our same-email devices are online (direct punch transfers)
                 sendMessage("""{"type":"device-roster","data":{}}""")
+                
+                // Send trust-check to verify we are still trusted by the PC
+                val isTrusted = DeviceManager.getPairedFingerprints().contains(pcFingerprint) || token == googleSub || (token == identityHash && identityHash.isNotEmpty())
+                val trustCheck = buildJsonObject {
+                    put("type", "trust-check")
+                    putJsonObject("data") {
+                        put("isTrusted", isTrusted)
+                    }
+                }.toString()
+                sendMessage(trustCheck)
+
                 // Report battery immediately so the PC has telemetry on connect, not after 60s
                 sendTelemetry()
                 Timber.i("WebSocket connected to PC: ${pcDevice.ip}")
@@ -344,6 +357,43 @@ class WebSocketClientService(
         }
         // If the connect never opens within the cap, report failure so the UI can reset
         // its pairing state instead of spinning forever.
+        serviceScope.launch {
+            delay(6.seconds)
+            finish(false)
+        }
+    }
+
+    /** Sends an "unpair" message to the target PC. */
+    fun sendUnpairRequest(targetFingerprint: String): Boolean {
+        val socket = activeSocket ?: return false
+        if (_connectedFingerprint != targetFingerprint) {
+            Timber.w("Not connected to requested PC, cannot send unpair request")
+            return false
+        }
+        return socket.send("""{"type":"unpair"}""")
+    }
+
+    /**
+     * Connects to [targetPc] if not already connected and sends an "unpair" request
+     * to permanently forget the pairing on the PC side.
+     */
+    fun requestUnpairWith(targetPc: DiscoveredDevice, onResult: (Boolean) -> Unit = {}) {
+        val fp = targetPc.info.fingerprint
+        val socket = activeSocket
+        if (socket != null && _connectedFingerprint == fp) {
+            onResult(socket.send("""{"type":"unpair"}"""))
+            return
+        }
+        val settled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val finish: (Boolean) -> Unit = { ok ->
+            if (settled.compareAndSet(false, true)) onResult(ok)
+        }
+        if (activeSocket != null) {
+            activeSocket?.close(1000, "Switching to tapped PC for unpair")
+        }
+        connectToPC(targetPc) {
+            finish(sendUnpairRequest(fp))
+        }
         serviceScope.launch {
             delay(6.seconds)
             finish(false)

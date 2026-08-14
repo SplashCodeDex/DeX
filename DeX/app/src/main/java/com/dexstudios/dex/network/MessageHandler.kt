@@ -48,6 +48,8 @@ class MessageHandler(
                 "endpoint-info" -> handleEndpointInfo(dataElement)
                 "peer-endpoint" -> handlePeerEndpoint(dataElement)
                 "device-roster" -> handleDeviceRoster(dataElement)
+                "trust-check" -> handleTrustCheck(dataElement)
+                "unpair" -> handleUnpair(dataElement)
                 "relay-started" -> handleRelayReply(true)
                 "relay-error" -> handleRelayReply(false)
                 "set-clipboard" -> handleSetClipboard(dataElement)
@@ -66,12 +68,26 @@ class MessageHandler(
     }
 
     private fun handlePairPrompt(dataElement: JsonElement) {
+        val pairReq = json.decodeFromJsonElement<PairRequestDto>(dataElement)
+        
+        // Task 5: Re-Pairing After Partial Forget (Auto-Accept)
+        if (DeviceManager.getPairedFingerprints().contains(pairReq.fingerprint)) {
+            Timber.i("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
+            val responseMsg = buildJsonObject {
+                put("type", "pair-response")
+                putJsonObject("data") {
+                    put("accepted", true)
+                }
+            }.toString()
+            WebSocketClientService.sendMessage(responseMsg)
+            return
+        }
+
         if (AuthState.incomingPairRequest.value != null) {
             Timber.w("Pairing request already pending, ignoring duplicate")
             return
         }
 
-        val pairReq = json.decodeFromJsonElement<PairRequestDto>(dataElement)
         Timber.i("Incoming pair-prompt via WebSocket from ${pairReq.alias}")
         val info = PairRequestInfo(
             alias = pairReq.alias,
@@ -200,6 +216,26 @@ class MessageHandler(
             )
         }
         Timber.i("Roster updated: ${roster.devices.size} same-email devices")
+    }
+
+    /** The PC revoked its trust in us. We must forget it locally so we don't incorrectly show it as "Trusted". */
+    private fun handleUnpair(dataElement: JsonElement) {
+        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.content
+        if (!fingerprint.isNullOrBlank()) {
+            DeviceManager.removePairedFingerprint(fingerprint)
+            Timber.i("PC $fingerprint requested unpair; removed from local trusted list")
+        }
+    }
+
+    private fun handleTrustCheck(dataElement: JsonElement) {
+        val isTrustedByPC = (dataElement as? JsonObject)?.get("isTrusted")?.jsonPrimitive?.content?.toBoolean() ?: false
+        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.content
+        if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
+            if (DeviceManager.getPairedFingerprints().contains(fingerprint)) {
+                Timber.w("PC $fingerprint reported we are not trusted. Downgrading local trust.")
+                DeviceManager.removePairedFingerprint(fingerprint)
+            }
+        }
     }
 
     /** The PC pushed clipboard text over the WebSocket — write it to the phone's clipboard. */

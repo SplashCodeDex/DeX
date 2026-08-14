@@ -16,6 +16,9 @@ namespace DeXShareTarget.Endpoints
         // Mirrors Android's WifiInfo.RSSI_INVALID
         private const int WifiInfoRssiInvalid = -127;
 
+        // Task 9: PIN Brute-Force Attack rate limiting dictionary
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int count, long resetAt)> PairRequestLimits = new();
+
         // Same-email devices currently connected (fingerprint -> alias); powers the phone roster
         public static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> SameEmailAliases = new();
 
@@ -66,6 +69,7 @@ namespace DeXShareTarget.Endpoints
                 using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 WebSocketConnectionManager.AddSocket(fingerprint, webSocket, verified);
                 var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "";
+                IdentityManager.UpdateLastSeen(fingerprint);
 
                 // Mark the device as online immediately if it isn't already
                 if (!DiscoveryBackgroundService.Devices.ContainsKey(fingerprint))
@@ -88,18 +92,26 @@ namespace DeXShareTarget.Endpoints
                 var publicAddress = LocalSendServer.PublicAddress;
                 if (!string.IsNullOrEmpty(publicAddress))
                 {
-                    try
-                    {
-                        var push = JsonSerializer.Serialize(new { type = "public-address", data = new { address = publicAddress } },
-                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                        await WebSocketConnectionManager.SendAsync(fingerprint, push, requireVerified: false);
-                    }
-                    catch { }
-                }
-
                 try
                 {
-                    var buffer = new byte[1024 * 4];
+                    var push = JsonSerializer.Serialize(new { type = "public-address", data = new { address = publicAddress } },
+                        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    await WebSocketConnectionManager.SendAsync(fingerprint, push, requireVerified: false);
+                }
+                catch { }
+            }
+
+            try
+            {
+                var trustCheck = JsonSerializer.Serialize(new { type = "trust-check", data = new { isTrusted = verified, fingerprint = IdentityManager.Fingerprint } },
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await WebSocketConnectionManager.SendAsync(fingerprint, trustCheck, requireVerified: false);
+            }
+            catch { }
+
+            try
+            {
+                var buffer = new byte[1024 * 4];
                     while (webSocket.State == WebSocketState.Open)
                     {
                         var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
@@ -144,6 +156,14 @@ namespace DeXShareTarget.Endpoints
                     SameEmailAliases.TryRemove(fingerprint, out _);
                     // The phone is gone: never leave a frozen mirror window behind
                     MirrorWindowHost.Stop(fingerprint);
+                    
+                    // Task 12: Clear any pending pairing prompts if the socket drops mid-pairing
+                    LocalSendEndpoints.ClearPendingPair(fingerprint);
+                    if (LocalSendEndpoints.OutboundPairingStatus.TryGetValue(fingerprint, out var status) && status == "Pending")
+                    {
+                        LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Failed";
+                    }
+                    
                     if (webSocket.State != WebSocketState.Closed && webSocket.State != WebSocketState.Aborted)
                     {
                         await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
@@ -254,6 +274,19 @@ namespace DeXShareTarget.Endpoints
                 }
                 else if (type == "pair-request")
                 {
+                    // Task 9: Add a fast, in-memory rate-limiter (max 5 attempts per 5 minutes)
+                    var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    var limit = PairRequestLimits.GetOrAdd(clientIp, _ => (0, now + 300000));
+                    if (now > limit.resetAt) limit = (0, now + 300000);
+                    limit.count++;
+                    PairRequestLimits[clientIp] = limit;
+                    
+                    if (limit.count > 5)
+                    {
+                        Console.WriteLine($"[WS] Rate limited pair-request from {clientIp}");
+                        return;
+                    }
+
                     // Phone-initiated pairing: generate a PIN and push the prompt back to the phone
                     var pin = await LocalSendEndpoints.PushPairPromptAsync(fingerprint, clientIp);
                     if (string.IsNullOrEmpty(pin))
@@ -271,6 +304,21 @@ namespace DeXShareTarget.Endpoints
                     
                     // Terminate the connection immediately so the unverified socket doesn't linger as a ghost
                     await WebSocketConnectionManager.DisconnectAsync(fingerprint);
+                }
+                else if (type == "trust-check" && root.TryGetProperty("data", out var trustData))
+                {
+                    var isTrustedByPhone = trustData.TryGetProperty("isTrusted", out var b) && b.GetBoolean();
+                    if (!isTrustedByPhone && IdentityManager.PairedFingerprints.Contains(fingerprint))
+                    {
+                        Console.WriteLine($"[WS] Phone {fingerprint} reported we are not trusted. Downgrading local trust.");
+                        IdentityManager.RemovePairedDevice(fingerprint);
+                        WebSocketConnectionManager.Unverify(fingerprint);
+                        
+                        var unpairMsg = JsonSerializer.Serialize(new { type = "unpair", data = new { fingerprint = IdentityManager.Fingerprint } },
+                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        await WebSocketConnectionManager.SendAsync(fingerprint, unpairMsg, requireVerified: false);
+                        await WebSocketConnectionManager.DisconnectAsync(fingerprint);
+                    }
                 }
                 else if (type == "pair-response" && root.TryGetProperty("data", out var data))
                 {

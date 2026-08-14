@@ -413,6 +413,9 @@ fun MainScreen(
                 }
             },
             onForget = {
+                viewModel.requestUnpair(device) { success ->
+                    // Request fired off, PC should unpair shortly if online
+                }
                 DeviceManager.removePairedFingerprint(device.info.fingerprint)
                 Toast.makeText(context, "Forgotten ${device.info.alias}", Toast.LENGTH_SHORT).show()
             },
