@@ -1,5 +1,17 @@
 # Changelog
 
+## [9.1.1.11] - 2026-08-14
+### Changed
+- **[patch] Shimmer PIN & Success Animation**: Replaced the solid green typing border highlight with a subtle sliding gradient 'Shimmer' effect pulsing in the primary text color.
+- The solid green border is now strictly reserved for a new 800ms 'Success' animation when the phone officially Accepts the pairing, creating a clear visual distinction between entering and accepted states.
+
+## [9.1.1.10] - 2026-08-14
+
+## [9.1.1.10] - 2026-08-14
+### Changed
+- **[patch] Shimmer PIN & Success Animation**: Replaced the solid green typing border highlight with a subtle sliding gradient 'Shimmer' effect pulsing in the primary text color.
+- The solid green border is now strictly reserved for a new 800ms 'Success' animation when the phone officially Accepts the pairing, creating a clear visual distinction between entering and accepted states.
+
 ## [9.1.2.0] - 2026-08-14
 ### Fixed
 - **[patch] UI Device Sorting**: Fixed an issue where newly paired devices did not appear at the top of the "My Devices" list (or did not visibly move). `Connect-Engine.ps1` now explicitly sorts discovered devices by their `lastSeen` timestamp descending before building the device lists so that actively pairing devices immediately jump to the top.

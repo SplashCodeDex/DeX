@@ -332,6 +332,328 @@ object MaterialSymbols {
             }
         }.build().also { _share = it }
 
+    val IosShare: ImageVector
+        get() = _iosShare ?: ImageVector.Builder(
+            name = "ios_share",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(12f, 16f)
+                quadToRelative(-0.425f, 0f, -0.712f, -0.288f)
+                reflectiveQuadTo(11f, 15f)
+                verticalLineTo(6.825f)
+                lineToRelative(-2.875f, 2.875f)
+                lineTo(6.7f, 8.275f)
+                lineTo(12f, 3f)
+                lineToRelative(5.3f, 5.275f)
+                lineToRelative(-1.425f, 1.425f)
+                lineTo(13f, 6.825f)
+                verticalLineTo(15f)
+                quadToRelative(0f, 0.425f, -0.288f, 0.713f)
+                reflectiveQuadTo(12f, 16f)
+                close()
+                moveTo(5f, 21f)
+                quadToRelative(-0.825f, 0f, -1.412f, -0.587f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineToRelative(-5.5f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(4f, 12.5f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(5f, 13.5f)
+                verticalLineTo(19f)
+                horizontalLineToRelative(14f)
+                verticalLineToRelative(-5.5f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(20f, 12.5f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(21f, 13.5f)
+                verticalLineTo(19f)
+                quadToRelative(0f, 0.825f, -0.587f, 1.413f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(5f)
+                close()
+            }
+        }.build().also { _iosShare = it }
+
+    val FileUpload: ImageVector
+        get() = _fileUpload ?: ImageVector.Builder(
+            name = "file_upload",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(12f, 16f)
+                quadToRelative(-0.425f, 0f, -0.712f, -0.288f)
+                reflectiveQuadTo(11f, 15f)
+                verticalLineTo(7.825f)
+                lineToRelative(-2.6f, 2.6f)
+                lineToRelative(-1.4f, -1.4f)
+                lineTo(12f, 4f)
+                lineToRelative(5f, 5f)
+                lineToRelative(-1.4f, 1.425f)
+                lineToRelative(-2.6f, -2.6f)
+                verticalLineTo(15f)
+                quadToRelative(0f, 0.425f, -0.288f, 0.713f)
+                reflectiveQuadTo(12f, 16f)
+                close()
+                moveTo(5f, 21f)
+                quadToRelative(-0.825f, 0f, -1.412f, -0.587f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(4f, 16f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(5f, 17f)
+                verticalLineToRelative(2f)
+                horizontalLineToRelative(14f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(20f, 16f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(21f, 17f)
+                verticalLineToRelative(2f)
+                quadToRelative(0f, 0.825f, -0.587f, 1.413f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(5f)
+                close()
+            }
+        }.build().also { _fileUpload = it }
+
+    val FileDownload: ImageVector
+        get() = _fileDownload ?: ImageVector.Builder(
+            name = "file_download",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(12f, 17f)
+                lineTo(7f, 12f)
+                lineToRelative(1.425f, -1.425f)
+                lineTo(11f, 13.175f)
+                verticalLineTo(5f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(12f, 4f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(13f, 5f)
+                verticalLineToRelative(8.175f)
+                lineToRelative(2.575f, -2.575f)
+                lineTo(17f, 12f)
+                lineTo(12f, 17f)
+                close()
+                moveTo(5f, 21f)
+                quadToRelative(-0.825f, 0f, -1.412f, -0.587f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(4f, 16f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(5f, 17f)
+                verticalLineToRelative(2f)
+                horizontalLineToRelative(14f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.425f, 0.288f, -0.712f)
+                reflectiveQuadTo(20f, 16f)
+                reflectiveQuadToRelative(0.713f, 0.288f)
+                reflectiveQuadTo(21f, 17f)
+                verticalLineToRelative(2f)
+                quadToRelative(0f, 0.825f, -0.587f, 1.413f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(5f)
+                close()
+            }
+        }.build().also { _fileDownload = it }
+
+    val CloudDownload: ImageVector
+        get() = _cloudDownload ?: ImageVector.Builder(
+            name = "cloud_download",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(17f, 20f)
+                quadToRelative(-2.075f, 0f, -3.537f, -1.463f)
+                quadTo(12f, 17.075f, 12f, 15f)
+                quadToRelative(0f, -2.075f, 1.463f, -3.537f)
+                quadTo(14.925f, 10f, 17f, 10f)
+                quadToRelative(2.075f, 0f, 3.538f, 1.463f)
+                quadTo(22f, 12.925f, 22f, 15f)
+                quadToRelative(0f, 2.075f, -1.462f, 3.537f)
+                quadTo(19.075f, 20f, 17f, 20f)
+                close()
+                moveToRelative(0f, -2f)
+                quadToRelative(0.825f, 0f, 1.413f, -0.587f)
+                quadTo(19f, 16.825f, 19f, 16f)
+                verticalLineToRelative(-3f)
+                horizontalLineToRelative(-4f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.825f, 0.588f, 1.413f)
+                quadTo(16.175f, 18f, 17f, 18f)
+                close()
+                moveTo(6.5f, 20f)
+                quadTo(4.225f, 20f, 2.613f, 18.438f)
+                quadTo(1f, 16.875f, 1f, 14.575f)
+                quadToRelative(0f, -1.95f, 1.175f, -3.475f)
+                reflectiveQuadTo(5.25f, 9.15f)
+                quadToRelative(0.625f, -2.3f, 2.5f, -3.725f)
+                reflectiveQuadTo(12f, 4f)
+                quadToRelative(2.925f, 0f, 4.962f, 2.038f)
+                reflectiveQuadTo(19f, 11f)
+                quadToRelative(1.725f, 0.2f, 2.863f, 1.488f)
+                reflectiveQuadTo(23f, 15.5f)
+                quadToRelative(0f, 0.25f, -0.038f, 0.5f)
+                reflectiveQuadToRelative(-0.112f, 0.5f)
+                quadToRelative(-0.45f, -1.025f, -1.362f, -1.762f)
+                reflectiveQuadTo(19.45f, 13.55f)
+                quadTo(18.975f, 11.5f, 17.513f, 10.15f)
+                reflectiveQuadTo(14f, 8.575f)
+                verticalLineToRelative(-1.3f)
+                quadToRelative(0f, -1.25f, -0.875f, -2.125f)
+                reflectiveQuadTo(11f, 4.275f)
+                reflectiveQuadToRelative(-2.125f, 0.875f)
+                reflectiveQuadTo(8f, 7.275f)
+                verticalLineToRelative(1.15f)
+                quadToRelative(-1.425f, 0.25f, -2.363f, 1.338f)
+                reflectiveQuadTo(4.7f, 12.35f)
+                quadToRelative(-1.05f, 0.125f, -1.875f, 0.863f)
+                reflectiveQuadTo(2f, 15.05f)
+                quadToRelative(0f, 1.25f, 0.875f, 2.125f)
+                reflectiveQuadTo(5f, 18.05f)
+                horizontalLineToRelative(5.25f)
+                quadToRelative(0.125f, 0.525f, 0.363f, 1f)
+                reflectiveQuadToRelative(0.587f, 0.95f)
+                lineTo(6.5f, 20f)
+                close()
+            }
+        }.build().also { _cloudDownload = it }
+
+    val CloudUpload: ImageVector
+        get() = _cloudUpload ?: ImageVector.Builder(
+            name = "cloud_upload",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(17f, 20f)
+                quadToRelative(-2.075f, 0f, -3.537f, -1.463f)
+                quadTo(12f, 17.075f, 12f, 15f)
+                quadToRelative(0f, -2.075f, 1.463f, -3.537f)
+                quadTo(14.925f, 10f, 17f, 10f)
+                quadToRelative(2.075f, 0f, 3.538f, 1.463f)
+                quadTo(22f, 12.925f, 22f, 15f)
+                quadToRelative(0f, 2.075f, -1.462f, 3.537f)
+                quadTo(19.075f, 20f, 17f, 20f)
+                close()
+                moveToRelative(0f, -2f)
+                quadToRelative(0.825f, 0f, 1.413f, -0.587f)
+                quadTo(19f, 16.825f, 19f, 16f)
+                verticalLineToRelative(-1.5f)
+                horizontalLineToRelative(1.5f)
+                lineToRelative(-3.5f, -3.5f)
+                lineToRelative(-3.5f, 3.5f)
+                horizontalLineTo(15f)
+                verticalLineTo(16f)
+                quadToRelative(0f, 0.825f, 0.588f, 1.413f)
+                quadTo(16.175f, 18f, 17f, 18f)
+                close()
+                moveTo(6.5f, 20f)
+                quadTo(4.225f, 20f, 2.613f, 18.438f)
+                quadTo(1f, 16.875f, 1f, 14.575f)
+                quadToRelative(0f, -1.95f, 1.175f, -3.475f)
+                reflectiveQuadTo(5.25f, 9.15f)
+                quadToRelative(0.625f, -2.3f, 2.5f, -3.725f)
+                reflectiveQuadTo(12f, 4f)
+                quadToRelative(2.925f, 0f, 4.962f, 2.038f)
+                reflectiveQuadTo(19f, 11f)
+                quadToRelative(1.725f, 0.2f, 2.863f, 1.488f)
+                reflectiveQuadTo(23f, 15.5f)
+                quadToRelative(0f, 0.25f, -0.038f, 0.5f)
+                reflectiveQuadToRelative(-0.112f, 0.5f)
+                quadToRelative(-0.45f, -1.025f, -1.362f, -1.762f)
+                reflectiveQuadTo(19.45f, 13.55f)
+                quadTo(18.975f, 11.5f, 17.513f, 10.15f)
+                reflectiveQuadTo(14f, 8.575f)
+                verticalLineToRelative(-1.3f)
+                quadToRelative(0f, -1.25f, -0.875f, -2.125f)
+                reflectiveQuadTo(11f, 4.275f)
+                reflectiveQuadToRelative(-2.125f, 0.875f)
+                reflectiveQuadTo(8f, 7.275f)
+                verticalLineToRelative(1.15f)
+                quadToRelative(-1.425f, 0.25f, -2.363f, 1.338f)
+                reflectiveQuadTo(4.7f, 12.35f)
+                quadToRelative(-1.05f, 0.125f, -1.875f, 0.863f)
+                reflectiveQuadTo(2f, 15.05f)
+                quadToRelative(0f, 1.25f, 0.875f, 2.125f)
+                reflectiveQuadTo(5f, 18.05f)
+                horizontalLineToRelative(5.25f)
+                quadToRelative(0.125f, 0.525f, 0.363f, 1f)
+                reflectiveQuadToRelative(0.587f, 0.95f)
+                lineTo(6.5f, 20f)
+                close()
+            }
+        }.build().also { _cloudUpload = it }
+
+
     val Sort: ImageVector
         get() = _sort ?: ImageVector.Builder(
             name = "sort",
@@ -2518,4 +2840,9 @@ object MaterialSymbols {
     private var _qrCodeScanner: ImageVector? = null
     private var _moreVert: ImageVector? = null
     private var _filterList: ImageVector? = null
+    private var _iosShare: ImageVector? = null
+    private var _fileUpload: ImageVector? = null
+    private var _fileDownload: ImageVector? = null
+    private var _cloudDownload: ImageVector? = null
+    private var _cloudUpload: ImageVector? = null
 }

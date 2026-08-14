@@ -78,6 +78,12 @@ namespace DeXShareTarget.Endpoints
         {
             try
             {
+                // Debounce: atomically check if an attempt is already pending to prevent DoS/spam
+                if (!PendingPairPins.TryAdd(targetFp, new Models.PendingPairAttempt { Fingerprint = targetFp, CreatedAt = DateTime.UtcNow }))
+                {
+                    return ""; // Pairing prompt already pending/active for this device
+                }
+
                 // Pending-pair attempts and their status are keyed by FINGERPRINT, never by
                 // IP: a phone whose DHCP lease changes mid-pairing must still resolve, and two
                 // phones behind the same NAT must not collide.
@@ -112,12 +118,16 @@ namespace DeXShareTarget.Endpoints
                     ShowPairPinToast(pin, targetFp);
                     return pin;
                 }
+                
+                // If we reach here, sending the prompt failed. Clear the debounce placeholder.
+                PendingPairPins.TryRemove(targetFp, out _);
                 OutboundPairingStatus[targetFp] = "Failed"; // No active WebSocket connection
                 return "";
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[PAIR-PUSH] Failed to push pair-prompt: {ex.Message}");
+                PendingPairPins.TryRemove(targetFp, out _);
                 OutboundPairingStatus[targetFp] = "Failed";
                 return "";
             }

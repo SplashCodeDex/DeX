@@ -161,6 +161,7 @@ namespace DeXShareTarget.Endpoints
                 var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
                 if (type == "resolve-endpoint" && root.TryGetProperty("data", out var resData))
                 {
+                    if (!WebSocketConnectionManager.IsVerified(fingerprint)) return;
                     // Phone A wants to send directly to phone B: hand each side the other's public endpoint
                     var target = resData.TryGetProperty("targetFingerprint", out var tf) ? tf.GetString() : null;
                     var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -183,6 +184,7 @@ namespace DeXShareTarget.Endpoints
                 }
                 else if (type == "device-roster")
                 {
+                    if (!WebSocketConnectionManager.IsVerified(fingerprint)) return;
                     // Same-email devices only (the phone's "my devices" list over WAN)
                     var devices = SameEmailAliases
                         .Where(kv => kv.Key != fingerprint)
@@ -266,6 +268,9 @@ namespace DeXShareTarget.Endpoints
                     WebSocketConnectionManager.Unverify(fingerprint);
                     LocalSendEndpoints.OutboundPairingStatus[fingerprint] = "Cancelled";
                     Console.WriteLine($"[WS] Device {fingerprint} requested unpair");
+                    
+                    // Terminate the connection immediately so the unverified socket doesn't linger as a ghost
+                    await WebSocketConnectionManager.DisconnectAsync(fingerprint);
                 }
                 else if (type == "pair-response" && root.TryGetProperty("data", out var data))
                 {

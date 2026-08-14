@@ -60,7 +60,6 @@ import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.network.DeviceManager
 import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.NetworkErrorDialog
-import com.dexstudios.dex.ui.components.TransferProgressOverlay
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.*
 import com.dexstudios.dex.ui.main.components.ScanToAddDeviceCard
@@ -235,16 +234,7 @@ fun MainScreen(
         containerColor = MaterialTheme.colorScheme.background,
         // Full-window content: the scrolling content passes behind the native
         // status bar and navigation bar — the glass edge fades keep it readable.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            TransferProgressOverlay(
-                downloadState = downloadState,
-                uploadState = uploadState,
-                backdrop = contentBackdrop,
-                onCancelDownload = { TcpDownloadService.cancelDownload(context) },
-                onCancelUpload = { viewModel.clientEngine.cancelUpload(context) }
-            )
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { _ ->
         // Status bar height — content scrolls behind the native status bar, so
         // the glass header and the "My Devices" rest position clear it explicitly.

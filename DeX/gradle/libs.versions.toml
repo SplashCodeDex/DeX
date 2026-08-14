@@ -20,7 +20,6 @@ googleid = "1.2.0"
 orgjson = "20260719"
 appfunctions = "1.0.0-alpha10"
 ksp = "2.3.11"
-lottie = "6.6.0"
 
 workManager = "2.11.2"
 koin = "4.2.2"
@@ -86,7 +85,6 @@ androidx-identity-googleid = { module = "com.google.android.libraries.identity.g
 json-org = { module = "org.json:json", version.ref = "orgjson" }
 androidx-appfunctions = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
 androidx-appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
-lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

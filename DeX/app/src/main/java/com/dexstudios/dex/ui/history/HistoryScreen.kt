@@ -44,8 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.airbnb.lottie.LottieProperty
-import com.airbnb.lottie.compose.*
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -61,7 +59,6 @@ import com.dexstudios.dex.ui.state.HistorySort
 import com.dexstudios.dex.ui.state.HistoryViewMode
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -261,13 +258,27 @@ fun HistoryScreen(
                         }
                     }
 
-                    LottieFilterReveal(
+                    AnimatedVisibility(
                         visible = isFilterVisible && !isSearchExpanded,
-                        directionFilter = dirFilter,
-                        typeFilter = typeFilter,
-                        onDirectionClick = { TopAppBarState.historyDirectionFilter = it },
-                        onTypeClick = { TopAppBarState.historyTypeFilter = it }
-                    )
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            HistoryDirection.entries.forEach { dir ->
+                                HistoryFilterChip(label = dir.name.lowercase().replaceFirstChar { it.uppercase() }, selected = dirFilter == dir, onClick = { TopAppBarState.historyDirectionFilter = dir })
+                            }
+                            Box(modifier = Modifier.height(16.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)).align(Alignment.CenterVertically))
+                            HistoryType.entries.forEach { type ->
+                                HistoryFilterChip(label = type.name.lowercase().replaceFirstChar { it.uppercase() }, selected = typeFilter == type, onClick = { TopAppBarState.historyTypeFilter = type })
+                            }
+                        }
+                    }
                 }
             }
 
@@ -342,7 +353,7 @@ fun HistoryScreen(
                                                 else -> Alignment.Center
                                             }
                                             val icon = when (dismissState.dismissDirection) {
-                                                SwipeToDismissBoxValue.StartToEnd -> DeXIcons.Share
+                                                SwipeToDismissBoxValue.StartToEnd -> DeXIcons.IosShare
                                                 SwipeToDismissBoxValue.EndToStart -> DeXIcons.Delete
                                                 else -> null
                                             }
@@ -387,7 +398,7 @@ fun HistoryScreen(
                                                 context.startActivity(Intent.createChooser(intent, "Share file"))
                                             }
                                             showItemMenu = false
-                                        }, leadingIcon = { Icon(DeXIcons.Share, null, modifier = Modifier.size(18.dp)) })
+                                        }, leadingIcon = { Icon(DeXIcons.IosShare, null, modifier = Modifier.size(18.dp)) })
                                         DropdownMenuItem(text = { Text("Open Folder") }, onClick = { record.uri?.toUri()?.let { openFolderOf(context, it) }; showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Folder, null, modifier = Modifier.size(18.dp)) })
                                     }
                                 }
@@ -482,77 +493,6 @@ fun HistoryScreen(
     }
 }
 
-@Composable
-private fun LottieFilterReveal(
-    visible: Boolean,
-    directionFilter: HistoryDirection,
-    typeFilter: HistoryType,
-    onDirectionClick: (HistoryDirection) -> Unit,
-    onTypeClick: (HistoryType) -> Unit
-) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.scene))
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        isPlaying = true,
-        restartOnPlay = false,
-        clipSpec = if (visible) LottieClipSpec.Frame(30, 90) else LottieClipSpec.Frame(180, 240)
-    )
-
-    // Hide Asset 5 (Logo) via Dynamic Properties
-    val dynamicProperties = rememberLottieDynamicProperties(
-        rememberLottieDynamicProperty(
-            property = LottieProperty.OPACITY,
-            value = 0f,
-            keyPath = arrayOf("Logo", "**") // Adjusting based on common naming or wildcards
-        ),
-        rememberLottieDynamicProperty(
-            property = LottieProperty.OPACITY,
-            value = 0f,
-            keyPath = arrayOf("Asset 5", "**")
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(if (visible || progress > 0f) 80.dp else 0.dp)
-            .graphicsLayer { alpha = if (visible) progress.coerceIn(0f, 1f) else (1f - progress).coerceIn(0f, 1f) }
-    ) {
-        LottieAnimation(
-            composition = composition,
-            progress = { progress },
-            dynamicProperties = dynamicProperties,
-            modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.1f; scaleY = 1.1f }
-        )
-
-        // Overlay Interactive Chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HistoryDirection.entries.forEach { dir ->
-                HistoryFilterChip(
-                    label = dir.name.lowercase().replaceFirstChar { it.uppercase() },
-                    selected = directionFilter == dir,
-                    onClick = { onDirectionClick(dir) }
-                )
-            }
-            Box(modifier = Modifier.height(16.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)))
-            HistoryType.entries.forEach { type ->
-                HistoryFilterChip(
-                    label = type.name.lowercase().replaceFirstChar { it.uppercase() },
-                    selected = typeFilter == type,
-                    onClick = { onTypeClick(type) }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun HistoryFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
@@ -634,7 +574,7 @@ private fun HistoryRow(
                 Icon(imageVector = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
             }
             Icon(
-                imageVector = if (isSent) DeXIcons.Send else DeXIcons.ExpandMore,
+                imageVector = if (isSent) DeXIcons.FileUpload else DeXIcons.FileDownload,
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp).size(10.dp)
@@ -727,7 +667,7 @@ private fun HistoryGridItem(
             }
 
             Icon(
-                imageVector = if (isSent) DeXIcons.Send else DeXIcons.ExpandMore,
+                imageVector = if (isSent) DeXIcons.FileUpload else DeXIcons.FileDownload,
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(12.dp)
@@ -787,12 +727,6 @@ private fun formatSize(bytes: Long): String {
     }
 }
 
-private val dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-
-private fun formatDate(timestamp: Long): String {
-    if (timestamp <= 0L) return ""
-    return dateFormat.format(Date(timestamp))
-}
 
 private fun openFolderOf(context: Context, fileUri: Uri) {
     try {

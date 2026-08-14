@@ -672,12 +672,26 @@ function Show-PinPanel {
                         $wasEntered = ($i -lt $script:lastDigitCount)
 
                         if ($isEntered -and -not $wasEntered) {
-                            # Animate in (Fade to Green + Pop scale)
-                            if ($border.BorderBrush.IsFrozen -or $border.BorderBrush.Color -eq $transColor) {
-                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($transColor)
-                            }
-                            $ca = [System.Windows.Media.Animation.ColorAnimation]::new($secColor, [TimeSpan]::FromMilliseconds(150))
-                            $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
+                            # Animate in (Shimmer effect)
+                            $primaryTextBrush = $script:wpfWindow.FindResource("PrimaryTextBrush")
+                            $shimmerColor = $primaryTextBrush.Color
+                            $baseColor = [System.Windows.Media.Color]::FromArgb(40, $shimmerColor.R, $shimmerColor.G, $shimmerColor.B)
+                            
+                            $lgb = [System.Windows.Media.LinearGradientBrush]::new()
+                            $lgb.StartPoint = [System.Windows.Point]::new(0, 0)
+                            $lgb.EndPoint = [System.Windows.Point]::new(1, 0)
+                            $lgb.GradientStops.Add([System.Windows.Media.GradientStop]::new($baseColor, 0.0))
+                            $lgb.GradientStops.Add([System.Windows.Media.GradientStop]::new($shimmerColor, 0.5))
+                            $lgb.GradientStops.Add([System.Windows.Media.GradientStop]::new($baseColor, 1.0))
+                            
+                            $ttShimmer = [System.Windows.Media.TranslateTransform]::new()
+                            $lgb.RelativeTransform = $ttShimmer
+                            
+                            $daShimmer = [System.Windows.Media.Animation.DoubleAnimation]::new(-1.0, 1.0, [TimeSpan]::FromMilliseconds(800))
+                            $daShimmer.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+                            $ttShimmer.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $daShimmer)
+                            
+                            $border.BorderBrush = $lgb
 
                             $scaleTransform = $border.RenderTransform
                             if ($scaleTransform -is [System.Windows.Media.ScaleTransform]) {
@@ -692,9 +706,11 @@ function Show-PinPanel {
                             }
                         } elseif (-not $isEntered -and $wasEntered) {
                             # Animate out (Backspace: Fade to Transparent)
-                            if ($border.BorderBrush.IsFrozen) {
-                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($secColor)
-                            }
+                            $primaryTextBrush = $script:wpfWindow.FindResource("PrimaryTextBrush")
+                            $shimmerColor = $primaryTextBrush.Color
+                            $baseColor = [System.Windows.Media.Color]::FromArgb(40, $shimmerColor.R, $shimmerColor.G, $shimmerColor.B)
+                            
+                            $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($baseColor)
                             $ca = [System.Windows.Media.Animation.ColorAnimation]::new($transColor, [TimeSpan]::FromMilliseconds(150))
                             $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
                         }
@@ -748,62 +764,30 @@ function Show-PinPanel {
                     })
                     $errTimer.Start()
                 } else {
-                    # Morph Animation
-                    $pill = $script:wpfWindow.FindName("successPill")
                     $ic = $script:wpfWindow.FindName("icPinDigits")
-                    $player = $script:wpfWindow.FindName("faceIdPlayer")
+                    if ($ic) {
+                        $secBrush = $script:wpfWindow.FindResource("SecondaryBrush")
+                        for ($i = 0; $i -lt $script:pinDigitItems.Count; $i++) {
+                            $cp = $ic.ItemContainerGenerator.ContainerFromIndex($i)
+                            if ($cp) {
+                                $border = [System.Windows.Media.VisualTreeHelper]::GetChild($cp, 0)
+                                if ($border -and $border.GetType().Name -eq 'Border') {
+                                    $border.BorderBrush = $secBrush
+                                }
+                            }
+                        }
+                    }
 
-                    if ($pill -and $ic -and $player) {
-                        $pill.Visibility = 'Visible'
-                        
-                        # Fade out slots
-                        $daOpacity = [System.Windows.Media.Animation.DoubleAnimation]::new(0, [TimeSpan]::FromMilliseconds(150))
-                        $ic.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $daOpacity)
-
-                        # Expand pill
-                        $daWidth = [System.Windows.Media.Animation.DoubleAnimation]::new(50, 180, [TimeSpan]::FromMilliseconds(250))
-                        $ease = [System.Windows.Media.Animation.QuarticEase]::new()
-                        $ease.EasingMode = [System.Windows.Media.Animation.EasingMode]::EaseOut
-                        $daWidth.EasingFunction = $ease
-                        $pill.BeginAnimation([System.Windows.FrameworkElement]::WidthProperty, $daWidth)
-
-                        # Load GIF
-                        $assetPath = Join-Path $PSScriptRoot "..\..\Assets\FaceID.gif"
-                        $player.Source = [System.Uri]::new($assetPath)
-                        $player.Play()
-
-                        # Fade in Lottie inside pill
-                        $daFade = [System.Windows.Media.Animation.DoubleAnimation]::new(0, 1, [TimeSpan]::FromMilliseconds(200))
-                        $daFade.BeginTime = [TimeSpan]::FromMilliseconds(150)
-                        $player.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $daFade)
-
-                        # Wait for animation to finish, then slide out
-                        $succTimer = [System.Windows.Threading.DispatcherTimer]::new()
-                        $succTimer.Interval = [TimeSpan]::FromMilliseconds(2200)
-                        $succTimer.Add_Tick({
-                            $this.Stop()
-                            if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
-                            Clear-PairingState
-                            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                            Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
-                            
-                            # Cleanup UI state
-                            $player.Stop()
-                            $player.Source = $null
-                            $pill.Visibility = 'Collapsed'
-                            $ic.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
-                            $ic.Opacity = 1
-                            $pill.BeginAnimation([System.Windows.FrameworkElement]::WidthProperty, $null)
-                            $player.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
-                            $player.Opacity = 0
-                        })
-                        $succTimer.Start()
-                    } else {
+                    $succTimer = [System.Windows.Threading.DispatcherTimer]::new()
+                    $succTimer.Interval = [TimeSpan]::FromMilliseconds(800)
+                    $succTimer.Add_Tick({
+                        $this.Stop()
                         if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
                         Clear-PairingState
                         try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
                         Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
-                    }
+                    })
+                    $succTimer.Start()
                 }
             }
         } catch {}

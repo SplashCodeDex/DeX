@@ -10,6 +10,7 @@ namespace DeXShareTarget.Services
     {
         private static readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
         private static readonly ConcurrentDictionary<string, bool> _verified = new();
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _sendLocks = new();
 
         public static void AddSocket(string fingerprint, WebSocket socket, bool verified)
         {
@@ -21,6 +22,7 @@ namespace DeXShareTarget.Services
                 }
                 return socket;
             });
+            _sendLocks.GetOrAdd(fingerprint, _ => new SemaphoreSlim(1, 1));
             if (verified)
             {
                 _verified[fingerprint] = true;
@@ -31,6 +33,10 @@ namespace DeXShareTarget.Services
         {
             _sockets.TryRemove(fingerprint, out _);
             _verified.TryRemove(fingerprint, out _);
+            if (_sendLocks.TryRemove(fingerprint, out var sem))
+            {
+                sem.Dispose();
+            }
         }
 
         public static bool IsVerified(string fingerprint)
@@ -43,6 +49,28 @@ namespace DeXShareTarget.Services
             _verified[fingerprint] = true;
         }
 
+        public static async Task DisconnectAsync(string fingerprint)
+        {
+            if (_sockets.TryRemove(fingerprint, out var socket))
+            {
+                _verified.TryRemove(fingerprint, out _);
+                if (_sendLocks.TryRemove(fingerprint, out var sem))
+                {
+                    sem.Dispose();
+                }
+                if (socket.State == WebSocketState.Open || socket.State == WebSocketState.CloseReceived)
+                {
+                    try
+                    {
+                        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Unpaired", cts.Token);
+                    }
+                    catch { }
+                    finally { try { socket.Dispose(); } catch { } }
+                }
+            }
+        }
+
         public static void Unverify(string fingerprint)
         {
             _verified.TryRemove(fingerprint, out _);
@@ -53,9 +81,24 @@ namespace DeXShareTarget.Services
             if (requireVerified && !IsVerified(fingerprint)) return false;
             if (_sockets.TryGetValue(fingerprint, out var socket) && socket.State == WebSocketState.Open)
             {
-                var bytes = Encoding.UTF8.GetBytes(payload);
-                await socket.SendAsync(new System.ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-                return true;
+                if (_sendLocks.TryGetValue(fingerprint, out var sem))
+                {
+                    await sem.WaitAsync();
+                    try
+                    {
+                        if (socket.State == WebSocketState.Open)
+                        {
+                            var bytes = Encoding.UTF8.GetBytes(payload);
+                            await socket.SendAsync(new System.ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                            return true;
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        sem.Release();
+                    }
+                }
             }
             return false;
         }
@@ -74,11 +117,22 @@ namespace DeXShareTarget.Services
                 if (requireVerified && !IsVerified(kvp.Key)) continue;
                 if (kvp.Value.State == WebSocketState.Open)
                 {
-                    try
+                    if (_sendLocks.TryGetValue(kvp.Key, out var sem))
                     {
-                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                        await sem.WaitAsync();
+                        try
+                        {
+                            if (kvp.Value.State == WebSocketState.Open)
+                            {
+                                await kvp.Value.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                            }
+                        }
+                        catch { }
+                        finally
+                        {
+                            sem.Release();
+                        }
                     }
-                    catch { }
                 }
             }
         }
