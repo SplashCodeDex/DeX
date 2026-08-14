@@ -631,12 +631,7 @@ function Show-PinPanel {
                         if ($cp) {
                             $border = [System.Windows.Media.VisualTreeHelper]::GetChild($cp, 0)
                             if ($border -and $border.GetType().Name -eq 'Border') {
-                                if ($border.BorderBrush.IsFrozen) {
-                                    $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.Colors]::Red)
-                                } else {
-                                    $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $null)
-                                    $border.BorderBrush.Color = [System.Windows.Media.Colors]::Red
-                                }
+                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.Colors]::Red)
                             }
                         }
                     }
@@ -688,7 +683,7 @@ function Show-PinPanel {
                             $lgb.RelativeTransform = $ttShimmer
                             
                             $daShimmer = [System.Windows.Media.Animation.DoubleAnimation]::new(-1.0, 1.0, [TimeSpan]::FromMilliseconds(800))
-                            $daShimmer.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+                            $daShimmer.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::new(2.0)
                             $ttShimmer.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $daShimmer)
                             
                             $border.BorderBrush = $lgb

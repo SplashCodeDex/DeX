@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.12] - 2026-08-14
+### Fixed
+- **[patch] Shimmer Animation Limit & Error Fix**: Constrained the typing Shimmer sweep to trigger exactly 2 times and then settle, preventing endless distracting loops while the user considers their next digit. Also resolved a fatal assignment exception that prevented the UI from successfully flashing red and shaking when a rejected/invalid PIN state (`$dc = -1`) was broadcasted from the Android device.
+
 ## [9.1.1.11] - 2026-08-14
 ### Changed
 - **[patch] Shimmer PIN & Success Animation**: Replaced the solid green typing border highlight with a subtle sliding gradient 'Shimmer' effect pulsing in the primary text color.

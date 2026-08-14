@@ -291,10 +291,17 @@ fun HistoryScreen(
 
                         if (search.isBlank()) {
                             Spacer(modifier = Modifier.height(24.dp))
-                            com.dexstudios.dex.ui.components.DeXButton(
-                                onClick = { seedDemoHistory(context) }
-                            ) {
-                                Text("Seed Demo Data")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                com.dexstudios.dex.ui.components.DeXButton(
+                                    onClick = { seedDemoHistory(context) }
+                                ) {
+                                    Text("Seed Demo Data")
+                                }
+                                com.dexstudios.dex.ui.components.DeXButton(
+                                    onClick = { com.dexstudios.dex.network.TcpDownloadService.triggerDemo() }
+                                ) {
+                                    Text("Demo Transfer")
+                                }
                             }
                         }
                     }
