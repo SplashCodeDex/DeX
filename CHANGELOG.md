@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.4] - 2026-08-14
+### Changed
+- **[patch] Shake Logic Simplification (/ponytail)**: Removed the over-engineered desktop-side time deduction. The Android app now explicitly sends a `-1` digit count via WebSocket when the local verification fails upon clicking "Confirm", guaranteeing the shake triggers precisely when intended without side effects.
+
 ## [9.1.1.3] - 2026-08-14
 ### Fixed
 - **[patch] Shake Logic Fix**: Fixed a bug where the PC error shake animation wasn't triggering because the desktop app didn't correctly detect the Android app instantly resetting the digit count from 5 to 0.

@@ -797,6 +797,8 @@ fun PairingRequestDialog(
                             } else {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 isError = true
+                                enteredPin = ""
+                                onDigitEntered(-1)
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
