@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.5] - 2026-08-14
+### Fixed
+- **[patch] Shake Logic Fix**: Fixed a bug where the PC error shake animation would trigger endlessly because the `-1` state wasn't cleared correctly in the polling loop.
+
 ## [9.1.1.4] - 2026-08-14
 ### Changed
 - **[patch] Shake Logic Simplification (/ponytail)**: Removed the over-engineered desktop-side time deduction. The Android app now explicitly sends a `-1` digit count via WebSocket when the local verification fails upon clicking "Confirm", guaranteeing the shake triggers precisely when intended without side effects.

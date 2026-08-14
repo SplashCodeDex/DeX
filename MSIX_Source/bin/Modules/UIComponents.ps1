@@ -605,8 +605,10 @@ function Show-PinPanel {
 
             # Real-time PIN digit highlight synchronization:
             $dc = if ($st.digitCount) { [int]$st.digitCount } else { 0 }
+            
+            $realDc = $dc
 
-            if ($dc -eq -1) {
+            if ($dc -eq -1 -and $script:lastDigitCount -ne -1) {
                 # The phone explicitly signaled a wrong PIN submission.
                 # Flash red, shake, and then reset to 0 to smoothly clear the UI.
                 $dc = 0
@@ -657,6 +659,9 @@ function Show-PinPanel {
                     })
                     $txtTimer.Start()
                 }
+            } elseif ($dc -eq -1) {
+                # Already shook. Keep the UI logic seeing 0.
+                $dc = 0
             }
             if ($script:pinDigitItems -and $dc -ne $script:lastDigitCount) {
                 $ic = $script:wpfWindow.FindName("icPinDigits")
@@ -704,7 +709,7 @@ function Show-PinPanel {
                     }
 
                 }
-                $script:lastDigitCount = $dc
+                $script:lastDigitCount = $realDc
 
                 $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
                 if ($txtStatus) {
