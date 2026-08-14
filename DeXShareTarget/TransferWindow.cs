@@ -171,9 +171,8 @@ namespace DeXShareTarget
             }));
 
             var pairs = FlattenFiles(files);
-            var filePaths = pairs.Select(p => p.Path).ToList();
 
-            var (port, waitForCompletion) = await QuicP2PService.HostAsync(filePaths, cert, progress, cts.Token);
+            var (port, waitForCompletion) = await QuicP2PService.HostAsync(pairs, cert, progress, cts.Token);
             
             // Push connection info to target device via WebSocket
             var json = JsonSerializer.Serialize(new { type = "quic-p2p-pull", data = new { port = port, alias = Environment.MachineName } },

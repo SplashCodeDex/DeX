@@ -748,10 +748,62 @@ function Show-PinPanel {
                     })
                     $errTimer.Start()
                 } else {
-                    if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
-                    Clear-PairingState
-                    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                    Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
+                    # Morph Animation
+                    $pill = $script:wpfWindow.FindName("successPill")
+                    $ic = $script:wpfWindow.FindName("icPinDigits")
+                    $player = $script:wpfWindow.FindName("faceIdPlayer")
+
+                    if ($pill -and $ic -and $player) {
+                        $pill.Visibility = 'Visible'
+                        
+                        # Fade out slots
+                        $daOpacity = [System.Windows.Media.Animation.DoubleAnimation]::new(0, [TimeSpan]::FromMilliseconds(150))
+                        $ic.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $daOpacity)
+
+                        # Expand pill
+                        $daWidth = [System.Windows.Media.Animation.DoubleAnimation]::new(50, 180, [TimeSpan]::FromMilliseconds(250))
+                        $ease = [System.Windows.Media.Animation.QuarticEase]::new()
+                        $ease.EasingMode = [System.Windows.Media.Animation.EasingMode]::EaseOut
+                        $daWidth.EasingFunction = $ease
+                        $pill.BeginAnimation([System.Windows.FrameworkElement]::WidthProperty, $daWidth)
+
+                        # Load GIF
+                        $assetPath = Join-Path $PSScriptRoot "..\..\Assets\FaceID.gif"
+                        $player.Source = [System.Uri]::new($assetPath)
+                        $player.Play()
+
+                        # Fade in Lottie inside pill
+                        $daFade = [System.Windows.Media.Animation.DoubleAnimation]::new(0, 1, [TimeSpan]::FromMilliseconds(200))
+                        $daFade.BeginTime = [TimeSpan]::FromMilliseconds(150)
+                        $player.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $daFade)
+
+                        # Wait for animation to finish, then slide out
+                        $succTimer = [System.Windows.Threading.DispatcherTimer]::new()
+                        $succTimer.Interval = [TimeSpan]::FromMilliseconds(2200)
+                        $succTimer.Add_Tick({
+                            $this.Stop()
+                            if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                            Clear-PairingState
+                            try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+                            Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
+                            
+                            # Cleanup UI state
+                            $player.Stop()
+                            $player.Source = $null
+                            $pill.Visibility = 'Collapsed'
+                            $ic.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+                            $ic.Opacity = 1
+                            $pill.BeginAnimation([System.Windows.FrameworkElement]::WidthProperty, $null)
+                            $player.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+                            $player.Opacity = 0
+                        })
+                        $succTimer.Start()
+                    } else {
+                        if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                        Clear-PairingState
+                        try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+                        Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
+                    }
                 }
             }
         } catch {}

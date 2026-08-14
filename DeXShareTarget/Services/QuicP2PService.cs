@@ -16,7 +16,7 @@ namespace DeXShareTarget.Services
     public static class QuicP2PService
     {
         public static async Task<(int Port, Func<Task> WaitForCompletion)> HostAsync(
-            IReadOnlyList<string> filePaths,
+            IReadOnlyList<(string Path, string RelativePath)> filePaths,
             X509Certificate2 cert,
             IProgress<TransferProgress>? progress = null,
             CancellationToken ct = default)
@@ -51,9 +51,9 @@ namespace DeXShareTarget.Services
                     await listener.DisposeAsync();
 
                     long totalBytes = 0;
-                    foreach (var path in filePaths)
+                    foreach (var fp in filePaths)
                     {
-                        if (File.Exists(path)) totalBytes += new FileInfo(path).Length;
+                        if (File.Exists(fp.Path)) totalBytes += new FileInfo(fp.Path).Length;
                     }
 
                     long globalSent = 0;
@@ -62,19 +62,20 @@ namespace DeXShareTarget.Services
                     var semaphore = new SemaphoreSlim(4);
                     var tasks = new List<Task>();
 
-                    foreach (var path in filePaths)
+                    foreach (var fp in filePaths)
                     {
                         if (ct.IsCancellationRequested) break;
-                        if (!File.Exists(path)) continue;
+                        if (!File.Exists(fp.Path)) continue;
 
                         await semaphore.WaitAsync(ct);
-                        var fi = new FileInfo(path);
+                        var fi = new FileInfo(fp.Path);
+                        string relativePath = fp.RelativePath;
 
                         tasks.Add(Task.Run(async () =>
                         {
                             try
                             {
-                                string currentFile = fi.Name;
+                                string currentFile = relativePath.Replace('\\', '/');
                                 progress?.Report(new TransferProgress(Interlocked.Read(ref globalSent), totalBytes, currentFile, doneFiles, filePaths.Count));
 
                                 await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct);
@@ -92,7 +93,7 @@ namespace DeXShareTarget.Services
 
                                 await stream.WriteAsync(header, ct);
 
-                                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan);
+                                using var fs = new FileStream(fp.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan);
                                 byte[] buffer = new byte[81920];
                                 int read;
                                 

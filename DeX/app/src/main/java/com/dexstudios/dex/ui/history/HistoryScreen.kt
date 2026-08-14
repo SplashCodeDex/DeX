@@ -5,8 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.compose.*
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -77,6 +79,7 @@ fun HistoryScreen(
     val typeFilter = TopAppBarState.historyTypeFilter
     val sortOrder = TopAppBarState.historySortOrder
     val viewMode = TopAppBarState.historyViewMode
+    val isFilterVisible = TopAppBarState.isHistoryFilterVisible
     val isSearchExpanded = TopAppBarState.isSearchExpanded
 
     val items = remember(allItems, search, dirFilter, typeFilter, sortOrder) {
@@ -150,20 +153,6 @@ fun HistoryScreen(
                     .background(MaterialTheme.colorScheme.background)
             )
 
-            if (isSearchExpanded) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.75f))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { TopAppBarState.isSearchExpanded = false }
-                        )
-                        .zIndex(1f)
-                )
-            }
-
             // Dynamic Header
             Column(
                 modifier = Modifier
@@ -221,54 +210,64 @@ fun HistoryScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            var showSortMenu by remember { mutableStateOf(false) }
-                            Box {
-                                IconButton(onClick = { showSortMenu = true }) {
-                                    Icon(DeXIcons.Sort, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        if (!isSearchExpanded) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { TopAppBarState.isHistoryFilterVisible = !isFilterVisible }) {
+                                    Icon(DeXIcons.FilterList, null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
-                                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                    HistorySort.entries.forEach { order ->
-                                        DropdownMenuItem(
-                                            text = { Text(when(order) {
-                                                HistorySort.DATE_DESC -> "Newest"
-                                                HistorySort.SIZE_DESC -> "Largest"
-                                                HistorySort.NAME_ASC -> "A-Z"
-                                            }) },
-                                            onClick = { TopAppBarState.historySortOrder = order; showSortMenu = false },
-                                            leadingIcon = { if (sortOrder == order) Icon(DeXIcons.Check, null, modifier = Modifier.size(18.dp)) }
-                                        )
+                                IconButton(onClick = {
+                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
+                                }) {
+                                    Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                }
+                                var showMoreMenu by remember { mutableStateOf(false) }
+                                Box {
+                                    IconButton(onClick = { showMoreMenu = true }) {
+                                        Icon(DeXIcons.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                     }
-                                }
-                            }
-                            IconButton(onClick = {
-                                TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
-                            }) {
-                                Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                            }
-                            if (items.isNotEmpty()) {
-                                com.dexstudios.dex.ui.components.DeXTextButton(onClick = { showClearConfirm = true }) {
-                                    Text(stringResource(R.string.history_clear_all), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                                        // Sort Submenu
+                                        var showSortSubmenu by remember { mutableStateOf(false) }
+                                        DropdownMenuItem(
+                                            text = { Text("Sort by...") },
+                                            onClick = { showSortSubmenu = true },
+                                            leadingIcon = { Icon(DeXIcons.Sort, null, modifier = Modifier.size(18.dp)) },
+                                            trailingIcon = { Icon(DeXIcons.ExpandMore, null, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = -90f }) }
+                                        )
+                                        if (items.isNotEmpty()) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.history_clear_all)) },
+                                                onClick = { showClearConfirm = true; showMoreMenu = false },
+                                                leadingIcon = { Icon(DeXIcons.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
+                                            )
+                                        }
+
+                                        DropdownMenu(expanded = showSortSubmenu, onDismissRequest = { showSortSubmenu = false }) {
+                                            HistorySort.entries.forEach { order ->
+                                                DropdownMenuItem(
+                                                    text = { Text(when(order) {
+                                                        HistorySort.DATE_DESC -> "Newest"
+                                                        HistorySort.SIZE_DESC -> "Largest"
+                                                        HistorySort.NAME_ASC -> "A-Z"
+                                                    }) },
+                                                    onClick = { TopAppBarState.historySortOrder = order; showSortSubmenu = false; showMoreMenu = false },
+                                                    leadingIcon = { if (sortOrder == order) Icon(DeXIcons.Check, null, modifier = Modifier.size(18.dp)) }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        HistoryDirection.entries.forEach { dir ->
-                            HistoryFilterChip(label = dir.name.lowercase().replaceFirstChar { it.uppercase() }, selected = dirFilter == dir, onClick = { TopAppBarState.historyDirectionFilter = dir })
-                        }
-                        Box(modifier = Modifier.height(16.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)).align(Alignment.CenterVertically))
-                        HistoryType.entries.forEach { type ->
-                            HistoryFilterChip(label = type.name.lowercase().replaceFirstChar { it.uppercase() }, selected = typeFilter == type, onClick = { TopAppBarState.historyTypeFilter = type })
-                        }
-                    }
+                    LottieFilterReveal(
+                        visible = isFilterVisible && !isSearchExpanded,
+                        directionFilter = dirFilter,
+                        typeFilter = typeFilter,
+                        onDirectionClick = { TopAppBarState.historyDirectionFilter = it },
+                        onTypeClick = { TopAppBarState.historyTypeFilter = it }
+                    )
                 }
             }
 
@@ -293,9 +292,7 @@ fun HistoryScreen(
                 if (viewMode == HistoryViewMode.LIST) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(if (isSearchExpanded) 2f else 0f),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusBarHeight + 200.dp, bottom = 88.dp - navBarInset),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -362,7 +359,6 @@ fun HistoryScreen(
                                             record = record,
                                             isSelected = isSelected,
                                             isSelectionMode = selectionActive,
-                                            isHighlighted = isSearchExpanded,
                                             onClick = {
                                                 if (selectionActive) {
                                                     selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
@@ -402,9 +398,7 @@ fun HistoryScreen(
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 120.dp),
                         state = gridState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(if (isSearchExpanded) 2f else 0f),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusBarHeight + 200.dp, bottom = 88.dp - navBarInset),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -423,7 +417,6 @@ fun HistoryScreen(
                                         record = record,
                                         isSelected = isSelected,
                                         isSelectionMode = selectionActive,
-                                        isHighlighted = isSearchExpanded,
                                         onClick = {
                                             if (selectionActive) {
                                                 selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
@@ -490,6 +483,78 @@ fun HistoryScreen(
 }
 
 @Composable
+private fun LottieFilterReveal(
+    visible: Boolean,
+    directionFilter: HistoryDirection,
+    typeFilter: HistoryType,
+    onDirectionClick: (HistoryDirection) -> Unit,
+    onTypeClick: (HistoryType) -> Unit
+) {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.scene))
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        isPlaying = true,
+        restartOnPlay = false,
+        clipSpec = if (visible) LottieClipSpec.Frame(30, 90) else LottieClipSpec.Frame(180, 240)
+    )
+
+    // Hide Asset 5 (Logo) via Dynamic Properties
+    val dynamicProperties = rememberLottieDynamicProperties(
+        rememberLottieDynamicProperty(
+            property = LottieProperty.OPACITY,
+            value = 0f,
+            keyPath = arrayOf("Logo", "**") // Adjusting based on common naming or wildcards
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.OPACITY,
+            value = 0f,
+            keyPath = arrayOf("Asset 5", "**")
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (visible || progress > 0f) 80.dp else 0.dp)
+            .graphicsLayer { alpha = if (visible) progress.coerceIn(0f, 1f) else (1f - progress).coerceIn(0f, 1f) }
+    ) {
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            dynamicProperties = dynamicProperties,
+            modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.1f; scaleY = 1.1f }
+        )
+
+        // Overlay Interactive Chips
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HistoryDirection.entries.forEach { dir ->
+                HistoryFilterChip(
+                    label = dir.name.lowercase().replaceFirstChar { it.uppercase() },
+                    selected = directionFilter == dir,
+                    onClick = { onDirectionClick(dir) }
+                )
+            }
+            Box(modifier = Modifier.height(16.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)))
+            HistoryType.entries.forEach { type ->
+                HistoryFilterChip(
+                    label = type.name.lowercase().replaceFirstChar { it.uppercase() },
+                    selected = typeFilter == type,
+                    onClick = { onTypeClick(type) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun HistoryFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
@@ -507,7 +572,6 @@ private fun HistoryRow(
     record: TransferRecord,
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
-    isHighlighted: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onThumbnailClick: () -> Unit
@@ -518,17 +582,11 @@ private fun HistoryRow(
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
 
-    val bgAlpha = if (isHighlighted) 0.95f else 0.5f
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = bgAlpha)
-            )
+            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.1f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -587,7 +645,7 @@ private fun HistoryRow(
             Text(text = record.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.height(2.dp))
             val subText = buildString {
-                append(formatSize(record.size)); append(" · "); append(formatDate(record.timestamp))
+                append(formatSize(record.size))
                 record.peerDevice?.let { append(" · "); append(it) }
             }
             Text(text = subText, style = MaterialTheme.typography.bodySmall, color = if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -603,7 +661,6 @@ private fun HistoryGridItem(
     record: TransferRecord,
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
-    isHighlighted: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -613,17 +670,11 @@ private fun HistoryGridItem(
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
 
-    val bgAlpha = if (isHighlighted) 0.95f else 0.5f
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = bgAlpha)
-            )
+            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.1f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)

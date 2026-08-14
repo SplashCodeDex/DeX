@@ -11,23 +11,19 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-import androidx.compose.ui.graphics.Color
-
 @Composable
 fun DeXPanel(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(24.dp),
     shadowRadius: Dp = 12.dp,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
     content: @Composable BoxScope.() -> Unit
 ) {
     Surface(
         modifier = modifier,
         shape = shape,
-        color = containerColor,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = shadowRadius,
-        contentColor = contentColor
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Box(content = content)
     }

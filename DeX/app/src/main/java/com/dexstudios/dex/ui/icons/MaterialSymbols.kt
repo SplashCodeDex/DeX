@@ -1585,120 +1585,24 @@ object MaterialSymbols {
         }.build().also { _clipboard = it }
 
     val Battery1: ImageVector
-        get() = _battery1 ?: batteryFrameBuilder("battery_1") {
-            moveTo(4.29f, 14.71f)
-            quadTo(4f, 14.43f, 4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            reflectiveQuadTo(5.71f, 9.29f)
-            reflectiveQuadTo(6f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(5f, 15f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            close()
-        }.build().also { _battery1 = it }
-
-    val Battery2: ImageVector
-        get() = _battery2 ?: batteryFrameBuilder("battery_2") {
-            moveTo(4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            horizontalLineTo(7f)
-            quadTo(7.43f, 9f, 7.71f, 9.29f)
-            reflectiveQuadTo(8f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(7f, 15f)
-            horizontalLineTo(5f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            reflectiveQuadTo(4f, 14f)
-            close()
-        }.build().also { _battery2 = it }
-
-    val Battery3: ImageVector
-        get() = _battery3 ?: batteryFrameBuilder("battery_3") {
-            moveTo(4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            horizontalLineTo(9f)
-            quadTo(9.43f, 9f, 9.71f, 9.29f)
-            reflectiveQuadTo(10f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(9f, 15f)
-            horizontalLineTo(5f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            reflectiveQuadTo(4f, 14f)
-            close()
-        }.build().also { _battery3 = it }
-
-    val Battery4: ImageVector
-        get() = _battery4 ?: batteryFrameBuilder("battery_4") {
-            moveTo(4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            horizontalLineToRelative(6f)
-            quadToRelative(0.43f, 0f, 0.71f, 0.29f)
-            reflectiveQuadTo(12f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(11f, 15f)
-            horizontalLineTo(5f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            reflectiveQuadTo(4f, 14f)
-            close()
-        }.build().also { _battery4 = it }
-
-    val Battery5: ImageVector
-        get() = _battery5 ?: batteryFrameBuilder("battery_5") {
-            moveTo(4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            horizontalLineToRelative(8f)
-            quadToRelative(0.43f, 0f, 0.71f, 0.29f)
-            reflectiveQuadTo(14f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(13f, 15f)
-            horizontalLineTo(5f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            reflectiveQuadTo(4f, 14f)
-            close()
-        }.build().also { _battery5 = it }
-
-    val Battery6: ImageVector
-        get() = _battery6 ?: batteryFrameBuilder("battery_6") {
-            moveTo(4f, 14f)
-            verticalLineTo(10f)
-            quadTo(4f, 9.57f, 4.29f, 9.29f)
-            reflectiveQuadTo(5f, 9f)
-            horizontalLineTo(15f)
-            quadToRelative(0.43f, 0f, 0.71f, 0.29f)
-            reflectiveQuadTo(16f, 10f)
-            verticalLineToRelative(4f)
-            quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-            reflectiveQuadTo(15f, 15f)
-            horizontalLineTo(5f)
-            quadTo(4.58f, 15f, 4.29f, 14.71f)
-            reflectiveQuadTo(4f, 14f)
-            close()
-        }.build().also { _battery6 = it }
-
-    val BatteryFull: ImageVector
-        get() = _batteryFull ?: ImageVector.Builder(
-            name = "battery_full",
+        get() = _battery1 ?: ImageVector.Builder(
+            name = "battery_1",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {
-            path(fill = SolidColor(Color.Black)) {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
                 moveTo(4f, 18f)
                 quadTo(2.75f, 18f, 1.88f, 17.13f)
                 reflectiveQuadTo(1f, 15f)
@@ -1713,6 +1617,20 @@ object MaterialSymbols {
                 reflectiveQuadTo(17.5f, 18f)
                 horizontalLineTo(4f)
                 close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
                 moveTo(21.5f, 14.5f)
                 verticalLineToRelative(-5f)
                 horizontalLineTo(22f)
@@ -1722,6 +1640,462 @@ object MaterialSymbols {
                 quadToRelative(0f, 0.42f, -0.29f, 0.71f)
                 reflectiveQuadTo(22f, 14.5f)
                 horizontalLineTo(21.5f)
+                close()
+                moveTo(4.29f, 14.71f)
+                quadTo(4f, 14.43f, 4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                reflectiveQuadTo(5.71f, 9.29f)
+                reflectiveQuadTo(6f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(5f, 15f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                close()
+            }
+        }.build().also { _battery1 = it }
+
+    val Battery2: ImageVector
+        get() = _battery2 ?: ImageVector.Builder(
+            name = "battery_2",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineTo(7f)
+                quadTo(7.43f, 9f, 7.71f, 9.29f)
+                reflectiveQuadTo(8f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(7f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
+                close()
+            }
+        }.build().also { _battery2 = it }
+
+    val Battery3: ImageVector
+        get() = _battery3 ?: ImageVector.Builder(
+            name = "battery_3",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineTo(9f)
+                quadTo(9.43f, 9f, 9.71f, 9.29f)
+                reflectiveQuadTo(10f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(9f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
+                close()
+            }
+        }.build().also { _battery3 = it }
+
+    val Battery4: ImageVector
+        get() = _battery4 ?: ImageVector.Builder(
+            name = "battery_4",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineToRelative(6f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(12f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(11f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
+                close()
+            }
+        }.build().also { _battery4 = it }
+
+    val Battery5: ImageVector
+        get() = _battery5 ?: ImageVector.Builder(
+            name = "battery_5",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineToRelative(8f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(14f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(13f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
+                close()
+            }
+        }.build().also { _battery5 = it }
+
+    val Battery6: ImageVector
+        get() = _battery6 ?: ImageVector.Builder(
+            name = "battery_6",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineTo(15f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(16f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(15f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
+                close()
+            }
+        }.build().also { _battery6 = it }
+
+    val BatteryFull: ImageVector
+        get() = _batteryFull ?: ImageVector.Builder(
+            name = "battery_full",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4f, 18f)
+                quadTo(2.75f, 18f, 1.88f, 17.13f)
+                reflectiveQuadTo(1f, 15f)
+                verticalLineTo(9f)
+                quadTo(1f, 7.75f, 1.88f, 6.88f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(17.5f)
+                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
+                reflectiveQuadTo(20.5f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
+                reflectiveQuadTo(17.5f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(4f, 16f)
+                horizontalLineTo(17.5f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(18.5f, 15f)
+                verticalLineTo(9f)
+                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
+                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 8.29f)
+                reflectiveQuadTo(3f, 9f)
+                verticalLineToRelative(6f)
+                quadToRelative(0f, 0.42f, 0.29f, 0.71f)
+                reflectiveQuadTo(4f, 16f)
+                close()
+                moveTo(21.5f, 14.5f)
+                verticalLineToRelative(-5f)
+                horizontalLineTo(22f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(23f, 10.5f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(22f, 14.5f)
+                horizontalLineTo(21.5f)
+                close()
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineTo(16.5f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(17.5f, 10f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(16.5f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
                 close()
             }
         }.build().also { _batteryFull = it }
@@ -1772,76 +2146,131 @@ object MaterialSymbols {
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {
-            path(fill = SolidColor(Color.Black), pathFillType = PathFillType.EvenOdd) {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
                 moveTo(4f, 20f)
-                quadTo(3.175f, 20f, 2.588f, 19.412f)
-                quadTo(2f, 18.825f, 2f, 18f)
+                quadTo(3.18f, 20f, 2.59f, 19.41f)
+                reflectiveQuadTo(2f, 18f)
                 verticalLineTo(6f)
-                quadTo(2f, 5.175f, 2.588f, 4.588f)
-                quadTo(3.175f, 4f, 4f, 4f)
+                quadTo(2f, 5.18f, 2.59f, 4.59f)
+                reflectiveQuadTo(4f, 4f)
                 horizontalLineTo(20f)
-                quadTo(20.825f, 4f, 21.412f, 4.588f)
-                quadTo(22f, 5.175f, 22f, 6f)
+                quadToRelative(0.83f, 0f, 1.41f, 0.59f)
+                quadTo(22f, 5.18f, 22f, 6f)
                 verticalLineTo(18f)
-                quadTo(22f, 18.825f, 21.412f, 19.412f)
-                quadTo(20.825f, 20f, 20f, 20f)
+                quadToRelative(0f, 0.82f, -0.59f, 1.41f)
+                reflectiveQuadTo(20f, 20f)
+                horizontalLineTo(4f)
                 close()
-                moveTo(7f, 15f)
-                horizontalLineTo(9f)
-                verticalLineTo(9f)
-                horizontalLineTo(7f)
-                verticalLineTo(10f)
-                horizontalLineTo(8f)
-                verticalLineTo(15f)
+                moveTo(4f, 18f)
+                horizontalLineTo(20f)
+                verticalLineTo(6f)
+                horizontalLineTo(4f)
+                verticalLineTo(18f)
                 close()
-                moveTo(10.5f, 15f)
-                horizontalLineTo(13.5f)
-                quadTo(13.725f, 15f, 13.863f, 14.863f)
-                quadTo(14f, 14.725f, 14f, 14.5f)
-                verticalLineTo(13.5f)
-                quadTo(14f, 13.275f, 13.863f, 13.138f)
-                quadTo(13.725f, 13f, 13.5f, 13f)
-                horizontalLineTo(11.5f)
-                verticalLineTo(12f)
-                horizontalLineTo(13.5f)
-                quadTo(13.725f, 12f, 13.863f, 11.863f)
-                quadTo(14f, 11.725f, 14f, 11.5f)
-                verticalLineTo(10.5f)
-                quadTo(14f, 10.275f, 13.863f, 10.138f)
-                quadTo(13.725f, 10f, 13.5f, 10f)
-                horizontalLineTo(10.5f)
-                verticalLineTo(11f)
-                horizontalLineTo(12.5f)
-                verticalLineTo(12f)
-                horizontalLineTo(10.5f)
-                quadTo(10.275f, 12f, 10.138f, 12.138f)
-                quadTo(10f, 12.275f, 10f, 12.5f)
-                verticalLineTo(14.5f)
-                quadTo(10f, 14.725f, 10.138f, 14.863f)
-                quadTo(10.275f, 15f, 10.5f, 15f)
+                moveToRelative(0f, 0f)
+                verticalLineTo(6f)
+                verticalLineTo(18f)
                 close()
-                moveTo(15.5f, 15f)
-                horizontalLineTo(18.5f)
-                quadTo(18.725f, 15f, 18.863f, 14.863f)
-                quadTo(19f, 14.725f, 19f, 14.5f)
-                verticalLineTo(13.25f)
-                quadTo(19f, 13.025f, 18.863f, 12.888f)
-                quadTo(18.725f, 12.75f, 18.5f, 12.75f)
-                quadTo(18.725f, 12.75f, 18.863f, 12.612f)
-                quadTo(19f, 12.475f, 19f, 12.25f)
-                verticalLineTo(10.5f)
-                quadTo(19f, 10.275f, 18.863f, 10.138f)
-                quadTo(18.725f, 10f, 18.5f, 10f)
-                horizontalLineTo(15.5f)
-                verticalLineTo(11f)
-                horizontalLineTo(17.5f)
-                verticalLineTo(12.25f)
-                horizontalLineTo(16.5f)
-                verticalLineTo(13.25f)
-                horizontalLineTo(17.5f)
-                verticalLineTo(14f)
-                horizontalLineTo(15.5f)
-                verticalLineTo(15f)
+                moveTo(7.49f, 14.84f)
+                quadTo(7.65f, 14.68f, 7.65f, 14.43f)
+                verticalLineTo(9.65f)
+                quadTo(7.65f, 9.38f, 7.46f, 9.19f)
+                reflectiveQuadTo(7f, 9f)
+                quadTo(6.88f, 9f, 6.76f, 9.04f)
+                reflectiveQuadTo(6.55f, 9.15f)
+                lineTo(5.43f, 9.95f)
+                quadTo(5.25f, 10.07f, 5.21f, 10.27f)
+                quadToRelative(-0.04f, 0.2f, 0.09f, 0.4f)
+                quadToRelative(0.13f, 0.2f, 0.34f, 0.24f)
+                reflectiveQuadTo(6.05f, 10.83f)
+                lineTo(6.5f, 10.5f)
+                verticalLineToRelative(3.92f)
+                quadToRelative(0f, 0.25f, 0.16f, 0.41f)
+                reflectiveQuadTo(7.08f, 15f)
+                reflectiveQuadTo(7.49f, 14.84f)
+                close()
+                moveTo(10.1f, 15f)
+                horizontalLineTo(13f)
+                quadToRelative(0.2f, 0f, 0.35f, -0.15f)
+                reflectiveQuadTo(13.5f, 14.5f)
+                reflectiveQuadTo(13.35f, 14.15f)
+                reflectiveQuadTo(13f, 14f)
+                horizontalLineTo(11.15f)
+                lineTo(11.1f, 13.95f)
+                quadToRelative(0.52f, -0.5f, 0.86f, -0.85f)
+                reflectiveQuadTo(12.5f, 12.55f)
+                quadToRelative(0.45f, -0.45f, 0.68f, -0.9f)
+                reflectiveQuadTo(13.4f, 10.7f)
+                quadToRelative(0f, -0.72f, -0.55f, -1.21f)
+                reflectiveQuadTo(11.45f, 9f)
+                quadTo(10.95f, 9f, 10.5f, 9.24f)
+                quadTo(10.05f, 9.48f, 9.78f, 9.9f)
+                quadTo(9.65f, 10.07f, 9.75f, 10.27f)
+                quadToRelative(0.1f, 0.2f, 0.3f, 0.28f)
+                quadToRelative(0.2f, 0.08f, 0.4f, 0f)
+                quadToRelative(0.2f, -0.07f, 0.35f, -0.22f)
+                quadToRelative(0.13f, -0.13f, 0.29f, -0.2f)
+                reflectiveQuadToRelative(0.36f, -0.08f)
+                quadToRelative(0.38f, 0f, 0.61f, 0.2f)
+                reflectiveQuadToRelative(0.24f, 0.5f)
+                quadToRelative(0f, 0.27f, -0.1f, 0.51f)
+                reflectiveQuadToRelative(-0.45f, 0.59f)
+                quadToRelative(-0.13f, 0.13f, -0.32f, 0.32f)
+                quadToRelative(-0.2f, 0.2f, -0.47f, 0.47f)
+                lineToRelative(-1.2f, 1.2f)
+                quadTo(9.7f, 13.9f, 9.6f, 14.2f)
+                verticalLineToRelative(0.3f)
+                quadToRelative(0f, 0.2f, 0.15f, 0.35f)
+                reflectiveQuadTo(10.1f, 15f)
+                close()
+                moveTo(17f, 15f)
+                quadToRelative(0.9f, 0f, 1.45f, -0.5f)
+                reflectiveQuadTo(19f, 13.2f)
+                quadToRelative(0f, -0.45f, -0.25f, -0.8f)
+                reflectiveQuadToRelative(-0.7f, -0.55f)
+                verticalLineTo(11.8f)
+                quadTo(18.4f, 11.6f, 18.6f, 11.29f)
+                reflectiveQuadToRelative(0.2f, -0.74f)
+                quadToRelative(0f, -0.67f, -0.52f, -1.11f)
+                reflectiveQuadTo(16.95f, 9f)
+                quadToRelative(-0.5f, 0f, -0.92f, 0.24f)
+                quadTo(15.6f, 9.48f, 15.33f, 9.82f)
+                quadTo(15.2f, 10f, 15.3f, 10.17f)
+                reflectiveQuadToRelative(0.3f, 0.28f)
+                quadToRelative(0.2f, 0.07f, 0.4f, 0.01f)
+                reflectiveQuadToRelative(0.35f, -0.21f)
+                quadToRelative(0.13f, -0.13f, 0.27f, -0.19f)
+                quadTo(16.78f, 10f, 16.95f, 10f)
+                quadToRelative(0.33f, 0f, 0.54f, 0.19f)
+                reflectiveQuadToRelative(0.21f, 0.46f)
+                quadToRelative(0f, 0.35f, -0.25f, 0.55f)
+                reflectiveQuadTo(16.8f, 11.4f)
+                quadToRelative(-0.2f, 0f, -0.35f, 0.15f)
+                reflectiveQuadTo(16.3f, 11.9f)
+                reflectiveQuadToRelative(0.15f, 0.35f)
+                reflectiveQuadTo(16.8f, 12.4f)
+                quadToRelative(0.5f, 0f, 0.8f, 0.2f)
+                reflectiveQuadToRelative(0.3f, 0.55f)
+                quadToRelative(0f, 0.33f, -0.28f, 0.56f)
+                reflectiveQuadTo(17f, 13.95f)
+                quadToRelative(-0.3f, 0f, -0.5f, -0.1f)
+                reflectiveQuadTo(16.15f, 13.52f)
+                quadTo(16.03f, 13.35f, 15.84f, 13.29f)
+                reflectiveQuadTo(15.45f, 13.3f)
+                quadToRelative(-0.22f, 0.1f, -0.33f, 0.29f)
+                quadToRelative(-0.1f, 0.19f, 0f, 0.39f)
+                quadToRelative(0.28f, 0.5f, 0.75f, 0.76f)
+                reflectiveQuadTo(17f, 15f)
                 close()
             }
         }.build().also { _pin = it }
@@ -1900,69 +2329,154 @@ object MaterialSymbols {
             }
         }.build().also { _google = it }
 
-    private fun batteryFrameBuilder(name: String, fillPath: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit): ImageVector.Builder {
-        return ImageVector.Builder(
-            name = name,
+
+    val BatteryCharging: ImageVector
+        get() = _batteryCharging ?: ImageVector.Builder(
+            name = "battery_charging",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {
-            path(fill = SolidColor(Color.Black)) {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
                 moveTo(4f, 18f)
                 quadTo(2.75f, 18f, 1.88f, 17.13f)
                 reflectiveQuadTo(1f, 15f)
                 verticalLineTo(9f)
                 quadTo(1f, 7.75f, 1.88f, 6.88f)
                 reflectiveQuadTo(4f, 6f)
-                horizontalLineTo(17.5f)
-                quadToRelative(1.25f, 0f, 2.13f, 0.88f)
-                reflectiveQuadTo(20.5f, 9f)
-                verticalLineToRelative(6f)
-                quadToRelative(0f, 1.25f, -0.88f, 2.13f)
-                reflectiveQuadTo(17.5f, 18f)
-                horizontalLineTo(4f)
-                close()
-                moveTo(4f, 16f)
-                horizontalLineTo(17.5f)
-                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
-                reflectiveQuadTo(18.5f, 15f)
-                verticalLineTo(9f)
-                quadToRelative(0f, -0.43f, -0.29f, -0.71f)
-                reflectiveQuadTo(17.5f, 8f)
+                horizontalLineTo(15.45f)
+                quadToRelative(0.42f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(16.45f, 7f)
+                reflectiveQuadTo(16.16f, 7.71f)
+                reflectiveQuadTo(15.45f, 8f)
                 horizontalLineTo(4f)
                 quadTo(3.58f, 8f, 3.29f, 8.29f)
                 reflectiveQuadTo(3f, 9f)
                 verticalLineToRelative(6f)
                 quadToRelative(0f, 0.42f, 0.29f, 0.71f)
                 reflectiveQuadTo(4f, 16f)
+                horizontalLineTo(14.45f)
+                quadToRelative(0.42f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(15.45f, 17f)
+                reflectiveQuadToRelative(-0.29f, 0.71f)
+                reflectiveQuadTo(14.45f, 18f)
+                horizontalLineTo(4f)
                 close()
-                moveTo(21.5f, 14.5f)
-                verticalLineToRelative(-5f)
-                horizontalLineTo(22f)
-                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
-                reflectiveQuadTo(23f, 10.5f)
-                verticalLineToRelative(3f)
-                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
-                reflectiveQuadTo(22f, 14.5f)
-                horizontalLineTo(21.5f)
+                moveTo(4f, 14f)
+                verticalLineTo(10f)
+                quadTo(4f, 9.57f, 4.29f, 9.29f)
+                reflectiveQuadTo(5f, 9f)
+                horizontalLineToRelative(8.58f)
+                quadToRelative(0.65f, 0f, 0.91f, 0.56f)
+                reflectiveQuadToRelative(-0.14f, 1.06f)
+                lineToRelative(-2.9f, 3.63f)
+                quadTo(11.18f, 14.6f, 10.76f, 14.8f)
+                reflectiveQuadTo(9.9f, 15f)
+                horizontalLineTo(5f)
+                quadTo(4.58f, 15f, 4.29f, 14.71f)
+                reflectiveQuadTo(4f, 14f)
                 close()
-                fillPath()
+                moveToRelative(14.15f, 3.07f)
+                quadToRelative(-0.13f, 0.15f, -0.31f, 0.07f)
+                quadTo(17.65f, 17.08f, 17.7f, 16.88f)
+                lineTo(18.38f, 13f)
+                horizontalLineTo(16.05f)
+                quadToRelative(-0.32f, 0f, -0.46f, -0.28f)
+                reflectiveQuadTo(15.65f, 12.2f)
+                lineToRelative(4.2f, -5.27f)
+                quadTo(19.98f, 6.77f, 20.16f, 6.85f)
+                quadToRelative(0.19f, 0.08f, 0.14f, 0.28f)
+                lineTo(19.63f, 11f)
+                horizontalLineToRelative(2.33f)
+                quadToRelative(0.32f, 0f, 0.46f, 0.27f)
+                reflectiveQuadTo(22.35f, 11.8f)
+                lineToRelative(-4.2f, 5.28f)
+                close()
             }
-        }
-    }
-
-    val BatteryCharging: ImageVector
-        get() = _batteryCharging ?: batteryFrameBuilder("battery_charging") {
-            moveTo(11f, 15f)
-            lineTo(13f, 12f)
-            horizontalLineTo(10f)
-            lineTo(12f, 9f)
-            horizontalLineTo(9f)
-            lineTo(7f, 12f)
-            horizontalLineTo(10f)
-            close()
         }.build().also { _batteryCharging = it }
+
+    val MoreVert: ImageVector
+        get() = _moreVert ?: ImageVector.Builder(
+            name = "more_vert",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 16f)
+                quadToRelative(0.825f, 0f, 1.413f, 0.588f)
+                reflectiveQuadTo(14f, 18f)
+                reflectiveQuadToRelative(-0.588f, 1.413f)
+                reflectiveQuadTo(12f, 20f)
+                reflectiveQuadToRelative(-1.413f, -0.588f)
+                reflectiveQuadTo(10f, 18f)
+                reflectiveQuadToRelative(0.588f, -1.413f)
+                reflectiveQuadTo(12f, 16f)
+                close()
+                moveTo(12f, 10f)
+                quadToRelative(0.825f, 0f, 1.413f, 0.588f)
+                reflectiveQuadTo(14f, 12f)
+                reflectiveQuadToRelative(-0.588f, 1.413f)
+                reflectiveQuadTo(12f, 14f)
+                reflectiveQuadToRelative(-1.413f, -0.588f)
+                reflectiveQuadTo(10f, 12f)
+                reflectiveQuadToRelative(0.588f, -1.413f)
+                reflectiveQuadTo(12f, 10f)
+                close()
+                moveTo(12f, 4f)
+                quadToRelative(0.825f, 0f, 1.413f, 0.588f)
+                reflectiveQuadTo(14f, 6f)
+                reflectiveQuadToRelative(-0.588f, 1.413f)
+                reflectiveQuadTo(12f, 8f)
+                reflectiveQuadToRelative(-1.413f, -0.588f)
+                reflectiveQuadTo(10f, 6f)
+                reflectiveQuadToRelative(0.588f, -1.413f)
+                reflectiveQuadTo(12f, 4f)
+                close()
+            }
+        }.build().also { _moreVert = it }
+
+    val FilterList: ImageVector
+        get() = _filterList ?: ImageVector.Builder(
+            name = "filter_list",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(10f, 18f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(-2f)
+                horizontalLineToRelative(-4f)
+                verticalLineTo(2f)
+                close()
+                moveTo(3f, 6f)
+                verticalLineToRelative(2f)
+                horizontalLineToRelative(18f)
+                verticalLineTo(6f)
+                horizontalLineTo(3f)
+                close()
+                moveTo(6f, 13f)
+                horizontalLineToRelative(12f)
+                verticalLineToRelative(-2f)
+                horizontalLineTo(6f)
+                verticalLineToRelative(2f)
+                close()
+            }
+        }.build().also { _filterList = it }
 
     private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
@@ -2002,4 +2516,6 @@ object MaterialSymbols {
     private var _accountCircle: ImageVector? = null
     private var _devices: ImageVector? = null
     private var _qrCodeScanner: ImageVector? = null
+    private var _moreVert: ImageVector? = null
+    private var _filterList: ImageVector? = null
 }

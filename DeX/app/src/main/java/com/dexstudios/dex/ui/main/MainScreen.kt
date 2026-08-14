@@ -69,8 +69,6 @@ import com.dexstudios.dex.ui.main.components.MainScreenCompact
 import com.dexstudios.dex.ui.main.components.MainScreenGrid
 import com.dexstudios.dex.ui.components.glass.GlassScrollEdge
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.graphics.Color
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlin.time.Duration.Companion.seconds
@@ -272,21 +270,6 @@ fun MainScreen(
                         .background(MaterialTheme.colorScheme.background)
                 )
 
-                val isSearchExpanded = com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded
-                if (isSearchExpanded) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.75f))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded = false }
-                            )
-                            .zIndex(1f)
-                    )
-                }
-
                 val discoveredDevicesList = discoveredDevices
                 val deviceConfig: DeviceConfig = koinInject()
 
@@ -323,7 +306,6 @@ fun MainScreen(
                         consolidatedTrusted = consolidatedTrusted,
                         untrustedDevices = filteredUntrusted,
                         search = search,
-                        isHighlighted = isSearchExpanded,
                         showHelpHint = showHelpHint,
                         onTrustedDeviceButtonClick = { device ->
                             if (device.viaRoster) {
@@ -347,7 +329,6 @@ fun MainScreen(
                         consolidatedTrusted = consolidatedTrusted,
                         untrustedDevices = filteredUntrusted,
                         search = search,
-                        isHighlighted = isSearchExpanded,
                         showHelpHint = showHelpHint,
                         onTrustedDeviceButtonClick = { device ->
                             if (device.viaRoster) {

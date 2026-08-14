@@ -162,6 +162,9 @@ dependencies {
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)
 
+  // Animations
+  implementation(libs.lottie.compose)
+
   // Baseline Profiles (AOT compilation for cold-start perf)
   implementation(libs.androidx.profileinstaller)
 

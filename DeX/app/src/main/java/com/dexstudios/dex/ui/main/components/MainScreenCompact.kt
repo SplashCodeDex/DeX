@@ -10,7 +10,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
@@ -23,7 +22,6 @@ fun MainScreenCompact(
     consolidatedTrusted: List<DiscoveredDevice>,
     untrustedDevices: List<DiscoveredDevice>,
     search: String,
-    isHighlighted: Boolean = false,
     showHelpHint: Boolean,
     onTrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
     onUntrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
@@ -34,9 +32,7 @@ fun MainScreenCompact(
 ) {
     LazyColumn(
         state = listState,
-        modifier = modifier
-            .fillMaxSize()
-            .zIndex(if (isHighlighted) 2f else 0f),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             top = 0.dp,
             bottom = 88.dp
@@ -65,7 +61,6 @@ fun MainScreenCompact(
                                 modifier = Modifier.width(300.dp),
                                 device = device,
                                 isTrusted = true,
-                                isHighlighted = isHighlighted,
                                 onClick = { },
                                 onButtonClick = { onTrustedDeviceButtonClick(device) },
                                 onLongClick = { onDeviceLongClick(device) }
@@ -77,8 +72,7 @@ fun MainScreenCompact(
                                 DummyDeviceCard(
                                     alias = "Gaming PC",
                                     model = "Custom Build (RTX 4090)",
-                                    wallpaper = R.drawable.wallpaper_gaming,
-                                    isHighlighted = isHighlighted
+                                    wallpaper = R.drawable.wallpaper_gaming
                                 )
                             }
                         }
@@ -87,8 +81,7 @@ fun MainScreenCompact(
                                 DummyDeviceCard(
                                     alias = "Home Server",
                                     model = "TrueNAS Core",
-                                    wallpaper = R.drawable.wallpaper_server,
-                                    isHighlighted = isHighlighted
+                                    wallpaper = R.drawable.wallpaper_server
                                 )
                             }
                         }
@@ -97,8 +90,7 @@ fun MainScreenCompact(
                                 DummyDeviceCard(
                                     alias = "Work Laptop",
                                     model = "MacBook Pro M3",
-                                    wallpaper = R.drawable.wallpaper_laptop,
-                                    isHighlighted = isHighlighted
+                                    wallpaper = R.drawable.wallpaper_laptop
                                 )
                             }
                         }
@@ -145,7 +137,6 @@ fun MainScreenCompact(
                                 modifier = Modifier.width(300.dp),
                                 device = device,
                                 isTrusted = false,
-                                isHighlighted = isHighlighted,
                                 onClick = { },
                                 onButtonClick = { onUntrustedDeviceButtonClick(device) },
                                 onLongClick = { onDeviceLongClick(device) }

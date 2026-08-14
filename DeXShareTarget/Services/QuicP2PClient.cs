@@ -88,21 +88,43 @@ namespace DeXShareTarget.Services
                                     nameRead += read;
                                 }
 
-                                string currentFile = Encoding.UTF8.GetString(nameBytes);
-                                string sanitizedName = string.Join("_", currentFile.Split(Path.GetInvalidFileNameChars()));
-                                string targetPath = Path.Combine(downloadDir, sanitizedName);
+                                string relativePath = Encoding.UTF8.GetString(nameBytes).Replace('\\', '/');
+                                
+                                // Clean up the path segments to prevent directory traversal
+                                var segments = relativePath.Split('/');
+                                var safeSegments = new List<string>();
+                                foreach (var seg in segments)
+                                {
+                                    if (string.IsNullOrWhiteSpace(seg) || seg == "." || seg == "..") continue;
+                                    safeSegments.Add(string.Join("_", seg.Split(Path.GetInvalidFileNameChars())));
+                                }
+
+                                if (safeSegments.Count == 0) safeSegments.Add("unnamed_file");
+
+                                string sanitizedRelative = Path.Combine(safeSegments.ToArray());
+                                string targetPath = Path.GetFullPath(Path.Combine(downloadDir, sanitizedRelative));
+
+                                // Double check against traversal escaping the base dir
+                                if (!targetPath.StartsWith(downloadDir, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    throw new UnauthorizedAccessException("Directory traversal attempt blocked.");
+                                }
+
+                                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
                                 // Avoid overwriting by appending numbers if needed
                                 int counter = 1;
+                                string originalTarget = targetPath;
                                 while (File.Exists(targetPath))
                                 {
-                                    string ext = Path.GetExtension(sanitizedName);
-                                    string name = Path.GetFileNameWithoutExtension(sanitizedName);
-                                    targetPath = Path.Combine(downloadDir, $"{name} ({counter}){ext}");
+                                    string ext = Path.GetExtension(originalTarget);
+                                    string name = Path.GetFileNameWithoutExtension(originalTarget);
+                                    string dir = Path.GetDirectoryName(originalTarget)!;
+                                    targetPath = Path.Combine(dir, $"{name} ({counter}){ext}");
                                     counter++;
                                 }
 
-                                Console.WriteLine($"[QUIC-P2P] Receiving {currentFile} ({fileSize} bytes) -> {targetPath}");
+                                Console.WriteLine($"[QUIC-P2P] Receiving {relativePath} ({fileSize} bytes) -> {targetPath}");
 
                                 using var fs = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous);
                                 byte[] buffer = new byte[81920];
@@ -115,7 +137,7 @@ namespace DeXShareTarget.Services
                                     totalReceived += bytesRead;
                                 }
                                 
-                                Console.WriteLine($"[QUIC-P2P] Finished receiving {currentFile}");
+                                Console.WriteLine($"[QUIC-P2P] Finished receiving {relativePath}");
                             }
                         }
                         catch (Exception ex)

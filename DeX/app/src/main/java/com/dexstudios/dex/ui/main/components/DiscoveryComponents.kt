@@ -212,7 +212,7 @@ fun DiscoveryHelpStep(number: String, text: String) {
 }
 
 @Composable
-fun DummyDeviceCard(alias: String, model: String, wallpaper: Any, isHighlighted: Boolean = false) {
+fun DummyDeviceCard(alias: String, model: String, wallpaper: Any) {
     val dummyDevice = remember(alias, model) {
         DiscoveredDevice(
             ip = "0.0.0.0",
@@ -233,7 +233,6 @@ fun DummyDeviceCard(alias: String, model: String, wallpaper: Any, isHighlighted:
         onClick = {}, // Do nothing as requested
         modifier = Modifier.width(300.dp),
         isTrusted = true,
-        isHighlighted = isHighlighted,
         wallpaper = wallpaper
     )
 }

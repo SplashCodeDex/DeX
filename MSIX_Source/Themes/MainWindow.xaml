@@ -998,7 +998,8 @@
                                         <TranslateTransform x:Name="pinContentTrans" X="140" />
                                     </TransformGroup>
                                 </StackPanel.RenderTransform>
-                                <ItemsControl x:Name="icPinDigits" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                <Grid Margin="0,10,0,0" HorizontalAlignment="Center">
+                                    <ItemsControl x:Name="icPinDigits">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" />
@@ -1018,7 +1019,12 @@
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    </ItemsControl>
+                                    
+                                    <Border x:Name="successPill" Width="50" Height="56" Background="Black" CornerRadius="28" Visibility="Collapsed" HorizontalAlignment="Center">
+                                        <MediaElement x:Name="faceIdPlayer" LoadedBehavior="Manual" UnloadedBehavior="Manual" Stretch="Uniform" Margin="4" Opacity="0" />
+                                    </Border>
+                                </Grid>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
                                     <TextBlock x:Name="txtPinStatus" Text="Waiting for acceptance..." FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
