@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
@@ -33,7 +34,9 @@ fun MainScreenCompact(
 ) {
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(if (isHighlighted) 2f else 0f),
         contentPadding = PaddingValues(
             top = 0.dp,
             bottom = 88.dp

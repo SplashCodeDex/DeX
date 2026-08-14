@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.7] - 2026-08-14
+### Fixed
+- **[patch] PowerShell Emoji Parse Error**: Fixed a fatal launch crash in PowerShell 5.1 caused by a raw UTF-8 emoji (`📱`) breaking the AST parser. Replaced it with the `[char]::ConvertFromUtf32(0x1F4F1)` runtime equivalent.
+
 ## [9.1.1.6] - 2026-08-14
 ### Fixed
 - **[patch] UI Text Restoration**: Restored the user's custom "Enter This Pin On Your Phone 📱" placeholder text and `SecondaryTextBrush` color that was accidentally overwritten by generic text during the error-state implementation.

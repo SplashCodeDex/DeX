@@ -652,7 +652,7 @@ function Show-PinPanel {
                         if ($script:wpfWindow) {
                             $txt = $script:wpfWindow.FindName("txtPinStatus")
                             if ($txt -and $txt.Text -eq "Incorrect PIN") {
-                                $txt.Text = "Enter This Pin On Your Phone 📱"
+                                $txt.Text = "Enter This Pin On Your Phone " + [char]::ConvertFromUtf32(0x1F4F1)
                                 $txt.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
                             }
                         }
@@ -718,7 +718,7 @@ function Show-PinPanel {
                     } elseif ($dc -ge $script:pinDigitItems.Count) {
                         $txtStatus.Text = "Verifying PIN..."
                     } else {
-                        $txtStatus.Text = "Enter This Pin On Your Phone 📱"
+                        $txtStatus.Text = "Enter This Pin On Your Phone " + [char]::ConvertFromUtf32(0x1F4F1)
                     }
                 }
             }

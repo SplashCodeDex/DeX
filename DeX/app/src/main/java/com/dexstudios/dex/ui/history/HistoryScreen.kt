@@ -294,7 +294,9 @@ fun HistoryScreen(
                 if (viewMode == HistoryViewMode.LIST) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .zIndex(if (isSearchExpanded) 2f else 0f),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusBarHeight + 200.dp, bottom = 88.dp - navBarInset),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -401,7 +403,9 @@ fun HistoryScreen(
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 120.dp),
                         state = gridState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .zIndex(if (isSearchExpanded) 2f else 0f),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusBarHeight + 200.dp, bottom = 88.dp - navBarInset),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)

@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
@@ -35,7 +36,9 @@ fun MainScreenGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 300.dp),
         state = gridState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(if (isHighlighted) 2f else 0f),
         contentPadding = PaddingValues(
             top = statusBarHeight + 64.dp,
             start = 16.dp,

@@ -70,6 +70,7 @@ import com.dexstudios.dex.ui.main.components.MainScreenGrid
 import com.dexstudios.dex.ui.components.glass.GlassScrollEdge
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Color
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlin.time.Duration.Companion.seconds
