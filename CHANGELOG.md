@@ -1,5 +1,13 @@
 # Changelog
 
+## [9.1.0.0] - 2026-08-14
+### Added
+- **[minor] Real-Time Interactive PIN Digit Sync & Shimmer (Desktop + Mobile)**:
+  - Added live keystroke telemetry: when digits are typed into `PinInputField` on the Android phone, `MessageHandler.sendPinDigitEntered` emits `pin-digit-entered` WebSocket frames in real time.
+  - Added `PendingPairDigitCount` tracking in C# `LocalSendEndpoints.cs` and exposed `digitCount` via `/local/pair-status`.
+  - Upgraded WPF desktop polling cadence to 250ms with dynamic `SecondaryBrush` border highlighting and reactive status text (`Entering PIN on phone (X/5)...` $\rightarrow$ `Verifying PIN...`) on `icPinDigits`.
+  - Added unit test coverage for `sendPinDigitEntered` in `MessageHandlerTest.kt`.
+
 ## [9.0.0.0] - 2026-08-14
 ### Added
 - **[major] Native HTTP/3 (QUIC) PC-to-PC Transfers & Android Cronet Zero-Copy Optimization**:

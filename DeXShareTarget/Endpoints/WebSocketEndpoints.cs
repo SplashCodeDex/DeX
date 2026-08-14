@@ -245,6 +245,11 @@ namespace DeXShareTarget.Endpoints
                     // The user declined screen sharing: close the mirror window immediately
                     MirrorWindowHost.Stop(fingerprint);
                 }
+                else if (type == "pin-digit-entered" && root.TryGetProperty("data", out var pinData))
+                {
+                    var count = pinData.TryGetProperty("digitCount", out var dc) ? dc.GetInt32() : 0;
+                    LocalSendEndpoints.PendingPairDigitCount[fingerprint] = count;
+                }
                 else if (type == "pair-request")
                 {
                     // Phone-initiated pairing: generate a PIN and push the prompt back to the phone

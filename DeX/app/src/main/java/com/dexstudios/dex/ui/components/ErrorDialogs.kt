@@ -584,6 +584,7 @@ fun PairingRequestDialog(
     onAccept: (String) -> Unit,
     onReject: () -> Unit,
     deadlineElapsedMs: Long = 0L,
+    onDigitEntered: (Int) -> Unit = {},
 ) {
     var enteredPin by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(value = false) }
@@ -739,6 +740,7 @@ fun PairingRequestDialog(
                                         }
                                         enteredPin = it
                                         isError = false
+                                        onDigitEntered(it.length)
                                     }
                                 },
                                 isError = isError,

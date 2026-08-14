@@ -47,6 +47,8 @@ namespace DeXShareTarget.Endpoints
         public static ConcurrentDictionary<string, string> OutboundPairingStatus = new();
         // Active outbound pairing attempts so the GUI can display the PIN even for phone-initiated pairing
         public static ConcurrentDictionary<string, PendingPairAttempt> PendingPairPins = new();
+        // Live keystroke telemetry: count of PIN digits currently keyed in on the mobile device
+        public static ConcurrentDictionary<string, int> PendingPairDigitCount = new();
 
         /// <summary>Normalizes a client-supplied relative path: forward slashes, no ".." or traversal.</summary>
         private static string SanitizeRelativePath(string? path)
@@ -146,6 +148,7 @@ namespace DeXShareTarget.Endpoints
         public static void ClearPendingPair(string fingerprint)
         {
             PendingPairPins.TryRemove(fingerprint, out _);
+            PendingPairDigitCount.TryRemove(fingerprint, out _);
         }
 
         private static async Task StartTcpServerAsync()

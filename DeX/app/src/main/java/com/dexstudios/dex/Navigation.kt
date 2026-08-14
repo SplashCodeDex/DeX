@@ -63,12 +63,15 @@ import com.dexstudios.dex.ui.settings.SettingsScreen
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.runtime.mutableStateOf
+import org.koin.compose.koinInject
+import com.dexstudios.dex.network.MessageHandler
 
 /** The top-level tab destinations, in navbar order. */
 private val tabs = listOf(Main, History, Settings)
 
 @Composable
 fun MainNavigation(windowSizeClass: WindowSizeClass) {
+  val messageHandler: MessageHandler = koinInject()
   // Tabs are siblings, not a navigation stack: switching replaces the selected
   // tab, and back on any tab falls through to the system (exit).
   var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -263,7 +266,10 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
                 req.deferred.complete("")
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
             },
-            deadlineElapsedMs = req.deadlineElapsedMs
+            deadlineElapsedMs = req.deadlineElapsedMs,
+            onDigitEntered = { count ->
+                messageHandler.sendPinDigitEntered(count)
+            }
         )
     }
 

@@ -148,17 +148,16 @@ namespace DeXShareTarget.Endpoints
                 // Resolve by fingerprint (preferred) or by IP (legacy callers).
                 var fp = request.Query["fingerprint"].ToString();
                 var ip = request.Query["ip"].ToString();
-                if (!string.IsNullOrEmpty(fp) && OutboundPairingStatus.TryGetValue(fp, out var byFp))
-                {
-                    return Results.Json(new { status = byFp });
-                }
-                if (!string.IsNullOrEmpty(ip))
+                var targetFp = fp;
+                if (string.IsNullOrEmpty(targetFp) && !string.IsNullOrEmpty(ip))
                 {
                     var entry = PendingPairPins.Values.FirstOrDefault(a => a.Ip == ip);
-                    if (entry != null && OutboundPairingStatus.TryGetValue(entry.Fingerprint, out var byIp))
-                    {
-                        return Results.Json(new { status = byIp });
-                    }
+                    targetFp = entry?.Fingerprint ?? "";
+                }
+                if (!string.IsNullOrEmpty(targetFp) && OutboundPairingStatus.TryGetValue(targetFp, out var status))
+                {
+                    var digitCount = PendingPairDigitCount.TryGetValue(targetFp, out var count) ? count : 0;
+                    return Results.Json(new { status, digitCount });
                 }
                 return Results.NotFound();
             });

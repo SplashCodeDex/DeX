@@ -1006,8 +1006,11 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="6" MinWidth="44" MinHeight="56" Margin="4,0" Padding="8,4">
-                                                <TextBlock Text="{Binding}" FontSize="32" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <Border Background="{DynamicResource AccentBrush}"
+                                                    BorderBrush="{Binding BorderBrush}"
+                                                    BorderThickness="{Binding BorderThickness}"
+                                                    CornerRadius="8" MinWidth="44" MinHeight="56" Margin="4,0" Padding="8,4">
+                                                <TextBlock Text="{Binding Digit}" FontSize="32" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

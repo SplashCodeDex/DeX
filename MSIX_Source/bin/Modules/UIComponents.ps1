@@ -505,8 +505,16 @@ function Show-PinPanel {
     $ic = $w.FindName("icPinDigits")
     if ($ic) {
         $digits = [System.Collections.ArrayList]::new()
-        foreach ($c in $Code.ToCharArray()) { $null = $digits.Add($c.ToString()) }
-        $ic.ItemsSource = $digits
+        foreach ($c in $Code.ToCharArray()) {
+            $null = $digits.Add([PSCustomObject]@{
+                Digit = $c.ToString()
+                BorderBrush = [System.Windows.Media.Brushes]::Transparent
+                BorderThickness = [System.Windows.Thickness]::new(2)
+            })
+        }
+        $script:pinDigitItems = $digits
+        $script:lastDigitCount = 0
+        $ic.ItemsSource = $script:pinDigitItems
     }
 
     $w.FindName("txtPinStatus").Text = $Status
@@ -552,12 +560,9 @@ function Show-PinPanel {
     if ($txtTimeout) { $txtTimeout.Text = "Expires in 60s" }
 
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop() }
-    # PLAIN tick (NO GetNewClosure): a closure runs in a detached module scope where direct
-    # $script: reads/writes are lost AND captured locals are re-copied on every invocation
-    # (a countdown would never advance). A plain scriptblock runs in the real engine scope,
-    # so it reads the session context stored below and advances the countdown persistently.
+    # 250ms cadence: live PIN keystroke sync appears instant on desktop
     $timer = New-Object System.Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(1000)
+    $timer.Interval = [TimeSpan]::FromMilliseconds(250)
     $script:pairWaitTimer = $timer
     $script:pairWaitSessionIp = $script:activeOutboundPairIp
     $script:pairWaitSessionFp = $script:activeOutboundPairFp
@@ -566,6 +571,7 @@ function Show-PinPanel {
     $script:pairWaitSuccessMsg = $SuccessMessage
     $script:pairWaitFailureMsg = $FailureMessage
     $script:pairWaitSeconds = 60
+    $script:pairWaitTicks = 0
     $timer.Add_Tick({
         $t = $script:pairWaitTimer
         if (-not $t -or -not $t.IsEnabled) { return }
@@ -576,9 +582,12 @@ function Show-PinPanel {
             $t.Stop()
             return
         }
-        $script:pairWaitSeconds--
-        if ($script:pairWaitTimeoutText -and $script:pairWaitSeconds -ge 0) {
-            $script:pairWaitTimeoutText.Text = "Expires in $($script:pairWaitSeconds)s"
+        $script:pairWaitTicks++
+        if ($script:pairWaitTicks % 4 -eq 0) {
+            $script:pairWaitSeconds--
+            if ($script:pairWaitTimeoutText -and $script:pairWaitSeconds -ge 0) {
+                $script:pairWaitTimeoutText.Text = "Expires in $($script:pairWaitSeconds)s"
+            }
         }
         # Real expiry: cancel + close instead of staying stuck on "Expires in 0s".
         if ($script:pairWaitSeconds -le 0) {
@@ -591,6 +600,38 @@ function Show-PinPanel {
             $st = Invoke-RestMethod -Uri "$global:DeXLocalApi/local/pair-status?ip=$($script:pairWaitSessionIp)&fingerprint=$($script:pairWaitSessionFp)" -TimeoutSec 1 -ErrorAction Stop
             # The user cancelled while the poll was in flight — drop the stale result.
             if (-not $t.IsEnabled) { return }
+
+            # Real-time PIN digit highlight synchronization:
+            $dc = if ($st.digitCount) { [int]$st.digitCount } else { 0 }
+            if ($script:pinDigitItems -and $dc -ne $script:lastDigitCount) {
+                $script:lastDigitCount = $dc
+                $secBrush = $script:wpfWindow.FindResource("SecondaryBrush")
+                $newDigits = [System.Collections.ArrayList]::new()
+                for ($i = 0; $i -lt $script:pinDigitItems.Count; $i++) {
+                    $item = $script:pinDigitItems[$i]
+                    $isEntered = ($i -lt $dc)
+                    $null = $newDigits.Add([PSCustomObject]@{
+                        Digit = $item.Digit
+                        BorderBrush = if ($isEntered) { $secBrush } else { [System.Windows.Media.Brushes]::Transparent }
+                        BorderThickness = [System.Windows.Thickness]::new(2)
+                    })
+                }
+                $script:pinDigitItems = $newDigits
+                $ic = $script:wpfWindow.FindName("icPinDigits")
+                if ($ic) { $ic.ItemsSource = $script:pinDigitItems }
+
+                $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
+                if ($txtStatus) {
+                    if ($dc -gt 0 -and $dc -lt $script:pinDigitItems.Count) {
+                        $txtStatus.Text = "Entering PIN on phone ($dc/$($script:pinDigitItems.Count))..."
+                    } elseif ($dc -ge $script:pinDigitItems.Count) {
+                        $txtStatus.Text = "Verifying PIN..."
+                    } else {
+                        $txtStatus.Text = "Waiting for the PIN to be entered on the phone..."
+                    }
+                }
+            }
+
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                 $t.Stop()
                 if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
@@ -607,6 +648,8 @@ function Show-PinPanel {
 function Clear-PairingState {
     if ($script:pairWaitTimer) { $script:pairWaitTimer.Stop(); $script:pairWaitTimer = $null }
     if ($script:qrPhaseTimer) { $script:qrPhaseTimer.Stop(); $script:qrPhaseTimer = $null }
+    $script:pinDigitItems = $null
+    $script:lastDigitCount = 0
     # An inbound pairing keeps the window on top; restore the user's prior z-order now.
     if ($null -ne $script:priorWindowTopmost) {
         try { $script:wpfWindow.Topmost = [bool]$script:priorWindowTopmost } catch {}

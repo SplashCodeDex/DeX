@@ -47,7 +47,7 @@ namespace DeXShareTarget.Services
             {
                 try
                 {
-                    using var connection = await listener.AcceptConnectionAsync(ct);
+                    await using var connection = await listener.AcceptConnectionAsync(ct);
                     await listener.DisposeAsync();
 
                     long totalBytes = 0;
@@ -69,7 +69,7 @@ namespace DeXShareTarget.Services
 
                         progress?.Report(new TransferProgress(globalSent, totalBytes, currentFile, doneFiles, filePaths.Count));
 
-                        using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct);
+                        await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct);
 
                         byte[] nameBytes = Encoding.UTF8.GetBytes(currentFile);
                         byte[] header = new byte[10 + nameBytes.Length];

@@ -29,10 +29,8 @@ import com.dexstudios.dex.network.TransferRecord
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.effects.blur
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import kotlin.math.roundToInt
 
 @Composable
@@ -62,22 +60,15 @@ fun HistoryLightbox(
                     backdrop = backdrop,
                     shape = { androidx.compose.ui.graphics.RectangleShape },
                     effects = {
-                        blur(28.dp.toPx())
+                        blur(24.dp.toPx())
                         vibrancy()
-                        // The "DeX" Signature: Edge Refraction & Prismatic split
-                        lens(
-                            refractionHeight = 48.dp.toPx(),
-                            refractionAmount = 64.dp.toPx(),
-                            depthEffect = true,
-                            chromaticAberration = true
-                        )
                     }
                 )
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)) // Slightly lighter dim to show vibrancy
+                    .background(Color.Black.copy(alpha = 0.6f)) // Dimming
             )
         }
 

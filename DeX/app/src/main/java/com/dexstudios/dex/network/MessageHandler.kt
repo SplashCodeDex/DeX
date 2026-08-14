@@ -236,6 +236,17 @@ class MessageHandler(
         onSendMessage?.invoke(payload.toString())
     }
 
+    /** Emits live keystroke telemetry so the desktop pairing UI can highlight matching digits in real time. */
+    fun sendPinDigitEntered(digitCount: Int) {
+        val payload = buildJsonObject {
+            put("type", "pin-digit-entered")
+            putJsonObject("data") {
+                put("digitCount", digitCount)
+            }
+        }
+        onSendMessage?.invoke(payload.toString())
+    }
+
     private companion object {
         const val PAIR_PROMPT_TIMEOUT_MS = 60_000L
         const val PROMPT_TIMEOUT_MS = 60_000L
