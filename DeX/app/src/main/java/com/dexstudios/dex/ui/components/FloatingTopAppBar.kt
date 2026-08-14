@@ -39,6 +39,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DeviceConfig
@@ -203,21 +206,36 @@ fun FloatingTopAppBar(
                                         .focusRequester(searchFocusRequester),
                                     textStyle = TextStyle(
                                         color = Color.White,
-                                        fontSize = 16.sp,
+                                        fontSize = 18.sp,
                                         fontWeight = FontWeight.Medium
                                     ),
                                     cursorBrush = SolidColor(Color.White),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
                                     decorationBox = { innerTextField ->
                                         if (TopAppBarState.searchQuery.isEmpty()) {
                                             Text(
                                                 "Search devices...",
                                                 color = Color.White.copy(alpha = 0.5f),
-                                                fontSize = 16.sp
+                                                fontSize = 18.sp
                                             )
                                         }
                                         innerTextField()
                                     }
                                 )
+                                if (TopAppBarState.searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { TopAppBarState.searchQuery = "" },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.Close,
+                                            contentDescription = "Clear",
+                                            tint = Color.White.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             Icon(

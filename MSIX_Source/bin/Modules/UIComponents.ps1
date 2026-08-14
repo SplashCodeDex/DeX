@@ -517,7 +517,9 @@ function Show-PinPanel {
         $ic.ItemsSource = $script:pinDigitItems
     }
 
-    $w.FindName("txtPinStatus").Text = $Status
+    $txtStatus = $w.FindName("txtPinStatus")
+    $txtStatus.Text = $Status
+    $txtStatus.Foreground = $w.FindResource("PrimaryTextBrush")
     Set-PinContentView -ShowQr:$false
     if ($HideAcceptButtons) {
         $w.FindName("btnPinAccept").Visibility = 'Collapsed'
@@ -664,11 +666,58 @@ function Show-PinPanel {
 
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                 $t.Stop()
-                if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
-                Clear-PairingState
-                try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
-                if ($st.status -eq 'Accepted') { Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg }
-                else { Show-Toast -Title "Pairing Failed" -Message $script:pairWaitFailureMsg }
+                
+                if ($st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
+                    # Trigger error shake animation!
+                    $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
+                    if ($txtStatus) {
+                        $txtStatus.Text = if ($st.status -eq 'Rejected') { "Incorrect PIN" } else { "Pairing Failed" }
+                        $txtStatus.Foreground = [System.Windows.Media.Brushes]::Red
+                    }
+
+                    $ic = $script:wpfWindow.FindName("icPinDigits")
+                    if ($ic) {
+                        # Turn all borders red
+                        for ($i = 0; $i -lt $script:pinDigitItems.Count; $i++) {
+                            $cp = $ic.ItemContainerGenerator.ContainerFromIndex($i)
+                            if ($cp) {
+                                $border = [System.Windows.Media.VisualTreeHelper]::GetChild($cp, 0)
+                                if ($border -and $border.GetType().Name -eq 'Border') {
+                                    $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.Colors]::Red)
+                                }
+                            }
+                        }
+
+                        # Apply shake transform to the entire ItemsControl
+                        $tt = [System.Windows.Media.TranslateTransform]::new()
+                        $ic.RenderTransform = $tt
+                        $da = [System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames]::new()
+                        $da.Duration = [TimeSpan]::FromMilliseconds(400)
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(-10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(50))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(150))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(-10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(250))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(350))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(0, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(400))))
+                        $tt.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $da)
+                    }
+
+                    # Wait 800ms to clear and slide out so user sees the shake
+                    $errTimer = [System.Windows.Threading.DispatcherTimer]::new()
+                    $errTimer.Interval = [TimeSpan]::FromMilliseconds(800)
+                    $errTimer.Add_Tick({
+                        $this.Stop()
+                        if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                        Clear-PairingState
+                        try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+                        Show-Toast -Title "Pairing Failed" -Message $script:pairWaitFailureMsg
+                    })
+                    $errTimer.Start()
+                } else {
+                    if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                    Clear-PairingState
+                    try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
+                    Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg
+                }
             }
         } catch {}
     })
