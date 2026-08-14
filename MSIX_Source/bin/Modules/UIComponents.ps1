@@ -629,6 +629,10 @@ function Show-PinPanel {
 
                             $scaleTransform = $border.RenderTransform
                             if ($scaleTransform -is [System.Windows.Media.ScaleTransform]) {
+                                if ($scaleTransform.IsFrozen) {
+                                    $scaleTransform = $scaleTransform.Clone()
+                                    $border.RenderTransform = $scaleTransform
+                                }
                                 $daPop = [System.Windows.Media.Animation.DoubleAnimation]::new(1.15, [TimeSpan]::FromMilliseconds(100))
                                 $daPop.AutoReverse = $true
                                 $scaleTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleXProperty, $daPop)

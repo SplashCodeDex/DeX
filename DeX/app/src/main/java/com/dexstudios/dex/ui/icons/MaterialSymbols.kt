@@ -989,6 +989,114 @@ object MaterialSymbols {
             }
         }.build().also { _delete = it }
 
+    val GridView: ImageVector
+        get() = _gridView ?: ImageVector.Builder(
+            name = "grid_view",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(3f, 11f)
+                horizontalLineToRelative(8f)
+                verticalLineTo(3f)
+                horizontalLineTo(3f)
+                verticalLineToRelative(8f)
+                close()
+                moveTo(5f, 5f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(4f)
+                horizontalLineTo(5f)
+                verticalLineTo(5f)
+                close()
+                moveTo(13f, 11f)
+                horizontalLineToRelative(8f)
+                verticalLineTo(3f)
+                horizontalLineToRelative(-8f)
+                verticalLineToRelative(8f)
+                close()
+                moveTo(15f, 5f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(4f)
+                horizontalLineToRelative(-4f)
+                verticalLineTo(5f)
+                close()
+                moveTo(3f, 21f)
+                horizontalLineToRelative(8f)
+                verticalLineToRelative(-8f)
+                horizontalLineTo(3f)
+                verticalLineToRelative(8f)
+                close()
+                moveTo(5f, 15f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(4f)
+                horizontalLineTo(5f)
+                verticalLineToRelative(-4f)
+                close()
+                moveTo(13f, 21f)
+                horizontalLineToRelative(8f)
+                verticalLineToRelative(-8f)
+                horizontalLineToRelative(-8f)
+                verticalLineToRelative(8f)
+                close()
+                moveTo(15f, 15f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(4f)
+                horizontalLineToRelative(-4f)
+                verticalLineToRelative(-4f)
+                close()
+            }
+        }.build().also { _gridView = it }
+
+    val ViewList: ImageVector
+        get() = _viewList ?: ImageVector.Builder(
+            name = "view_list",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(3f, 14f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(-4f)
+                horizontalLineTo(3f)
+                verticalLineToRelative(4f)
+                close()
+                moveTo(3f, 19f)
+                horizontalLineToRelative(4f)
+                verticalLineToRelative(-4f)
+                horizontalLineTo(3f)
+                verticalLineToRelative(4f)
+                close()
+                moveTo(3f, 9f)
+                horizontalLineToRelative(4f)
+                verticalLineTo(5f)
+                horizontalLineTo(3f)
+                verticalLineToRelative(4f)
+                close()
+                moveTo(8f, 14f)
+                horizontalLineToRelative(13f)
+                verticalLineToRelative(-4f)
+                horizontalLineTo(8f)
+                verticalLineToRelative(4f)
+                close()
+                moveTo(8f, 19f)
+                horizontalLineToRelative(13f)
+                verticalLineToRelative(-4f)
+                horizontalLineTo(8f)
+                verticalLineToRelative(4f)
+                close()
+                moveTo(8f, 5f)
+                verticalLineToRelative(4f)
+                horizontalLineToRelative(13f)
+                verticalLineTo(5f)
+                horizontalLineTo(8f)
+                close()
+            }
+        }.build().also { _viewList = it }
+
     private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
     private var _batteryCharging: ImageVector? = null
@@ -1015,4 +1123,6 @@ object MaterialSymbols {
     private var _history: ImageVector? = null
     private var _folder: ImageVector? = null
     private var _delete: ImageVector? = null
+    private var _gridView: ImageVector? = null
+    private var _viewList: ImageVector? = null
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.1] - 2026-08-14
+### Fixed
+- **[patch] UI Freeze Fix**: Fixed a silent background crash caused by attempting to animate a frozen WPF `ScaleTransform` bound from the DataTemplate, which left the UI stuck on the first digit and "Waiting for the PIN to be entered on the phone...".
+
 ## [9.1.1.0] - 2026-08-14
 ### Changed
 - **[patch] Smooth PIN Digit Animations**:

@@ -14,8 +14,10 @@ object TopAppBarState {
     var historyDirectionFilter by mutableStateOf(HistoryDirection.ALL)
     var historyTypeFilter by mutableStateOf(HistoryType.ALL)
     var historySortOrder by mutableStateOf(HistorySort.DATE_DESC)
+    var historyViewMode by mutableStateOf(HistoryViewMode.LIST)
 }
 
 enum class HistoryDirection { ALL, SENT, RECEIVED }
 enum class HistoryType { ALL, IMAGES, VIDEOS, DOCUMENTS, APPS }
 enum class HistorySort { DATE_DESC, SIZE_DESC, NAME_ASC }
+enum class HistoryViewMode { LIST, GRID }
