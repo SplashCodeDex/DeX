@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,7 +85,7 @@ fun ConnectionOptionsDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        imageVector = MaterialSymbols.Devices,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -113,7 +112,7 @@ fun ConnectionOptionsDialog(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ConnectionOptionItem(
-                        icon = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
+                        icon = MaterialSymbols.QrCodeScanner,
                         label = stringResource(R.string.connect_option_qr),
                         onClick = { onQrCode(); dismiss() }
                     )

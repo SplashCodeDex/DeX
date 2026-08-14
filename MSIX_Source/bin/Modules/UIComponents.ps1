@@ -519,11 +519,17 @@ function Show-PinPanel {
 
     $txtStatus = $w.FindName("txtPinStatus")
     $txtStatus.Inlines.Clear()
-    $txtStatus.Inlines.Add([System.Windows.Documents.Run]::new("Enter This Pin On Your Phone/Pc "))
+    $txtStatus.Inlines.Add([System.Windows.Documents.Run]::new("Enter This Pin On Your Phone "))
     
-    $iconRun = [System.Windows.Documents.Run]::new([char]0xE8EA)
-    $iconRun.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe Fluent Icons, Segoe MDL2 Assets")
-    $txtStatus.Inlines.Add($iconRun)
+    $iconRunPhone = [System.Windows.Documents.Run]::new([char]0xE8EA)
+    $iconRunPhone.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe Fluent Icons, Segoe MDL2 Assets")
+    $txtStatus.Inlines.Add($iconRunPhone)
+
+    $txtStatus.Inlines.Add([System.Windows.Documents.Run]::new(" or PC "))
+
+    $iconRunPc = [System.Windows.Documents.Run]::new([char]0xE7F4)
+    $iconRunPc.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe Fluent Icons, Segoe MDL2 Assets")
+    $txtStatus.Inlines.Add($iconRunPc)
     
     $txtStatus.Foreground = $w.FindResource("SecondaryTextBrush")
     Set-PinContentView -ShowQr:$false

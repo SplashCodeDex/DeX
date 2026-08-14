@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +49,7 @@ import org.koin.android.ext.android.inject
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import com.dexstudios.dex.R
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 class ShareTargetActivity : ComponentActivity() {
 
@@ -170,7 +170,7 @@ class ShareTargetActivity : ComponentActivity() {
                 items(2) { index ->
                     DeviceItem(
                         name = "Remote User ${index + 1}",
-                        icon = ImageVector.vectorResource(R.drawable.ic_cloud),
+                        icon = MaterialSymbols.Cloud,
                         isDummy = true,
                         onClick = {}
                     )
@@ -197,7 +197,7 @@ class ShareTargetActivity : ComponentActivity() {
                     items(devices, key = { it.info.fingerprint }) { device ->
                         DeviceItem(
                             name = device.info.alias,
-                            icon = if (device.info.deviceType == "desktop") ImageVector.vectorResource(R.drawable.ic_computer) else ImageVector.vectorResource(R.drawable.ic_smartphone),
+                            icon = if (device.info.deviceType == "desktop") MaterialSymbols.Computer else MaterialSymbols.Smartphone,
                             isDummy = false,
                             onClick = { onSendToDevice(device) }
                         )
@@ -213,7 +213,7 @@ class ShareTargetActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
             ) {
-                Icon(ImageVector.vectorResource(R.drawable.ic_folder), contentDescription = null)
+                Icon(MaterialSymbols.Folder, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Save to Local DeX Sandbox")
             }

@@ -59,47 +59,62 @@ namespace DeXShareTarget.Services
                     long globalSent = 0;
                     int doneFiles = 0;
 
+                    var semaphore = new SemaphoreSlim(4);
+                    var tasks = new List<Task>();
+
                     foreach (var path in filePaths)
                     {
                         if (ct.IsCancellationRequested) break;
                         if (!File.Exists(path)) continue;
 
+                        await semaphore.WaitAsync(ct);
                         var fi = new FileInfo(path);
-                        string currentFile = fi.Name;
 
-                        progress?.Report(new TransferProgress(globalSent, totalBytes, currentFile, doneFiles, filePaths.Count));
-
-                        await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct);
-
-                        byte[] nameBytes = Encoding.UTF8.GetBytes(currentFile);
-                        byte[] header = new byte[10 + nameBytes.Length];
-                        
-                        long fileSize = fi.Length;
-                        for (int i = 0; i < 8; i++) header[i] = (byte)(fileSize >> (56 - (i * 8)));
-                        
-                        header[8] = (byte)(nameBytes.Length >> 8);
-                        header[9] = (byte)(nameBytes.Length);
-                        
-                        Array.Copy(nameBytes, 0, header, 10, nameBytes.Length);
-
-                        await stream.WriteAsync(header, ct);
-
-                        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan);
-                        byte[] buffer = new byte[81920];
-                        int read;
-                        
-                        while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                        tasks.Add(Task.Run(async () =>
                         {
-                            await stream.WriteAsync(buffer.AsMemory(0, read), ct);
-                            globalSent += read;
-                            progress?.Report(new TransferProgress(globalSent, totalBytes, currentFile, doneFiles, filePaths.Count));
-                        }
-                        
-                        stream.CompleteWrites();
-                        doneFiles++;
+                            try
+                            {
+                                string currentFile = fi.Name;
+                                progress?.Report(new TransferProgress(Interlocked.Read(ref globalSent), totalBytes, currentFile, doneFiles, filePaths.Count));
+
+                                await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct);
+
+                                byte[] nameBytes = Encoding.UTF8.GetBytes(currentFile);
+                                byte[] header = new byte[10 + nameBytes.Length];
+                                
+                                long fileSize = fi.Length;
+                                for (int i = 0; i < 8; i++) header[i] = (byte)(fileSize >> (56 - (i * 8)));
+                                
+                                header[8] = (byte)(nameBytes.Length >> 8);
+                                header[9] = (byte)(nameBytes.Length);
+                                
+                                Array.Copy(nameBytes, 0, header, 10, nameBytes.Length);
+
+                                await stream.WriteAsync(header, ct);
+
+                                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan);
+                                byte[] buffer = new byte[81920];
+                                int read;
+                                
+                                while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                                {
+                                    await stream.WriteAsync(buffer.AsMemory(0, read), ct);
+                                    Interlocked.Add(ref globalSent, read);
+                                    progress?.Report(new TransferProgress(Interlocked.Read(ref globalSent), totalBytes, currentFile, doneFiles, filePaths.Count));
+                                }
+                                
+                                stream.CompleteWrites();
+                                Interlocked.Increment(ref doneFiles);
+                            }
+                            finally
+                            {
+                                semaphore.Release();
+                            }
+                        }, ct));
                     }
                     
-                    progress?.Report(new TransferProgress(globalSent, totalBytes, "Complete", doneFiles, filePaths.Count));
+                    await Task.WhenAll(tasks);
+                    progress?.Report(new TransferProgress(Interlocked.Read(ref globalSent), totalBytes, "Complete", doneFiles, filePaths.Count));
                 }
                 catch (Exception)
                 {

@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.1.1.9] - 2026-08-14
+### Changed
+- **[minor] QUIC P2P Pull**: Added backend support in `WebSocketEndpoints.cs` to trigger `QuicP2PClient.ReceiveAsync` when receiving `quic-p2p-pull` websocket messages.
+- **[patch] UI Text Update**: Added both Phone (`&#xE8EA;`) and PC (`&#xE7F4;`) Segoe Fluent device icons to the static PIN prompt: `"Enter This Pin On Your Phone <icon> or PC <icon>"`.
+
 ## [9.1.1.8] - 2026-08-14
 ### Changed
 - **[patch] Static PIN Prompt**: Completely removed dynamic text swapping ("Waiting for PIN...", "Entering PIN...") and error text ("Incorrect PIN") during pairing. The text is now fully persistent and static: `"Enter This Pin On Your Phone/Pc "` with a Fluent Segoe Device icon (`&#xE8EA;`), matching the user's explicit UX request.

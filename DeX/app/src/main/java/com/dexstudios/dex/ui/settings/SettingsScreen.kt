@@ -22,7 +22,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.BuildConfig
@@ -85,7 +84,7 @@ fun SettingsScreen(
                             SettingsClickableRow(
                                 title = stringResource(R.string.google_sign_in),
                                 subtitle = stringResource(R.string.trust_identity_desc),
-                                icon = ImageVector.vectorResource(R.drawable.ic_account_circle),
+                                icon = MaterialSymbols.AccountCircle,
                                 onClick = {
                                     val activity = context as? android.app.Activity
                                     if (activity != null) {
@@ -132,7 +131,7 @@ fun SettingsScreen(
 
                             SettingsClickableRow(
                                 title = stringResource(R.string.settings_sign_out),
-                                icon = ImageVector.vectorResource(R.drawable.ic_tune_outlined), // Placeholder for Exit
+                                icon = MaterialSymbols.Tune, // Placeholder for Exit
                                 onClick = { deviceConfig.signOut() }
                             )
                         }
@@ -145,7 +144,7 @@ fun SettingsScreen(
                         SettingsClickableRow(
                             title = stringResource(R.string.settings_device_alias),
                             subtitle = alias.ifBlank { com.dexstudios.dex.network.getDeviceName(context) },
-                            icon = ImageVector.vectorResource(R.drawable.ic_smartphone),
+                            icon = MaterialSymbols.Smartphone,
                             onClick = {
                                 tempAlias = alias.ifBlank { com.dexstudios.dex.network.getDeviceName(context) }
                                 showAliasDialog = true
@@ -166,7 +165,7 @@ fun SettingsScreen(
                         SettingsInfoRow(
                             title = stringResource(R.string.settings_device_fingerprint),
                             value = deviceConfig.fingerprint,
-                            icon = ImageVector.vectorResource(R.drawable.ic_smartphone)
+                            icon = MaterialSymbols.Smartphone
                         )
                     }
                 }
@@ -194,7 +193,7 @@ fun SettingsScreen(
                             SettingsClickableRow(
                                 title = "Add Quick Settings Tile",
                                 subtitle = "Quickly toggle Clipboard Sync",
-                                icon = ImageVector.vectorResource(R.drawable.ic_clipboard_sync),
+                                icon = MaterialSymbols.Clipboard,
                                 onClick = {
                                     val sbm = context.getSystemService("statusbar")
                                     try {

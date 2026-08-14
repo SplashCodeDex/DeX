@@ -5,16 +5,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.R
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 @Preview(showBackground = true)
 @Composable
 fun DevicesOutlinedPreview() {
     Image(
-        imageVector = ImageVector.vectorResource(id = R.drawable.ic_devices_outlined),
+        imageVector = MaterialSymbols.Devices,
         contentDescription = null,
         modifier = Modifier.size(300.dp)
     )

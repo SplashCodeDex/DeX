@@ -24,7 +24,6 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
 
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -136,7 +135,7 @@ fun DeviceListItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        imageVector = MaterialSymbols.Devices,
                         contentDescription = null,
                         modifier = Modifier
                             .size(120.dp)

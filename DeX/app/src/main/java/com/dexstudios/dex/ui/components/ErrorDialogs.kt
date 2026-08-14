@@ -34,7 +34,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -456,7 +455,7 @@ private fun OnboardingIdentity(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
-            icon = ImageVector.vectorResource(R.drawable.ic_account_circle),
+            icon = DeXIcons.AccountCircle,
             isGranted = email.isNotBlank()
         )
         Spacer(Modifier.height(24.dp))
@@ -495,7 +494,7 @@ private fun OnboardingIdentity(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(
-                        imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.Google,
+                        imageVector = DeXIcons.Google,
                         contentDescription = null,
                         tint = Color.Unspecified,
                         modifier = Modifier.size(24.dp)
@@ -692,7 +691,7 @@ fun PairingRequestDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                        imageVector = DeXIcons.Devices,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
                         tint = MaterialTheme.colorScheme.primary

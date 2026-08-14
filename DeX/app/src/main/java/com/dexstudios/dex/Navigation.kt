@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,6 +64,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.runtime.mutableStateOf
 import org.koin.compose.koinInject
 import com.dexstudios.dex.network.MessageHandler
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 /** The top-level tab destinations, in navbar order. */
 private val tabs = listOf(Main, History, Settings)
@@ -80,10 +80,10 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
   val mainListState = rememberLazyListState()
   val historyListState = rememberLazyListState()
 
-  val devicesFilled = ImageVector.vectorResource(R.drawable.ic_devices_filled)
-  val devicesOutlined = ImageVector.vectorResource(R.drawable.ic_devices_outlined)
-  val historyFilled = ImageVector.vectorResource(R.drawable.ic_history_filled)
-  val tuneFilled = ImageVector.vectorResource(R.drawable.ic_tune_filled)
+  val devicesFilled = MaterialSymbols.Devices
+  val devicesOutlined = MaterialSymbols.Devices
+  val historyFilled = MaterialSymbols.History
+  val tuneFilled = MaterialSymbols.Tune
 
   val navItems = listOf(
     NavBarItem(

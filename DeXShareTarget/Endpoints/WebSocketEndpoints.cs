@@ -303,6 +303,18 @@ namespace DeXShareTarget.Endpoints
                         DexRequestStore.UpdateProgress(requestId, progressData.Clone());
                     }
                 }
+                else if (type == "quic-p2p-pull" && root.TryGetProperty("data", out var quicData))
+                {
+                    var port = quicData.TryGetProperty("port", out var p) ? p.GetInt32() : 0;
+                    var senderAlias = quicData.TryGetProperty("alias", out var a) ? a.GetString() : "PC";
+                    if (port > 0)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            await QuicP2PClient.ReceiveAsync(clientIp, port, senderAlias ?? "PC");
+                        });
+                    }
+                }
                 else if ((type == "list-shared-folders-reply" || type == "browse-reply" ||
                           type == "pull-reply" || type == "grant-reply") &&
                          root.TryGetProperty("data", out var fileShareReply))

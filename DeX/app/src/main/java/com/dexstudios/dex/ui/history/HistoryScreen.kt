@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -577,7 +576,7 @@ private fun HistoryRow(
                 Icon(imageVector = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
             }
             Icon(
-                imageVector = if (isSent) ImageVector.vectorResource(R.drawable.ic_send) else DeXIcons.ExpandMore,
+                imageVector = if (isSent) DeXIcons.Send else DeXIcons.ExpandMore,
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp).size(10.dp)
@@ -677,7 +676,7 @@ private fun HistoryGridItem(
             }
 
             Icon(
-                imageVector = if (isSent) ImageVector.vectorResource(R.drawable.ic_send) else DeXIcons.ExpandMore,
+                imageVector = if (isSent) DeXIcons.Send else DeXIcons.ExpandMore,
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(12.dp)

@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,6 +30,7 @@ import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.DeXButton
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -107,7 +107,7 @@ fun ScanToAddDeviceCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.ic_qr_code_scanner),
+                                imageVector = MaterialSymbols.QrCodeScanner,
                                 contentDescription = "Scan",
                                 modifier = Modifier.size(56.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -140,7 +140,7 @@ fun ScanToAddDeviceCard(
                             if (hintActive) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = com.dexstudios.dex.ui.icons.MaterialSymbols.CheckCircle,
+                                        imageVector = MaterialSymbols.CheckCircle,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary

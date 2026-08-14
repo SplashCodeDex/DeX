@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -192,7 +191,7 @@ fun FloatingTopAppBar(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.ic_search),
+                                    imageVector = MaterialSymbols.Search,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.7f),
                                     modifier = Modifier.size(20.dp)
@@ -239,7 +238,7 @@ fun FloatingTopAppBar(
                             }
                         } else {
                             Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.ic_search),
+                                imageVector = MaterialSymbols.Search,
                                 contentDescription = "Search",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(32.dp)
@@ -337,7 +336,7 @@ private fun CollapsedProfileContent(profile: GoogleProfile) {
         }
     } else {
         Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_account_circle),
+            imageVector = MaterialSymbols.AccountCircle,
             contentDescription = "Profile",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(32.dp)

@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -24,6 +23,7 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
@@ -113,20 +113,20 @@ fun DeviceContextMenu(
 
                     if (isTrusted) {
                         DeviceContextMenuItem(
-                            icon = ImageVector.vectorResource(R.drawable.ic_send),
+                            icon = MaterialSymbols.Send,
                             label = stringResource(R.string.device_send_file),
                             tint = Color.White,
                             onClick = { onSendFile(); dismiss() }
                         )
                         DeviceContextMenuItem(
-                            icon = ImageVector.vectorResource(R.drawable.ic_tune_outlined),
+                            icon = MaterialSymbols.Tune,
                             label = stringResource(R.string.device_forget),
                             tint = Color(0xFFFF5252), // Material Red A200 for better visibility on dark glass
                             onClick = { onForget(); dismiss() }
                         )
                     } else {
                         DeviceContextMenuItem(
-                            icon = ImageVector.vectorResource(R.drawable.ic_devices_outlined),
+                            icon = MaterialSymbols.Devices,
                             label = stringResource(R.string.device_pair),
                             tint = Color.White,
                             onClick = { onPair(); dismiss() }
@@ -134,7 +134,7 @@ fun DeviceContextMenu(
                     }
 
                     DeviceContextMenuItem(
-                        icon = ImageVector.vectorResource(R.drawable.ic_computer),
+                        icon = MaterialSymbols.Computer,
                         label = stringResource(
                             if (showDetails) R.string.device_details_hide
                             else R.string.device_details
@@ -178,7 +178,7 @@ private fun DeviceContextMenuHeader(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_computer),
+                imageVector = MaterialSymbols.Computer,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
