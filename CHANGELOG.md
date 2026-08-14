@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.3] - 2026-08-14
+### Fixed
+- **[patch] Shake Logic Fix**: Fixed a bug where the PC error shake animation wasn't triggering because the desktop app didn't correctly detect the Android app instantly resetting the digit count from 5 to 0.
+
 ## [9.1.1.2] - 2026-08-14
 ### Added
 - **[minor] Error Shake Animation (Desktop)**: Introduced an iOS-style horizontal shake and red border flash for incorrect PIN entries on the Windows UI, providing instant and unmistakable negative visual feedback before clearing the panel.

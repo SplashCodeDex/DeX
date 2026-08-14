@@ -642,13 +642,41 @@ function Show-PinPanel {
                             }
                         } elseif (-not $isEntered -and $wasEntered) {
                             # Animate out (Backspace: Fade to Transparent)
-                            if ($border.BorderBrush.IsFrozen) {
-                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($secColor)
+                            if ($script:lastDigitCount -eq $script:pinDigitItems.Count -and $dc -eq 0) {
+                                # The phone cleared all inputs instantly after submitting a wrong PIN (5 to 0).
+                                # Flash Red instead of fading out softly.
+                                if ($border.BorderBrush.IsFrozen) {
+                                    $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.Colors]::Red)
+                                } else {
+                                    $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $null) # clear old anim
+                                    $border.BorderBrush.Color = [System.Windows.Media.Colors]::Red
+                                }
+                                $ca = [System.Windows.Media.Animation.ColorAnimation]::new($transColor, [TimeSpan]::FromMilliseconds(400))
+                                $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
+                            } else {
+                                if ($border.BorderBrush.IsFrozen) {
+                                    $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($secColor)
+                                }
+                                $ca = [System.Windows.Media.Animation.ColorAnimation]::new($transColor, [TimeSpan]::FromMilliseconds(150))
+                                $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
                             }
-                            $ca = [System.Windows.Media.Animation.ColorAnimation]::new($transColor, [TimeSpan]::FromMilliseconds(150))
-                            $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
                         }
                     }
+
+                    if ($script:lastDigitCount -eq $script:pinDigitItems.Count -and $dc -eq 0) {
+                        # Trigger shake animation!
+                        $tt = [System.Windows.Media.TranslateTransform]::new()
+                        $ic.RenderTransform = $tt
+                        $da = [System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames]::new()
+                        $da.Duration = [TimeSpan]::FromMilliseconds(400)
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(-10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(50))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(150))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(-10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(250))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(10, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(350))))
+                        $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(0, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(400))))
+                        $tt.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $da)
+                    }
+                    $isErrorReset = ($script:lastDigitCount -eq $script:pinDigitItems.Count -and $dc -eq 0)
                 }
                 $script:lastDigitCount = $dc
 
@@ -660,6 +688,25 @@ function Show-PinPanel {
                         $txtStatus.Text = "Verifying PIN..."
                     } else {
                         $txtStatus.Text = "Waiting for the PIN to be entered on the phone..."
+                    }
+                    
+                    if ($isErrorReset) {
+                        $txtStatus.Text = "Incorrect PIN"
+                        $txtStatus.Foreground = [System.Windows.Media.Brushes]::Red
+                        
+                        $txtTimer = [System.Windows.Threading.DispatcherTimer]::new()
+                        $txtTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+                        $txtTimer.Add_Tick({
+                            $this.Stop()
+                            if ($script:wpfWindow) {
+                                $txt = $script:wpfWindow.FindName("txtPinStatus")
+                                if ($txt -and $txt.Text -eq "Incorrect PIN") {
+                                    $txt.Text = "Waiting for the PIN to be entered on the phone..."
+                                    $txt.Foreground = $script:wpfWindow.FindResource("PrimaryTextBrush")
+                                }
+                            }
+                        })
+                        $txtTimer.Start()
                     }
                 }
             }
