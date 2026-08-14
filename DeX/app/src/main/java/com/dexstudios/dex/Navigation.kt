@@ -118,7 +118,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
     val contentBackdrop = rememberLayerBackdrop()
     val incomingPairRequest by AuthState.incomingPairRequest.collectAsStateWithLifecycle()
 
-    val isDimmed = (TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded ||
+    val isDimmed = (TopAppBarState.isProfileExpanded ||
                     TopAppBarState.isOnboardingVisible || incomingPairRequest != null)
     val globalDimAlpha by animateFloatAsState(
         targetValue = if (isDimmed) 0.75f else 0f,

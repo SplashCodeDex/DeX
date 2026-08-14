@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,7 @@ fun DeviceListItem(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     isTrusted: Boolean = AuthState.pairedFingerprints.contains(device.info.fingerprint),
+    isHighlighted: Boolean = false,
     wallpaper: Any? = null, // Allow passing a custom image source
     onButtonClick: () -> Unit = onClick
 ) {
@@ -98,6 +100,10 @@ fun DeviceListItem(
 
     val cardShape = RoundedCornerShape(48.dp)
 
+    val surfaceColor = if (isHighlighted) Color.White.copy(alpha = 0.95f) else MaterialTheme.colorScheme.surface
+    val onSurfaceColor = if (isHighlighted) Color.Black else MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariantColor = if (isHighlighted) Color.Black.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+
     DeXPanel(
         modifier = modifier
             .bubbleFluidity(targetScale = 0.98f)
@@ -107,7 +113,8 @@ fun DeviceListItem(
                 onLongClick = onLongClick
             ),
         shape = cardShape, // Deep rounded corners as requested
-        shadowRadius = 16.dp
+        shadowRadius = if (isHighlighted) 24.dp else 16.dp,
+        containerColor = surfaceColor
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
             // 1. Wallpaper or Placeholder
@@ -117,7 +124,8 @@ fun DeviceListItem(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .graphicsLayer { alpha = if (isHighlighted) 1f else 0.8f },
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -146,9 +154,9 @@ fun DeviceListItem(
                     .background(
                         Brush.verticalGradient(
                             0f to Color.Transparent,
-                            0.3f to MaterialTheme.colorScheme.surface.copy(alpha = 0.1f),
-                            0.6f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            1f to MaterialTheme.colorScheme.surface
+                            0.3f to surfaceColor.copy(alpha = 0.1f),
+                            0.6f to surfaceColor.copy(alpha = 0.8f),
+                            1f to surfaceColor
                         )
                     )
             )
@@ -169,7 +177,7 @@ fun DeviceListItem(
                         text = device.info.alias,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = onSurfaceColor
                     )
                 }
 
@@ -178,7 +186,7 @@ fun DeviceListItem(
                 Text(
                     text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = onSurfaceVariantColor,
                     lineHeight = 20.sp
                 )
 
@@ -186,12 +194,12 @@ fun DeviceListItem(
 
                 // Tags Row (Updated with Live Telemetry & Pairing Security Scoping)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DeviceIconTag(icon = MaterialSymbols.Wifi)
+                    DeviceIconTag(icon = MaterialSymbols.Wifi, color = onSurfaceVariantColor)
                     if (isTrusted && realBattery != null) {
-                        DeviceIconTag(icon = batteryIcon)
-                        DeviceTag(text = realWifiBand)
-                        DeviceTag(text = "$realBattery%")
-                        DeviceTag(text = "Paired")
+                        DeviceIconTag(icon = batteryIcon, color = onSurfaceVariantColor)
+                        DeviceTag(text = realWifiBand, color = onSurfaceVariantColor)
+                        DeviceTag(text = "$realBattery%", color = onSurfaceVariantColor)
+                        DeviceTag(text = "Paired", color = onSurfaceVariantColor)
                     }
                 }
 
@@ -202,8 +210,8 @@ fun DeviceListItem(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface,
-                        contentColor = MaterialTheme.colorScheme.surface
+                        containerColor = onSurfaceColor,
+                        contentColor = surfaceColor
                     )
                 ) {
                     Text(
@@ -218,11 +226,11 @@ fun DeviceListItem(
 }
 
 @Composable
-private fun DeviceIconTag(icon: ImageVector) {
+private fun DeviceIconTag(icon: ImageVector, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        contentColor = color
     ) {
         Icon(
             imageVector = icon,
@@ -233,11 +241,11 @@ private fun DeviceIconTag(icon: ImageVector) {
 }
 
 @Composable
-private fun DeviceTag(text: String) {
+private fun DeviceTag(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        contentColor = color
     ) {
         Text(
             text = text,

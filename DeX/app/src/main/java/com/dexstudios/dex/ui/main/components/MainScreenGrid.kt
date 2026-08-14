@@ -21,6 +21,7 @@ fun MainScreenGrid(
     consolidatedTrusted: List<DiscoveredDevice>,
     untrustedDevices: List<DiscoveredDevice>,
     search: String,
+    isHighlighted: Boolean = false,
     showHelpHint: Boolean,
     onTrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
     onUntrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
@@ -60,6 +61,7 @@ fun MainScreenGrid(
                 DeviceListItem(
                     device = device,
                     isTrusted = true,
+                    isHighlighted = isHighlighted,
                     onClick = { },
                     onButtonClick = { onTrustedDeviceButtonClick(device) },
                     onLongClick = { onDeviceLongClick(device) },
@@ -73,7 +75,8 @@ fun MainScreenGrid(
                     DummyDeviceCard(
                         alias = "Gaming PC",
                         model = "Custom Build (RTX 4090)",
-                        wallpaper = R.drawable.wallpaper_gaming
+                        wallpaper = R.drawable.wallpaper_gaming,
+                        isHighlighted = isHighlighted
                     )
                 }
             }
@@ -82,7 +85,8 @@ fun MainScreenGrid(
                     DummyDeviceCard(
                         alias = "Home Server",
                         model = "TrueNAS Core",
-                        wallpaper = R.drawable.wallpaper_server
+                        wallpaper = R.drawable.wallpaper_server,
+                        isHighlighted = isHighlighted
                     )
                 }
             }
@@ -91,7 +95,8 @@ fun MainScreenGrid(
                     DummyDeviceCard(
                         alias = "Work Laptop",
                         model = "MacBook Pro M3",
-                        wallpaper = R.drawable.wallpaper_laptop
+                        wallpaper = R.drawable.wallpaper_laptop,
+                        isHighlighted = isHighlighted
                     )
                 }
             }
@@ -128,6 +133,7 @@ fun MainScreenGrid(
                 DeviceListItem(
                     device = device,
                     isTrusted = false,
+                    isHighlighted = isHighlighted,
                     onClick = { },
                     onButtonClick = { onUntrustedDeviceButtonClick(device) },
                     onLongClick = { onDeviceLongClick(device) },

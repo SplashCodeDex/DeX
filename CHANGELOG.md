@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.6] - 2026-08-14
+### Fixed
+- **[patch] UI Text Restoration**: Restored the user's custom "Enter This Pin On Your Phone 📱" placeholder text and `SecondaryTextBrush` color that was accidentally overwritten by generic text during the error-state implementation.
+
 ## [9.1.1.5] - 2026-08-14
 ### Fixed
 - **[patch] Shake Logic Fix**: Fixed a bug where the PC error shake animation would trigger endlessly because the `-1` state wasn't cleared correctly in the polling loop.

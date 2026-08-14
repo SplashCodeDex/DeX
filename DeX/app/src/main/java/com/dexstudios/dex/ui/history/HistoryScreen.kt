@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,6 +78,7 @@ fun HistoryScreen(
     val typeFilter = TopAppBarState.historyTypeFilter
     val sortOrder = TopAppBarState.historySortOrder
     val viewMode = TopAppBarState.historyViewMode
+    val isSearchExpanded = TopAppBarState.isSearchExpanded
 
     val items = remember(allItems, search, dirFilter, typeFilter, sortOrder) {
         allItems.asSequence()
@@ -148,6 +150,20 @@ fun HistoryScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             )
+
+            if (isSearchExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { TopAppBarState.isSearchExpanded = false }
+                        )
+                        .zIndex(1f)
+                )
+            }
 
             // Dynamic Header
             Column(
@@ -345,6 +361,7 @@ fun HistoryScreen(
                                             record = record,
                                             isSelected = isSelected,
                                             isSelectionMode = selectionActive,
+                                            isHighlighted = isSearchExpanded,
                                             onClick = {
                                                 if (selectionActive) {
                                                     selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
@@ -403,6 +420,7 @@ fun HistoryScreen(
                                         record = record,
                                         isSelected = isSelected,
                                         isSelectionMode = selectionActive,
+                                        isHighlighted = isSearchExpanded,
                                         onClick = {
                                             if (selectionActive) {
                                                 selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
@@ -486,6 +504,7 @@ private fun HistoryRow(
     record: TransferRecord,
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
+    isHighlighted: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onThumbnailClick: () -> Unit
@@ -496,11 +515,17 @@ private fun HistoryRow(
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
 
+    val bgAlpha = if (isHighlighted) 0.95f else 0.5f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = bgAlpha)
+            )
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.1f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -575,6 +600,7 @@ private fun HistoryGridItem(
     record: TransferRecord,
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
+    isHighlighted: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -584,11 +610,17 @@ private fun HistoryGridItem(
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
 
+    val bgAlpha = if (isHighlighted) 0.95f else 0.5f
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = bgAlpha)
+            )
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.1f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)

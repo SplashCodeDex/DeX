@@ -652,8 +652,8 @@ function Show-PinPanel {
                         if ($script:wpfWindow) {
                             $txt = $script:wpfWindow.FindName("txtPinStatus")
                             if ($txt -and $txt.Text -eq "Incorrect PIN") {
-                                $txt.Text = "Waiting for the PIN to be entered on the phone..."
-                                $txt.Foreground = $script:wpfWindow.FindResource("PrimaryTextBrush")
+                                $txt.Text = "Enter This Pin On Your Phone 📱"
+                                $txt.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
                             }
                         }
                     })
@@ -712,32 +712,13 @@ function Show-PinPanel {
                 $script:lastDigitCount = $realDc
 
                 $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
-                if ($txtStatus) {
+                if ($txtStatus -and $txtStatus.Text -ne "Incorrect PIN") {
                     if ($dc -gt 0 -and $dc -lt $script:pinDigitItems.Count) {
                         $txtStatus.Text = "Entering PIN on phone ($dc/$($script:pinDigitItems.Count))..."
                     } elseif ($dc -ge $script:pinDigitItems.Count) {
                         $txtStatus.Text = "Verifying PIN..."
                     } else {
-                        $txtStatus.Text = "Waiting for the PIN to be entered on the phone..."
-                    }
-                    
-                    if ($isErrorReset) {
-                        $txtStatus.Text = "Incorrect PIN"
-                        $txtStatus.Foreground = [System.Windows.Media.Brushes]::Red
-                        
-                        $txtTimer = [System.Windows.Threading.DispatcherTimer]::new()
-                        $txtTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
-                        $txtTimer.Add_Tick({
-                            $this.Stop()
-                            if ($script:wpfWindow) {
-                                $txt = $script:wpfWindow.FindName("txtPinStatus")
-                                if ($txt -and $txt.Text -eq "Incorrect PIN") {
-                                    $txt.Text = "Waiting for the PIN to be entered on the phone..."
-                                    $txt.Foreground = $script:wpfWindow.FindResource("PrimaryTextBrush")
-                                }
-                            }
-                        })
-                        $txtTimer.Start()
+                        $txtStatus.Text = "Enter This Pin On Your Phone 📱"
                     }
                 }
             }
