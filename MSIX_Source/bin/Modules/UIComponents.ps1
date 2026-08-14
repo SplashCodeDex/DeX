@@ -604,21 +604,47 @@ function Show-PinPanel {
             # Real-time PIN digit highlight synchronization:
             $dc = if ($st.digitCount) { [int]$st.digitCount } else { 0 }
             if ($script:pinDigitItems -and $dc -ne $script:lastDigitCount) {
-                $script:lastDigitCount = $dc
-                $secBrush = $script:wpfWindow.FindResource("SecondaryBrush")
-                $newDigits = [System.Collections.ArrayList]::new()
-                for ($i = 0; $i -lt $script:pinDigitItems.Count; $i++) {
-                    $item = $script:pinDigitItems[$i]
-                    $isEntered = ($i -lt $dc)
-                    $null = $newDigits.Add([PSCustomObject]@{
-                        Digit = $item.Digit
-                        BorderBrush = if ($isEntered) { $secBrush } else { [System.Windows.Media.Brushes]::Transparent }
-                        BorderThickness = [System.Windows.Thickness]::new(2)
-                    })
-                }
-                $script:pinDigitItems = $newDigits
                 $ic = $script:wpfWindow.FindName("icPinDigits")
-                if ($ic) { $ic.ItemsSource = $script:pinDigitItems }
+                if ($ic) {
+                    $secBrush = $script:wpfWindow.FindResource("SecondaryBrush")
+                    $secColor = $secBrush.Color
+                    $transColor = [System.Windows.Media.Colors]::Transparent
+
+                    for ($i = 0; $i -lt $script:pinDigitItems.Count; $i++) {
+                        $cp = $ic.ItemContainerGenerator.ContainerFromIndex($i)
+                        if (-not $cp) { continue }
+                        $border = [System.Windows.Media.VisualTreeHelper]::GetChild($cp, 0)
+                        if (-not $border -or $border.GetType().Name -ne 'Border') { continue }
+
+                        $isEntered = ($i -lt $dc)
+                        $wasEntered = ($i -lt $script:lastDigitCount)
+
+                        if ($isEntered -and -not $wasEntered) {
+                            # Animate in (Fade to Green + Pop scale)
+                            if ($border.BorderBrush.IsFrozen -or $border.BorderBrush.Color -eq $transColor) {
+                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($transColor)
+                            }
+                            $ca = [System.Windows.Media.Animation.ColorAnimation]::new($secColor, [TimeSpan]::FromMilliseconds(150))
+                            $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
+
+                            $scaleTransform = $border.RenderTransform
+                            if ($scaleTransform -is [System.Windows.Media.ScaleTransform]) {
+                                $daPop = [System.Windows.Media.Animation.DoubleAnimation]::new(1.15, [TimeSpan]::FromMilliseconds(100))
+                                $daPop.AutoReverse = $true
+                                $scaleTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleXProperty, $daPop)
+                                $scaleTransform.BeginAnimation([System.Windows.Media.ScaleTransform]::ScaleYProperty, $daPop)
+                            }
+                        } elseif (-not $isEntered -and $wasEntered) {
+                            # Animate out (Backspace: Fade to Transparent)
+                            if ($border.BorderBrush.IsFrozen) {
+                                $border.BorderBrush = [System.Windows.Media.SolidColorBrush]::new($secColor)
+                            }
+                            $ca = [System.Windows.Media.Animation.ColorAnimation]::new($transColor, [TimeSpan]::FromMilliseconds(150))
+                            $border.BorderBrush.BeginAnimation([System.Windows.Media.SolidColorBrush]::ColorProperty, $ca)
+                        }
+                    }
+                }
+                $script:lastDigitCount = $dc
 
                 $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
                 if ($txtStatus) {

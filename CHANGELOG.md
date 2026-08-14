@@ -1,5 +1,11 @@
 # Changelog
 
+## [9.1.1.0] - 2026-08-14
+### Changed
+- **[patch] Smooth PIN Digit Animations**:
+  - Replaced instant border color swapping with hardware-accelerated WPF `ColorAnimation` and `DoubleAnimation` scale pop (`1.15x`).
+  - Optimized the polling loop to manipulate existing `Border` UI elements via `ItemContainerGenerator` instead of destroying and rebuilding the `ItemsSource` array, enabling slick, un-interrupted enter and backspace transitions.
+
 ## [9.1.0.0] - 2026-08-14
 ### Added
 - **[minor] Real-Time Interactive PIN Digit Sync & Shimmer (Desktop + Mobile)**:

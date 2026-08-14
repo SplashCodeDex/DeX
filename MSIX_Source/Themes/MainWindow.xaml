@@ -1007,9 +1007,13 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Background="{DynamicResource AccentBrush}"
-                                                    BorderBrush="{Binding BorderBrush}"
-                                                    BorderThickness="{Binding BorderThickness}"
-                                                    CornerRadius="8" MinWidth="44" MinHeight="56" Margin="4,0" Padding="8,4">
+                                                    BorderBrush="Transparent"
+                                                    BorderThickness="2"
+                                                    CornerRadius="8" MinWidth="44" MinHeight="56" Margin="4,0" Padding="8,4"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                <Border.RenderTransform>
+                                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                                </Border.RenderTransform>
                                                 <TextBlock Text="{Binding Digit}" FontSize="32" FontFamily="Segoe UI" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                         </DataTemplate>
