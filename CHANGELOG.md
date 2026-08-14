@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1.8] - 2026-08-14
+### Changed
+- **[patch] Static PIN Prompt**: Completely removed dynamic text swapping ("Waiting for PIN...", "Entering PIN...") and error text ("Incorrect PIN") during pairing. The text is now fully persistent and static: `"Enter This Pin On Your Phone/Pc "` with a Fluent Segoe Device icon (`&#xE8EA;`), matching the user's explicit UX request.
+
 ## [9.1.1.7] - 2026-08-14
 ### Fixed
 - **[patch] PowerShell Emoji Parse Error**: Fixed a fatal launch crash in PowerShell 5.1 caused by a raw UTF-8 emoji (`📱`) breaking the AST parser. Replaced it with the `[char]::ConvertFromUtf32(0x1F4F1)` runtime equivalent.

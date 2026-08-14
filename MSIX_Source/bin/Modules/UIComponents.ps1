@@ -518,8 +518,14 @@ function Show-PinPanel {
     }
 
     $txtStatus = $w.FindName("txtPinStatus")
-    $txtStatus.Text = $Status
-    $txtStatus.Foreground = $w.FindResource("PrimaryTextBrush")
+    $txtStatus.Inlines.Clear()
+    $txtStatus.Inlines.Add([System.Windows.Documents.Run]::new("Enter This Pin On Your Phone/Pc "))
+    
+    $iconRun = [System.Windows.Documents.Run]::new([char]0xE8EA)
+    $iconRun.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe Fluent Icons, Segoe MDL2 Assets")
+    $txtStatus.Inlines.Add($iconRun)
+    
+    $txtStatus.Foreground = $w.FindResource("SecondaryTextBrush")
     Set-PinContentView -ShowQr:$false
     if ($HideAcceptButtons) {
         $w.FindName("btnPinAccept").Visibility = 'Collapsed'
@@ -639,26 +645,6 @@ function Show-PinPanel {
                     $null = $da.KeyFrames.Add([System.Windows.Media.Animation.LinearDoubleKeyFrame]::new(0, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(400))))
                     $tt.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $da)
                 }
-                
-                $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
-                if ($txtStatus) {
-                    $txtStatus.Text = "Incorrect PIN"
-                    $txtStatus.Foreground = [System.Windows.Media.Brushes]::Red
-                    
-                    $txtTimer = [System.Windows.Threading.DispatcherTimer]::new()
-                    $txtTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
-                    $txtTimer.Add_Tick({
-                        $this.Stop()
-                        if ($script:wpfWindow) {
-                            $txt = $script:wpfWindow.FindName("txtPinStatus")
-                            if ($txt -and $txt.Text -eq "Incorrect PIN") {
-                                $txt.Text = "Enter This Pin On Your Phone " + [char]::ConvertFromUtf32(0x1F4F1)
-                                $txt.Foreground = $script:wpfWindow.FindResource("SecondaryTextBrush")
-                            }
-                        }
-                    })
-                    $txtTimer.Start()
-                }
             } elseif ($dc -eq -1) {
                 # Already shook. Keep the UI logic seeing 0.
                 $dc = 0
@@ -710,17 +696,6 @@ function Show-PinPanel {
 
                 }
                 $script:lastDigitCount = $realDc
-
-                $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
-                if ($txtStatus -and $txtStatus.Text -ne "Incorrect PIN") {
-                    if ($dc -gt 0 -and $dc -lt $script:pinDigitItems.Count) {
-                        $txtStatus.Text = "Entering PIN on phone ($dc/$($script:pinDigitItems.Count))..."
-                    } elseif ($dc -ge $script:pinDigitItems.Count) {
-                        $txtStatus.Text = "Verifying PIN..."
-                    } else {
-                        $txtStatus.Text = "Enter This Pin On Your Phone " + [char]::ConvertFromUtf32(0x1F4F1)
-                    }
-                }
             }
 
             if ($st.status -eq 'Accepted' -or $st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
@@ -728,11 +703,6 @@ function Show-PinPanel {
                 
                 if ($st.status -eq 'Rejected' -or $st.status -eq 'Failed') {
                     # Trigger error shake animation!
-                    $txtStatus = $script:wpfWindow.FindName("txtPinStatus")
-                    if ($txtStatus) {
-                        $txtStatus.Text = if ($st.status -eq 'Rejected') { "Incorrect PIN" } else { "Pairing Failed" }
-                        $txtStatus.Foreground = [System.Windows.Media.Brushes]::Red
-                    }
 
                     $ic = $script:wpfWindow.FindName("icPinDigits")
                     if ($ic) {
