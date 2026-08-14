@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.2.0] - 2026-08-14
+### Fixed
+- **[patch] UI Device Sorting**: Fixed an issue where newly paired devices did not appear at the top of the "My Devices" list (or did not visibly move). `Connect-Engine.ps1` now explicitly sorts discovered devices by their `lastSeen` timestamp descending before building the device lists so that actively pairing devices immediately jump to the top.
+
 ## [9.1.1.9] - 2026-08-14
 ### Changed
 - **[minor] QUIC P2P Pull**: Added backend support in `WebSocketEndpoints.cs` to trigger `QuicP2PClient.ReceiveAsync` when receiving `quic-p2p-pull` websocket messages.

@@ -511,7 +511,7 @@ $mdnsTimer.Add_Tick({
                     $icUdp = $script:wpfWindow.FindName("icUdpPeers")
                     if ($icUdp) {
                         $liveUdp = @()
-                        foreach ($p in $udpRes) {
+                        foreach ($p in ($udpRes | Sort-Object -Property lastSeen -Descending)) {
                             $dt = [datetimeOffset]::FromUnixTimeMilliseconds($p.lastSeen).UtcDateTime
                             # Show devices that announced within the freshness window OR are
                             # WebSocket-online. The server deliberately keeps WS-connected
