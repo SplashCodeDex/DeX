@@ -10,8 +10,8 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="AppStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-        <!-- Shared card shadow: a resource so the engine can suspend/re-apply it during resize transitions. -->
-        <DropShadowEffect x:Key="MainShadow" BlurRadius="14" ShadowDepth="8" Direction="270" Color="Black" Opacity="0.5" />
+        <!-- Shared card shadow disabled for solid non-glass appearance -->
+        <DropShadowEffect x:Key="MainShadow" BlurRadius="0" ShadowDepth="0" Direction="270" Color="Black" Opacity="0" />
         <ContextMenu x:Key="TransferContextMenu">
             <MenuItem Header="Open" Name="CtxOpen" />
             <MenuItem Header="Open Containing Folder" Name="CtxOpenFolder" />

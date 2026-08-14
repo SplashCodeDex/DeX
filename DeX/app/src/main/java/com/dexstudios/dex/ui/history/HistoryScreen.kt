@@ -4,8 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -36,7 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.TransferHistory
 import com.dexstudios.dex.network.TransferRecord
@@ -99,6 +103,7 @@ fun HistoryScreen(
     var selectedIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     val selectionActive = selectedIds.isNotEmpty()
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
+    var lightboxRecord by remember { mutableStateOf<TransferRecord?>(null) }
 
     LaunchedEffect(Unit) {
         TransferHistory.refresh(context)
@@ -326,11 +331,14 @@ fun HistoryScreen(
                                             if (selectionActive) {
                                                 selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
                                             } else {
-                                                openRecord(context, record)
+                                                openRecord(context, record, onShowLightbox = { lightboxRecord = record })
                                             }
                                         },
                                         onLongClick = {
                                             if (!selectionActive) selectedIds = setOf(record.id) else showItemMenu = true
+                                        },
+                                        onThumbnailClick = {
+                                            lightboxRecord = record
                                         }
                                     )
                                 }
@@ -392,6 +400,14 @@ fun HistoryScreen(
                 }
             )
         }
+
+        lightboxRecord?.let {
+            HistoryLightbox(
+                record = it,
+                onDismiss = { lightboxRecord = null },
+                backdrop = contentBackdrop
+            )
+        }
     }
 }
 
@@ -414,7 +430,8 @@ private fun HistoryRow(
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onThumbnailClick: () -> Unit
 ) {
     val isSent = record.direction == "sent"
     val fileIcon = remember(record.name) { getFileIcon(record.name) }
@@ -442,11 +459,31 @@ private fun HistoryRow(
             )
         }
         Box(
-            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.12f) else if (isSent) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.12f) else if (isSent) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f))
+                .clickable(enabled = hasThumbnail, onClick = onThumbnailClick),
             contentAlignment = Alignment.Center
         ) {
             if (hasThumbnail) {
-                AsyncImage(model = record.uri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(record.uri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp).align(Alignment.Center), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        }
+                    },
+                    error = {
+                        Icon(imageVector = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                    }
+                )
                 if (isFailed) {
                     Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
                 }
@@ -479,23 +516,19 @@ private fun HistoryRow(
 private fun seedDemoHistory(context: Context) {
     val now = System.currentTimeMillis()
     val day = 24 * 60 * 60 * 1000L
+    val pkg = context.packageName
+    fun resUri(resId: Int) = "android.resource://$pkg/$resId"
 
-    // TODAY
-    TransferHistory.log(context, "vacation_photo.jpg", 2500000L, "received", peerDevice = "Nico's iPhone", timestamp = now)
-    TransferHistory.log(context, "presentation_draft.pdf", 4200000L, "sent", peerDevice = "Work Laptop", timestamp = now - 1000 * 60 * 30)
-    TransferHistory.log(context, "screen_recording.mp4", 15000000L, "received", peerDevice = "Pixel 8 Pro", status = "failed", timestamp = now - 1000 * 60 * 60)
+    // USER PROVIDED FILES
+    TransferHistory.log(context, "Screenshot 2026-07-24 181156.png", 1250000L, "received", uri = resUri(R.drawable.wallpaper_gaming), peerDevice = "Nico's PC", timestamp = now)
+    TransferHistory.log(context, "IMG-20260521-WA4440001.jpg", 3450000L, "sent", uri = resUri(R.drawable.wallpaper_laptop), peerDevice = "Pixel 8 Pro", timestamp = now - 1000 * 60 * 5)
+    TransferHistory.log(context, "MoveCertificate-v1.5.7.zip", 870000L, "received", peerDevice = "Nico's PC", timestamp = now - 1000 * 60 * 15)
+    TransferHistory.log(context, "My Passport Doc.pdf", 2100000L, "sent", peerDevice = "Work Laptop", timestamp = now - 1000 * 60 * 45)
 
-    // YESTERDAY
-    TransferHistory.log(context, "Dex_v1.2_alpha.apk", 85000000L, "sent", peerDevice = "Testing Tablet", timestamp = now - day)
-    TransferHistory.log(context, "setup_guide.docx", 120000L, "received", peerDevice = "MacBook Pro", timestamp = now - day - 1000 * 60 * 120)
-
-    // THIS WEEK
-    TransferHistory.log(context, "meeting_notes.txt", 1500L, "sent", peerDevice = "Nico's PC", timestamp = now - 3 * day)
-    TransferHistory.log(context, "profile_pic.png", 800000L, "received", peerDevice = "Pixel 8 Pro", status = "cancelled", timestamp = now - 5 * day)
-
-    // OLDER
+    // OTHER DEMO DATA
+    TransferHistory.log(context, "vacation_photo.jpg", 2500000L, "received", uri = resUri(R.drawable.wallpaper_server), peerDevice = "Nico's iPhone", timestamp = now - day)
+    TransferHistory.log(context, "Dex_v1.2_alpha.apk", 85000000L, "sent", peerDevice = "Testing Tablet", timestamp = now - day - 1000 * 60 * 120)
     TransferHistory.log(context, "archive_2025.zip", 520000000L, "sent", peerDevice = "Home Server", timestamp = now - 15 * day)
-    TransferHistory.log(context, "family_video.mov", 1200000000L, "received", peerDevice = "Mom's iPad", timestamp = now - 45 * day)
 }
 
 private fun formatSize(bytes: Long): String {
@@ -520,25 +553,45 @@ private fun formatDate(timestamp: Long): String {
 private fun openFolderOf(context: Context, fileUri: Uri) {
     try {
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(fileUri, "resource/folder")
+            // For SAF URIs, try to open the directory.
+            // Note: This works best with file manager apps that support the directory MIME type.
+            setDataAndType(fileUri, "vnd.android.document/directory")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Open Folder"))
     } catch (e: Exception) {
-        Toast.makeText(context, "Could not open folder", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "No app found to open folders", Toast.LENGTH_SHORT).show()
     }
 }
 
-private fun openRecord(context: Context, record: TransferRecord) {
-    val uri = record.uri
-    if (uri == null) {
+private fun openRecord(context: Context, record: TransferRecord, onShowLightbox: () -> Unit) {
+    val uriStr = record.uri
+    if (uriStr == null) {
         Toast.makeText(context, context.getString(R.string.history_no_source), Toast.LENGTH_SHORT).show()
         return
     }
+
+    val uri = uriStr.toUri()
+
+    // Handle Demo/Dummy files (android.resource://)
+    if (uri.scheme == "android.resource") {
+        val type = getHistoryType(record.name)
+        if (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) {
+            onShowLightbox()
+        } else {
+            Toast.makeText(context, "This is a demo file and cannot be opened externally.", Toast.LENGTH_SHORT).show()
+        }
+        return
+    }
+
     try {
-        val mimeType = runCatching { context.contentResolver.getType(uri.toUri()) }.getOrNull() ?: "application/octet-stream"
+        val mimeType = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+            ?: context.contentResolver.getType(uri) // Retry if first failed
+            ?: "application/octet-stream"
+
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri.toUri(), mimeType); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(intent)
     } catch (e: Exception) {
@@ -577,4 +630,65 @@ private fun getDateGroupLabel(timestamp: Long): String {
     val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
     if (time.after(weekAgo)) return "This Week"
     return "Older"
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HistoryRowPreview() {
+    MaterialTheme {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HistoryRow(
+                record = TransferRecord(
+                    id = "1",
+                    name = "Screenshot 2026-07-24 181156.png",
+                    size = 1250000L,
+                    timestamp = System.currentTimeMillis(),
+                    direction = "received",
+                    peerDevice = "Nico's PC"
+                ),
+                onClick = {},
+                onLongClick = {},
+                onThumbnailClick = {}
+            )
+            HistoryRow(
+                record = TransferRecord(
+                    id = "2",
+                    name = "IMG-20260521-WA4440001.jpg",
+                    size = 3450000L,
+                    timestamp = System.currentTimeMillis() - 1000 * 60 * 5,
+                    direction = "sent",
+                    peerDevice = "Pixel 8 Pro"
+                ),
+                onClick = {},
+                onLongClick = {},
+                onThumbnailClick = {}
+            )
+            HistoryRow(
+                record = TransferRecord(
+                    id = "3",
+                    name = "MoveCertificate-v1.5.7.zip",
+                    size = 870000L,
+                    timestamp = System.currentTimeMillis() - 1000 * 60 * 15,
+                    direction = "received",
+                    peerDevice = "Nico's PC"
+                ),
+                onClick = {},
+                onLongClick = {},
+                onThumbnailClick = {}
+            )
+            HistoryRow(
+                record = TransferRecord(
+                    id = "3",
+                    name = "My Passport Doc.pdf",
+                    size = 2100000L,
+                    timestamp = System.currentTimeMillis() - 1000 * 60 * 45,
+                    direction = "sent",
+                    peerDevice = "Work Laptop"
+                ),
+                onClick = {},
+                onLongClick = {},
+                onThumbnailClick = {}
+            )
+        }
+    }
 }

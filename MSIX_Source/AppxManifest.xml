@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2" IgnorableNamespaces="uap uap3 rescap desktop desktop2">
-  <Identity Name="CodeDeX.DeX" Publisher="CN=CodeDeX" Version="8.8.5.0" ProcessorArchitecture="x64" />
+  <Identity Name="CodeDeX.DeX" Publisher="CN=CodeDeX" Version="9.0.0.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>DeX - Next Gen Local Send</DisplayName>
     <PublisherDisplayName>CodeDeX</PublisherDisplayName>
@@ -43,14 +43,7 @@
         <desktop2:Rule Direction="out" IPProtocol="TCP" Profile="all" />
       </desktop2:FirewallRules>
     </desktop2:Extension>
-    <desktop2:Extension Category="windows.firewallRules">
-      <desktop2:FirewallRules Executable="bin\thru.exe">
-        <desktop2:Rule Direction="in" IPProtocol="UDP" Profile="all" />
-        <desktop2:Rule Direction="in" IPProtocol="TCP" Profile="all" />
-        <desktop2:Rule Direction="out" IPProtocol="UDP" Profile="all" />
-        <desktop2:Rule Direction="out" IPProtocol="TCP" Profile="all" />
-      </desktop2:FirewallRules>
-    </desktop2:Extension>
+
     <desktop2:Extension Category="windows.firewallRules">
       <desktop2:FirewallRules Executable="DeXShareTarget.exe">
         <desktop2:Rule Direction="in" IPProtocol="UDP" Profile="all" />

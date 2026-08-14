@@ -113,13 +113,21 @@ namespace DeXShareTarget
                 var wifiDevice = await GetLocalSendDeviceAsync();
                 if (wifiDevice != null)
                 {
-                    await PerformLocalSendTransferAsync(wifiDevice);
+                    if (string.Equals(wifiDevice.Info.DeviceType, "desktop", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // PC-to-PC: use QUIC P2P Service
+                        await PerformNativeQuicP2PHostAsync(wifiDevice);
+                    }
+                    else
+                    {
+                        // PC-to-Android
+                        await PerformLocalSendTransferAsync(wifiDevice);
+                    }
                     return;
                 }
 
-
-                // Fallback to QUIC PC-to-PC (Internet / NAT Hole Punching)
-                await PerformThrufluxHostAsync();
+                txtStatus.Text = "Error: No target PC or device discovered.";
+                await Task.Delay(3000);
             }
             catch (Exception ex)
             {
@@ -143,6 +151,56 @@ namespace DeXShareTarget
         {
             foreach (var file in Directory.GetFiles(dir)) acc.Add((file, prefix + Path.GetFileName(file)));
             foreach (var sub in Directory.GetDirectories(dir)) Collect(sub, prefix + Path.GetFileName(sub) + "/", acc);
+        }
+
+        private async Task PerformNativeQuicP2PHostAsync(DiscoveredDevice targetDevice)
+        {
+            txtStatus.Text = $"Starting QUIC P2P Host for {targetDevice.Info.Alias}...";
+            var cert = LocalSendServer.ServerCert;
+            if (cert == null) { txtStatus.Text = "Error: Server certificate not available."; await Task.Delay(3000); return; }
+
+            var cts = new CancellationTokenSource();
+            var progress = new Progress<TransferProgress>(p => Dispatcher.Invoke(() =>
+            {
+                var pct = p.TotalBytes > 0 ? (double)p.BytesSent / p.TotalBytes : 0;
+                txtStatus.Text = $"Sending: {p.CurrentFile} ({p.DoneFiles}/{p.TotalFiles})";
+                txtSpeed.Text = $"{p.BytesSent / 1048576.0:F1} / {p.TotalBytes / 1048576.0:F1} MB — {pct:P0}";
+                var parent = (Border)progressIndicator.Parent;
+                progressIndicator.Width = parent.ActualWidth * pct;
+                TaskbarItemInfo.ProgressValue = pct;
+            }));
+
+            var pairs = FlattenFiles(files);
+            var filePaths = pairs.Select(p => p.Path).ToList();
+
+            var (port, waitForCompletion) = await QuicP2PService.HostAsync(filePaths, cert, progress, cts.Token);
+            
+            // Push connection info to target device via WebSocket
+            var json = JsonSerializer.Serialize(new { type = "quic-p2p-pull", data = new { port = port, alias = Environment.MachineName } },
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                
+            bool pushed = await DeXShareTarget.Services.WebSocketConnectionManager.SendAsync(targetDevice.Info.Fingerprint, json, requireVerified: true);
+
+            if (!pushed)
+            {
+                txtStatus.Text = "Error: Target PC not paired or disconnected.";
+                cts.Cancel();
+                await Task.Delay(3000);
+                return;
+            }
+
+            txtStatus.Text = $"Waiting for {targetDevice.Info.Alias} to connect...";
+            await waitForCompletion();
+            
+            var parentFinal = (Border)progressIndicator.Parent;
+            var animFinal = new System.Windows.Media.Animation.DoubleAnimation {
+                To = parentFinal.ActualWidth,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            progressIndicator.BeginAnimation(Border.WidthProperty, animFinal);
+            TaskbarItemInfo.ProgressValue = 1.0;
+            await Task.Delay(3000);
         }
 
         private async Task PerformLocalSendTransferAsync(DiscoveredDevice device)
@@ -186,82 +244,7 @@ namespace DeXShareTarget
             // Hosted-file cleanup (sliding 5-minute TTL) is owned by RelayService.HostAndPushAsync
         }
 
-        private async Task PerformThrufluxHostAsync()
-        {
-            txtStatus.Text = "Starting QUIC P2P Host...";
-            
-            string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-            string thruPath = Path.Combine(exeDir, "bin", "thru.exe");
-            
-            if (!File.Exists(thruPath))
-            {
-                txtStatus.Text = "QUIC engine (thru.exe) not found.";
-                await Task.Delay(3000);
-                return;
-            }
-            
-            string args = "host ";
-            foreach(var f in files) {
-                args += $"\"{f}\" ";
-            }
-            
-            var proc = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = thruPath,
-                    Arguments = args,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-            
-            proc.Start();
-            
-            string joinCode = "";
-            
-            _ = Task.Run(() => 
-            {
-                while (!proc.StandardOutput.EndOfStream)
-                {
-                    string? line = proc.StandardOutput.ReadLine();
-                    if (line != null && line.Contains("thru join"))
-                    {
-                        int idx = line.IndexOf("thru join");
-                        joinCode = line.Substring(idx + 10).Trim();
-                        Dispatcher.Invoke(() => {
-                            txtStatus.Text = $"QUIC Code: {joinCode} (Waiting...)";
-                            Clipboard.SetText(joinCode);
-                        });
-                    }
-                    if (line != null && line.Contains("Transfer complete")) 
-                    {
-                        Dispatcher.Invoke(() => txtStatus.Text = "QUIC Transfer Complete!");
-                    }
-                }
-            });
-            
-            await Task.Run(() => proc.WaitForExit());
-            
-            if (txtStatus.Text.Contains("Waiting")) {
-                txtStatus.Text = "QUIC Session Closed.";
-            } else {
-                txtStatus.Text = "QUIC Transfer Complete!";
-            }
-            
-            var parentFinal = (Border)progressIndicator.Parent;
-            var animFinal = new System.Windows.Media.Animation.DoubleAnimation {
-                To = parentFinal.ActualWidth,
-                Duration = TimeSpan.FromMilliseconds(250),
-                EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
-            };
-            progressIndicator.BeginAnimation(Border.WidthProperty, animFinal);
-            
-            TaskbarItemInfo.ProgressValue = 1.0;
-            await Task.Delay(3000);
-        }
+
 
         private async Task<DiscoveredDevice?> GetLocalSendDeviceAsync()
         {

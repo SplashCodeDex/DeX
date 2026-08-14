@@ -15,9 +15,9 @@
     <SolidColorBrush x:Key="SecondaryForegroundBrush" Color="#000000" />
     <SolidColorBrush x:Key="DangerBrush" Color="#FF3B30" />
     
-    <!-- Item Highlights (Selected & Hover) -->
-    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#1F5E5CE6" />
-    <SolidColorBrush x:Key="SecondarySelectedBrush" Color="#3D5E5CE6" />
-    <SolidColorBrush x:Key="SecondarySelectedHoverBrush" Color="#545E5CE6" />
-    <SolidColorBrush x:Key="SecondarySelectedBorderBrush" Color="#805E5CE6" />
+    <!-- Item Highlights (Selected & Hover) - 100% Solid Colors -->
+    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#E5E5EA" />
+    <SolidColorBrush x:Key="SecondarySelectedBrush" Color="#D1D1D6" />
+    <SolidColorBrush x:Key="SecondarySelectedHoverBrush" Color="#C7C7CC" />
+    <SolidColorBrush x:Key="SecondarySelectedBorderBrush" Color="#0AE66D" />
 </ResourceDictionary>

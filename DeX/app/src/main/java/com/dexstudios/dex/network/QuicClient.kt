@@ -104,17 +104,17 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         }
 
         val provider = object : UploadDataProvider() {
+            private val chunk = ByteArray(65536)
             override fun getLength(): Long = fileSize
 
             override fun read(sink: UploadDataSink, buffer: ByteBuffer) {
-                val toRead = minOf(buffer.remaining().toLong(), fileSize - sentBytes).toInt()
+                val toRead = minOf(buffer.remaining().toLong(), fileSize - sentBytes, chunk.size.toLong()).toInt()
                 if (toRead <= 0) {
                     sink.onReadSucceeded(false)
                     return
                 }
-                val chunk = ByteArray(toRead)
                 val read = try {
-                    stream.read(chunk)
+                    stream.read(chunk, 0, toRead)
                 } catch (e: Exception) {
                     sink.onReadError(e)
                     return
@@ -150,14 +150,14 @@ class QuicClient(private val context: Context) : java.io.Closeable {
             }
 
             override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
-                lastUploadProtocol = info.negotiatedProtocol ?: ""
+                lastUploadProtocol = info.negotiatedProtocol
                 val ok = info.httpStatusCode in 200..299
                 if (!ok) Timber.w("QUIC upload failed with HTTP ${info.httpStatusCode}")
                 report(ok, info.httpStatusCode)
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo, error: CronetException) {
-                lastUploadProtocol = info.negotiatedProtocol ?: ""
+                lastUploadProtocol = info.negotiatedProtocol
                 Timber.e(error, "QUIC upload failed")
                 report(false, -1)
             }
@@ -192,7 +192,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         port: Int,
         fileId: String,
         token: String?,
-        output: OutputStream,
+        output: java.nio.channels.WritableByteChannel,
         onProgress: (bytesReceived: Long) -> Unit = {},
         onResult: (Boolean, Int, String) -> Unit
     ): UrlRequest? {
@@ -202,7 +202,6 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         var receivedBytes = 0L
         var reported = false
         val buffer = ByteBuffer.allocateDirect(16384)
-        var chunkBuf = ByteArray(16384)
 
         fun report(ok: Boolean, status: Int, protocol: String) {
             if (!reported) {
@@ -218,7 +217,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
 
             override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
                 if (info.httpStatusCode !in 200..299) {
-                    report(false, info.httpStatusCode, info.negotiatedProtocol ?: "")
+                    report(false, info.httpStatusCode, info.negotiatedProtocol)
                     request.cancel()
                     return
                 }
@@ -229,9 +228,9 @@ class QuicClient(private val context: Context) : java.io.Closeable {
                 byteBuffer.flip()
                 try {
                     val n = byteBuffer.remaining()
-                    if (chunkBuf.size < n) chunkBuf = ByteArray(n)
-                    byteBuffer.get(chunkBuf, 0, n)
-                    output.write(chunkBuf, 0, n)
+                    while (byteBuffer.hasRemaining()) {
+                        output.write(byteBuffer)
+                    }
                     receivedBytes += n
                     onProgress(receivedBytes)
                 } catch (e: Exception) {
@@ -244,12 +243,12 @@ class QuicClient(private val context: Context) : java.io.Closeable {
             }
 
             override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
-                report(true, info.httpStatusCode, info.negotiatedProtocol ?: "")
+                report(true, info.httpStatusCode, info.negotiatedProtocol)
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo, error: CronetException) {
                 Timber.e(error, "QUIC download failed")
-                report(false, -1, info.negotiatedProtocol ?: "")
+                report(false, -1, info.negotiatedProtocol)
             }
 
             override fun onCanceled(request: UrlRequest, info: UrlResponseInfo) {

@@ -219,9 +219,11 @@ class BatchDownloadWorker(
         }
         createdDocs.add(docUri)
 
-        val out = context.contentResolver.openOutputStream(docUri)
-        if (out != null) {
-            out.use { o ->
+        val pfd = context.contentResolver.openFileDescriptor(docUri, "w")
+        if (pfd != null) {
+            pfd.use { descriptor ->
+                val fos = java.io.FileOutputStream(descriptor.fileDescriptor)
+                val channel = fos.channel
                 val perFileReceived = AtomicLong(0L)
                 val onBytes: suspend (Long) -> Unit = { bytes ->
                     val delta = bytes - perFileReceived.getAndSet(bytes)
@@ -229,9 +231,9 @@ class BatchDownloadWorker(
                 }
 
                 val result = if (client.quicAvailable()) {
-                    quicDownload(ip, httpsPort, file, o, onBytes)
+                    quicDownload(ip, httpsPort, file, channel, onBytes)
                 } else {
-                    tcpDownload(ip, tcpPort, file, o, onBytes)
+                    tcpDownload(ip, tcpPort, file, channel, onBytes)
                 }
 
                 if (result.ok) {
@@ -251,7 +253,7 @@ class BatchDownloadWorker(
         ip: String,
         httpsPort: Int,
         file: PullFileDto,
-        out: java.io.OutputStream,
+        out: java.nio.channels.WritableByteChannel,
         onBytes: suspend (Long) -> Unit
     ): DownloadResult {
         val result = client.downloadFileQuic(
@@ -282,7 +284,7 @@ class BatchDownloadWorker(
         ip: String,
         port: Int,
         file: PullFileDto,
-        out: java.io.OutputStream,
+        out: java.nio.channels.WritableByteChannel,
         onBytes: suspend (Long) -> Unit
     ): DownloadResult = withContext(Dispatchers.IO) {
         var downloaded = 0L
@@ -308,9 +310,9 @@ class BatchDownloadWorker(
                 ioBuffer.flip()
                 downloaded += ioBuffer.remaining()
 
-                val bytes = ByteArray(ioBuffer.remaining())
-                ioBuffer.get(bytes)
-                out.write(bytes)
+                while (ioBuffer.hasRemaining()) {
+                    out.write(ioBuffer)
+                }
                 ioBuffer.clear()
 
                 onBytes(downloaded)

@@ -1,5 +1,6 @@
 package com.dexstudios.dex
 
+import androidx.activity.compose.BackHandler
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -122,6 +123,12 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
         label = "globalDimAlpha"
     )
 
+    // Back button handling for expanded overlays
+    BackHandler(enabled = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded) {
+        TopAppBarState.isProfileExpanded = false
+        TopAppBarState.isSearchExpanded = false
+    }
+
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -154,7 +161,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
               windowSizeClass = windowSizeClass
             )
             History -> HistoryScreen(
-              modifier = Modifier.safeDrawingPadding(),
+              modifier = Modifier,
               listState = historyListState
             )
             Settings -> SettingsScreen(

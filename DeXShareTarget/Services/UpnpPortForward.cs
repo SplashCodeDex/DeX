@@ -13,7 +13,7 @@ namespace DeXShareTarget.Services
     /// <summary>
     /// Auto-configures the router via UPnP/IGD so WAN transfers work without manual port
     /// forwarding: maps TCP 48424 + UDP 48423 to this PC and records the public IP so the
-    /// TLS certificate covers it. Every failure is silent — Thruflux remains the fallback.
+    /// TLS certificate covers it. Every failure is silent — QUIC P2P or LocalSend remains the fallback.
     /// </summary>
     public static class UpnpPortForward
     {

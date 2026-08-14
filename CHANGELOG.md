@@ -1,5 +1,19 @@
 # Changelog
 
+## [9.0.0.0] - 2026-08-14
+### Added
+- **[major] Native HTTP/3 (QUIC) PC-to-PC Transfers & Android Cronet Zero-Copy Optimization**:
+  - Eliminated the `thru.exe` external dependency and replaced it with native `System.Net.Http` HTTP/3 over Kestrel `MsQuic` for completely automatic PC-to-PC QUIC transfers via LocalSend mDNS discovery.
+  - Eliminated intermediate heap `ByteArray` overhead on Android Cronet download paths by using NIO `WritableByteChannel` direct memory writes from `ContentResolver.openFileDescriptor`.
+  - Removed `thru.exe` firewall rules and dropped the 40MB payload from the `.msix` package entirely.
+
+## [8.8.6.0] - 2026-08-13
+### Changed
+- **[patch] Solid Non-Transparent UI Rendering & Glassmorphism Elimination**:
+  - Converted all semi-translucent highlight, hover, and selection accent brushes across `DarkTheme.xaml` and `LightTheme.xaml` to 100% solid, fully opaque hex colors (`SecondaryHoverBrush`, `SecondarySelectedBrush`, `SecondarySelectedHoverBrush`, `SecondarySelectedBorderBrush`).
+  - Disabled `DropShadowEffect` card shadows (`MainShadow` Opacity=0, BlurRadius=0) to remove blur and glassmorphism styling.
+  - Re-packed, signed, and installed `CodeDeX.DeX 8.8.6.0` to local machine.
+
 ## [8.8.5.0] - 2026-08-13
 ### Fixed
 - **[fix] Universal Dynamic WPF Element Cache & PIN CODE Pairing Fix**:
