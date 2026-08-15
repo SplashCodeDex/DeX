@@ -71,7 +71,7 @@ class MessageHandler(
         val pairReq = json.decodeFromJsonElement<PairRequestDto>(dataElement)
         
         // Task 5: Re-Pairing After Partial Forget (Auto-Accept)
-        if (DeviceManager.getPairedFingerprints().contains(pairReq.fingerprint)) {
+        if (AuthState.pairedFingerprints.contains(pairReq.fingerprint)) {
             Timber.i("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
             val responseMsg = buildJsonObject {
                 put("type", "pair-response")
@@ -79,7 +79,7 @@ class MessageHandler(
                     put("accepted", true)
                 }
             }.toString()
-            WebSocketClientService.sendMessage(responseMsg)
+            onSendMessage?.invoke(responseMsg)
             return
         }
 
@@ -238,7 +238,7 @@ class MessageHandler(
         val isTrustedByPC = (dataElement as? JsonObject)?.get("isTrusted")?.jsonPrimitive?.content?.toBoolean() ?: false
         val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.content
         if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
-            if (DeviceManager.getPairedFingerprints().contains(fingerprint)) {
+            if (AuthState.pairedFingerprints.contains(fingerprint)) {
                 Timber.w("PC $fingerprint reported we are not trusted. Downgrading local trust.")
                 DeviceManager.removePairedFingerprint(fingerprint)
             }

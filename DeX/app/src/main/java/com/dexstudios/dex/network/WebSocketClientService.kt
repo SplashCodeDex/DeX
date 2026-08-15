@@ -211,7 +211,7 @@ class WebSocketClientService(
         // Auto-trust rules: the Google account sub is the highest priority authentication token
         // when both sides share it, then the identity hash, then the PIN-pairing token.
         // Task 4: Email Auto-Trust De-synchronization. Enforce that incoming IdentityHash matches are ignored if authState.isLoggedIn == false
-        val isLoggedIn = AuthState.isLoggedIn.value
+        val isLoggedIn = deviceConfig.email.isNotBlank()
         val identityHash = if (isLoggedIn) deviceConfig.identityHash else ""
         val googleSub = if (isLoggedIn) deviceConfig.googleSub else ""
         val pcIdentityHash = pcDevice.info.identityHash
@@ -251,7 +251,7 @@ class WebSocketClientService(
                 sendMessage("""{"type":"device-roster","data":{}}""")
                 
                 // Send trust-check to verify we are still trusted by the PC
-                val isTrusted = DeviceManager.getPairedFingerprints().contains(pcFingerprint) || token == googleSub || (token == identityHash && identityHash.isNotEmpty())
+                val isTrusted = AuthState.pairedFingerprints.contains(pcFingerprint) || token == googleSub || (token == identityHash && identityHash.isNotEmpty())
                 val trustCheck = buildJsonObject {
                     put("type", "trust-check")
                     putJsonObject("data") {
