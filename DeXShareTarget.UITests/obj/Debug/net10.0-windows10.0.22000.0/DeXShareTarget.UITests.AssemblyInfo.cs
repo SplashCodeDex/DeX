@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DeXShareTarget.UITests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3a453c0b6f6908d3654864198bdc93545028064c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f28be27729883bf3aef0a85b2a4672baf462020b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DeXShareTarget.UITests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DeXShareTarget.UITests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

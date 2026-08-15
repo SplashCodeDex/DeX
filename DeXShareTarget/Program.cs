@@ -133,6 +133,20 @@ namespace DeXShareTarget
                 }
             }
 
+            // 1.b Direct CLI invocation for Mirror Window (used for UI Testing)
+            if (args != null && args.Length >= 2 && args[0].Equals("-Mirror", StringComparison.OrdinalIgnoreCase))
+            {
+                string alias = args[1];
+                Application app = new Application();
+                app.Startup += (s, e) =>
+                {
+                    var window = new DeXShareTarget.Windows.MirrorWindow(alias, () => { app.Shutdown(); });
+                    window.Show();
+                };
+                app.Run();
+                return;
+            }
+
             // 2. Windows Share Target Invocation
             if (activatedArgs != null && activatedArgs.Kind == ActivationKind.ShareTarget)
             {
