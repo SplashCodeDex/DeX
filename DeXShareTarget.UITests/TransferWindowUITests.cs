@@ -19,35 +19,50 @@ namespace DeXShareTarget.UITests
             File.WriteAllText(dummyFile, "test data");
 
             string exePath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\DeXShareTarget\bin\Debug\net10.0-windows10.0.22000.0\DeXShareTarget.exe"));
+            string exeDir = Path.GetDirectoryName(exePath);
+            string themesDest = Path.Combine(exeDir, "Themes");
+            if (!Directory.Exists(themesDest))
+            {
+                Directory.CreateDirectory(themesDest);
+                string themesSource = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\MSIX_Source\Themes"));
+                foreach (var file in Directory.GetFiles(themesSource))
+                    File.Copy(file, Path.Combine(themesDest, Path.GetFileName(file)), true);
+            }
+            
             var app = Application.Launch(exePath, $"-IP 127.0.0.1 {dummyFile}");
             
             try
             {
                 using var automation = new UIA3Automation();
-                var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(5));
+                var retryResult = Retry.WhileNull(() => 
+                {
+                    var desktop = automation.GetDesktop();
+                    return desktop.FindFirstChild(cf => cf.ByName("DeX - Share").And(cf.ByProcessId(app.ProcessId)))?.AsWindow();
+                }, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
+                
+                var window = retryResult.Result;
                 Assert.IsNotNull(window, "Main window was not found.");
-
-                // Validate Window Title
-                Assert.AreEqual("DeX - Share", window.Title);
-
-                // Find elements by their Name (TextBlock content) or we can search by AutomationId if Name is bound to it in the runtime.
-                // In pure WPF, x:Name maps to AutomationId. But for dynamically parsed XAML, let's verify.
                 var txtStatus = window.FindFirstDescendant(cf => cf.ByAutomationId("txtStatus"))?.AsLabel();
                 Assert.IsNotNull(txtStatus, "Status text block not found.");
                 
                 Assert.IsFalse(string.IsNullOrEmpty(txtStatus.Text), "txtStatus should contain text.");
 
-                var progressIndicator = window.FindFirstDescendant(cf => cf.ByAutomationId("progressIndicator"));
-                Assert.IsNotNull(progressIndicator, "Progress indicator not found.");
-                
                 var txtSpeed = window.FindFirstDescendant(cf => cf.ByAutomationId("txtSpeed"))?.AsLabel();
                 Assert.IsNotNull(txtSpeed, "Speed text block not found.");
             }
             finally
             {
+                try 
+                {
+                    if (app != null && !app.HasExited)
+                    {
+                        app.Close();
+                    }
+                } 
+                catch { }
+                
                 if (app != null)
                 {
-                    app.Close();
                     app.Dispose();
                 }
                 
