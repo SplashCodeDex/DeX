@@ -9,14 +9,16 @@ kotlin {
     android {
         namespace = "com.dexstudios.dex.feature.discovery"
         compileSdk = 34
-        minSdk = 24
-    }
-    jvm("desktop")
-    androidTarget {
+        minSdk = 24
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
+    jvm("desktop")
+    
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -31,6 +33,9 @@ kotlin {
         }
     }
 }
+
+
+
 
 
 
