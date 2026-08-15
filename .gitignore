@@ -1,6 +1,8 @@
 *.msix
 DeXShareTarget/bin/
 DeXShareTarget/obj/
+DeXShareTarget.Tests/bin/
+DeXShareTarget.Tests/obj/
 *.appx
 
 # Generated C# build output copied into MSIX_Source by PackMSIX.ps1.
