@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
-import com.dexstudios.dex.network.DiscoveredDevice
+import com.dexstudios.dex.network.protocol.DiscoveredDevice
 import com.dexstudios.dex.ui.components.DeviceListItem
 
 @Composable

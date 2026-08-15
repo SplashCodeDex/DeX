@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import com.dexstudios.dex.network.protocol.HashUtils
 
 @Serializable
 data class TransferRecord(
@@ -37,7 +37,7 @@ object TransferHistory : KoinComponent {
     private const val MAX_ENTRIES = 200
 
     private val dataStore: DataStore<Preferences> by inject()
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
@@ -72,10 +72,10 @@ object TransferHistory : KoinComponent {
         uri: String? = null,
         peerDevice: String? = null,
         status: String = "success",
-        timestamp: Long = com.dexstudios.dex.network.protocol.HashUtils.currentTimeMillis()
+        timestamp: Long = HashUtils.currentTimeMillis()
     ) {
         val record = TransferRecord(
-            id = com.dexstudios.dex.network.protocol.HashUtils.generateUUID(),
+            id = HashUtils.generateUUID(),
             name = name,
             size = size,
             timestamp = timestamp,
@@ -90,7 +90,7 @@ object TransferHistory : KoinComponent {
     }
 
     private suspend fun read(): List<TransferRecord> {
-        val raw = dataStore.data.map { it[KEY_TRANSFERS] }.firstOrNull() ?: return emptyList()
+        val raw = dataStore.data.map { prefs -> prefs[KEY_TRANSFERS] }.firstOrNull() ?: return emptyList()
         return try {
             Json.decodeFromString<List<TransferRecord>>(raw)
         } catch (_: Exception) {
