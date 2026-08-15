@@ -12,6 +12,7 @@ namespace DeXShareTarget.Services
 {
     public static class QuicP2PClient
     {
+        public static string BaseDownloadDirectory { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "DeX");
         public static async Task ReceiveAsync(string senderIp, int port, string alias)
         {
             var options = new QuicClientConnectionOptions
@@ -34,7 +35,7 @@ namespace DeXShareTarget.Services
                 await using var connection = await QuicConnection.ConnectAsync(options);
                 Console.WriteLine($"[QUIC-P2P] Connected to {alias}. Waiting for streams...");
 
-                var downloadDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "DeX");
+                var downloadDir = BaseDownloadDirectory;
                 Directory.CreateDirectory(downloadDir);
 
                 var tasks = new List<Task>();

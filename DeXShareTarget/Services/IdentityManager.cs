@@ -18,11 +18,12 @@ namespace DeXShareTarget.Services
         public static string GoogleSub { get; set; } = "";
         public static HashSet<string> PairedFingerprints { get; set; } = new();
         public static Dictionary<string, string> PairedTokens { get; set; } = new();
+        public static string BaseDirectory { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
         private static readonly object _fileLock = new object();
         
         public static void Initialize()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, "identity.json");
             
@@ -89,7 +90,7 @@ namespace DeXShareTarget.Services
 
         private static void LoadPairedDevices()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_devices.json");
             if (File.Exists(file))
             {
@@ -105,7 +106,7 @@ namespace DeXShareTarget.Services
         public static void SavePairedDevice(string fp)
         {
             PairedFingerprints.Add(fp);
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_devices.json");
             lock (_fileLock)
             {
@@ -117,7 +118,7 @@ namespace DeXShareTarget.Services
         {
             if (PairedFingerprints.Remove(fp))
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+                var dir = BaseDirectory;
                 var file = Path.Combine(dir, "paired_devices.json");
                 lock (_fileLock)
                 {
@@ -126,7 +127,7 @@ namespace DeXShareTarget.Services
             }
             if (PairedTokens.Remove(fp))
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+                var dir = BaseDirectory;
                 var file = Path.Combine(dir, "paired_tokens.json");
                 lock (_fileLock)
                 {
@@ -135,7 +136,7 @@ namespace DeXShareTarget.Services
             }
             if (PairedLastSeen.Remove(fp))
             {
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+                var dir = BaseDirectory;
                 var file = Path.Combine(dir, "paired_lastseen.json");
                 lock (_fileLock)
                 {
@@ -148,7 +149,7 @@ namespace DeXShareTarget.Services
 
         private static void LoadPairedLastSeen()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_lastseen.json");
             if (File.Exists(file))
             {
@@ -164,7 +165,7 @@ namespace DeXShareTarget.Services
         public static void UpdateLastSeen(string fp)
         {
             PairedLastSeen[fp] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_lastseen.json");
             lock (_fileLock)
             {
@@ -174,7 +175,7 @@ namespace DeXShareTarget.Services
 
         private static void LoadPairedTokens()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_tokens.json");
             if (File.Exists(file))
             {
@@ -190,7 +191,7 @@ namespace DeXShareTarget.Services
         public static void SavePairedToken(string fp, string token)
         {
             PairedTokens[fp] = token;
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_tokens.json");
             lock (_fileLock)
             {
@@ -200,7 +201,7 @@ namespace DeXShareTarget.Services
 
         private static void LoadDeviceAliases()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_aliases.json");
             if (File.Exists(file))
             {
@@ -218,7 +219,7 @@ namespace DeXShareTarget.Services
         public static void SetDeviceAlias(string fp, string alias)
         {
             DeviceAliases[fp] = alias;
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "paired_aliases.json");
             lock (_fileLock)
             {
@@ -276,7 +277,7 @@ namespace DeXShareTarget.Services
 
         private static void PersistIdentity()
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             var file = Path.Combine(dir, "identity.json");
             lock (_fileLock)
             {

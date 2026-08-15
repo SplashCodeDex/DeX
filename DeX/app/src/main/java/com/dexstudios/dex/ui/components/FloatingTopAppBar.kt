@@ -62,6 +62,7 @@ import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import org.koin.compose.koinInject
@@ -382,7 +383,7 @@ private fun TransferIcon(
             label = "rotation"
         )
 
-        // Common Frame
+        // Spinning Frame (Dotted Circle)
         Icon(
             imageVector = MaterialSymbols.ArrowUploadCircle,
             contentDescription = null,
@@ -414,8 +415,9 @@ private fun TransferIcon(
                             stiffness = Spring.StiffnessLow
                         )
                     )
-                    delay(1000)
+                    delay(800)
                 } else {
+                    translationY.animateTo(0f)
                     break
                 }
             }
@@ -429,6 +431,10 @@ private fun TransferIcon(
                 .fillMaxSize()
                 .graphicsLayer {
                     this.translationY = translationY.value.dp.toPx()
+                    // Liquid Motion: Squash & Stretch based on offset
+                    val stretchFactor = abs(translationY.value) / 8f
+                    this.scaleY = 1f + (stretchFactor * 0.2f)
+                    this.scaleX = 1f / (1f + (stretchFactor * 0.2f)) // Preserve volume
                 }
         )
     }

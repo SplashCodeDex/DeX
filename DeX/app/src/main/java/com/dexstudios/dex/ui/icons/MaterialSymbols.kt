@@ -952,25 +952,21 @@ object MaterialSymbols {
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {
-            path(
-                fill = SolidColor(Color.Black),
-                pathFillType = PathFillType.NonZero
-            ) {
-                moveTo(12f, 16.5f)
-                curveTo(11.72f, 16.5f, 11.46f, 16.4f, 11.26f, 16.21f)
-                curveTo(11.07f, 16.01f, 10.97f, 15.75f, 10.97f, 15.47f)
-                verticalLineTo(10.32f)
-                lineTo(8.39f, 12.91f)
-                curveTo(8.0f, 13.3f, 7.36f, 13.3f, 6.97f, 12.91f)
-                curveTo(6.58f, 12.52f, 6.58f, 11.88f, 6.97f, 11.49f)
-                lineTo(11.29f, 7.16f)
-                curveTo(11.68f, 6.77f, 12.32f, 6.77f, 12.71f, 7.16f)
-                lineTo(17.03f, 11.49f)
-                curveTo(17.42f, 11.88f, 17.42f, 12.52f, 17.03f, 12.91f)
-                curveTo(16.64f, 13.3f, 16.0f, 13.3f, 15.61f, 12.91f)
-                lineTo(13.03f, 10.32f)
-                verticalLineTo(15.47f)
-                curveTo(13.03f, 16.04f, 12.57f, 16.5f, 12f, 16.5f)
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(11.3f, 17f)
+                curveTo(11.3f, 17.4f, 11.6f, 17.7f, 12f, 17.7f)
+                curveTo(12.4f, 17.7f, 12.7f, 17.4f, 12.7f, 17f)
+                verticalLineTo(10.4f)
+                lineTo(14.9f, 12.6f)
+                curveTo(15.2f, 12.9f, 15.7f, 12.9f, 16f, 12.6f)
+                curveTo(16.3f, 12.3f, 16.3f, 11.8f, 16f, 11.5f)
+                lineTo(12.7f, 8.2f)
+                curveTo(12.3f, 7.8f, 11.7f, 7.8f, 11.3f, 8.2f)
+                lineTo(8f, 11.5f)
+                curveTo(7.7f, 11.8f, 7.7f, 12.3f, 8f, 12.6f)
+                curveTo(8.3f, 12.9f, 8.8f, 12.9f, 9.1f, 12.6f)
+                lineTo(11.3f, 10.4f)
+                verticalLineTo(17f)
                 close()
             }
         }.build().also { _arrowUploadArrow = it }
@@ -983,25 +979,21 @@ object MaterialSymbols {
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).apply {
-            path(
-                fill = SolidColor(Color.Black),
-                pathFillType = PathFillType.NonZero
-            ) {
-                moveTo(12f, 7.5f)
-                curveTo(12.28f, 7.5f, 12.54f, 7.6f, 12.74f, 7.79f)
-                curveTo(12.93f, 7.99f, 13.03f, 8.25f, 13.03f, 8.53f)
-                verticalLineTo(13.68f)
-                lineTo(15.61f, 11.09f)
-                curveTo(16.0f, 10.7f, 16.64f, 10.7f, 17.03f, 11.09f)
-                curveTo(17.42f, 11.48f, 17.42f, 12.12f, 17.03f, 12.51f)
-                lineTo(12.71f, 16.84f)
-                curveTo(12.32f, 17.23f, 11.68f, 17.23f, 11.29f, 16.84f)
-                lineTo(6.97f, 12.51f)
-                curveTo(6.58f, 12.12f, 6.58f, 11.48f, 6.97f, 11.09f)
-                curveTo(7.36f, 10.7f, 8.0f, 10.7f, 8.39f, 11.09f)
-                lineTo(10.97f, 13.68f)
-                verticalLineTo(8.53f)
-                curveTo(10.97f, 7.96f, 11.43f, 7.5f, 12f, 7.5f)
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(12.7f, 7f)
+                curveTo(12.7f, 6.6f, 12.4f, 6.3f, 12f, 6.3f)
+                curveTo(11.6f, 6.3f, 11.3f, 6.6f, 11.3f, 7f)
+                verticalLineTo(13.6f)
+                lineTo(9.1f, 11.4f)
+                curveTo(8.8f, 11.1f, 8.3f, 11.1f, 8f, 11.4f)
+                curveTo(7.7f, 11.7f, 7.7f, 12.2f, 8f, 12.5f)
+                lineTo(11.3f, 15.8f)
+                curveTo(11.7f, 16.2f, 12.3f, 16.2f, 12.7f, 15.8f)
+                lineTo(16f, 12.5f)
+                curveTo(16.3f, 12.2f, 16.3f, 11.7f, 16f, 11.4f)
+                curveTo(15.7f, 11.1f, 15.2f, 11.1f, 14.9f, 11.4f)
+                lineTo(12.7f, 13.6f)
+                verticalLineTo(7f)
                 close()
             }
         }.build().also { _arrowDownloadArrow = it }

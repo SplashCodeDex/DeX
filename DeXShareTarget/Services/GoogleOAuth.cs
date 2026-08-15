@@ -31,6 +31,7 @@ namespace DeXShareTarget.Services
         // Pending sign-in flows keyed by OAuth state parameter.
         private static readonly ConcurrentDictionary<string, TaskCompletionSource<string?>> _pending =
             new(StringComparer.Ordinal);
+        public static string BaseDirectory { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
 
     public record GoogleProfile(string Email, string Name, string Picture, string Sub);
 
@@ -148,7 +149,7 @@ namespace DeXShareTarget.Services
     {
         try
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "google_profile.json"), JsonSerializer.Serialize(profile));
         }
@@ -160,7 +161,7 @@ namespace DeXShareTarget.Services
     {
         try
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX", "google_profile.json");
+            var path = Path.Combine(BaseDirectory, "google_profile.json");
             if (!File.Exists(path)) return null;
             return JsonSerializer.Deserialize<GoogleProfile>(File.ReadAllText(path));
         }
@@ -172,7 +173,7 @@ namespace DeXShareTarget.Services
     {
         try
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX", "google_profile.json");
+            var path = Path.Combine(BaseDirectory, "google_profile.json");
             if (File.Exists(path)) File.Delete(path);
         }
         catch { }
@@ -182,7 +183,7 @@ namespace DeXShareTarget.Services
     {
         try
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeX");
+            var dir = BaseDirectory;
             Directory.CreateDirectory(dir);
             File.AppendAllText(Path.Combine(dir, "oauth.log"), $"[{DateTime.Now:O}] {message}\n");
         }
