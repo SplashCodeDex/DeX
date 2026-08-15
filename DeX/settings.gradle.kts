@@ -37,3 +37,5 @@ plugins {
 rootProject.name = "DeX"
 include(":app")
 include(":composeApp")
+
+include(":core:network", ":core:data", ":feature:discovery", ":feature:settings")
