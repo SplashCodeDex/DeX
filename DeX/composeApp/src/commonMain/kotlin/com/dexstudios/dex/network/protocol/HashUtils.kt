@@ -10,8 +10,9 @@ object HashUtils {
 
     fun generateUUID(): String = actualGenerateUUID()
     
-    fun currentTimeMillis(): Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+    fun currentTimeMillis(): Long = actualCurrentTimeMillis()
 }
 
 expect fun actualSha256(input: String): String
 expect fun actualGenerateUUID(): String
+expect fun actualCurrentTimeMillis(): Long

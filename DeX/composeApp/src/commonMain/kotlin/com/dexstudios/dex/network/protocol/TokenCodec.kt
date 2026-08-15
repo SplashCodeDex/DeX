@@ -1,18 +1,19 @@
 package com.dexstudios.dex.network.protocol
 
-import org.json.JSONObject
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 object TokenCodec {
     fun encode(map: Map<String, String>): String {
-        val json = JSONObject()
-        map.forEach { (k, v) -> json.put(k, v) }
-        return json.toString()
+        return Json.encodeToString(map)
     }
 
     fun decode(raw: String): Map<String, String> {
-        val json = JSONObject(raw)
-        val result = mutableMapOf<String, String>()
-        json.keys().forEach { key -> result[key] = json.getString(key) }
-        return result
+        if (raw.isBlank()) return emptyMap()
+        return try {
+            Json.decodeFromString<Map<String, String>>(raw)
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 }

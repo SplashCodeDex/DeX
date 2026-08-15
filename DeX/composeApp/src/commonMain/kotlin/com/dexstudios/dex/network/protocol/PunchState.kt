@@ -1,6 +1,6 @@
 package com.dexstudios.dex.network.protocol
 
-import android.net.Uri
+// Pure KMP version of PunchState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.concurrent.ConcurrentHashMap
@@ -25,7 +25,7 @@ object PunchState {
     val incomingPeerEndpoints = MutableStateFlow<Map<String, PunchEndpoint>>(emptyMap())
 }
 
-data class ResumeEntry(val docUri: Uri, var received: Long, val size: Long)
+data class ResumeEntry(val docUri: String, var received: Long, val size: Long)
 
 /**
  * Receiver-side resume state for direct punch transfers: per-file byte progress and the
