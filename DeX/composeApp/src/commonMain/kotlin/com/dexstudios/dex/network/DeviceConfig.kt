@@ -1,13 +1,10 @@
 package com.dexstudios.dex.network
 
-import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,19 +16,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.koin.core.component.KoinComponent
 import timber.log.Timber
-import java.security.MessageDigest
-import java.util.UUID
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
-    name = "dex_datastore",
-    produceMigrations = { context ->
-        listOf(SharedPreferencesMigration(context, "dex_prefs"))
-    }
+/** Combined profile snapshot — prevents triple-recomposition on Google sign-in. */
+data class GoogleProfile(
+    val name: String = "",
+    val picture: String = "",
+    val email: String = ""
 )
 
-class DeviceConfig(private val context: Context) {
-    private val scope = CoroutineScope(Dispatchers.IO)
+class DeviceConfig(
+    private val dataStore: DataStore<Preferences>,
+    private val scope: CoroutineScope
+) : KoinComponent {
 
     companion object {
         val EMAIL_KEY = stringPreferencesKey("email")
@@ -64,7 +62,6 @@ class DeviceConfig(private val context: Context) {
     private val _identityHashFlow = MutableStateFlow("")
     private val _publicAddressFlow = MutableStateFlow("")
 
-    /** Single combined flow — replacing three individual collectAsState() reads in the UI. */
     val googleProfileFlow: StateFlow<GoogleProfile> = combine(
         _profileNameFlow, _profilePictureFlow, _emailFlow
     ) { name, picture, email ->
@@ -77,7 +74,7 @@ class DeviceConfig(private val context: Context) {
     fun setPublicAddress(value: String) {
         _publicAddressFlow.value = value.trim()
         scope.launch {
-            context.dataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[PUBLIC_ADDRESS_KEY] = value.trim()
             }
         }
@@ -90,7 +87,7 @@ class DeviceConfig(private val context: Context) {
             updateIdentityHash(value)
             scope.launch {
                 Timber.d("Saving new email to DataStore: %s", value)
-                context.dataStore.edit { prefs ->
+                dataStore.edit { prefs ->
                     prefs[EMAIL_KEY] = value
                 }
             }
@@ -102,7 +99,7 @@ class DeviceConfig(private val context: Context) {
             val trimmed = value.trim().take(32)
             _aliasFlow.value = trimmed
             scope.launch {
-                context.dataStore.edit { prefs ->
+                dataStore.edit { prefs ->
                     prefs[ALIAS_KEY] = trimmed
                 }
             }
@@ -113,20 +110,19 @@ class DeviceConfig(private val context: Context) {
         set(value) {
             _clipboardSyncEnabledFlow.value = value
             scope.launch {
-                context.dataStore.edit { prefs ->
+                dataStore.edit { prefs ->
                     prefs[CLIPBOARD_SYNC_ENABLED_KEY] = value
                 }
             }
         }
 
-    /** Fingerprint, computed once. First access during cold start blocks until DataStore loads. */
     val fingerprint: String
         get() {
             if (_fingerprintFlow.value.isEmpty()) {
-                _fingerprintFlow.value = runBlocking(Dispatchers.IO) {
-                    val prefs = context.dataStore.data.first()
-                    prefs[FINGERPRINT_KEY] ?: UUID.randomUUID().toString().also { fp ->
-                        context.dataStore.edit { it[FINGERPRINT_KEY] = fp }
+                _fingerprintFlow.value = runBlocking {
+                    val prefs = dataStore.data.first()
+                    prefs[FINGERPRINT_KEY] ?: com.dexstudios.dex.network.protocol.HashUtils.generateUUID().also { fp ->
+                        dataStore.edit { it[FINGERPRINT_KEY] = fp }
                     }
                 }
             }
@@ -136,16 +132,14 @@ class DeviceConfig(private val context: Context) {
     val identityHash: String
         get() = _identityHashFlow.value
 
-    /** Google account ID (sub) — the unguessable same-email trust key when signed in with Google. */
     val googleSub: String
         get() = _googleSubFlow.value
 
-    /** Stores the signed-in Google profile (name + avatar) alongside the verified email. */
     fun setGoogleProfile(name: String, picture: String) {
         _profileNameFlow.value = name
         _profilePictureFlow.value = picture
         scope.launch {
-            context.dataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[GOOGLE_NAME_KEY] = name
                 prefs[GOOGLE_PICTURE_KEY] = picture
             }
@@ -155,13 +149,12 @@ class DeviceConfig(private val context: Context) {
     fun setGoogleSub(sub: String) {
         _googleSubFlow.value = sub
         scope.launch {
-            context.dataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[GOOGLE_SUB_KEY] = sub
             }
         }
     }
 
-    /** Signs out of the Google identity: email clears (identity hash resets), profile and sub detach. */
     fun signOut() {
         email = ""
         setGoogleProfile("", "")
@@ -169,21 +162,17 @@ class DeviceConfig(private val context: Context) {
     }
 
     init {
-        // DataStore is loaded asynchronously — non-critical UI fields start with
-        // empty defaults and populate in under one frame. Fingerprint reads are
-        // guarded on first access (see the getter below) so the discovery engine
-        // never sees a blank id, even during cold start.
         scope.launch {
             Timber.i("Initializing DeviceConfig from DataStore...")
-            val prefs = context.dataStore.data.first()
+            val prefs = dataStore.data.first()
 
             val savedEmail = prefs[EMAIL_KEY] ?: ""
             _emailFlow.value = savedEmail
 
             var savedFingerprint = prefs[FINGERPRINT_KEY]
             if (savedFingerprint == null) {
-                savedFingerprint = UUID.randomUUID().toString()
-                context.dataStore.edit { it[FINGERPRINT_KEY] = savedFingerprint }
+                savedFingerprint = com.dexstudios.dex.network.protocol.HashUtils.generateUUID()
+                dataStore.edit { it[FINGERPRINT_KEY] = savedFingerprint }
                 Timber.d("Generated new device fingerprint: %s", savedFingerprint)
             }
             _fingerprintFlow.value = savedFingerprint
@@ -201,16 +190,13 @@ class DeviceConfig(private val context: Context) {
 
     private suspend fun updateIdentityHashInternal(emailStr: String, savedHash: String?) {
         if (emailStr.isNotBlank()) {
-            val bytes = MessageDigest.getInstance("SHA-256").digest(emailStr.trim().lowercase().toByteArray())
-            val newHash = bytes.joinToString("") { "%02x".format(it) }
+            val newHash = com.dexstudios.dex.network.protocol.HashUtils.sha256(emailStr.trim().lowercase())
             _identityHashFlow.value = newHash
-            context.dataStore.edit { it[IDENTITY_HASH_KEY] = newHash }
+            dataStore.edit { it[IDENTITY_HASH_KEY] = newHash }
         } else {
-            val newHash = if (savedHash != null) {
-                savedHash
-            } else {
-                val generated = UUID.randomUUID().toString()
-                context.dataStore.edit { it[IDENTITY_HASH_KEY] = generated }
+            val newHash = savedHash ?: run {
+                val generated = com.dexstudios.dex.network.protocol.HashUtils.generateUUID()
+                dataStore.edit { it[IDENTITY_HASH_KEY] = generated }
                 generated
             }
             _identityHashFlow.value = newHash
@@ -220,15 +206,8 @@ class DeviceConfig(private val context: Context) {
 
     private fun updateIdentityHash(emailStr: String) {
         scope.launch {
-            val prefs = context.dataStore.data.first()
+            val prefs = dataStore.data.first()
             updateIdentityHashInternal(emailStr, prefs[IDENTITY_HASH_KEY])
         }
     }
 }
-
-/** Combined profile snapshot — prevents triple-recomposition on Google sign-in. */
-data class GoogleProfile(
-    val name: String = "",
-    val picture: String = "",
-    val email: String = ""
-)

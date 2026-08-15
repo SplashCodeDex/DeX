@@ -9,16 +9,19 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
+    jvm("desktop")
+    
+    android {
+        namespace = "com.dexstudios.dex.desktop"
+        compileSdk = 37
+        minSdk = 26
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-    
-    jvm("desktop")
-    
+
     sourceSets {
-        val desktopMain by getting
+        val desktopMain = getByName("desktopMain")
         
         androidMain.dependencies {
             implementation(libs.androidx.compose.ui.tooling.preview)
@@ -56,11 +59,6 @@ kotlin {
             implementation(libs.ktor.server.websockets)
             implementation(libs.ktor.server.content.negotiation)
         }
-    }
-    androidLibrary {
-        namespace = "com.dexstudios.dex.desktop"
-        compileSdk = 37
-        minSdk = 26
     }
 }
 
