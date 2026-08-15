@@ -21,11 +21,11 @@ orgjson = "20260719"
 appfunctions = "1.0.0-alpha10"
 ksp = "2.3.11"
 # CMP Multiplatform
-compose-multiplatform = "1.10.0"
+compose-multiplatform = "1.11.1"
 androidx-navigation-compose = "2.9.2"
 
 workManager = "2.11.2"
-koin = "4.2.2"
+koin-bom = "4.2.2"
 mockk = "1.14.11"
 backdrop = "2.0.0"
 datastore = "1.2.1"
@@ -73,11 +73,12 @@ ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negoti
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serializationJson" }
 
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
-koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
-koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
-koin-test-junit4 = { module = "io.insert-koin:koin-test-junit4", version.ref = "koin" }
-koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
-koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
+koin-android = { module = "io.insert-koin:koin-android" }
+koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose" }
+koin-test-junit4 = { module = "io.insert-koin:koin-test-junit4" }
+koin-compose = { module = "io.insert-koin:koin-compose" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
 backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }

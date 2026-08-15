@@ -39,6 +39,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.navigation.compose)
             
+            implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             
