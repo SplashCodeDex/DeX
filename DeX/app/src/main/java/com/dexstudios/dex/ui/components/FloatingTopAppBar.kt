@@ -370,58 +370,66 @@ private fun TransferIcon(
     isUploading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    if (isUploading) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            val infiniteTransition = rememberInfiniteTransition(label = "uploadAnimation")
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        val infiniteTransition = rememberInfiniteTransition(label = "transferRotation")
+        val rotation by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(3000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "rotation"
+        )
 
-            // Dotted Circle Rotation
-            val rotation by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(3000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "rotation"
-            )
-
-            Icon(
-                imageVector = MaterialSymbols.ArrowUploadCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { rotationZ = rotation }
-            )
-
-            // Bouncy Arrow
-            val bouncyOffset by infiniteTransition.animateFloat(
-                initialValue = 2f,
-                targetValue = -2f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "bouncyOffset"
-            )
-
-            Icon(
-                imageVector = MaterialSymbols.ArrowUploadArrow,
-                contentDescription = "Uploading",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        translationY = bouncyOffset.dp.toPx()
-                    }
-            )
-        }
-    } else {
+        // Common Frame
         Icon(
-            imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
-            contentDescription = if (isDownloading) "Downloading" else "Uploading",
+            imageVector = MaterialSymbols.ArrowUploadCircle,
+            contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = modifier
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { rotationZ = rotation }
+        )
+
+        val translationY = remember { Animatable(0f) }
+
+        LaunchedEffect(isUploading, isDownloading) {
+            while (true) {
+                if (isUploading) {
+                    translationY.snapTo(8f)
+                    translationY.animateTo(
+                        targetValue = -8f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
+                } else if (isDownloading) {
+                    translationY.snapTo(-8f)
+                    translationY.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
+                    delay(1000)
+                } else {
+                    break
+                }
+            }
+        }
+
+        Icon(
+            imageVector = if (isUploading) MaterialSymbols.ArrowUploadArrow else MaterialSymbols.ArrowDownloadArrow,
+            contentDescription = if (isUploading) "Uploading" else "Downloading",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    this.translationY = translationY.value.dp.toPx()
+                }
         )
     }
 }

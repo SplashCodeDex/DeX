@@ -954,39 +954,57 @@ object MaterialSymbols {
         ).apply {
             path(
                 fill = SolidColor(Color.Black),
-                fillAlpha = 1f,
-                stroke = null,
-                strokeAlpha = 1f,
-                strokeLineWidth = 1f,
-                strokeLineCap = StrokeCap.Butt,
-                strokeLineJoin = StrokeJoin.Bevel,
-                strokeLineMiter = 1f,
-                pathFillType = PathFillType.NonZero,
+                pathFillType = PathFillType.NonZero
             ) {
-                moveTo(11.26f, 16.71f)
-                quadTo(10.98f, 16.43f, 10.98f, 16f)
-                verticalLineTo(10.88f)
-                lineTo(8.39f, 13.47f)
-                quadToRelative(-0.28f, 0.28f, -0.7f, 0.28f)
-                reflectiveQuadToRelative(-0.7f, -0.28f)
-                quadToRelative(-0.28f, -0.28f, -0.28f, -0.7f)
-                reflectiveQuadToRelative(0.28f, -0.7f)
-                lineTo(11.3f, 7.7f)
-                quadToRelative(0.28f, -0.27f, 0.7f, -0.27f)
-                reflectiveQuadToRelative(0.7f, 0.27f)
-                lineTo(16.98f, 11.4f)
-                quadToRelative(0.28f, 0.28f, 0.28f, 0.7f)
-                reflectiveQuadToRelative(-0.28f, 0.7f)
-                quadToRelative(-0.28f, 0.28f, -0.7f, 0.28f)
-                reflectiveQuadToRelative(-0.7f, -0.28f)
-                lineTo(12.98f, 10.88f)
-                verticalLineTo(16f)
-                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
-                reflectiveQuadTo(11.98f, 17f)
-                reflectiveQuadTo(11.26f, 16.71f)
+                moveTo(12f, 16.5f)
+                curveTo(11.72f, 16.5f, 11.46f, 16.4f, 11.26f, 16.21f)
+                curveTo(11.07f, 16.01f, 10.97f, 15.75f, 10.97f, 15.47f)
+                verticalLineTo(10.32f)
+                lineTo(8.39f, 12.91f)
+                curveTo(8.0f, 13.3f, 7.36f, 13.3f, 6.97f, 12.91f)
+                curveTo(6.58f, 12.52f, 6.58f, 11.88f, 6.97f, 11.49f)
+                lineTo(11.29f, 7.16f)
+                curveTo(11.68f, 6.77f, 12.32f, 6.77f, 12.71f, 7.16f)
+                lineTo(17.03f, 11.49f)
+                curveTo(17.42f, 11.88f, 17.42f, 12.52f, 17.03f, 12.91f)
+                curveTo(16.64f, 13.3f, 16.0f, 13.3f, 15.61f, 12.91f)
+                lineTo(13.03f, 10.32f)
+                verticalLineTo(15.47f)
+                curveTo(13.03f, 16.04f, 12.57f, 16.5f, 12f, 16.5f)
                 close()
             }
         }.build().also { _arrowUploadArrow = it }
+
+    val ArrowDownloadArrow: ImageVector
+        get() = _arrowDownloadArrow ?: ImageVector.Builder(
+            name = "arrow_download_arrow",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(12f, 7.5f)
+                curveTo(12.28f, 7.5f, 12.54f, 7.6f, 12.74f, 7.79f)
+                curveTo(12.93f, 7.99f, 13.03f, 8.25f, 13.03f, 8.53f)
+                verticalLineTo(13.68f)
+                lineTo(15.61f, 11.09f)
+                curveTo(16.0f, 10.7f, 16.64f, 10.7f, 17.03f, 11.09f)
+                curveTo(17.42f, 11.48f, 17.42f, 12.12f, 17.03f, 12.51f)
+                lineTo(12.71f, 16.84f)
+                curveTo(12.32f, 17.23f, 11.68f, 17.23f, 11.29f, 16.84f)
+                lineTo(6.97f, 12.51f)
+                curveTo(6.58f, 12.12f, 6.58f, 11.48f, 6.97f, 11.09f)
+                curveTo(7.36f, 10.7f, 8.0f, 10.7f, 8.39f, 11.09f)
+                lineTo(10.97f, 13.68f)
+                verticalLineTo(8.53f)
+                curveTo(10.97f, 7.96f, 11.43f, 7.5f, 12f, 7.5f)
+                close()
+            }
+        }.build().also { _arrowDownloadArrow = it }
 
     val Sort: ImageVector
         get() = _sort ?: ImageVector.Builder(
@@ -3182,4 +3200,5 @@ object MaterialSymbols {
     private var _arrowUploadReady: ImageVector? = null
     private var _arrowUploadCircle: ImageVector? = null
     private var _arrowUploadArrow: ImageVector? = null
+    private var _arrowDownloadArrow: ImageVector? = null
 }

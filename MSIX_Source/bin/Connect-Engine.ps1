@@ -551,51 +551,97 @@ $mdnsTimer.Add_Tick({
                         }
                         
                         
-                        # Only update icLivePeers when the device set actually changes
-                        $newLiveFP = ($livePeers | ForEach-Object { "$($_['IP']):$($_['Name'])" } | Sort-Object) -join ','
-                        if ($newLiveFP -ne $script:lastLivePeersFingerprint) {
-                            $ic = $script:wpfWindow.FindName("icLivePeers")
-                            if ($ic) {
-                                # Animate out departing items before swapping
-                                $oldIPs = @()
-                                if ($ic.ItemsSource) { $oldIPs = @($ic.ItemsSource | ForEach-Object { $_['IP'] }) }
-                                $newIPs = @($livePeers | ForEach-Object { $_['IP'] })
-                                $departing = @($oldIPs | Where-Object { $_ -notin $newIPs })
-                                if ($departing.Count -gt 0) {
-                                    foreach ($container in @(0..($ic.Items.Count - 1) | ForEach-Object { $ic.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
-                                        $item = $ic.ItemContainerGenerator.ItemFromContainer($container)
-                                        if ($item -and $item['IP'] -and $departing -contains $item['IP']) {
-                                            $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
-                                            $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromMilliseconds(300)
-                                            $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
-                                        }
-                                    }
-                                    # Schedule the actual swap after fade-out completes
-                                    $timer = New-Object System.Windows.Threading.DispatcherTimer
-                                    $timer.Interval = [TimeSpan]::FromMilliseconds(320)
-                                    $capturedPeers = $livePeers
-                                    $capturedIc = $ic
-                                    $timer.Add_Tick({
+                        $ic = $script:wpfWindow.FindName("icLivePeers")
+                        if ($ic) {
+                            $oldIPs = @()
+                            if ($ic.ItemsSource) { $oldIPs = @($ic.ItemsSource | ForEach-Object { $_['IP'] }) }
+                            $newIPs = @($livePeers | ForEach-Object { $_['IP'] })
+                            $departing = @($oldIPs | Where-Object { $_ -notin $newIPs })
+                            $arriving = @($newIPs | Where-Object { $_ -notin $oldIPs })
+                            
+                            $swapAction = {
+                                $ic.ItemsSource = $livePeers
+                                if ($arriving.Count -gt 0) {
+                                    $animTimer = New-Object System.Windows.Threading.DispatcherTimer
+                                    $animTimer.Interval = [TimeSpan]::FromMilliseconds(20)
+                                    $animTimer.Add_Tick({
                                         param($s, $e)
-                                        $capturedIc.ItemsSource = $capturedPeers
                                         $s.Stop()
+                                        foreach ($container in @(0..($ic.Items.Count - 1) | ForEach-Object { $ic.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
+                                            $item = $ic.ItemContainerGenerator.ItemFromContainer($container)
+                                            if ($item -and $item['IP'] -and $arriving -contains $item['IP']) {
+                                                $fadeIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+                                                $fadeIn.From = 0; $fadeIn.To = 1; $fadeIn.Duration = [TimeSpan]::FromMilliseconds(400)
+                                                $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeIn)
+                                            } else {
+                                                $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+                                            }
+                                        }
                                     }.GetNewClosure())
-                                    $timer.Start()
-                                } else {
-                                    $ic.ItemsSource = $livePeers
+                                    $animTimer.Start()
                                 }
+                            }.GetNewClosure()
+
+                            if ($departing.Count -gt 0) {
+                                foreach ($container in @(0..($ic.Items.Count - 1) | ForEach-Object { $ic.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
+                                    $item = $ic.ItemContainerGenerator.ItemFromContainer($container)
+                                    if ($item -and $item['IP'] -and $departing -contains $item['IP']) {
+                                        $fadeOut = New-Object System.Windows.Media.Animation.DoubleAnimation
+                                        $fadeOut.To = 0; $fadeOut.Duration = [TimeSpan]::FromMilliseconds(300)
+                                        $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
+                                    }
+                                }
+                                $timer = New-Object System.Windows.Threading.DispatcherTimer
+                                $timer.Interval = [TimeSpan]::FromMilliseconds(320)
+                                $timer.Add_Tick({
+                                    param($s, $e)
+                                    $s.Stop()
+                                    & $swapAction
+                                }.GetNewClosure())
+                                $timer.Start()
+                            } else {
+                                & $swapAction
                             }
-                            $script:lastLivePeersFingerprint = $newLiveFP
                         }
-                        
-                        # Only update UI when the device set actually changes (prevents re-triggering Loaded animation)
-                        $newFingerprint = ($liveUdp | ForEach-Object { "$($_['Ip']):$($_['Alias'])" } | Sort-Object) -join ','
-                        if ($newFingerprint -ne $script:lastUdpFingerprint) {
-                            # Animate out departing items before swapping
+
+                        $icUdp = $script:wpfWindow.FindName("icUdpPeers")
+                        if ($icUdp) {
                             $oldUdpIPs = @()
                             if ($icUdp.ItemsSource) { $oldUdpIPs = @($icUdp.ItemsSource | ForEach-Object { $_['Ip'] }) }
                             $newUdpIPs = @($liveUdp | ForEach-Object { $_['Ip'] })
                             $departingUdp = @($oldUdpIPs | Where-Object { $_ -notin $newUdpIPs })
+                            $arrivingUdp = @($newUdpIPs | Where-Object { $_ -notin $oldUdpIPs })
+
+                            $swapActionUdp = {
+                                $icUdp.ItemsSource = $liveUdp
+                                if ($arrivingUdp.Count -gt 0) {
+                                    $animTimerUdp = New-Object System.Windows.Threading.DispatcherTimer
+                                    $animTimerUdp.Interval = [TimeSpan]::FromMilliseconds(20)
+                                    $animTimerUdp.Add_Tick({
+                                        param($s, $e)
+                                        $s.Stop()
+                                        foreach ($container in @(0..($icUdp.Items.Count - 1) | ForEach-Object { $icUdp.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
+                                            $item = $icUdp.ItemContainerGenerator.ItemFromContainer($container)
+                                            if ($item -and $item['Ip'] -and $arrivingUdp -contains $item['Ip']) {
+                                                $fadeIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+                                                $fadeIn.From = 0; $fadeIn.To = 1; $fadeIn.Duration = [TimeSpan]::FromMilliseconds(500)
+                                                $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeIn)
+
+                                                $heightIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+                                                $heightIn.From = 0; $heightIn.To = 64; $heightIn.Duration = [TimeSpan]::FromMilliseconds(300)
+                                                $heightIn.EasingFunction = New-Object System.Windows.Media.Animation.PowerEase
+                                                $heightIn.EasingFunction.EasingMode = [System.Windows.Media.Animation.EasingMode]::EaseOut
+                                                $container.BeginAnimation([System.Windows.FrameworkElement]::HeightProperty, $heightIn)
+                                            } else {
+                                                $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+                                                $container.BeginAnimation([System.Windows.FrameworkElement]::HeightProperty, $null)
+                                            }
+                                        }
+                                    }.GetNewClosure())
+                                    $animTimerUdp.Start()
+                                }
+                            }.GetNewClosure()
+
                             if ($departingUdp.Count -gt 0) {
                                 foreach ($container in @(0..($icUdp.Items.Count - 1) | ForEach-Object { $icUdp.ItemContainerGenerator.ContainerFromIndex($_) } | Where-Object { $_ })) {
                                     $item = $icUdp.ItemContainerGenerator.ItemFromContainer($container)
@@ -605,21 +651,17 @@ $mdnsTimer.Add_Tick({
                                         $container.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeOut)
                                     }
                                 }
-                                # Schedule the actual swap after fade-out completes
-                                $timer2 = New-Object System.Windows.Threading.DispatcherTimer
-                                $timer2.Interval = [TimeSpan]::FromMilliseconds(320)
-                                $capturedUdp = $liveUdp
-                                $capturedIcUdp = $icUdp
-                                $timer2.Add_Tick({
+                                $timerUdp = New-Object System.Windows.Threading.DispatcherTimer
+                                $timerUdp.Interval = [TimeSpan]::FromMilliseconds(320)
+                                $timerUdp.Add_Tick({
                                     param($s, $e)
-                                    $capturedIcUdp.ItemsSource = $capturedUdp
                                     $s.Stop()
+                                    & $swapActionUdp
                                 }.GetNewClosure())
-                                $timer2.Start()
+                                $timerUdp.Start()
                             } else {
-                                $icUdp.ItemsSource = $liveUdp
+                                & $swapActionUdp
                             }
-                            $script:lastUdpFingerprint = $newFingerprint
                         }
                     }
                 } finally {

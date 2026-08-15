@@ -731,18 +731,6 @@
                                                     <MenuItem Name="menuGuestForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
                                                 </ContextMenu>
                                             </Button.ContextMenu>
-                                            <Button.Triggers>
-                                                <EventTrigger RoutedEvent="Loaded">
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.5" />
-                                                            <DoubleAnimation Storyboard.TargetProperty="Height" From="0" To="64" Duration="0:0:0.3" >
-                                                                <DoubleAnimation.EasingFunction><PowerEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                                            </DoubleAnimation>
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
-                                                </EventTrigger>
-                                            </Button.Triggers>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
@@ -820,15 +808,6 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <RadioButton Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2" Tag="{Binding [IP]}" IsChecked="{Binding [IsChecked], Mode=OneWay}">
-                                <RadioButton.Triggers>
-                                    <EventTrigger RoutedEvent="Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </RadioButton.Triggers>
                                 <RadioButton.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Name="menuClipboard" Header="Send Clipboard" Tag="{Binding [IP]}" />

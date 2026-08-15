@@ -3,6 +3,7 @@
 ## [9.2.1.0] - 2026-08-15
 ### Fixed
 - **[patch] Active Device UI Binding**: Ensured that when a discovered device is successfully paired, it smoothly animates into the 'Your Devices' (Live Peers) list and is immediately and visually selected as the actively connected target. Manually clicking devices in this list now also correctly updates the active target binding behind the scenes.
+- **[patch] UI Flicker & Telemetry Sink**: Stripped out hardcoded XAML `Loaded` event triggers in favor of PowerShell-driven selective animations. This eliminates the subtle list flicker and removes the UI-update suppression, allowing device telemetry (Battery %, Wi-Fi Signal) to seamlessly flow into the device list in real-time.
 
 ## [9.2.0.0] - 2026-08-14
 ### Changed
