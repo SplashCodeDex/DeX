@@ -10,10 +10,8 @@ plugins {
 
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
     
@@ -29,12 +27,12 @@ kotlin {
         }
         
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.jb.compose.runtime)
+            implementation(libs.jb.compose.foundation)
+            implementation(libs.jb.compose.material3)
+            implementation(libs.jb.compose.ui)
+            implementation(libs.jb.compose.components.resources)
+            implementation(libs.jb.compose.components.uiToolingPreview)
             
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.navigation.compose)
@@ -59,35 +57,10 @@ kotlin {
             implementation(libs.ktor.server.content.negotiation)
         }
     }
-}
-
-android {
-    namespace = "com.dexstudios.dex.desktop"
-    compileSdk = 35
-
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
-    defaultConfig {
+    androidLibrary {
+        namespace = "com.dexstudios.dex.desktop"
+        compileSdk = 37
         minSdk = 26
-    }
-    
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
-    
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
