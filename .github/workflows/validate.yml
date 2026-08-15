@@ -20,6 +20,9 @@ jobs:
       - name: Build C# Transfer Engine
         run: dotnet build DeXShareTarget --configuration Release
 
+      - name: Test C# Transfer Engine
+        run: dotnet test DeXShareTarget.Tests --configuration Release
+
       - name: Pre-flight validation (PS syntax, engine XAML load, themes, FindName/resources, assets, manifest)
         shell: powershell
         run: .\Validate-Build.ps1
