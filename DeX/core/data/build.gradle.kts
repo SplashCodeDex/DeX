@@ -5,7 +5,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.dexstudios.dex.core.data"
         compileSdk = 34
         minSdk = 24
@@ -20,7 +20,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.coroutines)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation("io.insert-koin:koin-core")
         }

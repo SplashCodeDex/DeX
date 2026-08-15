@@ -6,7 +6,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.dexstudios.dex.feature.discovery"
         compileSdk = 34
         minSdk = 24

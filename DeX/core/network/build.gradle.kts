@@ -5,7 +5,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.dexstudios.dex.core.network"
         compileSdk = 34
         minSdk = 24
@@ -22,7 +22,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.serializationJson)
-            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.coroutines)
             implementation(project(":core:data"))
         }
         desktopMain.dependencies {

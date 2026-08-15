@@ -6,7 +6,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.dexstudios.dex.feature.settings"
         compileSdk = 34
         minSdk = 24
