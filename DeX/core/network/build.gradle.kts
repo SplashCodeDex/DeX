@@ -8,10 +8,7 @@ kotlin {
     android {
         namespace = "com.dexstudios.dex.core.network"
         compileSdk = 34
-        minSdk = 24
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
+        minSdk = 24
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -23,11 +20,11 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.serializationJson)
+            implementation(libs.kotlinx.serialization.json)
             implementation(libs.coroutines)
             implementation(project(":core:data"))
         }
-        desktopMain.dependencies {
+        jvmMain.dependencies {
             implementation(libs.ktor.client.cio)
             implementation(libs.ktor.server.core)
             implementation(libs.ktor.server.netty)
@@ -36,9 +33,3 @@ kotlin {
         }
     }
 }
-
-
-
-
-
-
