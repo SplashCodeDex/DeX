@@ -8,11 +8,6 @@ plugins {
 kotlin {
     jvm("desktop")
     androidTarget {
-    }
-    android {
-        namespace = "com.dexstudios.dex.feature.settings"
-        compileSdk = 37
-    }
         compilations.all {
             kotlinOptions { jvmTarget = "17" }
         }
@@ -30,4 +25,9 @@ kotlin {
             implementation(project(":core:data"))
         }
     }
+}
+
+android {
+    namespace = "com.dexstudios.dex.feature.settings"
+    compileSdk = 37
 }

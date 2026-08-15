@@ -7,11 +7,6 @@ plugins {
 kotlin {
     jvm("desktop")
     androidTarget {
-    }
-    android {
-        namespace = "com.dexstudios.dex.core.data"
-        compileSdk = 37
-    }
         compilations.all {
             kotlinOptions { jvmTarget = "17" }
         }
@@ -25,4 +20,9 @@ kotlin {
             implementation(libs.koin.core)
         }
     }
+}
+
+android {
+    namespace = "com.dexstudios.dex.core.data"
+    compileSdk = 37
 }
