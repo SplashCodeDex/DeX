@@ -1,4 +1,4 @@
-package com.dexstudios.dex.network
+package com.dexstudios.dex.network.protocol
 
 object DeXPorts {
     const val QUIC = 48423

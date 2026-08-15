@@ -1,4 +1,4 @@
-package com.dexstudios.dex.network
+package com.dexstudios.dex.network.protocol
 
 import org.json.JSONObject
 

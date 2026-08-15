@@ -1,4 +1,4 @@
-package com.dexstudios.dex.network
+package com.dexstudios.dex.network.protocol
 
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap

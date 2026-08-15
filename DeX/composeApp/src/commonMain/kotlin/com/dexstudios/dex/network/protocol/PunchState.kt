@@ -1,4 +1,4 @@
-package com.dexstudios.dex.network
+package com.dexstudios.dex.network.protocol
 
 import android.net.Uri
 import kotlinx.coroutines.CompletableDeferred
