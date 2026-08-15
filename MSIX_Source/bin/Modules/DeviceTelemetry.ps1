@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     DeX - Device Telemetry
 .DESCRIPTION
@@ -40,6 +40,13 @@ function Get-DeviceSubText {
         BatteryText = ""
         WifiIcon = ""
         WifiText = ""
+    }
+
+    if ($Peer.IsOffline) {
+        $res.ModelText = $Peer.Model
+        $res.BatteryText = "Offline"
+        # We leave BatteryIcon and WifiText empty, so only 'Offline' is visible.
+        return $res
     }
 
     if ($Peer.Model) { 

@@ -398,24 +398,23 @@ private fun TransferIcon(
         LaunchedEffect(isUploading, isDownloading) {
             while (true) {
                 if (isUploading) {
-                    translationY.snapTo(8f)
+                    translationY.snapTo(10f)
                     translationY.animateTo(
-                        targetValue = -8f,
+                        targetValue = -10f,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessLow
                         )
                     )
                 } else if (isDownloading) {
-                    translationY.snapTo(-8f)
+                    translationY.snapTo(-10f)
                     translationY.animateTo(
-                        targetValue = 0f,
+                        targetValue = 10f,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessLow
                         )
                     )
-                    delay(800)
                 } else {
                     translationY.animateTo(0f)
                     break

@@ -820,7 +820,7 @@
                                         <MenuItem Name="menuForget" Header="Forget Device" Tag="{Binding [Fingerprint]}" Foreground="{DynamicResource DangerBrush}" />
                                     </ContextMenu>
                                 </RadioButton.ContextMenu>
-                                    <Grid>
+                                    <Grid x:Name="mainGrid">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -828,9 +828,9 @@
                                         </Grid.ColumnDefinitions>
 
                                         <Grid Width="38" Height="38" Margin="0,0,12,0">
-                                            <Ellipse Fill="{DynamicResource SecondaryBrush}" />
-                                            <TextBlock Text="{Binding [IconGlyph]}" FontFamily="Segoe UI, Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            <Ellipse Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                            <Ellipse x:Name="iconCircle" Fill="{DynamicResource SecondaryBrush}" />
+                                            <TextBlock x:Name="iconGlyph" Text="{Binding [IconGlyph]}" FontFamily="Segoe UI, Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <Ellipse x:Name="iconStatusDot" Width="12" Height="12" Fill="{DynamicResource SecondaryBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                                         </Grid>
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -848,6 +848,16 @@
                                         </StackPanel>
                                     </Grid>
                             </RadioButton>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding [IsOffline]}" Value="True">
+                                    <Setter TargetName="mainGrid" Property="Opacity" Value="0.5" />
+                                    <Setter TargetName="iconCircle" Property="Fill" Value="Transparent" />
+                                    <Setter TargetName="iconCircle" Property="Stroke" Value="{DynamicResource SecondaryTextBrush}" />
+                                    <Setter TargetName="iconCircle" Property="StrokeThickness" Value="1.5" />
+                                    <Setter TargetName="iconGlyph" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                                    <Setter TargetName="iconStatusDot" Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

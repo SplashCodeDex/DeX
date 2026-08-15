@@ -518,14 +518,17 @@ $mdnsTimer.Add_Tick({
                             # devices listed even when their LAN announcements lapse (mDNS
                             # queries run every 15-31s, telemetry every 60s — both exceed the
                             # 10s window), so those must stay clickable instead of vanishing.
-                            if (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10) -or $p.isOnline) {
+                            $isFresh = (([datetime]::UtcNow) - $dt -lt [timespan]::FromSeconds(10))
+                            if ($isFresh -or $p.isOnline -or $p.isPaired -or $p.isAutoTrusted) {
                                 if ($p.isPaired -or $p.isAutoTrusted) {
+                                    $isOffline = -not ($isFresh -or $p.isOnline)
                                     # Telemetry (WebSocket) feeds battery + wifi for every device
                                     $peerRow = @{
-                                        Model    = $p.info.deviceModel
-                                        Battery  = if ($null -ne $p.battery) { [string]$p.battery } else { $null }
-                                        WifiSsid = $p.wifiSsid
-                                        WifiRssi = $p.wifiRssi
+                                        Model     = $p.info.deviceModel
+                                        Battery   = if ($null -ne $p.battery) { [string]$p.battery } else { $null }
+                                        WifiSsid  = $p.wifiSsid
+                                        WifiRssi  = $p.wifiRssi
+                                        IsOffline = $isOffline
                                     }
                                     $adbConnected = ($script:currentTarget -and $p.ip -eq ($script:currentTarget -replace ':.*',''))
                                     $livePeers += @{
@@ -537,6 +540,7 @@ $mdnsTimer.Add_Tick({
                                         ConnectAdbVisibility = if ($adbConnected) { 'Collapsed' } else { 'Visible' }
                                         DisconnectAdbVisibility = if ($adbConnected) { 'Visible' } else { 'Collapsed' }
                                         IsChecked   = ($script:currentTarget -eq $p.ip)
+                                        IsOffline   = $isOffline
                                     }
                                 } else {
                                     $liveUdp += @{
