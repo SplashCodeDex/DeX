@@ -222,7 +222,13 @@ function Update-WpfUI {
         } catch {}
     }
 
-    $activeDev = $devList | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+    $activeDev = $null
+    if ($script:currentTarget) {
+        $activeDev = $devList | Where-Object { $_.ip -eq $script:currentTarget -and ($_.isPaired -or $_.isAutoTrusted) } | Select-Object -First 1
+    }
+    if (-not $activeDev) {
+        $activeDev = $devList | Where-Object { $_.isPaired -or $_.isAutoTrusted } | Select-Object -First 1
+    }
     if (-not $activeDev -and $devList.Count -gt 0) { $activeDev = $devList[0] }
 
     if ($activeDev) {
@@ -778,6 +784,7 @@ function Show-PinPanel {
                     $succTimer.Add_Tick({
                         $this.Stop()
                         if ($script:pairWaitHideOnTerminal) { $script:wpfWindow.FindName("pinViewPanel").Visibility = 'Collapsed' }
+                        $script:currentTarget = $script:pairWaitSessionIp
                         Clear-PairingState
                         try { $script:wpfWindow.FindName("menuViewsContainer").FindResource("SlideOutPinAnim").Begin($script:wpfWindow) } catch {}
                         Show-Toast -Title "Pairing Successful" -Message $script:pairWaitSuccessMsg

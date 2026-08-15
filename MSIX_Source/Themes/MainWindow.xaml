@@ -819,7 +819,7 @@
                 <ItemsControl x:Name="icLivePeers">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <RadioButton Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2" Tag="{Binding [IP]}">
+                            <RadioButton Style="{DynamicResource SpatialDeviceItem}" Margin="0,2,0,2" Tag="{Binding [IP]}" IsChecked="{Binding [IsChecked], Mode=OneWay}">
                                 <RadioButton.Triggers>
                                     <EventTrigger RoutedEvent="Loaded">
                                         <BeginStoryboard>

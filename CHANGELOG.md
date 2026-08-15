@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.2.1.0] - 2026-08-15
+### Fixed
+- **[patch] Active Device UI Binding**: Ensured that when a discovered device is successfully paired, it smoothly animates into the 'Your Devices' (Live Peers) list and is immediately and visually selected as the actively connected target. Manually clicking devices in this list now also correctly updates the active target binding behind the scenes.
+
 ## [9.2.0.0] - 2026-08-14
 ### Changed
 - **[major] Comprehensive Trust System & Edge Case Hardening**: Fully addressed 16 distinct pairing and trust edge cases to align with industry-standard P2P security architectures:

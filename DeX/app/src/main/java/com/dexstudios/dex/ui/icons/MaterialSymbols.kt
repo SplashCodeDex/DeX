@@ -654,6 +654,340 @@ object MaterialSymbols {
         }.build().also { _cloudUpload = it }
 
 
+    val ArrowUploadReady: ImageVector
+        get() = _arrowUploadReady ?: ImageVector.Builder(
+            name = "arrow_upload_ready",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4.25f, 14f)
+                quadToRelative(0.15f, 0.57f, 0.36f, 1.1f)
+                quadToRelative(0.21f, 0.53f, 0.49f, 1f)
+                quadToRelative(0.22f, 0.38f, 0.17f, 0.8f)
+                quadTo(5.23f, 17.33f, 4.95f, 17.6f)
+                reflectiveQuadTo(4.26f, 17.86f)
+                reflectiveQuadTo(3.63f, 17.5f)
+                quadTo(3.1f, 16.7f, 2.74f, 15.85f)
+                reflectiveQuadTo(2.18f, 14.05f)
+                quadToRelative(-0.1f, -0.4f, 0.16f, -0.72f)
+                reflectiveQuadTo(3.03f, 13f)
+                reflectiveQuadToRelative(0.76f, 0.27f)
+                reflectiveQuadTo(4.25f, 14f)
+                close()
+                moveTo(5.1f, 7.9f)
+                quadTo(4.83f, 8.38f, 4.61f, 8.9f)
+                reflectiveQuadTo(4.25f, 10f)
+                quadTo(4.13f, 10.45f, 3.79f, 10.73f)
+                reflectiveQuadTo(3.03f, 11f)
+                reflectiveQuadTo(2.34f, 10.7f)
+                quadTo(2.08f, 10.4f, 2.18f, 10f)
+                quadTo(2.38f, 9.02f, 2.75f, 8.13f)
+                quadTo(3.13f, 7.22f, 3.65f, 6.47f)
+                quadTo(3.88f, 6.15f, 4.28f, 6.14f)
+                reflectiveQuadTo(4.95f, 6.4f)
+                quadTo(5.23f, 6.68f, 5.28f, 7.1f)
+                reflectiveQuadTo(5.1f, 7.9f)
+                close()
+                moveTo(7.88f, 18.85f)
+                quadToRelative(0.5f, 0.3f, 1.03f, 0.52f)
+                reflectiveQuadToRelative(1.08f, 0.38f)
+                quadToRelative(0.42f, 0.13f, 0.7f, 0.45f)
+                reflectiveQuadToRelative(0.28f, 0.75f)
+                reflectiveQuadToRelative(-0.3f, 0.68f)
+                reflectiveQuadTo(9.95f, 21.8f)
+                quadTo(9.03f, 21.6f, 8.16f, 21.25f)
+                reflectiveQuadTo(6.5f, 20.38f)
+                quadTo(6.15f, 20.15f, 6.11f, 19.74f)
+                reflectiveQuadTo(6.35f, 19.02f)
+                quadToRelative(0.3f, -0.3f, 0.72f, -0.35f)
+                reflectiveQuadToRelative(0.8f, 0.18f)
+                close()
+                moveTo(10.03f, 4.25f)
+                quadTo(9.48f, 4.4f, 8.96f, 4.61f)
+                reflectiveQuadTo(7.95f, 5.13f)
+                quadTo(7.55f, 5.35f, 7.11f, 5.31f)
+                quadTo(6.68f, 5.27f, 6.38f, 4.97f)
+                quadTo(6.08f, 4.67f, 6.1f, 4.27f)
+                reflectiveQuadTo(6.48f, 3.65f)
+                quadTo(7.3f, 3.13f, 8.19f, 2.76f)
+                quadTo(9.08f, 2.4f, 10.03f, 2.2f)
+                quadTo(10.4f, 2.13f, 10.7f, 2.38f)
+                reflectiveQuadTo(11f, 3.05f)
+                reflectiveQuadTo(10.73f, 3.8f)
+                quadToRelative(-0.28f, 0.33f, -0.7f, 0.45f)
+                close()
+                moveToRelative(6.05f, 14.63f)
+                quadToRelative(0.38f, -0.23f, 0.81f, -0.19f)
+                reflectiveQuadToRelative(0.74f, 0.34f)
+                quadToRelative(0.3f, 0.3f, 0.28f, 0.71f)
+                reflectiveQuadToRelative(-0.38f, 0.61f)
+                quadToRelative(-0.8f, 0.52f, -1.7f, 0.89f)
+                reflectiveQuadTo(13.98f, 21.8f)
+                quadToRelative(-0.4f, 0.07f, -0.71f, -0.18f)
+                reflectiveQuadTo(12.95f, 20.95f)
+                reflectiveQuadTo(13.24f, 20.2f)
+                reflectiveQuadToRelative(0.71f, -0.45f)
+                quadToRelative(0.57f, -0.15f, 1.1f, -0.36f)
+                quadToRelative(0.53f, -0.21f, 1.02f, -0.51f)
+                close()
+                moveTo(13.98f, 4.25f)
+                quadTo(13.55f, 4.13f, 13.28f, 3.8f)
+                reflectiveQuadTo(13f, 3.05f)
+                quadTo(13f, 2.63f, 13.3f, 2.38f)
+                reflectiveQuadTo(13.98f, 2.2f)
+                quadToRelative(0.95f, 0.2f, 1.85f, 0.56f)
+                reflectiveQuadToRelative(1.7f, 0.89f)
+                quadToRelative(0.35f, 0.23f, 0.38f, 0.63f)
+                reflectiveQuadToRelative(-0.25f, 0.7f)
+                quadToRelative(-0.3f, 0.3f, -0.73f, 0.35f)
+                reflectiveQuadTo(16.1f, 5.15f)
+                quadTo(15.58f, 4.85f, 15.05f, 4.63f)
+                reflectiveQuadTo(13.98f, 4.25f)
+                close()
+                moveToRelative(5.77f, 9.73f)
+                quadToRelative(0.13f, -0.43f, 0.46f, -0.7f)
+                reflectiveQuadTo(20.98f, 13f)
+                reflectiveQuadToRelative(0.69f, 0.32f)
+                reflectiveQuadToRelative(0.16f, 0.72f)
+                quadTo(21.63f, 15f, 21.24f, 15.88f)
+                reflectiveQuadTo(20.35f, 17.5f)
+                quadToRelative(-0.23f, 0.32f, -0.63f, 0.35f)
+                reflectiveQuadTo(19.05f, 17.6f)
+                quadTo(18.78f, 17.33f, 18.73f, 16.89f)
+                reflectiveQuadTo(18.9f, 16.08f)
+                quadToRelative(0.27f, -0.5f, 0.49f, -1.01f)
+                reflectiveQuadToRelative(0.36f, -1.09f)
+                close()
+                moveTo(18.9f, 7.9f)
+                quadTo(18.68f, 7.52f, 18.73f, 7.1f)
+                quadTo(18.78f, 6.68f, 19.05f, 6.4f)
+                quadTo(19.33f, 6.13f, 19.73f, 6.15f)
+                quadToRelative(0.4f, 0.03f, 0.63f, 0.35f)
+                quadToRelative(0.55f, 0.8f, 0.93f, 1.67f)
+                reflectiveQuadTo(21.85f, 10f)
+                quadToRelative(0.07f, 0.4f, -0.19f, 0.7f)
+                reflectiveQuadTo(20.98f, 11f)
+                reflectiveQuadTo(20.21f, 10.73f)
+                reflectiveQuadTo(19.75f, 10f)
+                quadTo(19.6f, 9.42f, 19.39f, 8.9f)
+                quadTo(19.18f, 8.38f, 18.9f, 7.9f)
+                close()
+                moveToRelative(-7.64f, 8.81f)
+                quadTo(10.98f, 16.43f, 10.98f, 16f)
+                verticalLineTo(10.88f)
+                lineTo(9.1f, 12.77f)
+                quadToRelative(-0.3f, 0.3f, -0.71f, 0.3f)
+                reflectiveQuadTo(7.68f, 12.77f)
+                quadTo(7.38f, 12.48f, 7.36f, 12.06f)
+                reflectiveQuadTo(7.65f, 11.35f)
+                lineTo(11.28f, 7.7f)
+                quadToRelative(0.28f, -0.27f, 0.7f, -0.27f)
+                reflectiveQuadToRelative(0.7f, 0.27f)
+                lineToRelative(3.57f, 3.57f)
+                quadToRelative(0.3f, 0.3f, 0.31f, 0.73f)
+                reflectiveQuadToRelative(-0.29f, 0.72f)
+                quadToRelative(-0.3f, 0.3f, -0.73f, 0.3f)
+                reflectiveQuadToRelative(-0.72f, -0.3f)
+                lineTo(12.98f, 10.88f)
+                verticalLineTo(16f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(11.98f, 17f)
+                reflectiveQuadTo(11.26f, 16.71f)
+                close()
+            }
+        }.build().also { _arrowUploadReady = it }
+
+    val ArrowUploadCircle: ImageVector
+        get() = _arrowUploadCircle ?: ImageVector.Builder(
+            name = "arrow_upload_circle",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(4.25f, 14f)
+                quadToRelative(0.15f, 0.57f, 0.36f, 1.1f)
+                quadToRelative(0.21f, 0.53f, 0.49f, 1f)
+                quadToRelative(0.22f, 0.38f, 0.17f, 0.8f)
+                quadTo(5.23f, 17.33f, 4.95f, 17.6f)
+                reflectiveQuadTo(4.26f, 17.86f)
+                reflectiveQuadTo(3.63f, 17.5f)
+                quadTo(3.1f, 16.7f, 2.74f, 15.85f)
+                reflectiveQuadTo(2.18f, 14.05f)
+                quadToRelative(-0.1f, -0.4f, 0.16f, -0.72f)
+                reflectiveQuadTo(3.03f, 13f)
+                reflectiveQuadToRelative(0.76f, 0.27f)
+                reflectiveQuadTo(4.25f, 14f)
+                close()
+                moveTo(5.1f, 7.9f)
+                quadTo(4.83f, 8.38f, 4.61f, 8.9f)
+                reflectiveQuadTo(4.25f, 10f)
+                quadTo(4.13f, 10.45f, 3.79f, 10.73f)
+                reflectiveQuadTo(3.03f, 11f)
+                reflectiveQuadTo(2.34f, 10.7f)
+                quadTo(2.08f, 10.4f, 2.18f, 10f)
+                quadTo(2.38f, 9.02f, 2.75f, 8.13f)
+                quadTo(3.13f, 7.22f, 3.65f, 6.47f)
+                quadTo(3.88f, 6.15f, 4.28f, 6.14f)
+                reflectiveQuadTo(4.95f, 6.4f)
+                quadTo(5.23f, 6.68f, 5.28f, 7.1f)
+                reflectiveQuadTo(5.1f, 7.9f)
+                close()
+                moveTo(7.88f, 18.85f)
+                quadToRelative(0.5f, 0.3f, 1.03f, 0.52f)
+                reflectiveQuadToRelative(1.08f, 0.38f)
+                quadToRelative(0.42f, 0.13f, 0.7f, 0.45f)
+                reflectiveQuadToRelative(0.28f, 0.75f)
+                reflectiveQuadToRelative(-0.3f, 0.68f)
+                reflectiveQuadTo(9.95f, 21.8f)
+                quadTo(9.03f, 21.6f, 8.16f, 21.25f)
+                reflectiveQuadTo(6.5f, 20.38f)
+                quadTo(6.15f, 20.15f, 6.11f, 19.74f)
+                reflectiveQuadTo(6.35f, 19.02f)
+                quadToRelative(0.3f, -0.3f, 0.72f, -0.35f)
+                reflectiveQuadToRelative(0.8f, 0.18f)
+                close()
+                moveTo(10.03f, 4.25f)
+                quadTo(9.48f, 4.4f, 8.96f, 4.61f)
+                reflectiveQuadTo(7.95f, 5.13f)
+                quadTo(7.55f, 5.35f, 7.11f, 5.31f)
+                quadTo(6.68f, 5.27f, 6.38f, 4.97f)
+                quadTo(6.08f, 4.67f, 6.1f, 4.27f)
+                reflectiveQuadTo(6.48f, 3.65f)
+                quadTo(7.3f, 3.13f, 8.19f, 2.76f)
+                quadTo(9.08f, 2.4f, 10.03f, 2.2f)
+                quadTo(10.4f, 2.13f, 10.7f, 2.38f)
+                reflectiveQuadTo(11f, 3.05f)
+                reflectiveQuadTo(10.73f, 3.8f)
+                quadToRelative(-0.28f, 0.33f, -0.7f, 0.45f)
+                close()
+                moveToRelative(6.05f, 14.63f)
+                quadToRelative(0.38f, -0.23f, 0.81f, -0.19f)
+                reflectiveQuadToRelative(0.74f, 0.34f)
+                quadToRelative(0.3f, 0.3f, 0.28f, 0.71f)
+                reflectiveQuadToRelative(-0.38f, 0.61f)
+                quadToRelative(-0.8f, 0.52f, -1.7f, 0.89f)
+                reflectiveQuadTo(13.98f, 21.8f)
+                quadToRelative(-0.4f, 0.07f, -0.71f, -0.18f)
+                reflectiveQuadTo(12.95f, 20.95f)
+                reflectiveQuadTo(13.24f, 20.2f)
+                reflectiveQuadToRelative(0.71f, -0.45f)
+                quadToRelative(0.57f, -0.15f, 1.1f, -0.36f)
+                quadToRelative(0.53f, -0.21f, 1.02f, -0.51f)
+                close()
+                moveTo(13.98f, 4.25f)
+                quadTo(13.55f, 4.13f, 13.28f, 3.8f)
+                reflectiveQuadTo(13f, 3.05f)
+                quadTo(13f, 2.63f, 13.3f, 2.38f)
+                reflectiveQuadTo(13.98f, 2.2f)
+                quadToRelative(0.95f, 0.2f, 1.85f, 0.56f)
+                reflectiveQuadToRelative(1.7f, 0.89f)
+                quadToRelative(0.35f, 0.23f, 0.38f, 0.63f)
+                reflectiveQuadToRelative(-0.25f, 0.7f)
+                quadToRelative(-0.3f, 0.3f, -0.73f, 0.35f)
+                reflectiveQuadTo(16.1f, 5.15f)
+                quadTo(15.58f, 4.85f, 15.05f, 4.63f)
+                reflectiveQuadTo(13.98f, 4.25f)
+                close()
+                moveToRelative(5.77f, 9.73f)
+                quadToRelative(0.13f, -0.43f, 0.46f, -0.7f)
+                reflectiveQuadTo(20.98f, 13f)
+                reflectiveQuadToRelative(0.69f, 0.32f)
+                reflectiveQuadToRelative(0.16f, 0.72f)
+                quadTo(21.63f, 15f, 21.24f, 15.88f)
+                reflectiveQuadTo(20.35f, 17.5f)
+                quadToRelative(-0.23f, 0.32f, -0.63f, 0.35f)
+                reflectiveQuadTo(19.05f, 17.6f)
+                quadTo(18.78f, 17.33f, 18.73f, 16.89f)
+                reflectiveQuadTo(18.9f, 16.08f)
+                quadToRelative(0.27f, -0.5f, 0.49f, -1.01f)
+                reflectiveQuadToRelative(0.36f, -1.09f)
+                close()
+                moveTo(18.9f, 7.9f)
+                quadTo(18.68f, 7.52f, 18.73f, 7.1f)
+                quadTo(18.78f, 6.68f, 19.05f, 6.4f)
+                quadTo(19.33f, 6.13f, 19.73f, 6.15f)
+                quadToRelative(0.4f, 0.03f, 0.63f, 0.35f)
+                quadToRelative(0.55f, 0.8f, 0.93f, 1.67f)
+                reflectiveQuadTo(21.85f, 10f)
+                quadToRelative(0.07f, 0.4f, -0.19f, 0.7f)
+                reflectiveQuadTo(20.98f, 11f)
+                reflectiveQuadTo(20.21f, 10.73f)
+                reflectiveQuadTo(19.75f, 10f)
+                quadTo(19.6f, 9.42f, 19.39f, 8.9f)
+                quadTo(19.18f, 8.38f, 18.9f, 7.9f)
+                close()
+            }
+        }.build().also { _arrowUploadCircle = it }
+
+    val ArrowUploadArrow: ImageVector
+        get() = _arrowUploadArrow ?: ImageVector.Builder(
+            name = "arrow_upload_arrow",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(11.26f, 16.71f)
+                quadTo(10.98f, 16.43f, 10.98f, 16f)
+                verticalLineTo(10.88f)
+                lineTo(8.39f, 13.47f)
+                quadToRelative(-0.28f, 0.28f, -0.7f, 0.28f)
+                reflectiveQuadToRelative(-0.7f, -0.28f)
+                quadToRelative(-0.28f, -0.28f, -0.28f, -0.7f)
+                reflectiveQuadToRelative(0.28f, -0.7f)
+                lineTo(11.3f, 7.7f)
+                quadToRelative(0.28f, -0.27f, 0.7f, -0.27f)
+                reflectiveQuadToRelative(0.7f, 0.27f)
+                lineTo(16.98f, 11.4f)
+                quadToRelative(0.28f, 0.28f, 0.28f, 0.7f)
+                reflectiveQuadToRelative(-0.28f, 0.7f)
+                quadToRelative(-0.28f, 0.28f, -0.7f, 0.28f)
+                reflectiveQuadToRelative(-0.7f, -0.28f)
+                lineTo(12.98f, 10.88f)
+                verticalLineTo(16f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(11.98f, 17f)
+                reflectiveQuadTo(11.26f, 16.71f)
+                close()
+            }
+        }.build().also { _arrowUploadArrow = it }
+
     val Sort: ImageVector
         get() = _sort ?: ImageVector.Builder(
             name = "sort",
@@ -2845,4 +3179,7 @@ object MaterialSymbols {
     private var _fileDownload: ImageVector? = null
     private var _cloudDownload: ImageVector? = null
     private var _cloudUpload: ImageVector? = null
+    private var _arrowUploadReady: ImageVector? = null
+    private var _arrowUploadCircle: ImageVector? = null
+    private var _arrowUploadArrow: ImageVector? = null
 }

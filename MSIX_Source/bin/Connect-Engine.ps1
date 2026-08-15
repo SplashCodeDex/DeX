@@ -536,6 +536,7 @@ $mdnsTimer.Add_Tick({
                                         Fingerprint = $p.info.fingerprint
                                         ConnectAdbVisibility = if ($adbConnected) { 'Collapsed' } else { 'Visible' }
                                         DisconnectAdbVisibility = if ($adbConnected) { 'Visible' } else { 'Collapsed' }
+                                        IsChecked   = ($script:currentTarget -eq $p.ip)
                                     }
                                 } else {
                                     $liveUdp += @{

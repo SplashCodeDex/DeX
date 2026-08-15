@@ -69,6 +69,7 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState()
 ) {
+    val clientEngine: com.dexstudios.dex.network.ClientEngine = org.koin.compose.koinInject()
     val context = LocalContext.current
     val allItems by TransferHistory.items.collectAsStateWithLifecycle()
     val search = TopAppBarState.searchQuery
@@ -300,7 +301,12 @@ fun HistoryScreen(
                                 com.dexstudios.dex.ui.components.DeXButton(
                                     onClick = { com.dexstudios.dex.network.TcpDownloadService.triggerDemo() }
                                 ) {
-                                    Text("Demo Transfer")
+                                    Text("Demo Down")
+                                }
+                                com.dexstudios.dex.ui.components.DeXButton(
+                                    onClick = { clientEngine.triggerDemo() }
+                                ) {
+                                    Text("Demo Up")
                                 }
                             }
                         }

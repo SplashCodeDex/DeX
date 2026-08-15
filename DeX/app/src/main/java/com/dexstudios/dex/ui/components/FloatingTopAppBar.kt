@@ -348,10 +348,9 @@ fun FloatingTopAppBar(
                             }
                         } else {
                             if (isTransferActive) {
-                                Icon(
-                                    imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
-                                    contentDescription = "Transferring",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                TransferIcon(
+                                    isDownloading = isDownloading,
+                                    isUploading = isUploading,
                                     modifier = Modifier.size(32.dp)
                                 )
                             } else {
@@ -366,22 +365,84 @@ fun FloatingTopAppBar(
 }
 
 @Composable
+private fun TransferIcon(
+    isDownloading: Boolean,
+    isUploading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (isUploading) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            val infiniteTransition = rememberInfiniteTransition(label = "uploadAnimation")
+
+            // Dotted Circle Rotation
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "rotation"
+            )
+
+            Icon(
+                imageVector = MaterialSymbols.ArrowUploadCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationZ = rotation }
+            )
+
+            // Bouncy Arrow
+            val bouncyOffset by infiniteTransition.animateFloat(
+                initialValue = 2f,
+                targetValue = -2f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(600, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "bouncyOffset"
+            )
+
+            Icon(
+                imageVector = MaterialSymbols.ArrowUploadArrow,
+                contentDescription = "Uploading",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        translationY = bouncyOffset.dp.toPx()
+                    }
+            )
+        }
+    } else {
+        Icon(
+            imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
+            contentDescription = if (isDownloading) "Downloading" else "Uploading",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
 private fun ExpandedTransferContent(
     downloadState: DownloadState,
     uploadState: UploadState,
     onCancel: () -> Unit
 ) {
     val isDownloading = downloadState.isDownloading
+    val isUploading = uploadState.isUploading
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (isDownloading) MaterialSymbols.CloudDownload else MaterialSymbols.CloudUpload,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+        TransferIcon(
+            isDownloading = isDownloading,
+            isUploading = isUploading,
             modifier = Modifier.size(32.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))

@@ -739,6 +739,7 @@ $script:wpfWindow.Add_PreviewMouseLeftButtonUp({
                 $livePeer = $icLivePeers.ItemsSource | Where-Object { $_['IP'] -eq $ip } | Select-Object -First 1
             }
             $script:selectedDeviceIp = $ip
+            $script:currentTarget = $ip
             $script:selectedDeviceFp = if ($livePeer) { $livePeer['Fingerprint'] } else { "" }
 
             # History always opens for a known peer — it works over the WebSocket even for
