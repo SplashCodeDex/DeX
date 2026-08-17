@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="history">
+    <output-path>$PROJECT_DIR$/feature/history/build/libs</output-path>
+    <root id="archive" name="history.jar">
+      <element id="module-output" name="DeX.feature.history.androidMain" />
+    </root>
+  </artifact>
+</component>

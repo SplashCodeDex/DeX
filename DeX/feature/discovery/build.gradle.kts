@@ -8,34 +8,28 @@ plugins {
 kotlin {
     android {
         namespace = "com.dexstudios.dex.feature.discovery"
-        compileSdk = 34
-        minSdk = 24
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
+        compileSdk = 37
+        minSdk = 24
+
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-    jvm("desktop")
+    jvm()
     
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
+            implementation(libs.jb.compose.runtime)
+            implementation(libs.jb.compose.foundation)
+            implementation(libs.jb.compose.material3)
+            implementation(libs.jb.compose.ui)
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
+            implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
+            implementation(project(":core:designsystem"))
             implementation(project(":core:network"))
             implementation(project(":core:data"))
         }
     }
 }
-
-
-
-
-
-

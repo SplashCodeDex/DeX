@@ -1,0 +1,232 @@
+package com.dexstudios.dex.window.components
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
+import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.window.kinematics.DockCardPhysics
+
+/**
+ * Centered row of 4 primary 56x44dp pill buttons + 1 dynamic Danger Close pill.
+ *
+ * Micro-interactions:
+ * - Hover scale 1.08x / translateY -3dp (300ms HoverEase)
+ * - Press scale 0.85x / translateY +3dp (100ms FastOutSlowInEasing)
+ * - Emerald state morphing (#0AE66D active background with #000000 icon)
+ * - Contrast-inverted badge counter for notifications/sync items
+ * - Collapsible Danger Close button (0 to 56dp when expanded)
+ */
+@Composable
+fun QuickActionBar(
+    isDndActive: Boolean,
+    isMirroringActive: Boolean,
+    isTransfersActive: Boolean,
+    isClipboardActive: Boolean,
+    clipboardBadgeCount: Int = 0,
+    isPanelExpanded: Boolean,
+    onToggleDnd: () -> Unit,
+    onToggleMirror: () -> Unit,
+    onToggleTransfers: () -> Unit,
+    onToggleClipboard: () -> Unit,
+    onCloseExpandedPanel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 1. Do Not Disturb Pill (56x44dp)
+        DeXQuickActionButton(
+            icon = MaterialSymbols.Notifications,
+            tooltip = "Do Not Disturb",
+            isChecked = isDndActive,
+            onClick = onToggleDnd
+        )
+
+        // 2. Screen Mirror Pill (56x44dp)
+        DeXQuickActionButton(
+            icon = MaterialSymbols.Smartphone,
+            tooltip = "Mirror Phone",
+            isChecked = isMirroringActive,
+            onClick = onToggleMirror
+        )
+
+        // 3. Transfers / File Explorer Pill (56x44dp)
+        DeXQuickActionButton(
+            icon = MaterialSymbols.Folder,
+            tooltip = "Transfers",
+            isChecked = isTransfersActive,
+            onClick = onToggleTransfers
+        )
+
+        // 4. Clipboard Sync Pill (56x44dp)
+        DeXQuickActionButton(
+            icon = MaterialSymbols.Clipboard,
+            tooltip = "Clipboard",
+            isChecked = isClipboardActive,
+            badgeCount = clipboardBadgeCount,
+            onClick = onToggleClipboard
+        )
+
+        // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 56dp)
+        AnimatedVisibility(
+            visible = isPanelExpanded,
+            enter = expandHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeIn(),
+            exit = shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeOut()
+        ) {
+            DeXQuickActionButton(
+                icon = MaterialSymbols.Close,
+                tooltip = "Close",
+                isChecked = false,
+                isDanger = true,
+                onClick = onCloseExpandedPanel
+            )
+        }
+    }
+}
+
+@Composable
+fun DeXQuickActionButton(
+    icon: ImageVector,
+    tooltip: String,
+    isChecked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDanger: Boolean = false,
+    badgeCount: Int = 0
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Tactile Scale: 1.0 -> 1.08 (hover) -> 0.85 (press sink)
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.85f
+            isHovered -> 1.08f
+            else -> 1.0f
+        },
+        animationSpec = if (isPressed) tween(100) else tween(300, easing = DockCardPhysics.HoverEase),
+        label = "btnScale"
+    )
+
+    // Tactile Translation: 0 -> -3dp (lift) -> +3dp (sink)
+    val translateY by animateDpAsState(
+        targetValue = when {
+            isPressed -> 3.dp
+            isHovered -> (-3).dp
+            else -> 0.dp
+        },
+        animationSpec = if (isPressed) tween(100) else tween(300, easing = DockCardPhysics.HoverEase),
+        label = "btnTransY"
+    )
+
+    // Emerald State Morphing Background Color
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isDanger && (isHovered || isPressed) -> Color(0xFFFF453A)
+            isChecked -> Color(0xFF0AE66D)
+            isHovered -> Color(0xFF332D3B)
+            else -> Color(0xFF2B2631)
+        },
+        animationSpec = tween(200),
+        label = "btnBgColor"
+    )
+
+    // Icon Color Morphing
+    val iconColor by animateColorAsState(
+        targetValue = when {
+            isChecked -> Color(0xFF000000)
+            isDanger && (isHovered || isPressed) -> Color(0xFFFFFFFF)
+            else -> Color(0xFFFFFFFF)
+        },
+        animationSpec = tween(200),
+        label = "btnIconColor"
+    )
+
+    Box(
+        modifier = modifier
+            .size(width = 56.dp, height = 44.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.translationY = translateY.toPx()
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor, RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = tooltip,
+            tint = iconColor,
+            modifier = Modifier.size(20.dp)
+        )
+
+        if (badgeCount > 0) {
+            // Contrast Inversion for Badge Counter
+            val badgeBgColor = if (isChecked) Color(0xFF16121A) else Color(0xFF0AE66D)
+            val badgeTextColor = if (isChecked) Color(0xFFFFFFFF) else Color(0xFF000000)
+            val badgeBorder = if (isChecked) BorderStroke(1.dp, Color(0xFF0AE66D)) else null
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 4.dp)
+                    .then(
+                        if (badgeBorder != null) Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
+                        else Modifier
+                    )
+                    .background(badgeBgColor, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = badgeCount.toString(),
+                    color = badgeTextColor,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}

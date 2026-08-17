@@ -7,16 +7,14 @@ plugins {
 kotlin {
     android {
         namespace = "com.dexstudios.dex.core.data"
-        compileSdk = 34
-        minSdk = 24
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
+        compileSdk = 37
+        minSdk = 24
+
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-    jvm("desktop")
+    jvm()
     
     sourceSets {
         commonMain.dependencies {
@@ -24,10 +22,11 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.coroutines)
             implementation(project.dependencies.platform(libs.koin.bom))
-            implementation("io.insert-koin:koin-core")
+            implementation(libs.koin.core)
         }
     }
 }
+
 
 
 

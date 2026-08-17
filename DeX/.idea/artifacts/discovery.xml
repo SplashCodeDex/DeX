@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="discovery">
+    <output-path>$PROJECT_DIR$/feature/discovery/build/libs</output-path>
+    <root id="archive" name="discovery.jar">
+      <element id="module-output" name="DeX.feature.discovery.androidMain" />
+    </root>
+  </artifact>
+</component>

@@ -26,6 +26,7 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven("https://jitpack.io")
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
@@ -38,4 +39,9 @@ rootProject.name = "DeX"
 include(":app")
 include(":composeApp")
 
-include(":core:network", ":core:data", ":feature:discovery", ":feature:settings")
+include(":core:network", ":core:data")
+
+
+include(":core:designsystem")
+
+include(":feature:discovery", ":feature:history", ":feature:settings")

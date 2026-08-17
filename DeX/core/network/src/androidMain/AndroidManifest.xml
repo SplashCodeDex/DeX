@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.dexstudios.dex.core.network">
+
+    <application>
+        <service
+            android:name=".DexService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice|dataSync|mediaProjection" />
+
+        <service
+            android:name=".PullForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <receiver android:name=".FileTransferReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.dexstudios.dex.ACCEPT_TRANSFER" />
+                <action android:name="com.dexstudios.dex.REJECT_TRANSFER" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".ClipboardReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.dexstudios.dex.SET_CLIPBOARD" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".ClipboardSyncTileService"
+            android:exported="true"
+            android:label="Clipboard Sync"
+            android:icon="@drawable/ic_stat_dex"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+    </application>
+</manifest>

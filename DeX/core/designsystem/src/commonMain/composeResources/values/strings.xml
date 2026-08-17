@@ -1,0 +1,134 @@
+<resources>
+    <string name="app_name">DeX</string>
+    <string name="settings_account_title">Account</string>
+    <string name="settings_connectivity_title">Connectivity</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_sign_out">Sign Out</string>
+    <string name="settings_app_version">Version</string>
+    <string name="settings_device_fingerprint">Device Fingerprint</string>
+    <string name="settings_ip_address">IP Address</string>
+    <string name="settings_device_alias">Device Name</string>
+    <string name="settings_device_alias_hint">How others see you</string>
+    <string name="settings_clipboard_sync">Clipboard Sync</string>
+    <string name="settings_clipboard_sync_desc">Auto-share copied text with connected PC</string>
+    <string name="trust_identity_desc">Devices signed in with the same Google account will automatically trust each other.</string>
+    <!-- Share Target -->
+    <string name="share_no_files">No files to share</string>
+    <string name="share_pc_offline">PC offline. Saved to Sandbox instead.</string>
+
+    <!-- Main Screen -->
+    <string name="downloading">Downloading…</string>
+    <string name="cancel">Cancel</string>
+    <string name="download_success">Successfully Downloaded %1$s</string>
+    <string name="download_failed">Download Failed: %1$s</string>
+    <string name="transfer_via">%1$s • %2$s</string>
+    <string name="error_transfer_expired">The file is no longer available on the PC. Ask to send it again.</string>
+    <string name="error_transfer_no_connection">Cannot reach the PC. Check that it is on and on the same network.</string>
+    <string name="error_transfer_folder">Cannot save to Downloads/DeX. Open the app and grant folder access.</string>
+    <string name="error_transfer_cancelled">Transfer cancelled.</string>
+    <string name="error_upload_all">Upload failed. Check the PC is on and reachable.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_grant">Grant Permission</string>
+    <string name="onboarding_open_settings">Open Settings</string>
+    <string name="onboarding_select_folder">Select Folder</string>
+    <string name="onboarding_done">Start Using DeX</string>
+    <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_step_connectivity_title">Stay Connected</string>
+    <string name="onboarding_step_connectivity_desc">DeX needs to scan for devices to find your PC on the local network.</string>
+    <string name="onboarding_step_connectivity_rationale">DeX cannot find devices without this permission. Please enable it in Settings to continue.</string>
+    <string name="onboarding_step_notifications_title">Never Miss a File</string>
+    <string name="onboarding_step_notifications_desc">Get notified when a PC wants to send you files or when transfers complete.</string>
+    <string name="onboarding_step_notifications_rationale">DeX needs notifications to alert you of incoming files. Please enable them in Settings to continue.</string>
+    <string name="onboarding_step_identity_title">Verified Identity</string>
+    <string name="onboarding_step_identity_desc">Sign in with Google to automatically trust your other devices and bypass pairing PINs.</string>
+    <string name="onboarding_step_storage_title">File Storage</string>
+    <string name="onboarding_step_storage_desc">DeX needs a folder to save incoming files. We recommend selecting your Downloads folder.</string>
+    <string name="onboarding_step_welcome_title">Welcome to</string>
+    <string name="onboarding_step_welcome_desc">Seamlessly share files and clipboard between your Android device and PC.</string>
+    <string name="google_sign_in">Sign in with Google</string>
+    <string name="google_signed_in_as">Signed in as %1$s</string>
+    <string name="google_sign_in_failed">Google Sign-In failed. Try again.</string>
+    <plurals name="uploading_progress">
+        <item quantity="one">Uploading %1$d of %2$d file…</item>
+        <item quantity="other">Uploading %1$d of %2$d files…</item>
+    </plurals>
+    <string name="upload_success">Successfully Uploaded %1$s</string>
+    <string name="upload_failed">Upload Failed: %1$s</string>
+    <string name="pairing_request">Pairing Request</string>
+    <string name="connect_option_pin">PIN CODE</string>
+    <string name="connect_option_qr">QR CODE</string>
+    <string name="connect_device_title">Connect to %1$s</string>
+    <string name="toast_scanned_ip">Scanned PC IP: %1$s, searching…</string>
+    <string name="toast_scan_failed">Scan failed: %1$s</string>
+    <plurals name="toast_sending_files">
+        <item quantity="one">Sending %1$d file to %2$s…</item>
+        <item quantity="other">Sending %1$d files to %2$s…</item>
+    </plurals>
+    <string name="toast_percent_total">%1$d%% Total</string>
+
+    <!-- Notification & Services -->
+    <string name="notif_channel_bg">DeX Background Service</string>
+    <string name="notif_bg_title">DeX is running</string>
+    <string name="notif_bg_desc">Listening for PC connections…</string>
+    <string name="notif_incoming_title">Incoming File Transfer</string>
+    <plurals name="notif_incoming_desc">
+        <item quantity="one">PC wants to send %1$d file.</item>
+        <item quantity="other">PC wants to send %1$d files.</item>
+    </plurals>
+    <string name="notif_action_accept">Accept</string>
+    <string name="notif_action_reject">Reject</string>
+    <string name="notif_file_received_title">File Received</string>
+    <string name="notif_file_received_desc">Saved to Downloads/DeX/%1$s</string>
+    <string name="notif_pairing_tap">Tap to enter PIN and connect.</string>
+
+    <!-- Workers -->
+    <string name="upload_worker_preparing">Preparing upload…</string>
+    <string name="upload_worker_channel">File Uploads</string>
+    <string name="upload_worker_progress">Uploading %1$d of %2$d: %3$s</string>
+    <!-- Error Handling -->
+    <string name="error_network_title">Network Error</string>
+    <string name="dismiss">Dismiss</string>
+
+    <!-- Pairing Toasts & Dialogs -->
+    <string name="pairing_with">Pairing with %1$s…</string>
+    <string name="paired_successfully">Paired successfully!</string>
+    <string name="pairing_failed">Pairing failed!</string>
+    <string name="pairing_enter_pin_on_device">Enter the PIN shown on %1$s</string>
+    <string name="pairing_wrong_pin">Incorrect PIN. Please try again.</string>
+    <string name="pairing_expires_in">Expires in %1$d s</string>
+    <string name="pairing_request_sent">Pairing request sent to %1$s — enter the PIN shown on their screen</string>
+
+    <!-- History Screen -->
+    <string name="history_title">History</string>
+    <string name="history_empty">No transfers yet. Files you send or receive will show up here.</string>
+    <string name="history_sent">Sent</string>
+    <string name="history_received">Received</string>
+    <string name="history_no_source">Original file is no longer available</string>
+    <string name="history_open_failed">Couldn\'t open this file</string>
+    <string name="history_clear_all">Clear All</string>
+    <string name="history_clear_confirm_title">Clear History?</string>
+    <string name="history_clear_confirm_desc">This will remove all transfer records from your history. This cannot be undone.</string>
+    <string name="history_delete">Delete</string>
+
+    <!-- Devices -->
+    <string name="device_unknown">Unknown device</string>
+    <string name="device_send_file">Send File</string>
+    <string name="device_forget">Forget</string>
+    <string name="device_pair">Pair</string>
+    <string name="device_details_hide">Hide Details</string>
+    <string name="device_details">Details</string>
+    <string name="device_paired">Paired</string>
+    <string name="device_ip">IP</string>
+    <string name="device_port">Port</string>
+    <string name="device_protocol">Protocol</string>
+    <string name="device_version">Version</string>
+    <string name="device_fingerprint">Fingerprint</string>
+
+    <!-- Discovery Guidance -->
+    <string name="discovery_help_hint">Can\'t find your PC?</string>
+    <string name="discovery_help_title">Connection Tips</string>
+    <string name="discovery_help_step1">Make sure DeX is open and active on your PC.</string>
+    <string name="discovery_help_step2">Check that both devices are on the same Wi-Fi network.</string>
+    <string name="discovery_help_step3">If using a public Wi-Fi (like a cafe), discovery might be blocked by the network.</string>
+    <string name="discovery_help_close">Got it</string>
+</resources>

@@ -43,6 +43,10 @@ kotlin {
             
             implementation(project(":core:network"))
             implementation(project(":core:data"))
+            implementation(project(":core:designsystem"))
+            implementation(project(":feature:discovery"))
+            implementation(project(":feature:history"))
+            implementation(project(":feature:settings"))
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
@@ -56,11 +60,17 @@ kotlin {
         
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.compose.native.tray)
+            implementation(libs.coroutines.swing)
             implementation(libs.ktor.client.cio)
             implementation(libs.ktor.server.core)
             implementation(libs.ktor.server.netty)
             implementation(libs.ktor.server.websockets)
             implementation(libs.ktor.server.content.negotiation)
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
@@ -68,11 +78,26 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "com.dexstudios.dex.MainKt"
+        javaHome = "C:/Program Files/Eclipse Adoptium/jdk-26.0.2.10-hotspot"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "DeX"
             packageVersion = "1.0.0"
+            
+            macOS {
+                bundleID = "com.dexstudios.dex"
+                appCategory = "public.app-category.utilities"
+                // iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
+            }
+            
+            windows {
+                menuGroup = "DeX Studios"
+                upgradeUuid = "6ac1f203-bde0-4040-a2f3-f8a6dcda330c"
+                dirChooser = true
+                shortcut = true
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
+            }
         }
     }
 }

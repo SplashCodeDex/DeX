@@ -8,10 +8,16 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
-/build
+build/
 /captures
 .externalNativeBuild
 .cxx
+.kotlin/
+.cache/
+*.log
+git_status.txt
+refactor.ps1
+refactor.py
 local.properties
 
 # Android Studio inspection report artifacts (Code Inspect exports at project root).
