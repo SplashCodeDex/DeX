@@ -28,3 +28,7 @@ local.properties
 
 # Local OAuth credentials - NEVER commit
 DeXShareTarget/oauth.local.json
+
+/.idea/modules
+/.idea/planningMode.xml
+

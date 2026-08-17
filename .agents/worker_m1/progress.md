@@ -1,11 +1,14 @@
-# Progress Log
+# Progress Tracker - Worker M1
 
-Last visited: 2026-08-08T01:04:40Z
+Last visited: 2026-08-17T00:24:00Z
 
-- [x] Step 1: Initialize DISPATCH.md and BRIEFING.md
-- [x] Step 2: Read ORIGINAL_REQUEST.md and Explorer reports (`explorer_1/handoff.md`, `explorer_2/handoff.md`, `explorer_3/handoff.md`)
-- [x] Step 3: Inspect existing codebase files (`AuthState.kt`, `DeviceManager.kt`, `FloatingTopAppBar.kt`, `MainScreen.kt`, and UI component design system files)
-- [x] Step 4: Implement `TrustedDevicesDialog.kt`
-- [x] Step 5: Wire top bar action and dialog state in `FloatingTopAppBar.kt` / `MainScreen.kt`
-- [x] Step 6: Verify build (`./gradlew assembleDebug`) and lint (`./gradlew lintDebug`) - BOTH PASSED
-- [x] Step 7: Finalize handoff report and notify parent
+## Status
+- [x] Initialized DISPATCH.md and BRIEFING.md
+- [x] Read ORIGINAL_REQUEST.md, PROJECT.md, and explorer surveys (1, 2, 3)
+- [x] Inspected existing files in target write paths and common modules
+- [x] Implemented TaskbarWorkAreaProvider and ScreenBoundsHelper in `platform/`
+- [x] Implemented DockedWindowStateController in `window/`
+- [x] Implemented main.kt with Window transparency, UTILITY type suppression, 5-point guard, DropTarget, and Tray menu with 300ms debounce
+- [x] Verified compilation with `./gradlew :composeApp:compileKotlinDesktop` (exit code 0)
+- [x] Verified packaging with `./gradlew :composeApp:desktopJar` (exit code 0)
+- [x] Generated handoff.md and reported to parent agent

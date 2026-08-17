@@ -1,21 +1,18 @@
-## 2026-08-08T01:03:32Z
-You are Reviewer 2 evaluating Milestone 1 (Trusted Devices Manager UI).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\reviewer_m1_2
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T00:40:16Z
+You are teamwork_preview_reviewer (Reviewer M1-2).
+Working directory: w:\CodeDeX\DeX\.agents\reviewer_m1_2\
+Parent conversation ID: 56b8cce9-9bf3-4084-b06c-25e03e0eccf5
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 1 handoff at W:\CodeDeX\DeX\.agents\worker_m1\handoff.md.
+Please review Milestone 1 (Desktop Window & Shell Architecture - R1):
+- Read w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md
+- Read w:\CodeDeX\DeX\PROJECT.md
+- Read w:\CodeDeX\DeX\.agents\worker_m1\handoff.md
+- Inspect code in w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\:
+  - `main.kt`
+  - `platform/TaskbarWorkAreaProvider.kt`
+  - `platform/ScreenBoundsHelper.kt`
+  - `window/DockedWindowStateController.kt`
 
-Task:
-1. Conduct an independent review of Milestone 1 files:
-   - `TrustedDevicesDialog.kt`
-   - `FloatingTopAppBar.kt`
-   - `MainScreen.kt`
-2. Verify edge cases:
-   - What happens when the paired fingerprints set is empty?
-   - What happens when multiple devices are removed sequentially?
-   - Is `AuthState.pairedFingerprints` properly synchronized with `DeviceManager` persistence?
-   - Does top app bar action render correctly across dark/light themes?
-3. Run `./gradlew assembleDebug` and `./gradlew lintDebug`.
-4. Write your handoff report at `W:\CodeDeX\DeX\.agents\reviewer_m1_2\handoff.md` with explicit verdict: `APPROVE` or `REQUEST_CHANGES`.
-5. Send a message to parent when finished.
+Examine correctness, completeness, robustness, and interface conformance.
+Run build verification: `./gradlew :composeApp:compileKotlinDesktop` in `w:\CodeDeX\DeX\DeX`.
+Provide a clear verdict: **APPROVE** or **REQUEST_CHANGES** in `w:\CodeDeX\DeX\.agents\reviewer_m1_2\handoff.md`. Send a message to parent when done.

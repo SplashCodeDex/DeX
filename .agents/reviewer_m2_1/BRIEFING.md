@@ -1,60 +1,60 @@
-# BRIEFING — 2026-08-08T01:06:40Z
+# BRIEFING — 2026-08-17T01:03:35Z
 
 ## Mission
-Evaluate Milestone 2 implementation (Shared Folders Manager UI) for correctness, design system compliance, overlay architecture, and build stability.
+Perform comprehensive review and adversarial challenge for Milestone 2: Floating Dock Card Canvas & Kinematics Layer.
 
 ## 🔒 My Identity
-- Archetype: reviewer_critic
+- Archetype: reviewer
 - Roles: reviewer, critic
-- Working directory: W:\CodeDeX\DeX\.agents\reviewer_m2_1
-- Original parent: 31d38deb-407c-438f-bbe3-28f161413526
-- Milestone: Milestone 2 (Shared Folders Manager UI)
+- Working directory: w:\CodeDeX\DeX\.agents\reviewer_m2_1
+- Original parent: 123274fb-faac-44ac-bc9c-4109cf9e49cd
+- Milestone: Milestone 2 (Floating Dock Card Canvas & Kinematics Layer)
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Check for integrity violations, hardcoded values, dummy implementations
-- Strict adherence to DeX design system
+- Check for integrity violations
+- Run build and verification independently
 
 ## Current Parent
-- Conversation ID: 31d38deb-407c-438f-bbe3-28f161413526
-- Updated: 2026-08-08T01:06:40Z
+- Conversation ID: 123274fb-faac-44ac-bc9c-4109cf9e49cd
+- Updated: 2026-08-17T01:00:24Z
 
 ## Review Scope
 - **Files to review**:
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\SharedFoldersDialog.kt`
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\FloatingTopAppBar.kt`
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\main\MainScreen.kt`
-- **Reference files**:
-  - `W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`
-  - `W:\CodeDeX\DeX\.agents\worker_m2\handoff.md`
-- **Review criteria**: correctness, design system conformance (zero hardcoded values), overlay architecture, build & lint verification.
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/FloatingDockCard.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/DockCardContent.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/MainMenuColumn.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/components/DragPillHandle.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/kinematics/DockCardAnimations.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/kinematics/DockCardPhysics.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/DockedWindowStateController.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/platform/TaskbarWorkAreaProvider.kt`
+  - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt`
+- **Interface contracts**: PROJECT.md, UltimateMigrationPlan-WPF-Compose-UI.md, ORIGINAL_REQUEST.md, worker_m2_1/handoff.md
+- **Review criteria**: TopEnd + 25dp canvas alignment, spring physics (dampingRatio=0.65f, stiffness=300f), state synchronization with DockedWindowStateController, gesture dragging/flick/snap, code architecture, integrity.
 
 ## Review Checklist
-- **Items reviewed**:
-  - SharedFoldersDialog.kt: Verified SafStorage integration, reactive state, DeX components usage.
-  - FloatingTopAppBar.kt: Verified onOpenSharedFolders parameter and icon button.
-  - MainScreen.kt: Verified dialog state and overlay rendering.
+- **Items reviewed**: FloatingDockCard.kt, DockCardContent.kt, MainMenuColumn.kt, DragPillHandle.kt, DockCardAnimations.kt, DockCardPhysics.kt, DockedWindowStateController.kt, TaskbarWorkAreaProvider.kt, main.kt, DockCardPhysicsTest.kt.
 - **Verdict**: APPROVE
-- **Unverified claims**: None. All claims independently verified.
+- **Unverified claims**: None. Independently compiled and tested via Gradle.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Empty list behavior: Handled with empty state text UI.
-  - State synchronization: SafStorage.removeGrantedFolder and state map removal are synchronized.
-  - UI scaling/overflow: Long folder names handled via maxLines and TextOverflow.Ellipsis.
-  - Overlay dismiss behavior: Scrim click dismisses, inner panel click consumed.
-- **Vulnerabilities found**: None. Zero integrity violations or design deviations found.
-- **Untested angles**: None.
+  - Direct3D resize stutter eliminated via fixed 1420x760 canvas with internal expansion (PASSED).
+  - High-DPI coordinate delta tracking without jitter or drift across monitor boundaries (PASSED).
+  - Headless/CI safety with mouse query fallbacks (PASSED).
+  - Atomic 2D coroutine reset preventing diagonal tearing (PASSED).
+  - Contraction origin clamping preventing off-screen void stranding (PASSED).
+- **Vulnerabilities found**: None.
+- **Untested angles**: None for Milestone 2 scope (Milestone 3 iconography and detailed file browser layouts are deferred to M3).
 
 ## Key Decisions Made
-- Confirmed build (`./gradlew assembleDebug` passed in 29s).
-- Confirmed lint (`./gradlew lintDebug` passed in 18s).
-- Verified zero hardcoded styling and proper overlay architecture.
-- Final Verdict: APPROVE.
+- Confirmed full mathematical and behavioral parity with WPF source specifications.
+- Verified clean build and test execution: `./gradlew :composeApp:compileKotlinDesktop` and `./gradlew :composeApp:desktopTest` exit with 0.
+- Issued APPROVE verdict.
 
 ## Artifact Index
-- W:\CodeDeX\DeX\.agents\reviewer_m2_1\DISPATCH.md — Dispatch log
-- W:\CodeDeX\DeX\.agents\reviewer_m2_1\BRIEFING.md — Working briefing
-- W:\CodeDeX\DeX\.agents\reviewer_m2_1\progress.md — Progress tracker
-- W:\CodeDeX\DeX\.agents\reviewer_m2_1\handoff.md — Handoff report
+- w:\CodeDeX\DeX\.agents\reviewer_m2_1\BRIEFING.md — persistent situational awareness
+- w:\CodeDeX\DeX\.agents\reviewer_m2_1\progress.md — liveness tracker
+- w:\CodeDeX\DeX\.agents\reviewer_m2_1\handoff.md — review report and verdict

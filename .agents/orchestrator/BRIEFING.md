@@ -1,87 +1,78 @@
-# BRIEFING — 2026-08-08T05:37:58Z
+# BRIEFING — 2026-08-17T01:28:35Z
 
 ## Mission
-Build UI for Trusted Devices Manager, Shared Folders Manager, and Connection Handshake flow matching existing DeX design system in Compose Multiplatform / Android app.
+Orchestrate Milestone 4 (Visual Styling, Liquid Glass & Final Build Verification - R4) and the final build/test verification for DeX Compose Desktop 1:1 Floating Docked Card UI.
 
 ## 🔒 My Identity
-- Archetype: Project Orchestrator
+- Archetype: orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
-- Working directory: W:\CodeDeX\DeX\.agents\orchestrator
-- Original parent: top-level
-- Original parent conversation ID: ac8468cc-7d9e-4d69-afce-e0809ceb3e38
+- Working directory: w:\CodeDeX\DeX\.agents\orchestrator\
+- Original parent: parent
+- Original parent conversation ID: a5cf22be-0c27-4220-9d42-cb020a4bc9ad
 
 ## 🔒 My Workflow
-- **Pattern**: Project Pattern
-- **Scope document**: W:\CodeDeX\DeX\.agents\orchestrator\PROJECT.md
-1. **Decompose**: Survey codebase -> Decompose into milestones -> Iteration loop (Explorer -> Worker -> Reviewer -> Challenger -> Auditor)
-2. **Dispatch & Execute**: Delegate subagents for survey, testing, implementation, and review.
-4. **Succession**: Self-succeed at 20 spawns
+- **Pattern**: Project Orchestration
+- **Scope document**: w:\CodeDeX\DeX\PROJECT.md
+1. **Decompose**: 4 Milestones (M1 complete, M2 complete, M3 complete, M4 complete).
+2. **Dispatch & Execute**:
+   - Iteration loop: Explorer(s) -> Worker -> Reviewer(s) -> Challenger(s) -> Auditor -> Gate check.
+3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate.
+4. **Succession**: Self-succeed at 16 spawns threshold.
 - **Work items**:
-  1. Survey & Architecture Mapping [done]
-  2. E2E Test Infra Track [done - 16/16 unit tests passing]
-  3. M1: Trusted Devices Manager UI [passed gate / done]
-  4. M2: Shared Folders Manager UI [passed gate / done]
-  5. M3: Connection Handshake Flow & Untrusted Pairing [passed gate / done]
-  6. M4: Final Integration & Release Protocol [passed gate / done]
-- **Current phase**: 4 (Release Complete)
-- **Current focus**: Project Verification & Victory Claim
+  1. M1: Desktop Window & Shell Architecture [DONE]
+  2. M2: Floating Dock Card Canvas & Kinematics Layer [DONE]
+  3. M3: Quick Actions, Panels & ViewModel Integration [DONE]
+  4. M4: Visual Styling, Liquid Glass & Final Build Verification [DONE]
+- **Current phase**: 4 (All Milestones Complete)
+- **Current focus**: Milestone 4 Verified, Victory Audit Readiness
 
 ## 🔒 Key Constraints
-- Pure DISPATCH-ONLY orchestrator: NEVER write/modify source code or run build/test commands directly.
-- All code edits/builds/tests done by subagents.
-- Enforce GEMINI.md rules: /ponytail minimal solutions, edge case reasoning, version bump in AppxManifest.xml, MSIX build, git commit/tagging.
-- Dialogs/Bottom sheets without dedicated navigation routing.
-- Strict design system usage (DeXPanel, DeXButton, DeXTextButton, etc.).
+- Use Model: "flash" for all subagent dispatches to conserve quota.
+- Dispatch-only orchestrator: never write source code directly, never run build/test commands directly.
+- Include path to ORIGINAL_REQUEST.md in all subagent dispatches.
+- Include mandatory integrity warning in all Worker prompts.
+- Respect Forensic Auditor binary veto.
 
 ## Current Parent
-- Conversation ID: ac8468cc-7d9e-4d69-afce-e0809ceb3e38
-- Updated: 2026-08-08T08:43:18Z
+- Conversation ID: a5cf22be-0c27-4220-9d42-cb020a4bc9ad
+- Updated: 2026-08-17T02:16:40Z
 
 ## Key Decisions Made
-- Initialized Project Orchestrator state (Generation 3).
-- Verified Milestone 1 (Double APPROVE + CLEAN audit) and Milestone 2 (Double APPROVE + CLEAN audit) completion.
-- Verified Test Writer 1 unit test suite (16/16 tests passing).
-- Verified Worker 3 Gen 3 remediation (`mutableStateSetOf` for `pairedFingerprints`, double-tap race prevention, localized string resources).
-- Verified Reviewer M3-1 Gen 2 verdict `APPROVE` and Auditor M3 Gen 2 verdict `CLEAN`.
-- Verified Reviewer M3-2 Gen 3 verdict `APPROVE` and Challenger M3 Gen 3 verdict `APPROVE`.
-- Dispatched Worker M4 for Milestone 4 release protocol (`assembleDebug`, `testDebugUnitTest`, `lintDebug`, `AppxManifest.xml` version bump to `1.1.0.0`, MSIX repack/sign, `CHANGELOG.md` update, git commit `859c7c0`).
+- Milestone 1 is verified complete.
+- Milestone 2 is complete, passing all 29 tests, and certified CLEAN by Forensic Auditor.
+- Milestone 3 is complete, passing all unit and stress tests, and certified CLEAN by Forensic Auditor.
+- Milestone 4 is complete, passing all 52 desktop unit and stress tests, and certified CLEAN by Forensic Auditor.
+- Visual styling (1:1 WPF theme tokens, Backdrop liquid glass, Skia drop shadow with GC hoisting, subpixel border glow, 34dp corner radius) fully integrated and verified via `:composeApp:desktopJar`.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| Explorer 1 | teamwork_preview_explorer | UI & Design System Investigation | completed | 443948ce-5139-48f2-9cc3-1b2f801ad629 |
-| Explorer 2 | teamwork_preview_explorer | Backend & State Investigation | completed | d94867fc-62e7-4eec-9734-c5f4ed7f95d1 |
-| Explorer 3 | teamwork_preview_explorer | Interaction & Handshake Investigation | completed | db9cba48-f95c-446d-a78b-e32686de59c5 |
-| Test Writer 1 | teamwork_preview_test_writer | E2E/Unit Test Infrastructure | completed | 4cff1d7a-e3de-4f32-a917-aa8307a28b03 |
-| Worker 1 | teamwork_preview_worker | Milestone 1: Trusted Devices UI | completed | 19481007-021a-466e-9424-72a120c6cfd0 |
-| Reviewer M1-1 | teamwork_preview_reviewer | Milestone 1 Review | completed | 318a70b2-719e-4a51-aed5-d7d7e4bea2ff |
-| Reviewer M1-2 | teamwork_preview_reviewer | Milestone 1 Review | completed | 3691fe89-97f9-4aca-9260-26b0c831adba |
-| Challenger M1 | teamwork_preview_challenger | Milestone 1 Empirical Verification | completed | 6bee6edd-f572-4985-9592-71dd14dbf64d |
-| Auditor M1 | teamwork_preview_auditor | Milestone 1 Integrity Audit | completed | ae3569ae-525f-42f1-b1ec-c266259d1848 |
-| Worker 2 | teamwork_preview_worker | Milestone 2: Shared Folders UI | completed | 6aa7e121-4118-40bd-978b-b92dbc88f8bb |
-| Reviewer M2-1 | teamwork_preview_reviewer | Milestone 2 Review | completed | f9d54288-1782-4d7f-8f84-c894fec0214b |
-| Reviewer M2-2 | teamwork_preview_reviewer | Milestone 2 Review | completed | ca168498-d2eb-42a3-918c-366e44c68fb1 |
-| Auditor M2 | teamwork_preview_auditor | Milestone 2 Integrity Audit | completed | feede03e-7343-4303-b312-d758d26d9f1d |
-| Worker 3 (Gen 3) | teamwork_preview_worker | Milestone 3 Remediation | completed | 85b5dd06-7dbc-4c0b-a270-eb4c16d37118 |
-| Reviewer M3-1 (Gen 2) | teamwork_preview_reviewer | M3 Iteration 2 Primary Review | completed (APPROVE) | 0752d82d-4034-43d7-b912-bdfe4636455b |
-| Auditor M3 (Gen 2) | teamwork_preview_auditor | M3 Iteration 2 Forensic Integrity Audit | completed (CLEAN) | bcaabd36-a505-4c7a-802a-f2e32dac45e3 |
-| Reviewer M3-2 (Gen 3) | teamwork_preview_reviewer | M3 Iteration 2 Secondary Review | completed (APPROVE) | 838162a5-9934-4232-ac48-4b3fb5c427b8 |
-| Challenger M3 (Gen 3) | teamwork_preview_challenger | M3 Iteration 2 Empirical Verification | completed (APPROVE) | 294ba703-64ec-4fae-b434-bcab643398e0 |
-| Worker 4 | teamwork_preview_worker | Milestone 4 Release Protocol | completed | 55a661ce-9409-4c06-82bd-b5453b36eb21 |
+| explorer_m4_1 | teamwork_preview_explorer | M4 Liquid Glass & Backdrop Analysis | completed | 221df706-b5e4-4793-bff6-ba8e91525bd7 |
+| explorer_m4_2 | teamwork_preview_explorer | M4 Skia Drop Shadow & Border Glow Analysis | completed | 3a0d6c4b-27d3-48d1-a306-ae85a469e254 |
+| explorer_m4_3 | teamwork_preview_explorer | M4 Theme Tokens & Build Packaging Analysis | completed | 3f5fd13f-a9ab-4e45-a1ad-1bc487ef806a |
+| worker_m4_1 | teamwork_preview_worker | M4 Visual Styling & Build Implementation | completed | fd330bc6-3bd6-4cee-8e9d-5f377c28aee3 |
+| reviewer_m4_1 | teamwork_preview_reviewer | M4 Styling & Theme Parity Review | completed | b565a8d6-7d4e-4bf9-80d2-c243abdc83f5 |
+| reviewer_m4_2 | teamwork_preview_reviewer | M4 Skia Performance & Geometry Review | completed | 143bcebb-4801-4259-a63b-a3d56cf2f336 |
+| challenger_m4_1 | teamwork_preview_challenger | M4 Theme & Glass Stress Test | completed | 9c02a503-1f2c-4d13-ab3c-5f06e0670469 |
+| challenger_m4_2 | teamwork_preview_challenger | M4 Skia Physics & Build Stress Test | completed | 00bde45a-5ce1-4497-b02b-4396334a5e21 |
+| auditor_m4_1 | teamwork_preview_auditor | M4 Forensic Integrity Audit | completed | 2475149f-2148-447a-8b2b-57cc69824e6c |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 3 / 20 (Gen 3)
+- Spawn count: 9 / 16
 - Pending subagents: none
-- Predecessor: Generation 2 (`0336a283-b8f7-4dd8-adbe-541fad0c5df0`)
-- Successor: none
+- Predecessor: Generation 2
+- Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: task-41 (running)
+- Heartbeat cron: 78680b53-697e-4ee3-af9d-432aa239058a/task-51 (to be cancelled)
 - Safety timer: none
 
+
 ## Artifact Index
-- W:\CodeDeX\DeX\.agents\orchestrator\BRIEFING.md — persistent briefing
-- W:\CodeDeX\DeX\.agents\orchestrator\plan.md — execution plan
-- W:\CodeDeX\DeX\.agents\orchestrator\progress.md — progress heartbeat
-- W:\CodeDeX\DeX\.agents\orchestrator\PROJECT.md — project scope & architecture
+- w:\CodeDeX\DeX\PROJECT.md — Global architecture and feature inventory
+- w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md — User requirements record
+- w:\CodeDeX\DeX\UltimateMigrationPlan-WPF-Compose-UI.md — Deep technical specifications
+- w:\CodeDeX\DeX\.agents\orchestrator\handoff.md — Orchestrator handoff for successor
+- w:\CodeDeX\DeX\.agents\orchestrator\GATE_STATUS.md — Gate status log
+

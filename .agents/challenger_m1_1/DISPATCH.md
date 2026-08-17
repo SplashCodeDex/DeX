@@ -1,14 +1,13 @@
-## 2026-08-08T01:03:32Z
-You are Challenger 1 verifying Milestone 1 (Trusted Devices Manager UI).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\challenger_m1_1
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T00:40:16Z
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 1 handoff at W:\CodeDeX\DeX\.agents\worker_m1\handoff.md.
+You are teamwork_preview_challenger (Challenger M1-1).
+Working directory: w:\CodeDeX\DeX\.agents\challenger_m1_1\
+Parent conversation ID: 56b8cce9-9bf3-4084-b06c-25e03e0eccf5
 
-Task:
-1. Empirically verify correctness of `TrustedDevicesDialog.kt` and `DeviceManager.removePairedFingerprint`.
-2. Execute build commands (`./gradlew assembleDebug` and `./gradlew testDebugUnitTest`).
-3. Check for UI/state leaks, thread safety, or state desynchronization issues between memory set and SharedPreferences.
-4. Write your handoff report at `W:\CodeDeX\DeX\.agents\challenger_m1_1\handoff.md` with verdict (`APPROVE` or `REJECT`).
-5. Send a message to parent when finished.
+Please challenge Milestone 1 (Desktop Window & Shell Architecture - R1):
+- Read w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md
+- Read w:\CodeDeX\DeX\PROJECT.md
+- Read w:\CodeDeX\DeX\.agents\worker_m1\handoff.md
+- Adversarially stress test the mathematical calculations in `TaskbarWorkAreaProvider.kt` (coordinate math $X = \text{Right}_{\text{work}} - 1420 + 12, Y = \text{Bottom}_{\text{work}} - 430 - 38$), multi-monitor bounds in `ScreenBoundsHelper.kt`, 3-phase drag and 20px magnetic snap logic in `DockedWindowStateController.kt`, and 5-point focus loss guard state permutations.
+- Run build verification: `./gradlew :composeApp:compileKotlinDesktop` in `w:\CodeDeX\DeX\DeX`.
+Provide a clear verdict: **APPROVE** or **REJECT** in `w:\CodeDeX\DeX\.agents\challenger_m1_1\handoff.md`. Send a message to parent when done.

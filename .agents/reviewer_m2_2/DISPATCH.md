@@ -1,23 +1,23 @@
-## 2026-08-08T01:05:34Z
-<USER_REQUEST>
-You are Reviewer 2 evaluating Milestone 2 (Shared Folders Manager UI).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\reviewer_m2_2
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T01:00:24Z
+You are Reviewer 2 for Milestone 2 (Kinematics & Drag Gestures) of the DeX Desktop project.
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 2 handoff at W:\CodeDeX\DeX\.agents\worker_m2\handoff.md.
+Your metadata directory: `w:\CodeDeX\DeX\.agents\reviewer_m2_2\`
+Project Workspace: `w:\CodeDeX\DeX\DeX` (Root: `w:\CodeDeX\DeX`)
 
-Task:
-1. Conduct an independent review of Milestone 2 files:
-   - `SharedFoldersDialog.kt`
-   - `FloatingTopAppBar.kt`
-   - `MainScreen.kt`
-2. Verify edge cases:
-   - What happens when granted folders map is empty?
-   - What happens when multiple folders are revoked sequentially?
-   - Is `SafStorage.removeGrantedFolder` properly updating preferences?
-   - Does top app bar action render correctly across dark/light themes?
-3. Run `./gradlew assembleDebug` and `./gradlew lintDebug`.
-4. Write your handoff report at `W:\CodeDeX\DeX\.agents\reviewer_m2_2\handoff.md` with explicit verdict: `APPROVE` or `REQUEST_CHANGES`.
-5. Send a message to parent when finished.
-</USER_REQUEST>
+Read:
+1. `w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`
+2. `w:\CodeDeX\DeX\PROJECT.md`
+3. `w:\CodeDeX\DeX\UltimateMigrationPlan-WPF-Compose-UI.md`
+4. `w:\CodeDeX\DeX\.agents\worker_m2_1\handoff.md`
+5. Implemented files:
+   - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/components/DragPillHandle.kt`
+   - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/kinematics/DockCardPhysics.kt`
+   - `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/kinematics/DockCardAnimations.kt`
+
+Review:
+- Verify 3-phase drag tracking (5px deadzone, DPI scaling `delta / density`, 20px magnetic snap, grab clamp).
+- Verify Nudge-ForExpand post-expansion evaluation.
+- Verify contraction clamping (void prevention) and 450ms atomic 2D double-click reset.
+- Run `./gradlew :composeApp:desktopTest` and `./gradlew :composeApp:compileKotlinDesktop`.
+
+Write your review report and verdict (APPROVE / REQUEST_CHANGES) to `w:\CodeDeX\DeX\.agents\reviewer_m2_2\handoff.md` and notify orchestrator via `send_message`.

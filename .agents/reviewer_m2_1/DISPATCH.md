@@ -1,49 +1,26 @@
-## 2026-08-08T01:05:34Z
-You are Reviewer 1 evaluating Milestone 2 (Shared Folders Manager UI).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\reviewer_m2_1
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T01:00:24Z
+You are Reviewer 1 for Milestone 2 (Floating Dock Card Canvas & Kinematics Layer) of the DeX Desktop project.
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 2 handoff at W:\CodeDeX\DeX\.agents\worker_m2\handoff.md.
+Your metadata directory: `w:\CodeDeX\DeX\.agents\reviewer_m2_1\`
+Project Workspace: `w:\CodeDeX\DeX\DeX` (Root: `w:\CodeDeX\DeX`)
 
-Task:
-1. Examine code files created/modified for Milestone 2:
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\SharedFoldersDialog.kt`
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\FloatingTopAppBar.kt`
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\main\MainScreen.kt`
-2. Evaluate:
-   - Correctness: Does `SharedFoldersDialog` list SAF granted folders via `SafStorage.getGrantedFolders(context)` and wire up `SafStorage.removeGrantedFolder(context, folderName)`?
-   - Design System Conformance: Are `DeXPanel`, `DeXButton`, `DeXTextButton`, `bubbleFluidity()`, and `MaterialTheme.colorScheme` used strictly with ZERO hardcoded colors/padding/shapes?
-   - Overlay Architecture: Is it rendered as an in-layout overlay without adding dedicated navigation routes?
-   - Build & Tests: Run `./gradlew assembleDebug` and `./gradlew lintDebug` to verify.
-3. Write your handoff report at `W:\CodeDeX\DeX\.agents\reviewer_m2_1\handoff.md` with explicit verdict: `APPROVE` or `REQUEST_CHANGES`.
-4. Send a message to parent when finished.
+Read:
+1. `w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`
+2. `w:\CodeDeX\DeX\PROJECT.md`
+3. `w:\CodeDeX\DeX\UltimateMigrationPlan-WPF-Compose-UI.md`
+4. `w:\CodeDeX\DeX\.agents\worker_m2_1\handoff.md`
+5. Implemented files in `composeApp/src/desktopMain/kotlin/com/dexstudios/dex/window/`:
+   - `FloatingDockCard.kt`
+   - `DockCardContent.kt`
+   - `MainMenuColumn.kt`
+   - `components/DragPillHandle.kt`
+   - `kinematics/DockCardAnimations.kt`
+   - `kinematics/DockCardPhysics.kt`
 
-## 2026-08-08T01:22:27Z
-System Message: Task id "f9d54288-1782-4d7f-8f84-c894fec0214b/task-29" finished with result:
-The command exited with code 1.
-Output:
-FAILURE: Build failed with an exception.
-* What went wrong:
-Timeout waiting to lock Configuration Cache (W:\CodeDeX\DeX\DeX\.gradle\configuration-cache). It is currently in use by another process.
+Review:
+- Verify TopEnd alignment + 25dp padding within 1420x760dp canvas.
+- Verify spring physics specs (dampingRatio = 0.65f, stiffness = 300f).
+- Verify state synchronization with `DockedWindowStateController`.
+- Verify build with `./gradlew :composeApp:compileKotlinDesktop` from `w:\CodeDeX\DeX\DeX`.
 
-## 2026-08-08T01:35:55Z
-System Message: Task id "f9d54288-1782-4d7f-8f84-c894fec0214b/task-25" finished with result:
-The command exited with code 0.
-BUILD SUCCESSFUL in 21m 20s
-
-## 2026-08-08T01:38:12Z
-System Message: Task id "f9d54288-1782-4d7f-8f84-c894fec0214b/task-47" finished with result:
-The command exited with code 1.
-Output:
-Lint task failed.
-
-## 2026-08-08T01:38:46Z
-System Message: Task id "f9d54288-1782-4d7f-8f84-c894fec0214b/task-69" finished with result:
-The command exited with code 1.
-Output:
-Gradle build daemon has been stopped: stop command received
-
-
-
-
+Write your review report and verdict (APPROVE / REQUEST_CHANGES) to `w:\CodeDeX\DeX\.agents\reviewer_m2_1\handoff.md` and notify orchestrator via `send_message`.

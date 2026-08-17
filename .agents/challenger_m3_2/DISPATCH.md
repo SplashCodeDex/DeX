@@ -1,17 +1,13 @@
-## 2026-08-08T05:37:55Z
-You are Challenger M3 verifying Milestone 3 Iteration 2 Remediation (Connection Handshake Flow & Untrusted Device Pairing).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\challenger_m3_2
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T01:28:24Z
+You are Challenger 2 for Milestone 3 (DeX Compose Multiplatform Desktop UI).
+Your working directory is `w:\CodeDeX\DeX\.agents\challenger_m3_2\`.
+Read `w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`, `w:\CodeDeX\DeX\PROJECT.md`, `w:\CodeDeX\DeX\UltimateMigrationPlan-WPF-Compose-UI.md`, and `w:\CodeDeX\DeX\.agents\worker_m3_1\handoff.md`.
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read your previous rejection report at W:\CodeDeX\DeX\.agents\challenger_m3_1\handoff.md.
-Read Worker 3 Gen 3 remediation report at W:\CodeDeX\DeX\.agents\worker_m3_gen3\handoff.md.
+In `w:\CodeDeX\DeX\DeX`:
+Adversarially challenge and stress-test:
+1. `FileExplorerPanel.kt`: 3-row layout, 400ms double click delta guard, dangerous file extensions filter (`.exe`, `.bat`, `.cmd`, `.ps1` etc. triggering `explorer.exe /select,`), 150ms search debounce, `PullProgressDock` progress bar and cancellation.
+2. `DeviceListPanel.kt`: Discovered vs Paired device separation, context menus, offline styling, WAN placeholders.
+3. `SettingsPanel.kt`: Profile header, modal dialog focus guard during folder pick (`controller.isModalDialogOpen = true`).
+4. Run tests and packaging: `./gradlew :composeApp:desktopTest` and `./gradlew :composeApp:desktopJar`.
 
-Task:
-1. Empirically verify that all 3 issues identified in your previous rejection report are resolved:
-   - State desynchronization fixed via Compose `SnapshotStateSet` (`mutableStateSetOf<String>()`).
-   - Double-tap race condition prevented via `pairingDeviceFingerprint` state in `MainScreen.kt`.
-   - Hardcoded Toast strings replaced with `R.string` resources in `strings.xml`.
-2. Run `./gradlew assembleDebug`, `./gradlew testDebugUnitTest`, and `./gradlew lintDebug`.
-3. Write your handoff report at `W:\CodeDeX\DeX\.agents\challenger_m3_2\handoff.md` with verdict (`APPROVE` or `REJECT`).
-4. Send a message to parent when finished.
+Write your findings and verdict (APPROVE or REQUEST_CHANGES) to `w:\CodeDeX\DeX\.agents\challenger_m3_2\handoff.md` and send a message back.

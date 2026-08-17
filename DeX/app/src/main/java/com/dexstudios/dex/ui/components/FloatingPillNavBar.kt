@@ -119,11 +119,30 @@ fun FloatingPillNavBar(
                 label = "navRightBound"
             )
 
+            // 3. Liquid Wobble & Growth
+            val isInteracting = pressedIndex != null || dragX != null
+            val infiniteTransition = rememberInfiniteTransition(label = "navWobble")
+            val wobbleFactor by infiniteTransition.animateFloat(
+                initialValue = -1f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "navWobbleFactor"
+            )
+
+            val activeWobble by animateFloatAsState(
+                targetValue = if (isInteracting) 1f else 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                label = "activeWobble"
+            )
+
             val indicatorScale by animateFloatAsState(
-                targetValue = if (pressedIndex != null || dragX != null) 0.92f else 1f,
+                targetValue = if (isInteracting) 1.25f else 1f,
                 animationSpec = spring(
-                    dampingRatio = if (pressedIndex != null || dragX != null) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
-                    stiffness = if (pressedIndex != null || dragX != null) Spring.StiffnessLow else Spring.StiffnessMedium
+                    dampingRatio = if (isInteracting) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
+                    stiffness = if (isInteracting) Spring.StiffnessLow else Spring.StiffnessMedium
                 ),
                 label = "navIndicatorScale"
             )
@@ -147,10 +166,12 @@ fun FloatingPillNavBar(
                     shape = CircleShape,
                     config = LiquidGlassPresets.IconButton.copy(
                         blurRadius = 4.dp,
-                        lensHeight = 12.dp,
-                        lensAmount = 24.dp,
+                        lensHeight = 12.dp + (4.dp * wobbleFactor * activeWobble),
+                        lensAmount = 24.dp + (12.dp * wobbleFactor * activeWobble),
+                        chromaticAberration = true,
+                        depthEffect = true,
                         surfaceTint = MaterialTheme.colorScheme.primary,
-                        surfaceTintAlpha = 0.12f
+                        surfaceTintAlpha = 0.15f
                     )
                 ) { }
             } else {

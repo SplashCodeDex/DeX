@@ -35,13 +35,5 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "DeX"
+rootProject.name = "DeXAndroid"
 include(":app")
-include(":composeApp")
-
-include(":core:network", ":core:data")
-
-
-include(":core:designsystem")
-
-include(":feature:discovery", ":feature:history", ":feature:settings")

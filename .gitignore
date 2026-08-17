@@ -18,19 +18,22 @@ MSIX_Source/*.pdb
 MSIX_Source/*.deps.json
 MSIX_Source/*.runtimeconfig.json
 
-# Android build junk
-DeX/.gradle/
-DeX/build/
-DeX/app/build/
-DeX/local.properties
+# Android build junk (standalone Android app at DeX/DeX)
+DeX/DeX/.gradle/
+DeX/DeX/build/
+DeX/DeX/app/build/
+DeX/DeX/local.properties
+DeX/DeX/.artifacts/
 *.apk
 *.aab
-DeX/.idea/planningMode.xml
+/.idea/planningMode.xml
 
-# KMP module build outputs & caches
-DeX/composeApp/build/
-DeX/core/*/build/
-DeX/feature/*/build/
+# Desktop KMP module build outputs & caches
+/.gradle/
+/build/
+/composeApp/build/
+/core/*/build/
+/feature/*/build/
 DeX/**/.gradle/
 
 # Scratch / network experiments

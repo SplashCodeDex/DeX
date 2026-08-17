@@ -4,7 +4,7 @@
 >
 > ## SCOPE: DESKTOP ONLY — WINDOWS AND macOS
 > 1. **DESKTOP ONLY.** The legacy **WPF / C# / PowerShell** desktop implementation is being migrated to **Kotlin + Compose Multiplatform**. The Compose/Kotlin Multiplatform codebase is the desktop application for **Windows AND macOS** — both platforms run the **SAME shared Kotlin code**. That is the ONLY target.
-> 2. **The Android app (`DeX/app`) is NOT part of this migration.** Never modify, refactor, rewire, or migrate it. It stays exactly as it is — it lives ONLY at `W:\CodeDeX\DeX\DeX` and never moves during archiving.
+> 2. **The Android app (`DeX/DeX/app`) is NOT part of this migration.** Never modify, refactor, rewire, or migrate it. It stays exactly as it is — it lives ONLY at `W:\CodeDeX\DeX\DeX` and never moves during archiving.
 > 3. **No Android target may be added to the Compose desktop app** (`composeApp` is desktop-only: `desktopMain` + `commonMain`, no `androidMain`, no `androidTarget()`).
 >
 > ## HARD RULES — ZERO TOLERANCE, NO EXCEPTIONS
@@ -18,7 +18,7 @@
 
 ## Problem
 
-The current Compose Desktop entry point ([main.kt](file:///w:/CodeDeX/DeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)) creates a **full decorated window** titled "DeX Workstation" — a standard desktop app with title bar, taskbar presence, and maximize/minimize/close buttons. This is fundamentally wrong for the desktop target.
+The current Compose Desktop entry point ([main.kt](file:///w:/CodeDeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)) creates a **full decorated window** titled "DeX Workstation" — a standard desktop app with title bar, taskbar presence, and maximize/minimize/close buttons. This is fundamentally wrong for the desktop target.
 
 The legacy WPF/PowerShell implementation ([MainWindow.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml)) creates a **floating dock card** that:
 - Has **no window chrome** (no title bar, no borders)
@@ -121,7 +121,7 @@ top  = workArea.Bottom - contentH - 38     // Above taskbar, with 38px gap
 
 ---
 
-#### [MODIFY] [`main.kt`](file:///w:/CodeDeX/DeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)
+#### [MODIFY] [`main.kt`](file:///w:/CodeDeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)
 
 Complete rewrite to implement the floating dock card window:
 
@@ -359,7 +359,7 @@ Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/
 
 ---
 
-#### [MODIFY] [`App.kt`](file:///w:/CodeDeX/DeX/DeX/composeApp/src/commonMain/kotlin/com/dexstudios/dex/App.kt)
+#### [MODIFY] [`App.kt`](file:///w:/CodeDeX/DeX/composeApp/src/commonMain/kotlin/com/dexstudios/dex/App.kt)
 
 Refactor `App()` to be **Android-only** (full-screen with nav bar), since Desktop will use `FloatingDockCard` instead:
 

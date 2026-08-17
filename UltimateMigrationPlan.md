@@ -4,7 +4,7 @@
 >
 > ## SCOPE: DESKTOP ONLY — WINDOWS AND macOS
 > 1. **DESKTOP ONLY.** The legacy **WPF / C# / PowerShell** desktop implementation is being migrated to **Kotlin + Compose Multiplatform**. The Compose/Kotlin Multiplatform codebase is the desktop application for **Windows AND macOS** — both platforms run the **SAME shared Kotlin code**. That is the ONLY target.
-> 2. **The Android app (`DeX/app`) is NOT part of this migration.** Never modify, refactor, rewire, or migrate it. It stays exactly as it is — it lives ONLY at `W:\CodeDeX\DeX\DeX` and never moves during archiving.
+> 2. **The Android app (`DeX/DeX/app`) is NOT part of this migration.** Never modify, refactor, rewire, or migrate it. It stays exactly as it is — it lives ONLY at `W:\CodeDeX\DeX\DeX` and never moves during archiving.
 > 3. **No Android target may be added to the Compose desktop app** (`composeApp` is desktop-only: `desktopMain` + `commonMain`, no `androidMain`, no `androidTarget()`).
 >
 > ## HARD RULES — ZERO TOLERANCE, NO EXCEPTIONS
@@ -133,14 +133,14 @@ DeX/                                    # Repository root (unchanged)
 ├── CHANGELOG.md
 └── README.md
 ---
-#### [MODIFY] [settings.gradle.kts](file:///w:/CodeDeX/DeX/DeX/settings.gradle.kts)
+#### [MODIFY] [settings.gradle.kts](file:///w:/CodeDeX/DeX/settings.gradle.kts)
 - Add `include(":composeApp")` alongside existing `include(":app")`
 - Add JetBrains Compose plugin repository
 - Both modules coexist during migration; `:app` is deprecated after Phase 4
-#### [MODIFY] [build.gradle.kts](file:///w:/CodeDeX/DeX/DeX/build.gradle.kts)
+#### [MODIFY] [build.gradle.kts](file:///w:/CodeDeX/DeX/build.gradle.kts)
 - Add CMP plugins: `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.compose`, `org.jetbrains.kotlin.plugin.compose`
 - Keep existing Android plugins for the legacy `:app` module
-#### [MODIFY] [libs.versions.toml](file:///w:/CodeDeX/DeX/DeX/gradle/libs.versions.toml)
+#### [MODIFY] [libs.versions.toml](file:///w:/CodeDeX/DeX/gradle/libs.versions.toml)
 - Add CMP versions: `compose-multiplatform = "1.10.0"` (or latest stable)
 - Add multiplatform Jetpack artifacts: `org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose`, `org.jetbrains.androidx.navigation:navigation-compose`
 - Add Koin multiplatform: `koin-compose`, `koin-compose-viewmodel`

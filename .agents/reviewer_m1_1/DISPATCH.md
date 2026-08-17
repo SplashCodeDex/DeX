@@ -1,20 +1,21 @@
-## 2026-08-08T01:03:32Z
-You are Reviewer 1 evaluating Milestone 1 (Trusted Devices Manager UI).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\reviewer_m1_1
-Project source root: W:\CodeDeX\DeX\DeX
+## 2026-08-17T00:40:16Z
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 1 handoff at W:\CodeDeX\DeX\.agents\worker_m1\handoff.md.
+<USER_REQUEST>
+You are teamwork_preview_reviewer (Reviewer M1-1).
+Working directory: w:\CodeDeX\DeX\.agents\reviewer_m1_1\
+Parent conversation ID: 56b8cce9-9bf3-4084-b06c-25e03e0eccf5
 
-Task:
-1. Examine code files created/modified for Milestone 1:
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\TrustedDevicesDialog.kt`
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\FloatingTopAppBar.kt`
-   - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\main\MainScreen.kt`
-2. Evaluate:
-   - Correctness: Does `TrustedDevicesDialog` correctly list paired devices and wire up `DeviceManager.removePairedFingerprint`?
-   - Design System Conformance: Are `DeXPanel`, `DeXButton`, `DeXTextButton`, `bubbleFluidity()`, and `MaterialTheme.colorScheme` used strictly with ZERO hardcoded colors/padding/shapes?
-   - Overlay Architecture: Is it rendered as an in-layout dialog overlay without adding dedicated navigation routes?
-   - Build & Tests: Run `./gradlew assembleDebug` and `./gradlew lintDebug` to verify.
-3. Write your handoff report at `W:\CodeDeX\DeX\.agents\reviewer_m1_1\handoff.md` with explicit verdict: `APPROVE` or `REQUEST_CHANGES`.
-4. Send a message to parent when finished.
+Please review Milestone 1 (Desktop Window & Shell Architecture - R1):
+- Read w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md
+- Read w:\CodeDeX\DeX\PROJECT.md
+- Read w:\CodeDeX\DeX\.agents\worker_m1\handoff.md
+- Inspect code in w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\:
+  - `main.kt`
+  - `platform/TaskbarWorkAreaProvider.kt`
+  - `platform/ScreenBoundsHelper.kt`
+  - `window/DockedWindowStateController.kt`
+
+Examine correctness, completeness, robustness, and interface conformance.
+Run build verification: `./gradlew :composeApp:compileKotlinDesktop` in `w:\CodeDeX\DeX\DeX`.
+Provide a clear verdict: **APPROVE** or **REQUEST_CHANGES** in `w:\CodeDeX\DeX\.agents\reviewer_m1_1\handoff.md`. Send a message to parent when done.
+</USER_REQUEST>

@@ -1,17 +1,15 @@
-## 2026-08-08T01:36:48Z
+## 2026-08-17T01:28:24Z
+You are the Forensic Integrity Auditor for Milestone 3 (DeX Compose Multiplatform Desktop UI).
+Your working directory is `w:\CodeDeX\DeX\.agents\auditor_m3_1\`.
+Read `w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`, `w:\CodeDeX\DeX\PROJECT.md`, `w:\CodeDeX\DeX\UltimateMigrationPlan-WPF-Compose-UI.md`, and `w:\CodeDeX\DeX\.agents\worker_m3_1\handoff.md`.
 
-You are Forensic Auditor 1 conducting integrity audit on Milestone 3 (Connection Handshake Flow & Untrusted Device Pairing).
-Your working directory for metadata/handoff is: W:\CodeDeX\DeX\.agents\auditor_m3_1
-Project source root: W:\CodeDeX\DeX\DeX
+Perform a rigorous forensic integrity audit on all Milestone 3 code in `w:\CodeDeX\DeX\DeX`:
+1. Static analysis: Check for dummy/facade implementations, hardcoded return values, mocked bypasses, fake test assertions, or suppressed errors in `QuickActionBar.kt`, `TopActionsPanel.kt`, `DeviceListPanel.kt`, `PinPairingPanel.kt`, `BottomDockPanel.kt`, `FileExplorerPanel.kt`, `SettingsPanel.kt`, `MainMenuColumn.kt`, `DockCardContent.kt`.
+2. Verify genuine reactive state connections (`DiscoveryEngine`, `AuthState`, `DeviceConfig`, `TransferHistory`, `ClientEngine`, `PairingEngine`).
+3. Verify test integrity in `composeApp/src/desktopTest/`.
+4. Run:
+`./gradlew :composeApp:compileKotlinDesktop`
+`./gradlew :composeApp:desktopTest`
+`./gradlew :composeApp:desktopJar`
 
-Read ORIGINAL_REQUEST.md at W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md.
-Read Worker 3 handoff at W:\CodeDeX\DeX\.agents\worker_m3\handoff.md.
-
-Task:
-Perform strict integrity forensics on all changes introduced in Milestone 3:
-- Inspect `MainScreenViewModel.kt`, `MainScreen.kt`, `DeviceListItem.kt`.
-- Verify there are NO hardcoded test results, fake/dummy implementations, bypassed security, or facade components.
-- Confirm `sendHandshake` genuinely invokes `clientEngine.registerDevice` and `DeviceManager.savePairedFingerprint`.
-- Verify `./gradlew assembleDebug` and `./gradlew testDebugUnitTest` pass cleanly.
-- Write your handoff report at `W:\CodeDeX\DeX\.agents\auditor_m3_1\handoff.md` with binary verdict: `CLEAN` or `INTEGRITY_VIOLATION`.
-- Send a message to parent when finished.
+Deliver your binary audit verdict (CLEAN or INTEGRITY VIOLATION) with detailed evidence to `w:\CodeDeX\DeX\.agents\auditor_m3_1\handoff.md` and send a message back.

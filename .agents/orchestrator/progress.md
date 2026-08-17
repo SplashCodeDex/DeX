@@ -1,24 +1,37 @@
-# Progress Heartbeat
+# Progress Tracker
 
 ## Current Status
-Last visited: 2026-08-08T08:43:15Z
+Last visited: 2026-08-17T02:46:15Z
+- [x] Milestone 1: Desktop Window & Shell Architecture (R1) [DONE]
+- [x] Milestone 2: Floating Dock Card Canvas & Kinematics Layer (R2) [DONE]
+- [x] Milestone 3: Quick Actions, Panels & ViewModel Integration (R3) [DONE]
+- [x] Milestone 4: Visual Styling, Liquid Glass & Final Build Verification (R4) [DONE]
 
 ## Iteration Status
-Current iteration: 2 / 32
+Current iteration: 4 / 32
 
-## Checklist
-- [x] Initialized Project Orchestrator state and workspace metadata (.agents/orchestrator).
-- [x] Phase 0: Survey & Architecture Discovery (3 parallel Explorers completed).
-- [x] Decomposed scope into PROJECT.md feature inventory & milestones.
-- [x] Phase 1: Test Suite & Infra Setup (Test Writer 1 completed — 16/16 unit tests passing).
-- [x] Milestone 1: Trusted Devices Manager UI (PASSED GATE: Double APPROVE + CLEAN audit).
-- [x] Milestone 2: Shared Folders Manager UI (PASSED GATE: Double APPROVE + CLEAN audit).
-- [x] Milestone 3: Connection Handshake Flow & Untrusted Device Pairing (PASSED GATE: Double APPROVE + CLEAN audit).
-- [x] Milestone 4: Build Verification & Release Protocol (PASSED GATE: assembleDebug, testDebugUnitTest, lintDebug, AppxManifest bump to 1.1.0.0, MSIX packaging & signing, CHANGELOG updated, git committed `859c7c0`).
-
-## Retrospective Notes
-- Milestone 3 gate review completed: Reviewer M3-1 (APPROVE), Reviewer M3-2 Gen 3 (APPROVE), Challenger M3 Gen 3 (APPROVE), Forensic Auditor M3 (CLEAN).
-- Milestone 4 release protocol executed by Worker M4: Gradle build/test/lint passed with 0 errors, AppxManifest bumped to 1.1.0.0, MSIX repacked and signed (`DeX.msix`), CHANGELOG updated, git committed `[minor] Add Trusted Devices UI, Shared Folders UI, and Connection Handshake flow`.
-- All requirements from ORIGINAL_REQUEST.md fully verified and complete.
+## Milestones
+- [x] **Milestone 1: Desktop Window & Shell Architecture (R1)** [DONE]
+  - `TaskbarWorkAreaProvider.kt`, `ScreenBoundsHelper.kt`, `DockedWindowStateController.kt`, `main.kt` verified.
+- [x] **Milestone 2: Floating Dock Card Canvas & Kinematics Layer (R2)** [DONE]
+  - Fixed 1420x760dp transparent canvas (`FloatingDockCard.kt`, `DockCardContent.kt`, `MainMenuColumn.kt`).
+  - Kinematics & Physics (`DockCardAnimations.kt`, `DockCardPhysics.kt`, `DragPillHandle.kt`).
+  - Spring physics expansion (300x430dp to 1054x625dp with `spring(dampingRatio = 0.65f, stiffness = 300f)`).
+  - Pop-in entrance transition, 3-phase drag engine (5px deadzone, high-DPI scaling, 20px magnetic snap, sanity grab clamp), contraction clamping, Nudge-ForExpand.
+  - Headless `MonotonicFrameClock` fallback verified.
+  - All 29 unit and stress tests passing; packaging verified (`:composeApp:desktopJar`).
+  - Certified CLEAN by Forensic Auditor.
+- [x] **Milestone 3: Quick Actions, Panels & ViewModel Integration (R3)** [DONE]
+  - `QuickActionBar.kt`, `TopActionsPanel.kt`, `DeviceListPanel.kt`, `PinPairingPanel.kt`, `BottomDockPanel.kt`, `FileExplorerPanel.kt`, `SettingsPanel.kt`.
+  - Reactive Compose `SnapshotStateSet` (`mutableStateSetOf()`), double-tap race condition guard, localized string resources.
+  - All unit & stress tests passing, certified CLEAN by Forensic Auditor.
+- [x] **Milestone 4: Visual Styling, Liquid Glass & Final Build Verification (R4)** [DONE]
+  - 1:1 Dark/Light theme color tokens matching `DarkTheme.xaml` & `LightTheme.xaml` (`Color.kt`, `Theme.kt`).
+  - Backdrop liquid glass surface (`LiquidGlassPanel.kt` / `io.github.kyant0:backdrop:2.0.0` with `DeXGlassPresets` in `LiquidGlassConfig.kt`) and solid translucent fallback.
+  - Skia Gaussian drop shadow (`SkiaDropShadow.kt` with GC allocation hoisting and Gaussian $\sigma = \text{radius} / 2.0\text{f}$) and subpixel inset border glow (`BorderGlow.kt`).
+  - 34dp corner radius clipping and geometry across `FloatingDockCard.kt` and `DockCardContent.kt`.
+  - Complete test verification: 52/52 tests passing (100% success rate).
+  - Gradle compile, test, and jar packaging fully verified (`:composeApp:compileKotlinDesktop`, `:composeApp:desktopTest`, `:composeApp:desktopJar`).
+  - Certified CLEAN by Forensic Auditor.
 
 

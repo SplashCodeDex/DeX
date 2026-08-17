@@ -1,34 +1,35 @@
-# BRIEFING — 2026-08-08T01:03:32Z
+# BRIEFING — 2026-08-17T00:40:16Z
 
 ## Mission
-Evaluate Milestone 1 (Trusted Devices Manager UI) implementation for correctness, design system conformance, overlay architecture, integrity, and build/test success.
+Review Milestone 1 (Desktop Window & Shell Architecture - R1) for correctness, completeness, robustness, integrity, and interface conformance.
 
 ## 🔒 My Identity
-- Archetype: Reviewer / Critic
+- Archetype: reviewer / critic
 - Roles: reviewer, critic
-- Working directory: W:\CodeDeX\DeX\.agents\reviewer_m1_1
-- Original parent: 31d38deb-407c-438f-bbe3-28f161413526
-- Milestone: Milestone 1 (Trusted Devices Manager UI)
+- Working directory: w:\CodeDeX\DeX\.agents\reviewer_m1_1\
+- Original parent: 56b8cce9-9bf3-4084-b06c-25e03e0eccf5
+- Milestone: Milestone 1 - Desktop Window & Shell Architecture
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Enforce strict zero hardcoded colors/padding/shapes (use DeXPanel, DeXButton, DeXTextButton, bubbleFluidity(), MaterialTheme.colorScheme)
-- In-layout dialog overlay architecture without dedicated navigation routes
-- Integrity checks: check for hardcoded test results, facade implementations, shortcuts, fake logs/verification.
+- Check for integrity violations (hardcoded tests, dummy facades, shortcuts, fake verifications)
+- Verify claims independently (run tests/builds, inspect code)
+- Issue clear verdict: APPROVE or REQUEST_CHANGES
 
 ## Current Parent
-- Conversation ID: 31d38deb-407c-438f-bbe3-28f161413526
-- Updated: 2026-08-08T01:03:32Z
+- Conversation ID: 56b8cce9-9bf3-4084-b06c-25e03e0eccf5
+- Updated: 2026-08-17T00:40:16Z
 
 ## Review Scope
 - **Files to review**:
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\TrustedDevicesDialog.kt`
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\components\FloatingTopAppBar.kt`
-  - `W:\CodeDeX\DeX\DeX\app\src\main\java\com\example\dex\ui\main\MainScreen.kt`
-- **Context files**:
-  - `W:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`
-  - `W:\CodeDeX\DeX\.agents\worker_m1\handoff.md`
+  - `w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\main.kt`
+  - `w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\platform\TaskbarWorkAreaProvider.kt`
+  - `w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\platform\ScreenBoundsHelper.kt`
+  - `w:\CodeDeX\DeX\DeX\composeApp\src\desktopMain\kotlin\com\dexstudios\dex\window\DockedWindowStateController.kt`
+- **Interface contracts**: `w:\CodeDeX\DeX\PROJECT.md`, `w:\CodeDeX\DeX\.agents\ORIGINAL_REQUEST.md`
+- **Worker handoff**: `w:\CodeDeX\DeX\.agents\worker_m1\handoff.md`
+- **Review criteria**: Correctness, completeness, robustness, platform-specific edge cases, interface conformance
 
 ## Review Checklist
 - **Items reviewed**: pending
@@ -41,9 +42,8 @@ Evaluate Milestone 1 (Trusted Devices Manager UI) implementation for correctness
 - **Untested angles**: pending
 
 ## Key Decisions Made
-- Initialized briefing and dispatch log.
+- Initialized review briefing
 
 ## Artifact Index
-- W:\CodeDeX\DeX\.agents\reviewer_m1_1\DISPATCH.md — Dispatch log
-- W:\CodeDeX\DeX\.agents\reviewer_m1_1\BRIEFING.md — Persistent briefing index
-- W:\CodeDeX\DeX\.agents\reviewer_m1_1\handoff.md — Final handoff report
+- `handoff.md` — Final review report and verdict
+- `progress.md` — Heartbeat and step progress

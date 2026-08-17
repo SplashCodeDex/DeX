@@ -19,14 +19,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
       - name: Build DMG
-        run: |
-          cd DeX
-          ./gradlew :composeApp:packageDmg
+        run: ./gradlew :composeApp:packageDmg
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DeX-macOS
-          path: DeX/composeApp/build/compose/binaries/main/dmg/*.dmg
+          path: composeApp/build/compose/binaries/main/dmg/*.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -40,11 +38,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
       - name: Build MSI
-        run: |
-          cd DeX
-          ./gradlew :composeApp:packageMsi
+        run: ./gradlew :composeApp:packageMsi
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DeX-Windows
-          path: DeX/composeApp/build/compose/binaries/main/msi/*.msi
+          path: composeApp/build/compose/binaries/main/msi/*.msi
