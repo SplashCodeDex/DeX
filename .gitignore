@@ -27,6 +27,12 @@ DeX/local.properties
 *.aab
 DeX/.idea/planningMode.xml
 
+# KMP module build outputs & caches
+DeX/composeApp/build/
+DeX/core/*/build/
+DeX/feature/*/build/
+DeX/**/.gradle/
+
 # Scratch / network experiments
 TestHttps/
 test*.cs
