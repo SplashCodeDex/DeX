@@ -59,7 +59,7 @@ class ClientEngine(
         if (state.isSuccess) {
             resetJob?.cancel()
             resetJob = scope.launch {
-                delay(5.seconds)
+                delay(6.seconds)
                 resetUploadState()
             }
         }
@@ -84,7 +84,9 @@ class ClientEngine(
                 aggregateProgress = 0f,
                 isUploading = true,
                 speedBps = 8388608L, // 8 MB/s
-                protocol = "QUIC"
+                protocol = "QUIC",
+                peerName = "Danny Lopez",
+                totalFiles = 5
             )
 
             // Progress simulation
@@ -98,7 +100,7 @@ class ClientEngine(
             }
 
             _uploadState.value = _uploadState.value.copy(isUploading = false, isSuccess = true)
-            delay(5.seconds)
+            delay(6.seconds)
             resetUploadState()
         }
     }
@@ -299,7 +301,9 @@ data class UploadState(
     val error: String? = null,
     val protocol: String = "",
     val speedBps: Long = 0L,
-    val targetFingerprint: String? = null
+    val targetFingerprint: String? = null,
+    val peerName: String? = null,
+    val peerPicture: String? = null
 )
 
 data class DownloadOutcome(
