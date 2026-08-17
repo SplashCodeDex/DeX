@@ -1,5 +1,21 @@
 # Project: DeX Floating Docked Card UI (Compose Multiplatform Desktop)
 
+> # ⚠️ NON-NEGOTIABLE MIGRATION RULES — READ BEFORE ANY WORK ⚠️
+>
+> ## SCOPE: DESKTOP ONLY — WINDOWS AND macOS
+> 1. **DESKTOP ONLY.** The legacy **WPF / C# / PowerShell** desktop implementation is being migrated to **Kotlin + Compose Multiplatform**. The Compose/Kotlin Multiplatform codebase is the desktop application for **Windows AND macOS** — both platforms run the **SAME shared Kotlin code**. That is the ONLY target.
+> 2. **The Android app (`DeX/app`) is NOT part of this migration.** Never modify, refactor, rewire, or migrate it.
+> 3. **No Android target may be added to the Compose desktop app** (`composeApp` is desktop-only: `desktopMain` + `commonMain`, no `androidMain`, no `androidTarget()`).
+>
+> ## HARD RULES — ZERO TOLERANCE, NO EXCEPTIONS
+> 1. **NEVER delete, remove, archive, rename, or move ANY WPF / C# / PowerShell / legacy file** — not one file, not one line, not one asset — **for ANY reason**.
+> 2. **NEVER** "tidy up", "fix", or "improve" legacy WPF/C#/PowerShell code on your own initiative.
+> 3. **Only the USER may decide** when the legacy WPF/C#/PowerShell is archived. Until the user says so, it is untouchable.
+> 4. **The ONLY archive procedure** (executed only when the user orders it): move the Compose/Kotlin Multiplatform code **UP one directory to `W:\CodeDeX\`**. Nothing else is archived, removed, or restructured.
+> 5. **If in doubt — STOP and ASK. Do not act.**
+>
+> **REPEAT: DESKTOP ONLY. Windows + macOS. ONE Kotlin/Compose Multiplatform codebase. Legacy WPF/C#/PowerShell stays untouched until the user says otherwise.**
+
 ## Architecture
 DeX Desktop is a modern Compose Multiplatform Desktop application running on Kotlin 2.4.10, Compose Multiplatform 1.11.1, and Java 17 bytecode.
 The UI architecture follows a zero-flicker fixed bounding canvas ($1420 \times 760\text{ dp}$) approach rendered in an undecorated, per-pixel alpha transparent, always-on-top desktop window.
