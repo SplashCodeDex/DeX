@@ -31,9 +31,7 @@ data class DownloadState(
     val totalFiles: Int = 1,
     val protocol: String = "",
     val speedBps: Long = 0L,
-    val sourceFingerprint: String? = null,
-    val peerName: String? = null,
-    val peerPicture: String? = null
+    val sourceFingerprint: String? = null
 )
 
 object TcpDownloadService {
@@ -56,7 +54,7 @@ object TcpDownloadService {
         if (state.isSuccess) {
             resetJob?.cancel()
             resetJob = scope.launch {
-                delay(6.seconds) // Keep success state for 6s (longer than auto-expand 5s)
+                delay(5.seconds)
                 resetDownloadState()
             }
         }
@@ -76,10 +74,7 @@ object TcpDownloadService {
                 progress = 0f,
                 isDownloading = true,
                 speedBps = 15728640L, // 15 MB/s
-                protocol = "QUIC",
-                peerName = "Danny Lopez",
-                peerPicture = "https://lh3.googleusercontent.com/a/ACg8ocL_6F3B1u8w8Z3h9Z3h9Z3h9Z3h9Z3h9Z3h9Z3h9Z3h=s96-c",
-                totalFiles = 23
+                protocol = "QUIC"
             )
 
             // Fast progress simulation
@@ -89,7 +84,7 @@ object TcpDownloadService {
             }
 
             _downloadState.update { it.copy(isDownloading = false, isSuccess = true) }
-            delay(6.seconds)
+            delay(5.seconds)
             resetDownloadState()
         }
     }

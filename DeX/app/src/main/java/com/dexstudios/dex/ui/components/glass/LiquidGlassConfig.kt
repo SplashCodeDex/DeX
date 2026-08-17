@@ -135,7 +135,7 @@ object LiquidGlassPresets {
      * Overlaps content with a prominent dark tint and heavy blur.
      */
     val DynamicIsland: LiquidGlassConfig = LiquidGlassConfig(
-        shape = RoundedCornerShape(48.dp),
+        shape = RoundedCornerShape(40.dp),
         blurRadius = 16.dp,
         lensHeight = 20.dp,
         lensAmount = 40.dp,

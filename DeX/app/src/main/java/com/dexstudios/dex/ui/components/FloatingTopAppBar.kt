@@ -1,24 +1,20 @@
 package com.dexstudios.dex.ui.components
 
-import android.app.DownloadManager
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -27,36 +23,37 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dexstudios.dex.network.TcpDownloadService
+import com.dexstudios.dex.network.ClientEngine
+import com.dexstudios.dex.network.DownloadState
+import com.dexstudios.dex.network.UploadState
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.R
-import com.dexstudios.dex.network.ClientEngine
 import com.dexstudios.dex.network.DeviceConfig
-import com.dexstudios.dex.network.DownloadState
 import com.dexstudios.dex.network.GoogleProfile
 import com.dexstudios.dex.network.GoogleSignInManager
-import com.dexstudios.dex.network.TcpDownloadService
-import com.dexstudios.dex.network.UploadState
 import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
@@ -78,13 +75,6 @@ private var isSearchExpanded: Boolean
     get() = TopAppBarState.isSearchExpanded
     set(value) { TopAppBarState.isSearchExpanded = value }
 
-private enum class IslandContentState {
-    IDLE,
-    EXPANDED_PROFILE,
-    COLLAPSED_TRANSFER,
-    EXPANDED_TRANSFER
-}
-
 @Composable
 fun FloatingTopAppBar(
     modifier: Modifier = Modifier,
@@ -96,43 +86,14 @@ fun FloatingTopAppBar(
     val screenWidth = with(density) { containerSize.width.toDp() }
     val expandedWidth = screenWidth - 32.dp
 
-    // Signed-in Google profile: single combined flow — one recomposition instead of three
-    val deviceConfig: DeviceConfig = koinInject()
-    val clientEngine: ClientEngine = koinInject()
-
-    val profile by deviceConfig.googleProfileFlow.collectAsState()
-    val downloadState by TcpDownloadService.downloadState.collectAsStateWithLifecycle()
-    val uploadState by clientEngine.uploadState.collectAsStateWithLifecycle()
-
-    val isDownloading = downloadState.isDownloading
-    val isUploading = uploadState.isUploading
-    val isTransferActive = isDownloading || isUploading || downloadState.isSuccess || uploadState.isSuccess
-
-    val islandState by remember {
-        derivedStateOf {
-            val transferActive = downloadState.isDownloading || uploadState.isUploading ||
-                    downloadState.isSuccess || uploadState.isSuccess
-            when {
-                isProfileExpanded && transferActive -> IslandContentState.EXPANDED_TRANSFER
-                isProfileExpanded -> IslandContentState.EXPANDED_PROFILE
-                transferActive -> IslandContentState.COLLAPSED_TRANSFER
-                else -> IslandContentState.IDLE
-            }
-        }
-    }
-
     // Dynamic Island bouncy expansion (Avatar/Profile/Transfer)
     val islandWidth by animateDpAsState(
-        targetValue = if (islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE) expandedWidth else 56.dp,
+        targetValue = if (isProfileExpanded) expandedWidth else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "islandWidth"
     )
     val islandHeight by animateDpAsState(
-        targetValue = when (islandState) {
-            IslandContentState.EXPANDED_TRANSFER -> 180.dp
-            IslandContentState.EXPANDED_PROFILE -> 140.dp
-            else -> 56.dp
-        },
+        targetValue = if (isProfileExpanded) 140.dp else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "islandHeight"
     )
@@ -148,6 +109,18 @@ fun FloatingTopAppBar(
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "searchHeight"
     )
+
+    // Signed-in Google profile: single combined flow — one recomposition instead of three
+    val deviceConfig: DeviceConfig = koinInject()
+    val clientEngine: ClientEngine = koinInject()
+
+    val profile by deviceConfig.googleProfileFlow.collectAsState()
+    val downloadState by TcpDownloadService.downloadState.collectAsStateWithLifecycle()
+    val uploadState by clientEngine.uploadState.collectAsStateWithLifecycle()
+
+    val isDownloading = downloadState.isDownloading
+    val isUploading = uploadState.isUploading
+    val isTransferActive = isDownloading || isUploading
 
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -335,18 +308,17 @@ fun FloatingTopAppBar(
                     width = islandWidth,
                     height = islandHeight,
                     backdrop = backdrop,
-                    config = if (islandState != IslandContentState.IDLE && islandState != IslandContentState.COLLAPSED_TRANSFER) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                    config = if (isProfileExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
                 ) {
                     AnimatedContent(
-                        targetState = islandState,
+                        targetState = isProfileExpanded,
                         transitionSpec = {
                             fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                         },
                         label = "islandContent"
-                    )
- { state ->
-                        when (state) {
-                            IslandContentState.EXPANDED_TRANSFER -> {
+                    ) { expanded ->
+                        if (expanded) {
+                            if (isTransferActive) {
                                 ExpandedTransferContent(
                                     downloadState = downloadState,
                                     uploadState = uploadState,
@@ -356,8 +328,7 @@ fun FloatingTopAppBar(
                                         isProfileExpanded = false
                                     }
                                 )
-                            }
-                            IslandContentState.EXPANDED_PROFILE -> {
+                            } else {
                                 ExpandedProfileContent(
                                     profile = profile,
                                     onSignIn = {
@@ -376,16 +347,14 @@ fun FloatingTopAppBar(
                                     }
                                 )
                             }
-                            IslandContentState.COLLAPSED_TRANSFER -> {
-                                val currentPeerPicture = if (downloadState.isDownloading || downloadState.isSuccess) downloadState.peerPicture else uploadState.peerPicture
+                        } else {
+                            if (isTransferActive) {
                                 TransferIcon(
                                     isDownloading = isDownloading,
                                     isUploading = isUploading,
-                                    modifier = Modifier.size(32.dp),
-                                    peerPicture = currentPeerPicture
+                                    modifier = Modifier.size(32.dp)
                                 )
-                            }
-                            IslandContentState.IDLE -> {
+                            } else {
                                 CollapsedProfileContent(profile = profile)
                             }
                         }
@@ -400,8 +369,7 @@ fun FloatingTopAppBar(
 private fun TransferIcon(
     isDownloading: Boolean,
     isUploading: Boolean,
-    modifier: Modifier = Modifier,
-    peerPicture: String? = null
+    modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         val infiniteTransition = rememberInfiniteTransition(label = "transferRotation")
@@ -433,13 +401,19 @@ private fun TransferIcon(
                     translationY.snapTo(10f)
                     translationY.animateTo(
                         targetValue = -10f,
-                        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
                     )
                 } else if (isDownloading) {
                     translationY.snapTo(-10f)
                     translationY.animateTo(
                         targetValue = 10f,
-                        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
                     )
                 } else {
                     translationY.animateTo(0f)
@@ -456,22 +430,12 @@ private fun TransferIcon(
                 .fillMaxSize()
                 .graphicsLayer {
                     this.translationY = translationY.value.dp.toPx()
+                    // Liquid Motion: Squash & Stretch based on offset
+                    val stretchFactor = abs(translationY.value) / 8f
+                    this.scaleY = 1f + (stretchFactor * 0.2f)
+                    this.scaleX = 1f / (1f + (stretchFactor * 0.2f)) // Preserve volume
                 }
         )
-
-        // Peer Avatar Overlay (AirDrop Style)
-        if (!peerPicture.isNullOrBlank()) {
-            AsyncImage(
-                model = peerPicture,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, Color.Black, CircleShape)
-            )
-        }
     }
 }
 
@@ -481,139 +445,54 @@ private fun ExpandedTransferContent(
     uploadState: UploadState,
     onCancel: () -> Unit
 ) {
-    val context = LocalContext.current
-
-    // Pick which state to display (priority to the one that is active or just succeeded)
-    val isDownloadActive = downloadState.isDownloading || downloadState.isSuccess
-
-    // Determine if we should show download info or upload info
-    val showDownload = isDownloadActive
-
-    val isSuccess = if (showDownload) downloadState.isSuccess else uploadState.isSuccess
-    val progress = if (showDownload) downloadState.progress else uploadState.aggregateProgress
-    val peerName = if (showDownload) downloadState.peerName else uploadState.peerName
-    val peerPicture = if (showDownload) downloadState.peerPicture else uploadState.peerPicture
-    val totalFiles = if (showDownload) downloadState.totalFiles else uploadState.totalFiles
-    val fileName = if (showDownload) downloadState.fileName else uploadState.fileName
-    val speedBps = if (showDownload) downloadState.speedBps else uploadState.speedBps
-
-    Column(
+    val isDownloading = downloadState.isDownloading
+    val isUploading = uploadState.isUploading
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Top Section: Icon, Info, and Thumbnail
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
-        ) {
-            // Left: Transfer Icon with Avatar Overlay
-            TransferIcon(
-                isDownloading = showDownload && !isSuccess,
-                isUploading = !showDownload && !isSuccess,
-                peerPicture = peerPicture,
-                modifier = Modifier.size(48.dp)
+        TransferIcon(
+            isDownloading = isDownloading,
+            isUploading = isUploading,
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (isDownloading) downloadState.fileName else uploadState.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Center: Title and Subtitle
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (showDownload) "Incoming Transfer" else "Outgoing Transfer",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = buildString {
-                        if (!peerName.isNullOrBlank()) append("$peerName ")
-                        append(if (showDownload) "is sharing " else "is receiving ")
-                        append(if (totalFiles > 1) "$totalFiles files" else "a file")
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Right: File Thumbnail (Rounded Card)
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = if (showDownload) MaterialSymbols.FileDownload else MaterialSymbols.FileUpload,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Middle Section: Status Text (Progress & Speed)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (isSuccess) "Transfer Complete" else "${(progress * 100).toInt()}% • ${formatSpeed(speedBps)}",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isSuccess) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.6f),
-                fontWeight = FontWeight.Bold
-            )
-
-            if (!isSuccess) {
                 Text(
-                    text = fileName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.4f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 120.dp)
+                    text = if (isDownloading) "${(downloadState.progress * 100).toInt()}%" else "${(uploadState.aggregateProgress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = formatSpeed(if (isDownloading) downloadState.speedBps else uploadState.speedBps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Bottom Section: Morphing Action Pill
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(if (isSuccess) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.15f))
-                .clickable {
-                    if (isSuccess) {
-                        try {
-                            context.startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            })
-                        } catch (_: Exception) {
-                            Toast.makeText(context, "Cannot open downloads", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        onCancel()
-                    }
-                },
-            contentAlignment = Alignment.Center
+        IconButton(
+            onClick = onCancel,
+            modifier = Modifier.size(48.dp)
         ) {
-            Text(
-                text = if (isSuccess) "Open Folder" else "Cancel",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isSuccess) MaterialTheme.colorScheme.onPrimary else Color.White,
-                fontWeight = FontWeight.ExtraBold
+            Icon(
+                imageVector = MaterialSymbols.Close,
+                contentDescription = "Cancel",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(28.dp)
             )
         }
     }
@@ -713,7 +592,7 @@ private fun ExpandedProfileContent(
                     "Sign in to sync your devices",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 DeXButton(
@@ -773,53 +652,6 @@ private fun ExpandedProfileContent(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-fun ExpandedTransferIslandPreview() {
-    MaterialTheme {
-        Box(modifier = Modifier.padding(16.dp).size(360.dp, 180.dp)) {
-            ExpandedTransferContent(
-                downloadState = DownloadState(
-                    fileName = "High_Res_Nature_Photo.jpg",
-                    progress = 0.85f,
-                    isDownloading = true,
-                    speedBps = 12500000L, // 12.5 MB/s
-                    doneFiles = 1,
-                    totalFiles = 23,
-                    peerName = "Danny Lopez",
-                    peerPicture = "https://lh3.googleusercontent.com/a/ACg8ocL_6F3B1u8w8Z3h9Z3h9Z3h9Z3h9Z3h9Z3h=s96-c"
-                ),
-                uploadState = UploadState(),
-                onCancel = {}
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-fun SuccessTransferIslandPreview() {
-    MaterialTheme {
-        Box(modifier = Modifier.padding(16.dp).size(360.dp, 180.dp)) {
-            ExpandedTransferContent(
-                downloadState = DownloadState(
-                    fileName = "Vacation_Video.mp4",
-                    progress = 1.0f,
-                    isDownloading = true,
-                    isSuccess = true,
-                    speedBps = 0L,
-                    doneFiles = 5,
-                    totalFiles = 5,
-                    peerName = "Danny Lopez",
-                    peerPicture = "https://lh3.googleusercontent.com/a/ACg8ocL_6F3B1u8w8Z3h9Z3h9Z3h9Z3h9Z3h9Z3h=s96-c"
-                ),
-                uploadState = UploadState(),
-                onCancel = {}
-            )
         }
     }
 }

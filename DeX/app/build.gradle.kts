@@ -109,7 +109,6 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.mockk)
-  testImplementation(platform(libs.koin.bom))
   testImplementation(libs.koin.test.junit4)
   testImplementation(libs.ktor.client.mock)
   testImplementation(libs.json.org)
@@ -151,7 +150,6 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
 
   // Koin
-  implementation(platform(libs.koin.bom))
   implementation(libs.koin.android)
 
   // QR Scanner
