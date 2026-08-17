@@ -38,7 +38,7 @@ The legacy WPF/PowerShell implementation ([MainWindow.xaml](file:///w:/CodeDeX/D
 ## User Review Required
 
 > [!IMPORTANT]
-> This plan replaces the `main.kt` Window configuration and requires a **new desktop-only composable layer** (`FloatingDockCard.kt`) that wraps the existing shared UI. The shared `App.kt` composable will be refactored so desktop uses the dock card layout while Android keeps its full-screen layout.
+> This plan replaces the `main.kt` Window configuration and requires a **new desktop-only composable layer** (`FloatingDockCard.kt`). `App.kt` is the DESKTOP app's entry composable (`composeApp` is desktop-only — no Android target). The Android app is a separate, standalone project at `W:\CodeDeX\DeX\DeX` and is NEVER modified by this plan.
 
 > [!WARNING]  
 > 2. **macOS behavior**: On macOS, the dock card should appear from the **menu bar tray icon** (top-right) adapt to macOS convention (top-right dropdown)
@@ -361,13 +361,10 @@ Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/
 
 #### [MODIFY] [`App.kt`](file:///w:/CodeDeX/DeX/composeApp/src/commonMain/kotlin/com/dexstudios/dex/App.kt)
 
-Refactor `App()` to be **Android-only** (full-screen with nav bar), since Desktop will use `FloatingDockCard` instead:
+`App()` is the **desktop-only** root composable of the CMP desktop app (`composeApp` has no Android target). Desktop's `main.kt` calls `App()` / `FloatingDockCard()` directly:
 
-- Add `expect fun isDesktopPlatform(): Boolean` 
-- On desktop, `App()` becomes a no-op or thin wrapper — the dock card is composed directly in `main.kt`
-- On Android, `App()` keeps its current full-screen layout with `FloatingPillNavBar`
-
-**Alternative approach (simpler):** Keep `App()` as the Android entry point. Desktop's `main.kt` never calls `App()` — it calls `FloatingDockCard()` which internally uses the same shared components (device lists, settings, etc.) but arranged in the dock card layout.
+- Desktop uses the `FloatingDockCard` dock card layout exclusively
+- The Android app is a **separate standalone project** at `W:\CodeDeX\DeX\DeX` with its own entry point — this plan NEVER touches it
 
 ---
 
