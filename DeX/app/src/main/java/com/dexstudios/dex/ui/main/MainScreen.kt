@@ -241,16 +241,9 @@ fun MainScreen(
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         Box(modifier = modifier.fillMaxSize()) {
             // ===== Backdrop source: the scrolling content the glass samples.
-            // Glass elements (top bar below) are drawn OUTSIDE this subtree —
-            // a backdrop that captures the glass sampling it is a render loop
-            // and crashes the renderer (documented library pitfall).
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // The root already applies safeDrawingPadding — drop the
-                    // Scaffold's duplicate system-bar insets so the content sits
-                    // flush with the status bar line (top) and reaches the
-                    // navbar line (bottom) with no gaps.
                     .layerBackdrop(contentBackdrop)
             ) {
                 // Background drawn into the backdrop so the layer is never empty
@@ -260,91 +253,87 @@ fun MainScreen(
                         .background(MaterialTheme.colorScheme.background)
                 )
 
-                val discoveredDevicesList = discoveredDevices
-                val deviceConfig: DeviceConfig = koinInject()
+                    val discoveredDevicesList = discoveredDevices
+                    val deviceConfig: DeviceConfig = koinInject()
 
-                val (trustedLocal, untrustedDevices) = discoveredDevicesList.partition { device ->
-                    (AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
-                        (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash))
-                }
+                    val (trustedLocal, untrustedDevices) = discoveredDevicesList.partition { device ->
+                        (AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
+                                (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash))
+                    }
 
-                // Consolidated and prioritized: Real Trusted Devices (Active Transfer > Recency)
-                val search = com.dexstudios.dex.ui.state.TopAppBarState.searchQuery
-                val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint, search) {
-                    val map = mutableMapOf<String, DiscoveredDevice>()
-                    // WAN devices baseline
-                    rosterDevices.forEach { map[it.info.fingerprint] = it }
-                    // Local trusted devices overwrite roster (LAN is preferred/faster)
-                    trustedLocal.forEach { map[it.info.fingerprint] = it }
+                    // Consolidated and prioritized: Real Trusted Devices (Active Transfer > Recency)
+                    val search = com.dexstudios.dex.ui.state.TopAppBarState.searchQuery
+                    val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint, search) {
+                        val map = mutableMapOf<String, DiscoveredDevice>()
+                        // WAN devices baseline
+                        rosterDevices.forEach { map[it.info.fingerprint] = it }
+                        // Local trusted devices overwrite roster (LAN is preferred/faster)
+                        trustedLocal.forEach { map[it.info.fingerprint] = it }
 
-                    map.values.filter { it.info.alias.contains(search, ignoreCase = true) }
-                        .sortedWith(
-                            compareByDescending<DiscoveredDevice> {
-                                (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
-                            }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
-                             .thenByDescending { it.lastSeenTimestamp }
-                        ).toList()
-                }
+                        map.values.filter { it.info.alias.contains(search, ignoreCase = true) }
+                            .sortedWith(
+                                compareByDescending<DiscoveredDevice> {
+                                    (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
+                                }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
+                                    .thenByDescending { it.lastSeenTimestamp }
+                            ).toList()
+                    }
 
-                val filteredUntrusted = remember(untrustedDevices, search) {
-                    untrustedDevices.filter { it.info.alias.contains(search, ignoreCase = true) }
-                }
+                    val filteredUntrusted = remember(untrustedDevices, search) {
+                        untrustedDevices.filter { it.info.alias.contains(search, ignoreCase = true) }
+                    }
 
-                if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact) {
-                    MainScreenCompact(
-                        listState = listState,
-                        consolidatedTrusted = consolidatedTrusted,
-                        untrustedDevices = filteredUntrusted,
-                        search = search,
-                        showHelpHint = showHelpHint,
-                        onTrustedDeviceButtonClick = { device ->
-                            if (device.viaRoster) {
-                                selectedRosterDevice = device
-                            } else {
-                                selectedDevice = device
-                            }
-                            filePickerLauncher.launch(arrayOf("*/*"))
-                        },
-                        onUntrustedDeviceButtonClick = { device ->
-                            connectOptionsDevice = device
-                        },
-                        onDeviceLongClick = { device ->
-                            contextMenuDevice = device
-                        },
-                        onScanClick = { launchQrScanner() },
-                        statusBarHeight = statusBarHeight
-                    )
-                } else {
-                    MainScreenGrid(
-                        consolidatedTrusted = consolidatedTrusted,
-                        untrustedDevices = filteredUntrusted,
-                        search = search,
-                        showHelpHint = showHelpHint,
-                        onTrustedDeviceButtonClick = { device ->
-                            if (device.viaRoster) {
-                                selectedRosterDevice = device
-                            } else {
-                                selectedDevice = device
-                            }
-                            filePickerLauncher.launch(arrayOf("*/*"))
-                        },
-                        onUntrustedDeviceButtonClick = { device ->
-                            connectOptionsDevice = device
-                        },
-                        onDeviceLongClick = { device ->
-                            contextMenuDevice = device
-                        },
-                        onScanClick = { launchQrScanner() },
-                        statusBarHeight = statusBarHeight
-                    )
-                }
+                    if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact) {
+                        MainScreenCompact(
+                            listState = listState,
+                            consolidatedTrusted = consolidatedTrusted,
+                            untrustedDevices = filteredUntrusted,
+                            search = search,
+                            showHelpHint = showHelpHint,
+                            onTrustedDeviceButtonClick = { device ->
+                                if (device.viaRoster) {
+                                    selectedRosterDevice = device
+                                } else {
+                                    selectedDevice = device
+                                }
+                                filePickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            onUntrustedDeviceButtonClick = { device ->
+                                connectOptionsDevice = device
+                            },
+                            onDeviceLongClick = { device ->
+                                contextMenuDevice = device
+                            },
+                            onScanClick = { launchQrScanner() },
+                            statusBarHeight = statusBarHeight
+                        )
+                    } else {
+                        MainScreenGrid(
+                            consolidatedTrusted = consolidatedTrusted,
+                            untrustedDevices = filteredUntrusted,
+                            search = search,
+                            showHelpHint = showHelpHint,
+                            onTrustedDeviceButtonClick = { device ->
+                                if (device.viaRoster) {
+                                    selectedRosterDevice = device
+                                } else {
+                                    selectedDevice = device
+                                }
+                                filePickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            onUntrustedDeviceButtonClick = { device ->
+                                connectOptionsDevice = device
+                            },
+                            onDeviceLongClick = { device ->
+                                contextMenuDevice = device
+                            },
+                            onScanClick = { launchQrScanner() },
+                            statusBarHeight = statusBarHeight
+                        )
+                    }
             }
 
             // ===== Glass overlays: drawn AFTER the captured content, sample it =====
-            // Frosted edge fade — content progressively blurs as it approaches
-            // the native status bar / glass header (top).
-            // The bottom edge is covered by the glass nav bar already — no
-            // separate bottom fade needed.
             GlassScrollEdge(
                 backdrop = contentBackdrop,
                 modifier = Modifier
@@ -447,18 +436,17 @@ fun MainScreen(
     }
 }
 
-@Composable
 private fun humanizeTransferError(raw: String): String = when {
     raw.contains("HTTP 404", ignoreCase = true) ||
         raw.contains("HTTP 403", ignoreCase = true) ||
-        raw.contains("HTTP 410", ignoreCase = true) -> stringResource(R.string.error_transfer_expired)
+        raw.contains("HTTP 410", ignoreCase = true) -> "Transfer link expired"
     raw.contains("no connection to PC", ignoreCase = true) ||
         raw.contains("ConnectException", ignoreCase = true) ||
         raw.contains("SocketTimeoutException", ignoreCase = true) ||
         raw.contains("Failed to connect", ignoreCase = true) ||
-        raw.contains("Cronet", ignoreCase = true) -> stringResource(R.string.error_transfer_no_connection)
-    raw.contains("Cannot write to Downloads/DeX", ignoreCase = true) -> stringResource(R.string.error_transfer_folder)
-    raw.contains("cancelled", ignoreCase = true) -> stringResource(R.string.error_transfer_cancelled)
-    raw.contains("Upload failed for all files", ignoreCase = true) -> stringResource(R.string.error_upload_all)
+        raw.contains("Cronet", ignoreCase = true) -> "Cannot connect to device"
+    raw.contains("Cannot write to Downloads/DeX", ignoreCase = true) -> "Permission error on storage"
+    raw.contains("cancelled", ignoreCase = true) -> "Transfer cancelled"
+    raw.contains("Upload failed for all files", ignoreCase = true) -> "Upload failed"
     else -> raw
 }

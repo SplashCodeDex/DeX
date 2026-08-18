@@ -22,9 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 
 @Composable
 fun ConnectionOptionsDialog(
@@ -51,6 +55,8 @@ fun ConnectionOptionsDialog(
         if (hasOpened && transitionState.isIdle && !transitionState.targetState) onDismiss()
     }
 
+    val dialogBackdrop = rememberLayerBackdrop()
+
     AnimatedVisibility(
         visibleState = transitionState,
         enter = spatialMenuEnter(),
@@ -60,62 +66,70 @@ fun ConnectionOptionsDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = ::dismiss
-                ),
-            contentAlignment = Alignment.Center
+                .layerBackdrop(dialogBackdrop)
         ) {
-            DeXPanel(
-                shape = RoundedCornerShape(48.dp),
+            Box(
                 modifier = Modifier
-                    .widthIn(max = 340.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
-                    )
+                        onClick = ::dismiss
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                LiquidGlassPanel(
+                    backdrop = dialogBackdrop,
+                    shape = RoundedCornerShape(48.dp),
+                    config = LiquidGlassPresets.Dialog,
+                    modifier = Modifier
+                        .widthIn(max = 340.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
                 ) {
-                    Icon(
-                        imageVector = MaterialSymbols.Devices,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.Devices,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = stringResource(R.string.connect_device_title, device.info.alias),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center
-                    )
+                        Text(
+                            text = stringResource(R.string.connect_device_title, device.info.alias),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
 
-                    ConnectionOptionItem(
-                        icon = MaterialSymbols.Pin,
-                        label = stringResource(R.string.connect_option_pin),
-                        onClick = { onPinCode(); dismiss() }
-                    )
+                        ConnectionOptionItem(
+                            icon = MaterialSymbols.Pin,
+                            label = stringResource(R.string.connect_option_pin),
+                            onClick = { onPinCode(); dismiss() }
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    ConnectionOptionItem(
-                        icon = MaterialSymbols.QrCodeScanner,
-                        label = stringResource(R.string.connect_option_qr),
-                        onClick = { onQrCode(); dismiss() }
-                    )
+                        ConnectionOptionItem(
+                            icon = MaterialSymbols.QrCodeScanner,
+                            label = stringResource(R.string.connect_option_qr),
+                            onClick = { onQrCode(); dismiss() }
+                        )
+                    }
                 }
             }
         }
@@ -145,20 +159,22 @@ private fun ConnectionOptionItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                    .background(Color.White.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = label,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
         }
     }

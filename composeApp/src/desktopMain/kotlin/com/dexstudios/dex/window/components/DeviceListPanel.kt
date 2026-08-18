@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,47 +71,7 @@ data class DeviceItemUiModel(
     val rawDevice: DiscoveredDevice? = null
 )
 
-/**
- * Default mock WAN scaffolding profiles matching WPF legacy parity with genuine avatar images.
- */
-fun defaultWanPlaceholders(): List<DeviceItemUiModel> = listOf(
-    DeviceItemUiModel(
-        id = "wan_user_1",
-        alias = "Ama Serwaa",
-        modelText = "Phone (WAN)",
-        ip = "wan.dex.net",
-        fingerprint = "wan_fp_1",
-        isPaired = true,
-        isOnline = false,
-        isWanPlaceholder = true,
-        wanEmail = "user2@dex.net",
-        avatarDrawable = Res.drawable.user1_avatar
-    ),
-    DeviceItemUiModel(
-        id = "wan_user_2",
-        alias = "Akua Donkor",
-        modelText = "Phone (WAN)",
-        ip = "wan.dex.net",
-        fingerprint = "wan_fp_2",
-        isPaired = true,
-        isOnline = false,
-        isWanPlaceholder = true,
-        wanEmail = "user1@dex.net",
-        avatarDrawable = Res.drawable.user2_avatar
-    ),
-    DeviceItemUiModel(
-        id = "wan_user_3",
-        alias = "Kwame Asante",
-        modelText = "Phone (WAN)",
-        ip = "wan.dex.net",
-        fingerprint = "wan_fp_3",
-        isPaired = true,
-        isOnline = false,
-        isWanPlaceholder = true,
-        wanEmail = "user3@dex.net",
-        avatarDrawable = Res.drawable.user3_avatar
-    )
-)
+
 
 /**
  * DeviceListPanel:
@@ -122,7 +83,7 @@ fun defaultWanPlaceholders(): List<DeviceItemUiModel> = listOf(
 fun DeviceListPanel(
     discoveredDevices: List<DeviceItemUiModel>,
     pairedDevices: List<DeviceItemUiModel>,
-    wanPlaceholders: List<DeviceItemUiModel> = defaultWanPlaceholders(),
+
     onPairDevice: (DeviceItemUiModel) -> Unit,
     onSendFile: (DeviceItemUiModel) -> Unit = {},
     onSendClipboard: (DeviceItemUiModel) -> Unit = {},
@@ -180,14 +141,23 @@ fun DeviceListPanel(
             )
         }
 
-        if (pairedDevices.isEmpty() && wanPlaceholders.isEmpty()) {
-            item(key = "empty_paired") {
-                Text(
-                    text = "No paired devices yet",
-                    fontSize = 12.sp,
-                    color = DeXTheme.colors.secondaryText.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                )
+        if (discoveredDevices.isEmpty() && pairedDevices.isEmpty()) {
+            item(key = "empty_state") {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = MaterialSymbols.Wifi,
+                        contentDescription = "Scanning",
+                        modifier = Modifier.size(48.dp),
+                        tint = DeXTheme.colors.secondaryText.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Scanning your network...", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DeXTheme.colors.primaryText)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "Make sure devices are on the same Wi-Fi", fontSize = 12.sp, color = DeXTheme.colors.secondaryText)
+                }
             }
         } else {
             items(pairedDevices, key = { "paired_${it.fingerprint.ifBlank { it.ip }}" }) { device ->
@@ -211,13 +181,7 @@ fun DeviceListPanel(
                 }
             }
 
-            // WAN Scaffolding Profiles
-            items(wanPlaceholders, key = { "wan_${it.id}" }) { device ->
-                DeviceListItemRow(
-                    device = device,
-                    onClick = { /* WAN Scaffolding - non-interactive */ }
-                )
-            }
+
         }
     }
 }

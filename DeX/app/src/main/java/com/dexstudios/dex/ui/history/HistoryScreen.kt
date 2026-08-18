@@ -60,7 +60,6 @@ import com.dexstudios.dex.ui.state.HistoryViewMode
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -214,7 +213,7 @@ fun HistoryScreen(
                                     Icon(DeXIcons.FilterList, null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 IconButton(onClick = {
-                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
+                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.LIST else HistoryViewMode.GRID
                                 }) {
                                     Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }

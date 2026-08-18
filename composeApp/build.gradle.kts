@@ -2,7 +2,6 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
@@ -10,24 +9,9 @@ plugins {
 
 kotlin {
     jvm("desktop")
-    
-    android {
-        namespace = "com.dexstudios.dex.desktop"
-        compileSdk = 37
-        minSdk = 26
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
 
     sourceSets {
         val desktopMain = getByName("desktopMain")
-        
-        androidMain.dependencies {
-            implementation(libs.androidx.compose.ui.tooling.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.ktor.client.okhttp)
-        }
         
         commonMain.dependencies {
             implementation(libs.jb.compose.runtime)
@@ -56,6 +40,7 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.qrcode.kotlin)
         }
         
         desktopMain.dependencies {
@@ -67,6 +52,8 @@ kotlin {
             implementation(libs.ktor.server.netty)
             implementation(libs.ktor.server.websockets)
             implementation(libs.ktor.server.content.negotiation)
+            implementation(libs.jna)
+            implementation(libs.jna.platform)
         }
 
         commonTest.dependencies {

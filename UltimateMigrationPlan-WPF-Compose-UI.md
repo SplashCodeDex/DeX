@@ -121,7 +121,7 @@ top  = workArea.Bottom - contentH - 38     // Above taskbar, with 38px gap
 
 ---
 
-#### [MODIFY] [`main.kt`](file:///w:/CodeDeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)
+#### [x] [`main.kt`](file:///w:/CodeDeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)
 
 Complete rewrite to implement the floating dock card window:
 
@@ -210,7 +210,7 @@ Key changes from current implementation:
 
 ---
 
-#### [NEW] `FloatingDockCard.kt` — `desktopMain/kotlin/.../window/FloatingDockCard.kt`
+#### [x] `FloatingDockCard.kt` — `desktopMain/kotlin/.../window/FloatingDockCard.kt`
 
 The root composable for the desktop floating card layout. This replaces the full-screen `App()` call with the dock card structure:
 
@@ -289,7 +289,7 @@ fun DockCardContent(
 
 ---
 
-#### [NEW] `MainMenuColumn.kt` — `desktopMain/kotlin/.../window/MainMenuColumn.kt`
+#### [x] `MainMenuColumn.kt` — `desktopMain/kotlin/.../window/MainMenuColumn.kt`
 
 The always-visible right column of the dock card (the compact card from the screenshot):
 
@@ -317,7 +317,7 @@ This composable reuses the **existing shared components** from `commonMain`:
 
 ---
 
-#### [NEW] `ScreenBoundsHelper.kt` — `desktopMain/kotlin/.../window/ScreenBoundsHelper.kt`
+#### [x] `ScreenBoundsHelper.kt` — `desktopMain/kotlin/.../window/ScreenBoundsHelper.kt`
 
 JVM/AWT utility to get screen work area (above taskbar):
 
@@ -340,7 +340,7 @@ fun getTaskbarInsets(): java.awt.Insets {
 
 ---
 
-#### [NEW] `DockCardAnimations.kt` — `desktopMain/kotlin/.../window/DockCardAnimations.kt`
+#### [x] `DockCardAnimations.kt` — `desktopMain/kotlin/.../window/DockCardAnimations.kt`
 
 Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L111-L291):
 
@@ -359,7 +359,7 @@ Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/
 
 ---
 
-#### [MODIFY] [`App.kt`](file:///w:/CodeDeX/DeX/composeApp/src/commonMain/kotlin/com/dexstudios/dex/App.kt)
+#### [x] [`App.kt`](file:///w:/CodeDeX/DeX/composeApp/src/commonMain/kotlin/com/dexstudios/dex/App.kt)
 
 `App()` is the **desktop-only** root composable of the CMP desktop app (`composeApp` has no Android target). Desktop's `main.kt` calls `App()` / `FloatingDockCard()` directly:
 
@@ -372,17 +372,17 @@ Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/
 
 ```
 composeApp/src/desktopMain/kotlin/com/dexstudios/dex/
-├── main.kt                          [MODIFY] Floating dock window config
+├── main.kt                          [x] Floating dock window config
 └── window/
-    ├── FloatingDockCard.kt          [NEW] Root dock card composable
-    ├── MainMenuColumn.kt            [NEW] Compact card column (always visible)
-    ├── FileExplorerPanel.kt         [NEW] Expanded file browser panel
-    ├── SettingsPanel.kt             [NEW] Expanded settings panel  
-    ├── QuickActionBar.kt            [NEW] DND/Mirror/Files/Clipboard buttons
-    ├── DragPillHandle.kt            [NEW] Draggable pill + WindowDraggableArea
-    ├── PinCodeView.kt               [NEW] PIN pairing view (animated slide-in)
-    ├── DockCardAnimations.kt        [NEW] Ported animation specs
-    └── ScreenBoundsHelper.kt        [NEW] JVM work area calculation
+    ├── FloatingDockCard.kt          [x] Root dock card composable
+    ├── MainMenuColumn.kt            [x] Compact card column (always visible)
+    ├── FileExplorerPanel.kt         [x] Expanded file browser panel
+    ├── SettingsPanel.kt             [x] Expanded settings panel  
+    ├── QuickActionBar.kt            [x] DND/Mirror/Files/Clipboard buttons
+    ├── DragPillHandle.kt            [x] Draggable pill + WindowDraggableArea
+    ├── PinCodeView.kt               [x] PIN pairing view (animated slide-in)
+    ├── DockCardAnimations.kt        [x] Ported animation specs
+    └── ScreenBoundsHelper.kt        [x] JVM work area calculation
 ```
 
 ---

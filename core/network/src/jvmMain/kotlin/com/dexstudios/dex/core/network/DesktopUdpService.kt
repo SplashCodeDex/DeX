@@ -22,8 +22,10 @@ import java.net.NetworkInterface
 
 class DesktopUdpService : IDiscoveryService {
     private val scope = CoroutineScope(Dispatchers.IO)
-    private var udpJob: Job? = null
-    private var udpSocket: MulticastSocket? = null
+    private var httpsJob: Job? = null
+    private var legacyJob: Job? = null
+    private var httpsSocket: MulticastSocket? = null
+    private var legacySocket: MulticastSocket? = null
 
     private var localInfo: RegisterDto? = null
     private var onDeviceDiscovered: ((DiscoveredDevice) -> Unit)? = null
@@ -32,26 +34,30 @@ class DesktopUdpService : IDiscoveryService {
         this.localInfo = localInfo
         this.onDeviceDiscovered = onDeviceDiscovered
 
-        udpJob = scope.launch {
-            runCatching {
-                udpSocket = MulticastSocket(DeXPorts.HTTPS).apply {
-                    reuseAddress = true
-                    val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
-                    NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
-                        runCatching {
-                            if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
-                                joinGroup(groupAddr, ni)
-                            }
+        httpsJob = scope.launch { startListening(DeXPorts.HTTPS, 0) }
+        legacyJob = scope.launch { startListening(28424, 1) }
+    }
+
+    private fun CoroutineScope.startListening(port: Int, socketIndex: Int) {
+        runCatching {
+            val socket = MulticastSocket(port).apply {
+                reuseAddress = true
+                val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), port)
+                NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
+                    runCatching {
+                        if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
+                            joinGroup(groupAddr, ni)
                         }
                     }
                 }
+            }
+            if (socketIndex == 0) httpsSocket = socket else legacySocket = socket
 
-                val buffer = ByteArray(2048)
-                while (isActive) {
-                    val packet = DatagramPacket(buffer, buffer.size)
-                    udpSocket?.receive(packet)
-                    handleIncomingPacket(packet)
-                }
+            val buffer = ByteArray(2048)
+            while (isActive) {
+                val packet = DatagramPacket(buffer, buffer.size)
+                socket.receive(packet)
+                handleIncomingPacket(packet)
             }
         }
     }
@@ -106,14 +112,17 @@ class DesktopUdpService : IDiscoveryService {
                 info.googleSub?.let { put("googleSub", it) }
             }
             val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
-            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+            val mcastPacketHttps = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+            val mcastPacketLegacy = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 28424)
             val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
 
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                 runCatching {
                     if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
-                        udpSocket?.networkInterface = ni
-                        udpSocket?.send(mcastPacket)
+                        httpsSocket?.networkInterface = ni
+                        httpsSocket?.send(mcastPacketHttps)
+                        legacySocket?.networkInterface = ni
+                        legacySocket?.send(mcastPacketLegacy)
                     }
                 }
             }
@@ -122,7 +131,9 @@ class DesktopUdpService : IDiscoveryService {
     }
 
     override fun stop() {
-        udpJob?.cancel()
-        runCatching { udpSocket?.close() }
+        httpsJob?.cancel()
+        legacyJob?.cancel()
+        runCatching { httpsSocket?.close() }
+        runCatching { legacySocket?.close() }
     }
 }

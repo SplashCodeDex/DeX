@@ -11,8 +11,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +58,11 @@ import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.auth.PairingState
 import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.ui.modifiers.shake
 import kotlinx.coroutines.delay
+import io.github.g0dkar.qrcode.QRCode
+import org.jetbrains.skia.Image as SkiaImage
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlin.math.roundToInt
 
 sealed interface PinPairingUiState {
@@ -97,22 +104,27 @@ fun PinPairingPanel(
     modifier: Modifier = Modifier
 ) {
     val isError = (state as? PinPairingUiState.PinView)?.isError == true
-    val shakeAnim = remember { Animatable(0f) }
 
-    LaunchedEffect(isError) {
-        if (isError) {
-            shakeAnim.animateTo(
-                targetValue = 0f,
-                animationSpec = keyframes {
-                    durationMillis = 400
-                    0f at 0
-                    (-15f) at 60
-                    15f at 120
-                    (-10f) at 180
-                    10f at 240
-                    (-5f) at 300
-                    0f at 400
-                }
+    val switchQrToPinAnim: AnimatedContentTransitionScope<PinPairingUiState>.() -> ContentTransform = {
+        if (targetState is PinPairingUiState.PinView) {
+            (slideInHorizontally(
+                initialOffsetX = { 140 },
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
+            ) + fadeIn(tween(250))).togetherWith(
+                slideOutHorizontally(
+                    targetOffsetX = { -140 },
+                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(250))
+            )
+        } else {
+            (slideInHorizontally(
+                initialOffsetX = { -140 },
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
+            ) + fadeIn(tween(250))).togetherWith(
+                slideOutHorizontally(
+                    targetOffsetX = { 140 },
+                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(250))
             )
         }
     }
@@ -179,29 +191,7 @@ fun PinPairingPanel(
         ) {
             AnimatedContent(
                 targetState = state,
-                transitionSpec = {
-                    if (targetState is PinPairingUiState.PinView) {
-                        (slideInHorizontally(
-                            initialOffsetX = { 140 },
-                            animationSpec = tween(250, easing = FastOutSlowInEasing)
-                        ) + fadeIn(tween(250))).togetherWith(
-                            slideOutHorizontally(
-                                targetOffsetX = { -140 },
-                                animationSpec = tween(250, easing = FastOutSlowInEasing)
-                            ) + fadeOut(tween(250))
-                        )
-                    } else {
-                        (slideInHorizontally(
-                            initialOffsetX = { -140 },
-                            animationSpec = tween(250, easing = FastOutSlowInEasing)
-                        ) + fadeIn(tween(250))).togetherWith(
-                            slideOutHorizontally(
-                                targetOffsetX = { 140 },
-                                animationSpec = tween(250, easing = FastOutSlowInEasing)
-                            ) + fadeOut(tween(250))
-                        )
-                    }
-                },
+                transitionSpec = switchQrToPinAnim,
                 label = "pairingFlip"
             ) { currentState ->
                 when (currentState) {
@@ -213,7 +203,7 @@ fun PinPairingPanel(
                             // 6-Digit PIN Display with 15px error shake
                             Row(
                                 modifier = Modifier
-                                    .offset { IntOffset(x = shakeAnim.value.roundToInt(), y = 0) }
+                                    .shake(currentState.isError)
                                     .padding(vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -435,78 +425,16 @@ private fun PinDigitBox(
     }
 }
 
-/**
- * Procedural stylized QR code pattern canvas.
- */
 @Composable
 private fun StyledQrMatrixCanvas(
     payload: String,
     modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = modifier) {
-        val sizePx = size.minDimension
-        val moduleCount = 21
-        val moduleSize = sizePx / moduleCount
-
-        // Seed deterministic grid based on payload hash
-        val seed = payload.hashCode()
-        val random = kotlin.random.Random(seed)
-
-        // Draw data modules
-        for (r in 0 until moduleCount) {
-            for (c in 0 until moduleCount) {
-                // Reserve 3 corner finder patterns (7x7 modules each)
-                val inTopLeft = r < 7 && c < 7
-                val inTopRight = r < 7 && c >= moduleCount - 7
-                val inBottomLeft = r >= moduleCount - 7 && c < 7
-
-                if (!inTopLeft && !inTopRight && !inBottomLeft) {
-                    if (random.nextBoolean() || (r % 2 == 0 && c % 3 == 0)) {
-                        drawRect(
-                            color = Color.Black,
-                            topLeft = Offset(c * moduleSize, r * moduleSize),
-                            size = Size(moduleSize, moduleSize)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Draw Top-Left Finder
-        drawFinderPattern(0f, 0f, moduleSize)
-        // Draw Top-Right Finder
-        drawFinderPattern((moduleCount - 7) * moduleSize, 0f, moduleSize)
-        // Draw Bottom-Left Finder
-        drawFinderPattern(0f, (moduleCount - 7) * moduleSize, moduleSize)
+    val imageBitmap = remember(payload) {
+        val rawBytes = QRCode(payload).render().getBytes()
+        SkiaImage.makeFromEncoded(rawBytes).toComposeImageBitmap()
     }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFinderPattern(
-    x: Float,
-    y: Float,
-    moduleSize: Float
-) {
-    // Outer 7x7 black box
-    drawRoundRect(
-        color = Color.Black,
-        topLeft = Offset(x, y),
-        size = Size(7 * moduleSize, 7 * moduleSize),
-        cornerRadius = CornerRadius(2 * moduleSize, 2 * moduleSize)
-    )
-    // Inner 5x5 white box
-    drawRoundRect(
-        color = Color.White,
-        topLeft = Offset(x + moduleSize, y + moduleSize),
-        size = Size(5 * moduleSize, 5 * moduleSize),
-        cornerRadius = CornerRadius(1.5f * moduleSize, 1.5f * moduleSize)
-    )
-    // Center 3x3 black box
-    drawRoundRect(
-        color = Color.Black,
-        topLeft = Offset(x + 2 * moduleSize, y + 2 * moduleSize),
-        size = Size(3 * moduleSize, 3 * moduleSize),
-        cornerRadius = CornerRadius(moduleSize, moduleSize)
-    )
+    Image(bitmap = imageBitmap, contentDescription = "QR Code", modifier = modifier)
 }
 
 /**

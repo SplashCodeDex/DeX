@@ -27,15 +27,11 @@ import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * A floating bubble card that appears on long-press of a [device].
- *
- * Kept presentational: all actions are hoisted up to the caller so this stays
- * reusable across screens. The card anchors to the bottom for thumb-friendly
- * reach and pops in using the app-wide spatial physics. Entry and exit are both
- * animated: [onDismiss] is invoked only after the exit animation completes, so
- * the caller can unmount this overlay without cutting the exit short.
  */
 @Composable
 fun DeviceContextMenu(
@@ -50,9 +46,6 @@ fun DeviceContextMenu(
 ) {
     var showDetails by remember { mutableStateOf(false) }
 
-    // Drives both the pop-in (mount) and pop-out (dismiss) transitions. The
-    // content stays composed while [targetState] is false so the exit animation
-    // can play; onDismiss is fired only once the exit is idle (finished).
     val transitionState = remember { MutableTransitionState(false) }
     var hasOpened by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { transitionState.targetState = true }
@@ -69,6 +62,8 @@ fun DeviceContextMenu(
         if (hasOpened && transitionState.isIdle && !transitionState.targetState) onDismiss()
     }
 
+    val dialogBackdrop = rememberLayerBackdrop()
+
     AnimatedVisibility(
         visibleState = transitionState,
         enter = spatialMenuEnter(),
@@ -78,80 +73,86 @@ fun DeviceContextMenu(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = ::dismiss
-                ),
-            contentAlignment = Alignment.Center
+                .layerBackdrop(dialogBackdrop)
         ) {
-            LiquidGlassPanel(
-                backdrop = backdrop,
-                config = LiquidGlassPresets.DynamicIsland,
-                shape = RoundedCornerShape(32.dp),
+            Box(
                 modifier = Modifier
-                    .widthIn(max = 400.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
-                    )
+                        onClick = ::dismiss
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    DeviceContextMenuHeader(
-                        device = device,
-                        isTrusted = isTrusted
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = Color.White.copy(alpha = 0.15f)
-                    )
-
-                    if (isTrusted) {
-                        DeviceContextMenuItem(
-                            icon = MaterialSymbols.Send,
-                            label = stringResource(R.string.device_send_file),
-                            tint = Color.White,
-                            onClick = { onSendFile(); dismiss() }
+                LiquidGlassPanel(
+                    backdrop = backdrop, // Sample the underlying screen
+                    config = LiquidGlassPresets.DynamicIsland,
+                    shape = RoundedCornerShape(32.dp),
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
                         )
-                        DeviceContextMenuItem(
-                            icon = MaterialSymbols.Tune,
-                            label = stringResource(R.string.device_forget),
-                            tint = Color(0xFFFF5252), // Material Red A200 for better visibility on dark glass
-                            onClick = { onForget(); dismiss() }
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        DeviceContextMenuHeader(
+                            device = device,
+                            isTrusted = isTrusted
                         )
-                    } else {
-                        DeviceContextMenuItem(
-                            icon = MaterialSymbols.Devices,
-                            label = stringResource(R.string.device_pair),
-                            tint = Color.White,
-                            onClick = { onPair(); dismiss() }
-                        )
-                    }
 
-                    DeviceContextMenuItem(
-                        icon = MaterialSymbols.Computer,
-                        label = stringResource(
-                            if (showDetails) R.string.device_details_hide
-                            else R.string.device_details
-                        ),
-                        tint = Color.White,
-                        onClick = { showDetails = !showDetails }
-                    )
-
-                    if (showDetails) {
-                        Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                             color = Color.White.copy(alpha = 0.15f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        DeviceContextMenuDetails(device = device)
-                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (isTrusted) {
+                            DeviceContextMenuItem(
+                                icon = MaterialSymbols.Send,
+                                label = stringResource(R.string.device_send_file),
+                                tint = Color.White,
+                                onClick = { onSendFile(); dismiss() }
+                            )
+                            DeviceContextMenuItem(
+                                icon = MaterialSymbols.Tune,
+                                label = stringResource(R.string.device_forget),
+                                tint = Color(0xFFFF5252),
+                                onClick = { onForget(); dismiss() }
+                            )
+                        } else {
+                            DeviceContextMenuItem(
+                                icon = MaterialSymbols.Devices,
+                                label = stringResource(R.string.device_pair),
+                                tint = Color.White,
+                                onClick = { onPair(); dismiss() }
+                            )
+                        }
+
+                        DeviceContextMenuItem(
+                            icon = MaterialSymbols.Computer,
+                            label = stringResource(
+                                if (showDetails) R.string.device_details_hide
+                                else R.string.device_details
+                            ),
+                            tint = Color.White,
+                            onClick = { showDetails = !showDetails }
+                        )
+
+                        if (showDetails) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                color = Color.White.copy(alpha = 0.15f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            DeviceContextMenuDetails(device = device)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }

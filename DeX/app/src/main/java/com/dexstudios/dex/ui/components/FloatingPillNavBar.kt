@@ -8,7 +8,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
@@ -17,14 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -32,6 +29,8 @@ import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 data class NavBarItem(
     val selectedIcon: ImageVector,
@@ -52,32 +51,91 @@ fun FloatingPillNavBar(
     var pressedIndex by remember { mutableStateOf<Int?>(null) }
     var dragX by remember { mutableStateOf<Float?>(null) }
 
-    val content: @Composable BoxScope.() -> Unit = {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-                .pointerInput(items.size) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull()
-                            if (change != null) {
-                                dragX = if (change.pressed) {
-                                    change.position.x
-                                } else {
-                                    null
-                                }
+    val totalWidth = 320.dp
+    val totalHeight = 72.dp
+
+    // Local backdrop to capture the navbar board and icons so the highlighter can refract them.
+    val localNavBackdrop = rememberLayerBackdrop()
+
+    // Liquid Wobble & Growth State
+    val isInteracting = pressedIndex != null || dragX != null
+
+    Box(
+        modifier = modifier
+            .size(totalWidth, totalHeight)
+            .graphicsLayer { clip = false } // Top-level container allows bulging
+            .pointerInput(items.size) {
+                // Tracking dragX at the root level to avoid hit-test blocking
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull()
+                        if (change != null) {
+                            dragX = if (change.pressed) {
+                                change.position.x
+                            } else {
+                                null
                             }
                         }
                     }
                 }
-        ) {
-            val density = LocalDensity.current
-            val totalWidth = maxWidth
-            val itemWidth = totalWidth / items.size
+            }
+    ) {
+        val density = LocalDensity.current
+        val itemWidth = totalWidth / items.size
 
-            // 1. Target Bounds Calculation
+        // 1. The Captured Layer (Board + Icons)
+        // This Box is drawn first and captured into localNavBackdrop.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(localNavBackdrop)
+        ) {
+            // 1a. The Navbar Board (Backdrop Layer)
+            if (backdrop != null) {
+                LiquidGlassPanel(
+                    backdrop = backdrop,
+                    modifier = Modifier.fillMaxSize(),
+                    shape = config.shape,
+                    config = config,
+                    content = {}
+                )
+            } else {
+                DeXPanel(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    content = {}
+                )
+            }
+
+            // 1b. The Icons Layer
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEachIndexed { index, item ->
+                    NavBarIcon(
+                        item = item,
+                        onPressedChanged = { isPressed ->
+                            pressedIndex = if (isPressed) index else null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // 2. The Highlighter Layer (Drawn on top, refracts the layer below)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .graphicsLayer { clip = false }
+        ) {
+            // Target Bounds Calculation
             val targetLeft by remember(dragX, selectedIndex, itemWidth) {
                 derivedStateOf {
                     if (dragX != null) {
@@ -90,7 +148,7 @@ fun FloatingPillNavBar(
             }
             val targetRight = targetLeft + itemWidth
 
-            // 2. Elastic Animations
+            // Elastic Animations
             var lastTargetLeft by remember { mutableStateOf(targetLeft) }
             var direction by remember { mutableIntStateOf(0) }
 
@@ -119,8 +177,7 @@ fun FloatingPillNavBar(
                 label = "navRightBound"
             )
 
-            // 3. Liquid Wobble & Growth
-            val isInteracting = pressedIndex != null || dragX != null
+            // Liquid Wobble & Growth
             val infiniteTransition = rememberInfiniteTransition(label = "navWobble")
             val wobbleFactor by infiniteTransition.animateFloat(
                 initialValue = -1f,
@@ -138,87 +195,54 @@ fun FloatingPillNavBar(
                 label = "activeWobble"
             )
 
-            val indicatorScale by animateFloatAsState(
-                targetValue = if (isInteracting) 1.25f else 1f,
+            val indicatorScaleX by animateFloatAsState(
+                targetValue = if (isInteracting) 1.05f else 0.8f,
                 animationSpec = spring(
                     dampingRatio = if (isInteracting) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
                     stiffness = if (isInteracting) Spring.StiffnessLow else Spring.StiffnessMedium
                 ),
-                label = "navIndicatorScale"
+                label = "navIndicatorScaleX"
             )
 
-            // 1. Shared Animated Highlighter (Liquid Glass or Solid Fallback)
-            // Drawn BEFORE the icons to ensure the icons are on top.
+            val indicatorScaleY by animateFloatAsState(
+                targetValue = if (isInteracting) 1.25f else 1.0f,
+                animationSpec = spring(
+                    dampingRatio = if (isInteracting) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
+                    stiffness = if (isInteracting) Spring.StiffnessLow else Spring.StiffnessMedium
+                ),
+                label = "navIndicatorScaleY"
+            )
+
+            // 2. Shared Animated Highlighter (Topmost Layer)
             val indicatorModifier = Modifier
                 .offset { IntOffset(leftBound.roundToPx(), 0) }
                 .width(rightBound - leftBound)
                 .graphicsLayer {
-                    scaleX = indicatorScale
-                    scaleY = indicatorScale
+                    scaleX = indicatorScaleX
+                    scaleY = indicatorScaleY
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
+                    clip = false // Allow liquid bulge outside bounds
                 }
                 .fillMaxHeight()
+                .zIndex(10f)
 
-            if (backdrop != null) {
-                LiquidGlassPanel(
-                    backdrop = backdrop,
-                    modifier = indicatorModifier,
-                    shape = CircleShape,
-                    config = LiquidGlassPresets.IconButton.copy(
-                        blurRadius = 4.dp,
-                        lensHeight = 12.dp + (4.dp * wobbleFactor * activeWobble),
-                        lensAmount = 24.dp + (12.dp * wobbleFactor * activeWobble),
-                        chromaticAberration = true,
-                        depthEffect = true,
-                        surfaceTint = MaterialTheme.colorScheme.primary,
-                        surfaceTintAlpha = 0.15f
-                    )
-                ) { }
-            } else {
-                Box(
-                    modifier = indicatorModifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
-
-            // 2. Icons Row (Drawn on top of the highlighter)
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEachIndexed { index, item ->
-                    NavBarIcon(
-                        item = item,
-                        onPressedChanged = { isPressed ->
-                            pressedIndex = if (isPressed) index else null
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
+            LiquidGlassPanel(
+                backdrop = localNavBackdrop, // Sample the captured board + icons
+                modifier = indicatorModifier,
+                shape = CircleShape,
+                config = LiquidGlassPresets.IconButton.copy(
+                    blurRadius = 1.dp, // Maximum icon clarity
+                    lensHeight = 64.dp + (8.dp * wobbleFactor * activeWobble),
+                    lensAmount = 35.dp + (15.dp * wobbleFactor * activeWobble),
+                    chromaticAberration = false,
+                    surfaceTint = MaterialTheme.colorScheme.primary,
+                    surfaceTintAlpha = 0.15f,
+                    shadowRadius = 0.dp,
+                    restRefraction = 1.0f
+                ),
+                content = {}
+            )
         }
-    }
-
-    val panelModifier = modifier
-        .width(320.dp)
-        .height(72.dp)
-
-    if (backdrop != null) {
-        LiquidGlassPanel(
-            backdrop = backdrop,
-            modifier = panelModifier,
-            shape = config.shape,
-            config = config,
-            content = content
-        )
-    } else {
-        DeXPanel(
-            modifier = panelModifier,
-            shape = CircleShape,
-            content = content
-        )
     }
 }
 

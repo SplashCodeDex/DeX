@@ -40,6 +40,9 @@ coil = "3.5.0"
 playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
 
+jna = "5.14.0"
+qrcode = "3.3.0"
+
 [libraries]
 compose-native-tray = { module = "dev.nucleusframework:composenativetray", version.ref = "composeNativeTray" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version = "16.1.0" }
@@ -114,6 +117,9 @@ androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runt
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3Core" }
 androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycleViewmodelNav3" }
 androidx-lifecycle-viewmodel-compose-multiplatform = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
 
 
 [plugins]

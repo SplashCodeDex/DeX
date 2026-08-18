@@ -1,5 +1,11 @@
 # Changelog
 
+## [10.0.0.0] - 2026-08-18
+### Added
+- **[major] Compose Multiplatform Migration (Phase 1-4.2)**: Successfully achieved 1:1 parity with the legacy WPF desktop application using Kotlin & Compose Multiplatform.
+- **[major] Legacy Protocols Preserved**: Rebuilt the device discovery engine (UDP multicast on 28424/48424) and file transfer server (`DeXServer` on 48426/28425/48424) using Ktor 3, ensuring unbroken backwards compatibility with the existing Android app.
+- **[major] System Integrations Parity**: Reimplemented Wiggle-to-Open and mixed-DPI multi-monitor drag scaling using JNA user32 hooks. Implemented seamless PC-to-Device and Device-to-PC clipboard sync.
+- **[major] New Compose UI Layer**: Rewrote all UI components (MainMenuColumn, DeviceListPanel, TopActionsPanel, PinPairingPanel, DownloadDockToast, etc.) to Compose, matching WPF animations, shadow properties, and dynamic states exactly. Mock UI data was replaced with live engine state bindings.
 ## [9.2.1.0] - 2026-08-15
 ### Fixed
 - **[patch] Active Device UI Binding**: Ensured that when a discovered device is successfully paired, it smoothly animates into the 'Your Devices' (Live Peers) list and is immediately and visually selected as the actively connected target. Manually clicking devices in this list now also correctly updates the active target binding behind the scenes.

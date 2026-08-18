@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,15 +27,16 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.request.error
-import coil3.request.fallback
-import coil3.request.placeholder
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import androidx.compose.runtime.remember
 
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.network.WallpaperState
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -96,20 +96,25 @@ fun DeviceListItem(
     }
 
     val cardShape = RoundedCornerShape(48.dp)
+    val localBackdrop = rememberLayerBackdrop()
 
-    DeXPanel(
+    Box(
         modifier = modifier
+            .width(300.dp)
+            .height(340.dp)
             .bubbleFluidity(targetScale = 0.98f)
             .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        shape = cardShape, // Deep rounded corners as requested
-        shadowRadius = 16.dp
+            )
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
-            // 1. Wallpaper or Placeholder
+        // 1. The Captured Layer (Wallpaper/Background)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(localBackdrop)
+        ) {
             if (imageRequest != null) {
                 AsyncImage(
                     model = imageRequest,
@@ -137,81 +142,92 @@ fun DeviceListItem(
                     )
                 }
             }
+        }
 
-            // 2. Glassy Gradient Overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.3f to MaterialTheme.colorScheme.surface.copy(alpha = 0.1f),
-                            0.6f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            1f to MaterialTheme.colorScheme.surface
-                        )
-                    )
+        // 2. The Glass Panel (Drawn on top, provides glare and shadow)
+        LiquidGlassPanel(
+            backdrop = localBackdrop,
+            modifier = Modifier.fillMaxSize(),
+            shape = cardShape,
+            config = LiquidGlassPresets.ShinyCard.copy(shadowRadius = 4.dp)
+        ) {
+            // 3. UI Content Layer
+            // NOT using CompositionLocalProvider for Backdrop here to avoid recursive crash
+            DeviceCardUIContent(
+                device = device,
+                isTrusted = isTrusted,
+                realBattery = realBattery,
+                batteryIcon = batteryIcon,
+                realWifiBand = realWifiBand,
+                onButtonClick = onButtonClick
             )
+        }
+    }
+}
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp, top = 24.dp),
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = device.info.alias,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+@Composable
+private fun DeviceCardUIContent(
+    device: DiscoveredDevice,
+    isTrusted: Boolean,
+    realBattery: Int?,
+    batteryIcon: ImageVector,
+    realWifiBand: String,
+    onButtonClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 24.dp, top = 24.dp),
+        verticalArrangement = Arrangement.Bottom
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = device.info.alias,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (device.viaRoster) Color.White else MaterialTheme.colorScheme.onSurface
+            )
+        }
 
-                Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-                Text(
-                    text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 20.sp
-                )
+        Text(
+            text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
+            style = MaterialTheme.typography.bodyMedium,
+            color = (if (device.viaRoster) Color.White else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f),
+            lineHeight = 20.sp
+        )
 
-                Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                // Tags Row (Updated with Live Telemetry & Pairing Security Scoping)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DeviceIconTag(icon = MaterialSymbols.Wifi)
-                    if (isTrusted && realBattery != null) {
-                        DeviceIconTag(icon = batteryIcon)
-                        DeviceTag(text = realWifiBand)
-                        DeviceTag(text = "$realBattery%")
-                        DeviceTag(text = "Paired")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                DeXButton(
-                    onClick = onButtonClick,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface,
-                        contentColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Text(
-                        text = if (isTrusted) "Send File" else "Connect",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
+        // Tags Row
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            DeviceIconTag(icon = MaterialSymbols.Wifi)
+            if (isTrusted && realBattery != null) {
+                DeviceIconTag(icon = batteryIcon)
+                DeviceTag(text = realWifiBand)
+                DeviceTag(text = "$realBattery%")
+                DeviceTag(text = "Paired")
             }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        DeXButton(
+            onClick = onButtonClick,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = CircleShape
+        ) {
+            Text(
+                text = if (isTrusted) "Send File" else "Connect",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
         }
     }
 }

@@ -15,14 +15,36 @@ import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
 import com.dexstudios.dex.core.network.server.routes.fileExplorerRoutes
 import org.koin.java.KoinJavaComponent.getKoin
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.path
+import io.ktor.server.response.respond
+import io.ktor.server.plugins.origin
+import io.ktor.server.application.install
+import io.ktor.server.routing.routing
+import kotlin.time.Duration.Companion.seconds
+
+val LoopbackSecurityPlugin = createApplicationPlugin(name = "LoopbackSecurity") {
+    onCall { call ->
+        val path = call.request.path()
+        if (path.startsWith("/local/")) {
+            val remoteHost = call.request.origin.remoteHost
+            if (remoteHost != "127.0.0.1" && remoteHost != "0:0:0:0:0:0:0:1" && remoteHost != "localhost") {
+                call.respond(HttpStatusCode.Forbidden, "Access Denied")
+            }
+        }
+    }
+}
 
 object DeXServer {
-    private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+    private var server1: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+    private var server2: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+    private var server3: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
 
     fun start() {
-        if (server != null) return
+        if (server1 != null) return
 
-        server = embeddedServer(Netty, port = 48424, host = "0.0.0.0") {
+        val appModule: Application.() -> Unit = {
+            install(LoopbackSecurityPlugin)
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
@@ -30,8 +52,8 @@ object DeXServer {
                 })
             }
             install(WebSockets) {
-                pingPeriodMillis = 15000
-                timeoutMillis = 15000
+                pingPeriod = 15.seconds
+                timeout = 15.seconds
                 maxFrameSize = Long.MAX_VALUE
                 masking = false
             }
@@ -44,13 +66,21 @@ object DeXServer {
                 webSocketRoutes()
                 fileExplorerRoutes()
             }
-        }.start(wait = false)
+        }
 
-        println("DeXServer started on port 48424")
+        server1 = embeddedServer(Netty, port = 48424, host = "0.0.0.0", module = appModule).start(wait = false)
+        server2 = embeddedServer(Netty, port = 28425, host = "127.0.0.1", module = appModule).start(wait = false)
+        server3 = embeddedServer(Netty, port = 48426, host = "0.0.0.0", module = appModule).start(wait = false)
+        
+        println("DeXServer started on ports 48424, 28425 (loopback), and 48426 (tcp fallback)")
     }
 
     fun stop() {
-        server?.stop(1000, 2000)
-        server = null
+        server1?.stop(1000, 2000)
+        server2?.stop(1000, 2000)
+        server3?.stop(1000, 2000)
+        server1 = null
+        server2 = null
+        server3 = null
     }
 }

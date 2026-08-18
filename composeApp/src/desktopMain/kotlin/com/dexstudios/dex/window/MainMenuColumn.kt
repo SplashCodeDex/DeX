@@ -25,7 +25,6 @@ import com.dexstudios.dex.window.components.BottomDockPanel
 import com.dexstudios.dex.window.components.DeviceItemUiModel
 import com.dexstudios.dex.window.components.DeviceListPanel
 import com.dexstudios.dex.window.components.TopActionsPanel
-import com.dexstudios.dex.window.components.defaultWanPlaceholders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -91,22 +90,7 @@ fun MainMenuColumn(
         }
     }
 
-    // Include DeXStudios Joe default profile if no live peers are paired (matching WPF legacy visual layout)
-    if (pairedList.isEmpty()) {
-        pairedList.add(
-            DeviceItemUiModel(
-                id = "paired_dexstudios",
-                alias = "DeXStudios",
-                modelText = "Windows",
-                ip = "127.0.0.1",
-                fingerprint = "dexstudios_local",
-                isPaired = true,
-                isOnline = true,
-                wanEmail = "dexify@dex.net",
-                avatarDrawable = Res.drawable.joe_avatar
-            )
-        )
-    }
+    // Mock DeXStudios fallback removed for Phase 4.2 Parity
 
     val serverIp = devices.firstOrNull()?.ip ?: "127.0.0.1"
     val serverPort = devices.firstOrNull()?.info?.port ?: 53317
@@ -156,7 +140,6 @@ fun MainMenuColumn(
             DeviceListPanel(
                 discoveredDevices = discoveredList,
                 pairedDevices = pairedList,
-                wanPlaceholders = defaultWanPlaceholders(),
                 onPairDevice = { item ->
                     val selectedDevice = item.rawDevice ?: devices.find { it.info.fingerprint == item.fingerprint }
                     selectedDevice?.let { onPairDevice(it) }

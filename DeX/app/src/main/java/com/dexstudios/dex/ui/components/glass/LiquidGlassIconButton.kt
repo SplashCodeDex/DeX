@@ -86,7 +86,7 @@ fun LiquidGlassIconButton(
                     }
                 },
                 highlight = { config.highlight },
-                shadow = { Shadow(radius = config.shadowRadius, color = config.shadowColor) },
+                shadow = { Shadow(radius = config.shadowRadius, color = config.shadowColor, offset = config.shadowOffset) },
                 innerShadow = { config.innerShadow },
                 onDrawSurface = {
                     if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
