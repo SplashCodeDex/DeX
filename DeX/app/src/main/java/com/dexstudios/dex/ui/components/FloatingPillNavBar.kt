@@ -16,11 +16,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -53,7 +57,8 @@ fun FloatingPillNavBar(
     var dragX by remember { mutableStateOf<Float?>(null) }
 
     val totalWidth = 300.dp
-    val totalHeight = 72.dp
+    val visibleHeight = 72.dp
+    val samplingHeight = 140.dp // Extra vertical headroom for lens sampling
 
     // Local backdrop to capture the navbar board and icons so the highlighter can refract them.
     val localNavBackdrop = rememberLayerBackdrop()
@@ -63,7 +68,15 @@ fun FloatingPillNavBar(
 
     Box(
         modifier = modifier
-            .size(totalWidth, totalHeight)
+            .size(totalWidth, samplingHeight)
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val h = visibleHeight.roundToPx()
+                layout(placeable.width, h) {
+                    // Center the 140dp sampling area vertically on the 72dp layout slot
+                    placeable.placeRelative(0, (h - placeable.height) / 2)
+                }
+            }
             .graphicsLayer { clip = false } // Top-level container allows bulging
             .pointerInput(items.size) {
                 // Tracking dragX at the root level to avoid hit-test blocking
@@ -77,8 +90,6 @@ fun FloatingPillNavBar(
                             } else {
                                 null
                             }
-                        } else {
-                            dragX = null
                         }
                     }
                 }
@@ -89,99 +100,33 @@ fun FloatingPillNavBar(
         val availableWidth = totalWidth - (horizontalPadding * 2)
         val itemWidth = availableWidth / items.size
 
-        // Target Bounds Calculation
-        val targetLeft by remember(dragX, selectedIndex, itemWidth) {
-            derivedStateOf {
-                if (dragX != null) {
-                    val centerDp = with(density) { dragX!!.toDp() } - horizontalPadding
-                    centerDp - (itemWidth / 2f)
-                } else {
-                    itemWidth * selectedIndex
-                }
-            }
-        }
-        val targetRight = targetLeft + itemWidth
-
-        val leftBound by animateDpAsState(
-            targetValue = targetLeft,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = 600f
-            ),
-            label = "navLeftBound"
-        )
-
-        val rightBound by animateDpAsState(
-            targetValue = targetRight,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = 600f
-            ),
-            label = "navRightBound"
-        )
-
-        // Movement Detection
-        val isMoving = remember(leftBound, targetLeft, rightBound, targetRight) {
-            val tolerance = 0.5f // dp
-            Math.abs(leftBound.value - targetLeft.value) > tolerance ||
-            Math.abs(rightBound.value - targetRight.value) > tolerance
-        }
-        val isHighlighterActive = isInteracting || isMoving
-
-        val captureHeight = 96.dp
-
-        // 1. The Captured Layer (Background Cards + Board + Icons)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .requiredHeight(captureHeight)
-                .align(Alignment.Center)
-                .layerBackdrop(localNavBackdrop)
-        ) {
-            // 1a. Sample the global background cards into this tall capture zone
-            // Alpha is driven by interaction to hide borders at rest
-            if (backdrop != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = if (isHighlighterActive) 1f else 0f }
-                        .drawBackdrop(
-                            backdrop = backdrop,
-                            shape = { RectangleShape },
-                            effects = {
-                                blur(0f)
-                            }
-                        )
-                )
-            }
-
-            // 1b. The Navbar Board + Icons (Centered in the capture zone)
+        // Shared Content lambda to keep Stage 1 & 2 in sync
+        val navContent: @Composable (Dp) -> Unit = { height ->
             Box(
-                modifier = Modifier
-                    .size(totalWidth, totalHeight)
-                    .align(Alignment.Center)
+                modifier = Modifier.size(totalWidth, height),
+                contentAlignment = Alignment.Center
             ) {
-                // The Navbar Board
+                // 1a. The Navbar Board
                 if (backdrop != null) {
                     LiquidGlassPanel(
                         backdrop = backdrop,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.size(totalWidth, visibleHeight),
                         shape = config.shape,
                         config = config,
                         content = {}
                     )
                 } else {
                     DeXPanel(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.size(totalWidth, visibleHeight),
                         shape = CircleShape,
                         content = {}
                     )
                 }
 
-                // The Icons
+                // 1b. The Icons Layer
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .size(totalWidth, visibleHeight)
                         .padding(horizontal = horizontalPadding, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -199,102 +144,187 @@ fun FloatingPillNavBar(
             }
         }
 
-        // 2. The Highlighter Layer (Drawn on top, refracts the layer below)
+        // STAGE 1: THE INVISIBLE CAPTURE (Raw, unclipped)
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(unbounded = true)
-                .graphicsLayer { clip = false }
+                .fillMaxSize()
+                .drawWithContent { /* Stay invisible to the user */ }
+                .layerBackdrop(localNavBackdrop),
+            contentAlignment = Alignment.Center
         ) {
-            // Physical Scaling Animations
-            val physicalWidth by animateDpAsState(
-                targetValue = if (isInteracting) 92.dp else 86.4.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "navPhysicalWidth"
-            )
+            // Glass Baseline (The content the highlighter samples beyond the pill)
+            if (backdrop != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { RectangleShape },
+                            effects = { blur(config.blurRadius.toPx()) }
+                        )
+                )
+            }
+            navContent(samplingHeight)
+        }
 
-            val physicalHeight by animateDpAsState(
-                targetValue = if (isHighlighterActive) 96.dp else 64.4.dp,
-                animationSpec = spring(
-                    dampingRatio = if (isHighlighterActive) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
-                    stiffness = if (isHighlighterActive) Spring.StiffnessLow else Spring.StiffnessMedium
-                ),
-                label = "navPhysicalHeight"
-            )
+        // STAGE 2: THE VISIBLE PILL (Strictly clipped to 72dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    val h = visibleHeight.toPx()
+                    val offset = (size.height - h) / 2
+                    clipRect(top = offset, bottom = offset + h) {
+                        this@drawWithContent.drawContent()
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            navContent(samplingHeight)
+        }
 
-            // Dynamic Highlighter Visuals - now driven by isHighlighterActive
-            val animatedLensHeight by animateDpAsState(
-                targetValue = if (isHighlighterActive) 30.dp else 0.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "navLensHeight"
-            )
-            val animatedLensAmount by animateDpAsState(
-                targetValue = if (isHighlighterActive) 30.dp else 0.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "navLensAmount"
-            )
-            val animatedSurfaceTint by animateColorAsState(
-                targetValue = if (isHighlighterActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(300),
-                label = "navSurfaceTint"
-            )
-            val animatedSurfaceTintAlpha by animateFloatAsState(
-                targetValue = if (isHighlighterActive) 0.15f else 0.2f,
-                animationSpec = tween(300),
-                label = "navSurfaceTintAlpha"
-            )
-
-            val animatedRestRefraction by animateFloatAsState(
-                targetValue = if (isHighlighterActive) 1.0f else 0.0f,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "navRestRefraction"
-            )
-            val animatedHighlightAlpha by animateFloatAsState(
-                targetValue = if (isHighlighterActive) 0.15f else 0.0f,
-                animationSpec = tween(300),
-                label = "navHighlightAlpha"
-            )
-
-            // 2. Shared Animated Highlighter (Topmost Layer)
-            // Centering logic for spherical shape
-            val currentSlotWidth = rightBound - leftBound
-            val indicatorWidth = physicalWidth
-            // Offset must include the horizontalPadding to align with the Icons layer
-            val indicatorOffset = horizontalPadding + leftBound + (currentSlotWidth - indicatorWidth) / 2
-
-            val indicatorModifier = Modifier
-                .align(Alignment.Center)
-                .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
-                .width(indicatorWidth)
-                .requiredHeight(physicalHeight)
-                .graphicsLayer {
-                    // Graphics scale removed to prevent coordinate distortion (icon shifting)
-                    scaleX = 1.0f
-                    scaleY = 1.0f
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
-                    clip = false // Allow liquid bulge outside bounds
+        // STAGE 3: THE HIGHLIGHTER (Samples Stage 1)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { clip = false },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(totalWidth, visibleHeight)
+                    .graphicsLayer { clip = false }
+            ) {
+                // Target Bounds Calculation
+                val targetLeft by remember(dragX, selectedIndex, itemWidth) {
+                    derivedStateOf {
+                        if (dragX != null) {
+                            val centerDp = with(density) { dragX!!.toDp() } - horizontalPadding
+                            centerDp - (itemWidth / 2f)
+                        } else {
+                            itemWidth * selectedIndex
+                        }
+                    }
                 }
-                .zIndex(10f)
+                val targetRight = targetLeft + itemWidth
 
-            // Unified Highlighter: Always a LiquidGlassPanel, but its effects animate to 0 at rest
-            LiquidGlassPanel(
-                backdrop = localNavBackdrop,
-                modifier = indicatorModifier,
-                shape = CircleShape,
-                config = LiquidGlassPresets.IconButton.copy(
-                    blurRadius = 0.dp,
-                    lensHeight = animatedLensHeight,
-                    lensAmount = animatedLensAmount,
-                    chromaticAberration = false,
-                    surfaceTint = animatedSurfaceTint,
-                    surfaceTintAlpha = animatedSurfaceTintAlpha,
-                    shadowRadius = 0.dp,
-                    restRefraction = animatedRestRefraction,
-                    depthEffect = true,
-                    highlight = LiquidGlassPresets.IconButton.highlight.copy(alpha = animatedHighlightAlpha)
-                ),
-                content = {}
-            )
+                // Elastic Animations
+                var lastTargetLeft by remember { mutableStateOf(targetLeft) }
+                var direction by remember { mutableIntStateOf(0) }
+
+                SideEffect {
+                    if (targetLeft != lastTargetLeft) {
+                        direction = if (targetLeft > lastTargetLeft) 1 else -1
+                        lastTargetLeft = targetLeft
+                    }
+                }
+
+                val leftBound by animateDpAsState(
+                    targetValue = targetLeft,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = if (direction <= 0) 1200f else 600f
+                    ),
+                    label = "navLeftBound"
+                )
+
+                val rightBound by animateDpAsState(
+                    targetValue = targetRight,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = if (direction >= 0) 1200f else 600f
+                    ),
+                    label = "navRightBound"
+                )
+
+                // 1.5. Movement Detection
+                val isMoving = remember(leftBound, targetLeft, rightBound, targetRight) {
+                    val tolerance = 0.5f // dp
+                    Math.abs(leftBound.value - targetLeft.value) > tolerance ||
+                    Math.abs(rightBound.value - targetRight.value) > tolerance
+                }
+                val isHighlighterActive = isInteracting || isMoving
+
+                // Physical Scaling Animations
+                val physicalWidth by animateDpAsState(
+                    targetValue = if (isInteracting) 120.dp else 86.4.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "navPhysicalWidth"
+                )
+
+                val physicalHeight by animateDpAsState(
+                    targetValue = if (isInteracting) 120.dp else 64.4.dp,
+                    animationSpec = spring(
+                        dampingRatio = if (isInteracting) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
+                        stiffness = if (isInteracting) Spring.StiffnessLow else Spring.StiffnessMedium
+                    ),
+                    label = "navPhysicalHeight"
+                )
+
+                // Dynamic Highlighter Visuals
+                val animatedLensHeight by animateDpAsState(
+                    targetValue = if (isInteracting) 30.dp else 0.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "navLensHeight"
+                )
+                val animatedLensAmount by animateDpAsState(
+                    targetValue = if (isInteracting) 30.dp else 0.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "navLensAmount"
+                )
+                val animatedSurfaceTint by animateColorAsState(
+                    targetValue = if (isHighlighterActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(300),
+                    label = "navSurfaceTint"
+                )
+                val animatedSurfaceTintAlpha by animateFloatAsState(
+                    targetValue = if (isHighlighterActive) 0.15f else 0.2f,
+                    animationSpec = tween(300),
+                    label = "navSurfaceTintAlpha"
+                )
+
+                val animatedRestRefraction by animateFloatAsState(
+                    targetValue = if (isHighlighterActive) 1.0f else 0.0f,
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "navRestRefraction"
+                )
+                val animatedHighlightAlpha by animateFloatAsState(
+                    targetValue = if (isHighlighterActive) 0.15f else 0.0f,
+                    animationSpec = tween(300),
+                    label = "navHighlightAlpha"
+                )
+
+                // Shared Animated Highlighter
+                val currentSlotWidth = rightBound - leftBound
+                val indicatorWidth = physicalWidth
+                val indicatorOffset = horizontalPadding + leftBound + (currentSlotWidth - indicatorWidth) / 2
+
+                val indicatorModifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
+                    .size(indicatorWidth, physicalHeight)
+                    .graphicsLayer { clip = false }
+                    .zIndex(10f)
+
+                LiquidGlassPanel(
+                    backdrop = localNavBackdrop,
+                    modifier = indicatorModifier,
+                    shape = CircleShape,
+                    config = LiquidGlassPresets.IconButton.copy(
+                        blurRadius = 0.dp,
+                        lensHeight = animatedLensHeight,
+                        lensAmount = animatedLensAmount,
+                        chromaticAberration = false,
+                        surfaceTint = animatedSurfaceTint,
+                        surfaceTintAlpha = animatedSurfaceTintAlpha,
+                        shadowRadius = 0.dp,
+                        restRefraction = animatedRestRefraction,
+                        depthEffect = true,
+                        highlight = LiquidGlassPresets.IconButton.highlight.copy(alpha = animatedHighlightAlpha)
+                    ),
+                    content = {}
+                )
+            }
         }
     }
 }

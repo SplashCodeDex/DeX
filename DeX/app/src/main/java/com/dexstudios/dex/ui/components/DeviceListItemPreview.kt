@@ -33,3 +33,31 @@ fun DeviceListItemUntrustedPreview() {
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun DeviceListItemTrustedPreview() {
+    DeXTheme {
+        val device = DiscoveredDevice(
+            ip = "192.168.1.101",
+            info = RegisterDto(
+                alias = "Work Laptop with a Very Long Name",
+                version = "1.0",
+                deviceModel = "MacBook Pro",
+                deviceType = "Laptop",
+                fingerprint = "fake_fingerprint_2",
+                port = 8080,
+                protocol = "http",
+                download = true,
+                battery = 42,
+                isCharging = true,
+                wifiBand = "5GHz"
+            )
+        )
+        DeviceListItem(
+            device = device,
+            onClick = {},
+            isTrusted = true
+        )
+    }
+}

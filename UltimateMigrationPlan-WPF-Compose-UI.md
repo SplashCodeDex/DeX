@@ -20,7 +20,7 @@
 
 The current Compose Desktop entry point ([main.kt](file:///w:/CodeDeX/DeX/composeApp/src/desktopMain/kotlin/com/dexstudios/dex/main.kt)) creates a **full decorated window** titled "DeX Workstation" — a standard desktop app with title bar, taskbar presence, and maximize/minimize/close buttons. This is fundamentally wrong for the desktop target.
 
-The legacy WPF/PowerShell implementation ([MainWindow.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml)) creates a **floating dock card** that:
+The legacy WPF/PowerShell implementation ([MainWindow.xaml](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml)) creates a **floating dock card** that:
 - Has **no window chrome** (no title bar, no borders)
 - Is **transparent** (the rounded card floats over the desktop)
 - Is **always on top** and **not in the taskbar**
@@ -56,7 +56,7 @@ The legacy WPF/PowerShell implementation ([MainWindow.xaml](file:///w:/CodeDeX/D
 
 Before proposing changes, here's exactly what the WPF floating card does, extracted from the source code:
 
-### Window Properties ([MainWindow.xaml L1-7](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L1-L7))
+### Window Properties ([MainWindow.xaml L1-7](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L1-L7))
 ```xml
 WindowStyle="None"         <!-- No title bar, no borders -->
 Background="Transparent"   <!-- See-through window -->
@@ -67,7 +67,7 @@ Width="1420" Height="760"   <!-- Large canvas for expansion room -->
 ResizeMode="NoResize"       <!-- Fixed size -->
 ```
 
-### Content Layout ([MainWindow.xaml L25-1062](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L25-L1062))
+### Content Layout ([MainWindow.xaml L25-1062](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L25-L1062))
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                    Transparent 1420×760 Window                   │
@@ -91,19 +91,19 @@ ResizeMode="NoResize"       <!-- Fixed size -->
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Positioning Logic ([Bindings_Tray.ps1 L46-58](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L46-L58))
+### Positioning Logic ([Bindings_Tray.ps1 L46-58](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L46-L58))
 ```
 left = workArea.Right - winWidth + 13      // Right edge of screen, with 13px gap
 top  = workArea.Bottom - contentH - 38     // Above taskbar, with 38px gap
 ```
 
-### Animation System ([AppStyles.xaml L281-291](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L281-L291))
+### Animation System ([AppStyles.xaml L281-291](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/AppStyles.xaml#L281-L291))
 - **PopIn**: ScaleX/Y 0.85→1.0, translateY 15→0, opacity 0→1 (500ms, ElasticEase)
 - **ExpandMenu**: mainBorder width +754, height +195, FileExplorer slides from right (800ms, ElasticEase)
 - **ContractMenu**: Reverse of expand with staggered fade-out (600ms, BackEase)
 - **Nudge-ForExpand**: When expanding would push content off-screen, animates the window position in sync
 
-### Interaction Model ([Bindings_Tray.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Tray.ps1), [Bindings_Window.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Window.ps1))
+### Interaction Model ([Bindings_Tray.ps1](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Tray.ps1), [Bindings_Window.ps1](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Window.ps1))
 1. **Tray icon click** → Show/Hide toggle with PopIn/PopOut animation
 2. **Click outside** → Window deactivates → Hide
 3. **Drag pill** → WindowDraggableArea equivalent, repositions card
@@ -342,7 +342,7 @@ fun getTaskbarInsets(): java.awt.Insets {
 
 #### [x] `DockCardAnimations.kt` — `desktopMain/kotlin/.../window/DockCardAnimations.kt`
 
-Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L111-L291):
+Ported animation specs from [AppStyles.xaml](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/AppStyles.xaml#L111-L291):
 
 | WPF Animation | Compose Equivalent |
 |---|---|
@@ -391,21 +391,21 @@ composeApp/src/desktopMain/kotlin/com/dexstudios/dex/
 
 | WPF Behavior | Source | Compose Desktop Implementation |
 |---|---|---|
-| `WindowStyle=None` | [MainWindow.xaml L4](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L4) | `Window(undecorated = true)` |
-| `Background=Transparent, AllowsTransparency=True` | [MainWindow.xaml L4](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L4) | `Window(transparent = true)` |
-| `Topmost=True` | [MainWindow.xaml L5](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L5) | `Window(alwaysOnTop = true)` |
-| `ShowInTaskbar=False` | [MainWindow.xaml L5](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/MainWindow.xaml#L5) | `window.type = Window.Type.UTILITY` (AWT) |
-| Bottom-right positioning | [Bindings_Tray.ps1 L46-58](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L46-L58) | `getWorkAreaBounds()` + `WindowPosition(x, y)` |
-| Tray icon show/hide | [Bindings_Tray.ps1 L2-96](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L2-L96) | `Tray(onAction = { isVisible = !isVisible })` |
+| `WindowStyle=None` | [MainWindow.xaml L4](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L4) | `Window(undecorated = true)` |
+| `Background=Transparent, AllowsTransparency=True` | [MainWindow.xaml L4](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L4) | `Window(transparent = true)` |
+| `Topmost=True` | [MainWindow.xaml L5](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L5) | `Window(alwaysOnTop = true)` |
+| `ShowInTaskbar=False` | [MainWindow.xaml L5](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/MainWindow.xaml#L5) | `window.type = Window.Type.UTILITY` (AWT) |
+| Bottom-right positioning | [Bindings_Tray.ps1 L46-58](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L46-L58) | `getWorkAreaBounds()` + `WindowPosition(x, y)` |
+| Tray icon show/hide | [Bindings_Tray.ps1 L2-96](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Tray.ps1#L2-L96) | `Tray(onAction = { isVisible = !isVisible })` |
 | Click-outside dismiss | WPF `Deactivated` event | AWT `WindowFocusListener.windowLostFocus` |
-| PopIn animation | [AppStyles.xaml L281-291](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L281-L291) | `spring()` + `graphicsLayer { scaleX; translationY }` |
-| ExpandMenu animation | [AppStyles.xaml L115-151](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L115-L151) | `animateDpAsState` + `AnimatedVisibility(slideInHorizontally)` |
-| ContractMenu animation | [AppStyles.xaml L152-197](file:///w:/CodeDeX/DeX/MSIX_Source/Themes/AppStyles.xaml#L152-L197) | `AnimatedVisibility(exit)` with staggered delay |
-| Drag pill repositioning | [Bindings_Window.ps1 L262-304](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Window.ps1#L262-L304) | `WindowDraggableArea` composable |
-| Double-click reset to default | [Bindings_Window.ps1 L264-301](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Window.ps1#L264-L301) | Update `windowState.position` with spring animation |
-| Nudge-ForExpand | [UIComponents.ps1 L267-341](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/UIComponents.ps1#L267-L341) | No-op if using large transparent canvas approach |
-| Wiggle-to-open | [Bindings_Wiggle.ps1](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Modules/Bindings_Wiggle.ps1) | Global mouse hook via JNA — Phase 2 feature |
-| System theme follow | [Connect-Engine.ps1 L289-300](file:///w:/CodeDeX/DeX/MSIX_Source/bin/Connect-Engine.ps1#L289-L300) | `java.util.prefs` or AWT `getSystemColor` + recompose |
+| PopIn animation | [AppStyles.xaml L281-291](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/AppStyles.xaml#L281-L291) | `spring()` + `graphicsLayer { scaleX; translationY }` |
+| ExpandMenu animation | [AppStyles.xaml L115-151](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/AppStyles.xaml#L115-L151) | `animateDpAsState` + `AnimatedVisibility(slideInHorizontally)` |
+| ContractMenu animation | [AppStyles.xaml L152-197](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/Themes/AppStyles.xaml#L152-L197) | `AnimatedVisibility(exit)` with staggered delay |
+| Drag pill repositioning | [Bindings_Window.ps1 L262-304](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Window.ps1#L262-L304) | `WindowDraggableArea` composable |
+| Double-click reset to default | [Bindings_Window.ps1 L264-301](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Window.ps1#L264-L301) | Update `windowState.position` with spring animation |
+| Nudge-ForExpand | [UIComponents.ps1 L267-341](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/UIComponents.ps1#L267-L341) | No-op if using large transparent canvas approach |
+| Wiggle-to-open | [Bindings_Wiggle.ps1](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Modules/Bindings_Wiggle.ps1) | Global mouse hook via JNA — Phase 2 feature |
+| System theme follow | [Connect-Engine.ps1 L289-300](file:///w:/CodeDeX/DeX/Archived_Legacy_WPF/MSIX_Source/bin/Connect-Engine.ps1#L289-L300) | `java.util.prefs` or AWT `getSystemColor` + recompose |
 
 ---
 

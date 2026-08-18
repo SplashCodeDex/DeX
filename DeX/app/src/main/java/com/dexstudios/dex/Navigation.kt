@@ -204,12 +204,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
         .padding(bottom = 16.dp)
         .graphicsLayer { clip = false }
     ) {
-      Box(
-        modifier = Modifier.graphicsLayer { clip = false },
-        contentAlignment = Alignment.Center
-      ) {
-          FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
-      }
+      FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
     }
 
     AnimatedVisibility(

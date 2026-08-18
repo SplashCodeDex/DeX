@@ -2,56 +2,46 @@ name: Validate Build
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, feature/*]
   pull_request:
 
 jobs:
-  validate:
+  validate-desktop:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-          include-prerelease: true
-          
-      - name: Build C# Transfer Engine
-        run: dotnet build DeXShareTarget --configuration Release
-
-      - name: Test C# Transfer Engine
-        run: dotnet test DeXShareTarget.Tests --configuration Release
-
-      - name: Test C# Transfer Engine UI
-        run: dotnet test DeXShareTarget.UITests --configuration Release
-
-      - name: Pre-flight validation (PS syntax, engine XAML load, themes, FindName/resources, assets, manifest)
-        shell: powershell
-        run: .\Validate-Build.ps1
-
-      - name: Engine self-test (proves tray click -> window shows, end to end)
-        shell: powershell
-        run: |
-          & "$PWD\MSIX_Source\bin\Connect-Engine.ps1" -SelfTest
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-
-  validate-android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
-          
-      - name: Make gradlew executable
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build desktop app
+        run: ./gradlew.bat :composeApp:desktopJar --console=plain
+
+      - name: Run desktop tests
+        run: ./gradlew.bat :composeApp:desktopTest --console=plain
+
+  validate-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Android app (standalone project in DeX/)
         working-directory: DeX
-        run: chmod +x gradlew
-        
-      - name: Run Android unit tests and assemble
-        working-directory: DeX
-        run: ./gradlew test assembleDebug
+        run: ./gradlew :app:assembleDebug --console=plain

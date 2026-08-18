@@ -55,7 +55,7 @@ Based on our discussion, the following architectural choices have been made:
 
 ### What We're Replacing (legacy — stays in place, untouchable until the user archives it)
 
-#### Windows Desktop (WPF/.NET 10 + PowerShell) — `DeXShareTarget/` + `MSIX_Source/`
+#### Windows Desktop (WPF/.NET 10 + PowerShell) — `Archived_Legacy_WPF/DeXShareTarget/` + `Archived_Legacy_WPF/MSIX_Source/`
 | Layer | Files | Technology |
 |---|---|---|
 | **Entry Point & Server** | `Program.cs`, `LocalSendServer.cs` | .NET 10 Kestrel (HTTP/1.1 + HTTP/3 QUIC + WebSocket) |
@@ -130,8 +130,9 @@ W:\CodeDeX\DeX\                                # Repo root = DESKTOP Compose pro
 ├── feature/                                   # discovery/, settings/, history/
 ├── gradle/  gradlew  settings.gradle.kts      # Desktop Gradle build (NO :app module)
 ├── DeX/                                       # Android-ONLY standalone project (app/) — untouched
-├── DeXShareTarget/                            # LEGACY WPF/C# — DO NOT TOUCH (per rules)
-├── MSIX_Source/                               # LEGACY MSIX packaging — DO NOT TOUCH (per rules)
+├── Archived_Legacy_WPF/                    # RETIRED legacy WPF/C# — READ-ONLY (per rules)
+│   ├── DeXShareTarget/                     # Legacy C# engine + WPF UI
+│   └── MSIX_Source/                        # Legacy MSIX packaging
 └── AGENTS.md  README.md  PROJECT.md           # Rules + docs
 ```
 

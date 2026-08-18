@@ -26,8 +26,16 @@ The legacy **WPF / C# / PowerShell** desktop implementation is being migrated to
 
 ---
 
+## ARCHIVE STATUS: EXECUTED (2026-08-18)
+The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. It now lives **read-only** in **`Archived_Legacy_WPF/`**.
+- Do **NOT** modify, refactor, "fix", restore, or re-integrate anything inside it.
+- Do **NOT** delete or remove the archive — its final fate is decided solely by the user.
+- The desktop app and the Android app do NOT reference anything in the archive.
+
+---
+
 ## Repository Map
-- `MSIX_Source/`, `DeXShareTarget/`, `PackMSIX.ps1`, `Install-App.ps1`, `SignMSIX.ps1`, `Validate-Build.ps1` — **LEGACY WPF/C#/PowerShell — DO NOT TOUCH (see rules above)**
+- `Archived_Legacy_WPF/` — **RETIRED legacy WPF/C#/PowerShell — READ-ONLY ARCHIVE (see rules above). Never modify, delete, or restore it.**
 - `composeApp/`, `core/`, `feature/`, `gradle/` — **DESKTOP Compose Multiplatform project (repo root = the desktop app for Windows + macOS)**
 - `DeX/` — **standalone Android app project (`DeX/app`) — NOT part of the migration — do not modify**
 - `UltimateMigrationPlan-WPF-Compose-UI.md` — the migration specification
