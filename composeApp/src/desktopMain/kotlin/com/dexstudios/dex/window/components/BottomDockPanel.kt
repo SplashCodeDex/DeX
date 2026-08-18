@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,7 +105,7 @@ fun BottomDockPanel(
     )
 
     val exitButtonBgColor by animateColorAsState(
-        targetValue = if (isConfirming) DeXTheme.colors.accent else Color.Transparent,
+        targetValue = if (isConfirming) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
         animationSpec = tween(durationMillis = 300),
         label = "exitBtnBg"
     )
@@ -114,7 +115,7 @@ fun BottomDockPanel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HorizontalDivider(
-            color = DeXTheme.colors.accent,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
         )
@@ -207,7 +208,7 @@ fun BottomDockPanel(
                         Icon(
                             imageVector = MaterialSymbols.PowerSettingsNew,
                             contentDescription = "Exit Engine",
-                            tint = DeXTheme.colors.danger,
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(16.dp)
                         )
 
@@ -221,7 +222,7 @@ fun BottomDockPanel(
                             },
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = DeXTheme.colors.danger,
+                            color = MaterialTheme.colorScheme.error,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -233,7 +234,7 @@ fun BottomDockPanel(
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = DeXTheme.colors.danger
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }

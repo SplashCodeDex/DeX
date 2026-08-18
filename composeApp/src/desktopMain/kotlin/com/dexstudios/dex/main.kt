@@ -64,6 +64,13 @@ fun main() {
             }
         }
 
+        LaunchedEffect(Unit) {
+            com.dexstudios.dex.desktop.jna.WiggleToOpenService.start {
+                controller.show()
+            }
+            com.dexstudios.dex.desktop.jna.ClipboardSyncService.start()
+        }
+
         // 300ms Click Debounce Filter for Tray Action
         var lastTrayClickTime by remember { mutableStateOf(0L) }
         val toggleWithDebounce: () -> Unit = {
@@ -161,6 +168,7 @@ fun main() {
                 }
 
                 FloatingDockCard(
+                    window = window,
                     controller = controller,
                     onDismiss = { controller.hide() },
                     onExitEngine = {

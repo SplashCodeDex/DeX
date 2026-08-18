@@ -28,6 +28,18 @@ object WebSocketConnectionManager {
             false
         }
     }
+
+    suspend fun broadcast(json: String): Boolean {
+        if (sessions.isEmpty()) return false
+        var sentAny = false
+        for (session in sessions.values) {
+            try {
+                session.send(Frame.Text(json))
+                sentAny = true
+            } catch (e: Exception) { }
+        }
+        return sentAny
+    }
 }
 
 object DexRequestStore {

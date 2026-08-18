@@ -1,5 +1,10 @@
 package com.dexstudios.dex.core.designsystem.components.glass
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
@@ -190,54 +195,67 @@ object LiquidGlassPresets {
 /**
  * 1:1 Parity DeX Liquid Glass Presets matching WPF desktop card and quick actions.
  */
+
 object DeXGlassPresets {
-    val DockCardDark = LiquidGlassConfig(
-        shape = RoundedCornerShape(34.dp),
-        blurRadius = 24.dp,
-        lensHeight = 18.dp,
-        lensAmount = 36.dp,
-        surfaceTint = Color(0xFF16121A),
-        surfaceTintAlpha = 1.0f,
-        highlight = Highlight.Ambient.copy(alpha = 0.4f),
-        shadowRadius = 32.dp,
-        shadowColor = Color.Black.copy(alpha = 0.55f),
-        innerShadow = InnerShadow(radius = 6.dp, alpha = 0.15f)
-    )
+    val DockCardDark: LiquidGlassConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = LiquidGlassConfig(
+            shape = RoundedCornerShape(34.dp),
+            blurRadius = 24.dp,
+            lensHeight = 0.dp, // No glow/lens gradient
+            lensAmount = 0.dp, // pure glass
+            surfaceTint = MaterialTheme.colorScheme.surface,
+            surfaceTintAlpha = 1.0f,
+            highlight = Highlight.Ambient.copy(alpha = 0.1f),
+            shadowRadius = 8.dp,
+            shadowColor = Color.Black.copy(alpha = 0.15f),
+            innerShadow = null // no inset glow
+        )
 
-    val DockCardLight = LiquidGlassConfig(
-        shape = RoundedCornerShape(34.dp),
-        blurRadius = 24.dp,
-        lensHeight = 18.dp,
-        lensAmount = 36.dp,
-        surfaceTint = Color(0xFFFFFFFF),
-        surfaceTintAlpha = 1.0f,
-        highlight = Highlight.Ambient.copy(alpha = 0.6f),
-        shadowRadius = 32.dp,
-        shadowColor = Color.Black.copy(alpha = 0.18f),
-        innerShadow = InnerShadow(radius = 4.dp, alpha = 0.08f)
-    )
+    val DockCardLight: LiquidGlassConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = LiquidGlassConfig(
+            shape = RoundedCornerShape(34.dp),
+            blurRadius = 24.dp,
+            lensHeight = 0.dp,
+            lensAmount = 0.dp,
+            surfaceTint = MaterialTheme.colorScheme.surface,
+            surfaceTintAlpha = 1.0f,
+            highlight = Highlight.Ambient.copy(alpha = 0.1f),
+            shadowRadius = 8.dp,
+            shadowColor = Color.Black.copy(alpha = 0.1f),
+            innerShadow = null
+        )
 
-    val QuickActionDark = LiquidGlassConfig(
-        shape = RoundedCornerShape(20.dp),
-        blurRadius = 4.dp,
-        lensHeight = 14.dp,
-        lensAmount = 28.dp,
-        surfaceTint = Color(0xFF2B2631),
-        surfaceTintAlpha = 0.70f,
-        highlight = Highlight.Default,
-        shadowRadius = 8.dp,
-        shadowColor = Color.Black.copy(alpha = 0.35f)
-    )
+    val QuickActionDark: LiquidGlassConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = LiquidGlassConfig(
+            shape = RoundedCornerShape(20.dp),
+            blurRadius = 4.dp,
+            lensHeight = 0.dp,
+            lensAmount = 0.dp,
+            surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+            surfaceTintAlpha = 0.70f,
+            highlight = Highlight.Default,
+            shadowRadius = 4.dp,
+            shadowColor = Color.Black.copy(alpha = 0.15f)
+        )
 
-    val QuickActionActive = LiquidGlassConfig(
-        shape = RoundedCornerShape(20.dp),
-        blurRadius = 6.dp,
-        lensHeight = 16.dp,
-        lensAmount = 32.dp,
-        surfaceTint = Color(0xFF0AE66D),
-        surfaceTintAlpha = 0.90f,
-        highlight = Highlight.Ambient.copy(alpha = 0.8f),
-        shadowRadius = 14.dp,
-        shadowColor = Color(0xFF0AE66D).copy(alpha = 0.45f)
-    )
+    val QuickActionActive: LiquidGlassConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = LiquidGlassConfig(
+            shape = RoundedCornerShape(20.dp),
+            blurRadius = 6.dp,
+            lensHeight = 0.dp,
+            lensAmount = 0.dp,
+            surfaceTint = MaterialTheme.colorScheme.primary,
+            surfaceTintAlpha = 0.85f,
+            highlight = Highlight.Ambient.copy(alpha = 0.1f),
+            shadowRadius = 4.dp,
+            shadowColor = Color.Black.copy(alpha = 0.15f)
+        )
 }

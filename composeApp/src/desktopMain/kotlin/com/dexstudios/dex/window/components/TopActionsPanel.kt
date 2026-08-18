@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,7 +104,7 @@ fun TopActionsPanel(
         ) {
             Column {
                 HorizontalDivider(
-                    color = DeXTheme.colors.accent,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     thickness = 1.dp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -122,7 +123,7 @@ fun TopActionsPanel(
 
                     Text(
                         text = displayText,
-                        color = DeXTheme.colors.secondaryText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         maxLines = 1
                     )
@@ -132,7 +133,7 @@ fun TopActionsPanel(
                             text = if (isCopied) "Copied!" else "Copy IP",
                             fontSize = 11.sp,
                             fontWeight = if (isCopied) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isCopied) DeXTheme.colors.secondary else DeXTheme.colors.secondaryText,
+                            color = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable {
@@ -156,7 +157,7 @@ fun TopActionsPanel(
         }
 
         HorizontalDivider(
-            color = DeXTheme.colors.accent,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp)
         )

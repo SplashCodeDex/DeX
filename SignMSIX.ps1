@@ -1,12 +1,14 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$TargetMsix = "DeX.msix"
+)
 
 $ErrorActionPreference = 'Stop'
 
 try {
     Write-Host "Starting MSIX Signing Process..." -ForegroundColor Cyan
 
-    $msixPath = Join-Path $PSScriptRoot "DeX.msix"
+    $msixPath = Join-Path $PSScriptRoot $TargetMsix
     if (-not (Test-Path $msixPath)) {
         throw "Target MSIX package not found at: $msixPath"
     }

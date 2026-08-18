@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -72,9 +73,9 @@ fun DragPillHandle(
 
     val pillColor by animateColorAsState(
         targetValue = when {
-            controller.isDragging -> DeXTheme.colors.secondary
-            isHovered -> DeXTheme.colors.primaryText
-            else -> DeXTheme.colors.secondaryText
+            controller.isDragging -> MaterialTheme.colorScheme.primary
+            isHovered -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = tween(200),
         label = "pillColor"
@@ -91,7 +92,7 @@ fun DragPillHandle(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (controller.isPinned) DeXTheme.colors.secondary else Color.Transparent)
+                    .background(if (controller.isPinned) MaterialTheme.colorScheme.primary else Color.Transparent)
                     .clickable { controller.isPinned = !controller.isPinned },
                 contentAlignment = Alignment.Center
             ) {
@@ -101,9 +102,9 @@ fun DragPillHandle(
                         .clip(CircleShape)
                         .background(
                             if (controller.isPinned)
-                                DeXTheme.colors.secondaryForeground
+                                MaterialTheme.colorScheme.onPrimary
                             else
-                                DeXTheme.colors.secondaryText.copy(alpha = 0.6f)
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                 )
             }

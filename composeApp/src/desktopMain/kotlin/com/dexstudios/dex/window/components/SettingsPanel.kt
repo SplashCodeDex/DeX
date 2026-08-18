@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import io.ktor.client.request.get
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -101,21 +103,21 @@ fun SettingsPanel(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = MaterialSymbols.Settings,
                         contentDescription = "Settings",
-                        tint = DeXTheme.colors.primaryText,
-                        modifier = Modifier.size(18.dp).padding(end = 6.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 6.dp).size(18.dp)
                     )
                     Text(
                         text = "Settings",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = DeXTheme.colors.primaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -123,7 +125,7 @@ fun SettingsPanel(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         try {
                             Desktop.getDesktop().browse(URI("https://github.com/SplashCodeDex/DeX"))
@@ -135,14 +137,14 @@ fun SettingsPanel(
                     Icon(
                         imageVector = MaterialSymbols.Info,
                         contentDescription = "About",
-                        tint = DeXTheme.colors.secondaryText,
-                        modifier = Modifier.size(16.dp).padding(end = 6.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 6.dp).size(16.dp)
                     )
                     Text(
                         text = "DeX v1.0.0",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DeXTheme.colors.secondaryText
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -162,7 +164,7 @@ fun SettingsPanel(
                     .fillMaxWidth()
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp)
             ) {
                 Row(
@@ -185,18 +187,18 @@ fun SettingsPanel(
                                 text = googleProfile.name.ifBlank { "DeXStudios" },
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = DeXTheme.colors.primaryText
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = googleProfile.email.ifBlank { "dexify@dex.net" },
                                 fontSize = 13.sp,
-                                color = DeXTheme.colors.secondaryText
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = "Premium User",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = DeXTheme.colors.secondary,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -214,7 +216,7 @@ fun SettingsPanel(
                                 text = "Sign Out",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = DeXTheme.colors.danger
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -260,7 +262,14 @@ fun SettingsPanel(
                     title = "Sign in with Google",
                     subtitle = if (googleProfile.email.isNotBlank()) "Signed in as ${googleProfile.email}" else "Trust all devices signed in with your email",
                     onClick = {
-                        // Google OAuth Loopback
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val client = io.ktor.client.HttpClient(io.ktor.client.engine.cio.CIO)
+                                client.get("http://127.0.0.1:28425/local/settings/google-signin")
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                     }
                 )
             }
@@ -355,7 +364,7 @@ private fun SettingsSectionHeader(title: String) {
         text = title,
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        color = DeXTheme.colors.secondaryText,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 6.dp)
     )
 }
@@ -367,7 +376,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxWidth()
             .padding(bottom = 10.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(DeXTheme.colors.accent)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
         content = content
     )
@@ -394,8 +403,8 @@ private fun SettingsItem(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = if (isDanger) DeXTheme.colors.danger else if (isBadgeDanger) DeXTheme.colors.danger else DeXTheme.colors.secondaryText,
-            modifier = Modifier.size(20.dp).padding(end = 12.dp)
+            tint = if (isDanger) MaterialTheme.colorScheme.error else if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 12.dp).size(20.dp)
         )
 
         Column(modifier = Modifier.weight(1f)) {
@@ -403,12 +412,12 @@ private fun SettingsItem(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = if (isDanger) DeXTheme.colors.danger else DeXTheme.colors.primaryText
+                color = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = subtitle,
                 fontSize = 12.sp,
-                color = DeXTheme.colors.secondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -418,7 +427,7 @@ private fun SettingsItem(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isBadgeDanger) DeXTheme.colors.danger else DeXTheme.colors.secondary)
+                    .background(if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(

@@ -1,5 +1,9 @@
 # Changelog
 
+## [10.0.0.1] - 2026-08-18
+### Fixed
+- **[patch] Compose Canvas Transparent Area Click-Through**: Fixed an issue in the Compose Multiplatform desktop application where the large 1100x700 transparent canvas blocked mouse clicks intended for the desktop or applications behind it. Added a dynamic native AWT `java.awt.Window.setShape()` update triggered via `Modifier.onGloballyPositioned` on the `DockCardContent` to restrict the OS hit-test region precisely to the card's bounds, preserving the zero-flicker expansion architecture while enabling true click-through on all transparent areas.
+
 ## [10.0.0.0] - 2026-08-18
 ### Added
 - **[major] Compose Multiplatform Migration (Phase 1-4.2)**: Successfully achieved 1:1 parity with the legacy WPF desktop application using Kotlin & Compose Multiplatform.

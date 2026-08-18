@@ -31,8 +31,8 @@ data class WorkAreaBounds(
  */
 object TaskbarWorkAreaProvider {
 
-    const val DEFAULT_CANVAS_WIDTH = 1420
-    const val DEFAULT_CANVAS_HEIGHT = 760
+    const val DEFAULT_CANVAS_WIDTH = 1100
+    const val DEFAULT_CANVAS_HEIGHT = 700
     const val DEFAULT_CARD_CONTRACTED_WIDTH = 300
     const val DEFAULT_CARD_CONTRACTED_HEIGHT = 430
     const val CARD_MARGIN = 25

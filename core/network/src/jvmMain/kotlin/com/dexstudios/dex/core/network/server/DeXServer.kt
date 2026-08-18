@@ -13,6 +13,9 @@ import com.dexstudios.dex.core.network.server.routes.shareRoutes
 import com.dexstudios.dex.core.network.server.routes.controlRoutes
 import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
 import com.dexstudios.dex.core.network.server.routes.fileExplorerRoutes
+import com.dexstudios.dex.core.network.server.routes.clipboardRoutes
+import com.dexstudios.dex.core.network.server.routes.settingsRoutes
+import com.dexstudios.dex.core.network.security.CertificateGenerator
 import org.koin.java.KoinJavaComponent.getKoin
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import io.ktor.http.HttpStatusCode
@@ -65,14 +68,29 @@ object DeXServer {
                 controlRoutes()
                 webSocketRoutes()
                 fileExplorerRoutes()
+                clipboardRoutes()
+                settingsRoutes()
             }
         }
 
-        server1 = embeddedServer(Netty, port = 48424, host = "0.0.0.0", module = appModule).start(wait = false)
+        val keyStore = CertificateGenerator.getOrCreateKeyStore()
+
+        server1 = embeddedServer(Netty, configure = {
+            sslConnector(
+                keyStore = keyStore,
+                keyAlias = "dex",
+                keyStorePassword = { CertificateGenerator.PASSWORD.toCharArray() },
+                privateKeyPassword = { CertificateGenerator.PASSWORD.toCharArray() }
+            ) {
+                host = "0.0.0.0"
+                port = 48424
+                keyStorePath = java.io.File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
+            }
+        }, module = appModule).start(wait = false)
         server2 = embeddedServer(Netty, port = 28425, host = "127.0.0.1", module = appModule).start(wait = false)
         server3 = embeddedServer(Netty, port = 48426, host = "0.0.0.0", module = appModule).start(wait = false)
         
-        println("DeXServer started on ports 48424, 28425 (loopback), and 48426 (tcp fallback)")
+        println("DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), and HTTP 48426 (tcp fallback)")
     }
 
     fun stop() {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -21,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.core.designsystem.theme.DeXColors
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.PinPairingPanel
@@ -87,8 +87,8 @@ fun DockCardContent(
             )
             .subpixelBorderGlow(
                 strokeWidth = 1.dp,
-                borderColor = DeXColors.Dark.Accent,
-                glowColor = DeXColors.Dark.InsetGlowColor,
+                borderColor = MaterialTheme.colorScheme.surfaceVariant,
+                glowColor = Color.Transparent,
                 cornerRadius = 34.dp
             )
             .clip(cardShape)

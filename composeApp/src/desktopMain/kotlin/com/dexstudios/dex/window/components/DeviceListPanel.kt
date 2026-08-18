@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -106,7 +107,7 @@ fun DeviceListPanel(
                     text = "Discovered Devices",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = DeXTheme.colors.secondaryText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp)
                 )
             }
@@ -136,7 +137,7 @@ fun DeviceListPanel(
                 text = "Your Devices",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = DeXTheme.colors.secondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 4.dp)
             )
         }
@@ -151,12 +152,12 @@ fun DeviceListPanel(
                         imageVector = MaterialSymbols.Wifi,
                         contentDescription = "Scanning",
                         modifier = Modifier.size(48.dp),
-                        tint = DeXTheme.colors.secondaryText.copy(alpha = 0.5f)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Scanning your network...", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DeXTheme.colors.primaryText)
+                    Text(text = "Scanning your network...", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Make sure devices are on the same Wi-Fi", fontSize = 12.sp, color = DeXTheme.colors.secondaryText)
+                    Text(text = "Make sure devices are on the same Wi-Fi", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -196,7 +197,7 @@ private fun DeviceListItemRow(
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val cardBg = when {
-        isHovered -> DeXTheme.colors.accent
+        isHovered -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
     }
 
@@ -229,12 +230,12 @@ private fun DeviceListItemRow(
                     .clip(CircleShape)
                     .then(
                         if (device.avatarDrawable != null) {
-                            Modifier.background(DeXTheme.colors.accent)
+                            Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                         } else if (device.isOnline) {
-                            Modifier.background(DeXTheme.colors.secondary)
+                            Modifier.background(MaterialTheme.colorScheme.primary)
                         } else {
                             Modifier
-                                .border(1.5.dp, DeXTheme.colors.secondaryText.copy(alpha = 0.5f), CircleShape)
+                                .border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape)
                                 .background(Color.Transparent)
                         }
                     ),
@@ -251,7 +252,7 @@ private fun DeviceListItemRow(
                     Icon(
                         imageVector = if (device.isWanPlaceholder) MaterialSymbols.AccountCircle else MaterialSymbols.Smartphone,
                         contentDescription = device.alias,
-                        tint = if (device.isOnline) Color.Black else DeXTheme.colors.secondaryText,
+                        tint = if (device.isOnline) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -264,8 +265,8 @@ private fun DeviceListItemRow(
                         .size(12.dp)
                         .align(Alignment.BottomEnd)
                         .clip(CircleShape)
-                        .background(DeXTheme.colors.secondary)
-                        .border(2.dp, DeXTheme.colors.accent, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .border(2.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                 )
             }
         }
@@ -281,7 +282,7 @@ private fun DeviceListItemRow(
                 text = device.alias,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = DeXTheme.colors.primaryText,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -293,7 +294,7 @@ private fun DeviceListItemRow(
                 Text(
                     text = device.wanEmail ?: device.modelText.ifBlank { device.ip },
                     fontSize = 12.sp,
-                    color = DeXTheme.colors.secondaryText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -303,13 +304,13 @@ private fun DeviceListItemRow(
                         Icon(
                             imageVector = MaterialSymbols.Wifi,
                             contentDescription = "WiFi",
-                            tint = DeXTheme.colors.secondaryText,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             text = device.wifiBand,
                             fontSize = 11.sp,
-                            color = DeXTheme.colors.secondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -324,20 +325,20 @@ private fun DeviceListItemRow(
                         Icon(
                             imageVector = batteryIcon,
                             contentDescription = "Battery",
-                            tint = DeXTheme.colors.secondaryText,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             text = "${device.batteryPercent}%",
                             fontSize = 11.sp,
-                            color = DeXTheme.colors.secondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else if (!device.isWanPlaceholder) {
                     Text(
                         text = "• Offline",
                         fontSize = 11.sp,
-                        color = DeXTheme.colors.secondaryText.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }

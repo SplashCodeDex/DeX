@@ -1,5 +1,7 @@
 package com.dexstudios.dex.window.components
 
+import androidx.compose.material3.MaterialTheme
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -24,8 +26,8 @@ fun DownloadDockToast(message: String, isVisible: Boolean, onDismiss: () -> Unit
         exit = fadeOut(tween(300)) + slideOutVertically(animationSpec = tween(300), targetOffsetY = { 25 }) + scaleOut(targetScale = 0.8f, animationSpec = tween(300)),
         modifier = modifier
     ) {
-        Box(modifier = Modifier.padding(16.dp).clip(RoundedCornerShape(12.dp)).background(DeXTheme.colors.accent).padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(text = message, fontSize = 13.sp, color = DeXTheme.colors.primaryText)
+        Box(modifier = Modifier.padding(16.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Text(text = message, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

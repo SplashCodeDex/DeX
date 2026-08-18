@@ -1,5 +1,7 @@
 package com.dexstudios.dex.window.components
 
+import androidx.compose.material3.MaterialTheme
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -281,7 +283,7 @@ fun FileExplorerPanel(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .alpha(if (!isAtRoot) 1.0f else 0.4f)
                     .clickable(enabled = !isAtRoot) {
                         if (mode == ExplorerMode.History) {
@@ -300,7 +302,7 @@ fun FileExplorerPanel(
                 Icon(
                     imageVector = MaterialSymbols.ArrowBack,
                     contentDescription = "Up Directory",
-                    tint = DeXTheme.colors.primaryText,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -313,7 +315,7 @@ fun FileExplorerPanel(
                     .weight(1f)
                     .height(40.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -324,18 +326,18 @@ fun FileExplorerPanel(
                     Icon(
                         imageVector = MaterialSymbols.Search,
                         contentDescription = "Search",
-                        tint = DeXTheme.colors.secondaryText,
-                        modifier = Modifier.size(16.dp).padding(end = 8.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp).size(16.dp)
                     )
 
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         textStyle = TextStyle(
-                            color = DeXTheme.colors.primaryText,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp
                         ),
-                        cursorBrush = SolidColor(DeXTheme.colors.secondary),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         decorationBox = { innerTextField ->
@@ -348,7 +350,7 @@ fun FileExplorerPanel(
                                 }
                                 Text(
                                     text = hint,
-                                    color = DeXTheme.colors.secondaryText.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     fontSize = 13.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -367,7 +369,7 @@ fun FileExplorerPanel(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         mode = if (mode == ExplorerMode.History) ExplorerMode.Saf else ExplorerMode.History
                     },
@@ -376,7 +378,7 @@ fun FileExplorerPanel(
                 Icon(
                     imageVector = if (mode == ExplorerMode.History) MaterialSymbols.History else MaterialSymbols.Smartphone,
                     contentDescription = "Toggle Explorer Mode",
-                    tint = if (mode == ExplorerMode.Saf) DeXTheme.colors.secondary else DeXTheme.colors.primaryText,
+                    tint = if (mode == ExplorerMode.Saf) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -394,7 +396,7 @@ fun FileExplorerPanel(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator(
-                        color = DeXTheme.colors.secondary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp),
                         strokeWidth = 2.5.dp
                     )
@@ -402,7 +404,7 @@ fun FileExplorerPanel(
                     Text(
                         text = "Loading phone storage...",
                         fontSize = 13.sp,
-                        color = DeXTheme.colors.secondaryText
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else if (displayedFiles.isEmpty()) {
@@ -414,7 +416,7 @@ fun FileExplorerPanel(
                     Icon(
                         imageVector = MaterialSymbols.Folder,
                         contentDescription = "Empty",
-                        tint = DeXTheme.colors.secondaryText.copy(alpha = 0.4f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -422,12 +424,12 @@ fun FileExplorerPanel(
                         text = if (debouncedQuery.isNotBlank()) "No matching files" else "Folder is empty",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DeXTheme.colors.secondaryText.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                     Text(
                         text = if (mode == ExplorerMode.History) "Received files appear here" else "Shared folders from phone appear here",
                         fontSize = 12.sp,
-                        color = DeXTheme.colors.secondaryText.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -519,7 +521,7 @@ fun FileExplorerPanel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             HorizontalDivider(
-                color = DeXTheme.colors.accent,
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 thickness = 1.dp,
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -534,7 +536,7 @@ fun FileExplorerPanel(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(DeXTheme.colors.accent)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable {
                             controller?.isModalDialogOpen = true
                             onSendFiles()
@@ -558,14 +560,14 @@ fun FileExplorerPanel(
                     Icon(
                         imageVector = MaterialSymbols.FileUpload,
                         contentDescription = "Send Files",
-                        tint = DeXTheme.colors.primaryText,
-                        modifier = Modifier.size(18.dp).padding(end = 8.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 8.dp).size(18.dp)
                     )
                     Text(
                         text = "Send Files",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DeXTheme.colors.primaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -573,7 +575,7 @@ fun FileExplorerPanel(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(DeXTheme.colors.accent)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable {
                             controller?.isModalDialogOpen = true
                             onSendFolders()
@@ -598,14 +600,14 @@ fun FileExplorerPanel(
                     Icon(
                         imageVector = MaterialSymbols.Folder,
                         contentDescription = "Send Folders",
-                        tint = DeXTheme.colors.primaryText,
-                        modifier = Modifier.size(18.dp).padding(end = 8.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 8.dp).size(18.dp)
                     )
                     Text(
                         text = "Send Folders",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DeXTheme.colors.primaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -665,14 +667,14 @@ private fun FileGridItemCard(
             .clip(RoundedCornerShape(14.dp))
             .background(
                 when {
-                    isSelected -> DeXTheme.colors.secondary.copy(alpha = 0.2f)
-                    isHovered -> DeXTheme.colors.accent.copy(alpha = 0.8f)
-                    else -> DeXTheme.colors.accent.copy(alpha = 0.4f)
+                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                 }
             )
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) DeXTheme.colors.secondary else Color.White.copy(alpha = 0.05f),
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.05f),
                 shape = RoundedCornerShape(14.dp)
             )
             .hoverable(interactionSource = interactionSource)
@@ -694,7 +696,7 @@ private fun FileGridItemCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DeXTheme.colors.accent.copy(alpha = 0.5f)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailBitmap != null) {
@@ -721,7 +723,7 @@ private fun FileGridItemCard(
                 text = item.name,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = DeXTheme.colors.primaryText,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
@@ -731,7 +733,7 @@ private fun FileGridItemCard(
             Text(
                 text = if (item.isDirectory) (if (item.isAddFolderButton) "SAF Picker" else "Folder") else formatFileSize(item.size),
                 fontSize = 10.sp,
-                color = DeXTheme.colors.secondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
@@ -754,7 +756,7 @@ fun PullProgressDock(
             .fillMaxWidth(0.92f)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFF141118))
-            .border(1.dp, DeXTheme.colors.secondary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -768,21 +770,21 @@ fun PullProgressDock(
                         text = uploadState.fileName.ifBlank { "Transferring files..." },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = DeXTheme.colors.primaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${(uploadState.progress * 100).toInt()}% • ${formatSpeed(uploadState.speedBps)}",
                         fontSize = 11.sp,
-                        color = DeXTheme.colors.secondaryText
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Icon(
                     imageVector = MaterialSymbols.Close,
                     contentDescription = "Cancel Transfer",
-                    tint = DeXTheme.colors.secondaryText,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(20.dp)
                         .clip(CircleShape)
@@ -800,8 +802,8 @@ fun PullProgressDock(
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = DeXTheme.colors.secondary,
-                trackColor = DeXTheme.colors.accent
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }

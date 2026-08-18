@@ -166,21 +166,13 @@ fun MainMenuColumn(
                 onConnectAdb = { item ->
                     val targetIp = item.ip.ifBlank { "127.0.0.1" }
                     coroutineScope.launch(Dispatchers.IO) {
-                        try {
-                            Runtime.getRuntime().exec("adb connect $targetIp:5555")
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        com.dexstudios.dex.desktop.AdbManager.connect(targetIp)
                     }
                 },
                 onDisconnectAdb = { item ->
                     val targetIp = item.ip.ifBlank { "127.0.0.1" }
                     coroutineScope.launch(Dispatchers.IO) {
-                        try {
-                            Runtime.getRuntime().exec("adb disconnect $targetIp:5555")
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        com.dexstudios.dex.desktop.AdbManager.disconnect(targetIp)
                     }
                 },
                 onCopyIp = { ip ->

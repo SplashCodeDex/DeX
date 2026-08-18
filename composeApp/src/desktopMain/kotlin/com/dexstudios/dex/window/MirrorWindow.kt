@@ -1,5 +1,7 @@
 package com.dexstudios.dex.window
 
+import androidx.compose.material3.MaterialTheme
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -71,13 +73,13 @@ fun MirrorWindow(
                             modifier = Modifier
                                 .size(72.dp)
                                 .clip(CircleShape)
-                                .background(DeXTheme.colors.accent),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = MaterialSymbols.Smartphone,
                                 contentDescription = "Mirroring",
-                                tint = DeXTheme.colors.secondary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(36.dp)
                             )
                         }
@@ -88,7 +90,7 @@ fun MirrorWindow(
                             text = "Mirroring $peerName",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = DeXTheme.colors.primaryText
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -96,13 +98,13 @@ fun MirrorWindow(
                         Text(
                             text = "Waiting for display stream...",
                             fontSize = 13.sp,
-                            color = DeXTheme.colors.secondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
 
                         CircularProgressIndicator(
-                            color = DeXTheme.colors.secondary,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp),
                             strokeWidth = 2.5.dp
                         )
@@ -128,7 +130,7 @@ fun MirrorWindow(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(DeXTheme.colors.secondary)
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(

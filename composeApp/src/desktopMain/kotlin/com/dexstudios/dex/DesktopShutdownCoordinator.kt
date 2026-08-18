@@ -30,5 +30,9 @@ object DesktopShutdownCoordinator {
 
         // 3. Ktor Netty HTTP server
         runCatching { DeXServer.stop() }
+
+        // 4. JNA Services
+        runCatching { com.dexstudios.dex.desktop.jna.WiggleToOpenService.stop() }
+        runCatching { com.dexstudios.dex.desktop.jna.ClipboardSyncService.stop() }
     }
 }

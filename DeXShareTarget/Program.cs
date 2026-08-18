@@ -2,14 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shell;
-using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.DataTransfer.ShareTarget;
 
@@ -17,137 +13,18 @@ namespace DeXShareTarget
 {
     class Program
     {
-        private static Mutex? _instanceMutex;
-        private static Process? _childPsProc;
-
-        private static void LogCrash(Exception ex, string context)
-        {
-            try 
-            {
-                string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash.log");
-                File.AppendAllText(logPath, $"[{DateTime.Now:O}] [{context}] {ex.Message}\n{ex.StackTrace}\n");
-            } 
-            catch { }
-        }
-
         [STAThread]
         static void Main(string[] args)
         {
-            _instanceMutex = new Mutex(true, "DeXShareTarget_SingleInstance_Mutex", out bool isNewInstance);
-            if (!isNewInstance && (args == null || args.Length == 0))
-            {
-                // Another background instance is already running, signal it to show UI
-                try 
-                {
-                    using (EventWaitHandle showUiEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "Global\\CodeDeX_DeX_ShowUI"))
-                    {
-                        showUiEvent.Set();
-                    }
-                } 
-                catch 
-                {
-                    // Ignore errors if event doesn't exist
-                }
-                return;
-            }
-
-            AppDomain.CurrentDomain.ProcessExit += (s, e) => CleanupOnExit();
-
-            try 
-            {
-                var program = new Program();
-                program.Run(args);
-            }
-            catch (Exception ex)
-            {
-                LogCrash(ex, "Global Main");
-            }
-            finally
-            {
-                CleanupOnExit();
-            }
+            var program = new Program();
+            program.Run(args).Wait();
         }
 
-        private static void CleanupOnExit()
-        {
-            try
-            {
-                if (_childPsProc != null && !_childPsProc.HasExited)
-                {
-                    if (!Environment.HasShutdownStarted)
-                    {
-                        try
-                        {
-                            _childPsProc.WaitForExit(1000);
-                        }
-                        catch { }
-                    }
-                    if (!_childPsProc.HasExited)
-                    {
-                        _childPsProc.Kill();
-                    }
-                    _childPsProc.Dispose();
-                    _childPsProc = null;
-                }
-            } catch { }
-
-            try
-            {
-                if (_instanceMutex != null)
-                {
-                    _instanceMutex.ReleaseMutex();
-                    _instanceMutex.Dispose();
-                    _instanceMutex = null;
-                }
-            } catch { }
-        }
-
-        public void Run(string[] args)
+        public async Task Run(string[] args)
         {
             global::Windows.ApplicationModel.Activation.IActivatedEventArgs? activatedArgs = null;
-            try { activatedArgs = AppInstance.GetActivatedEventArgs(); } catch { }
-            
-            // 1. Direct CLI invocation (e.g. from UI)
-            if (args != null && args.Length >= 3 && args[0].Equals("-IP", StringComparison.OrdinalIgnoreCase))
-            {
-                string targetIp = args[1];
-                var filePaths = new List<string>();
-                for (int i = 2; i < args.Length; i++)
-                {
-                    if (File.Exists(args[i])) filePaths.Add(args[i]);
-                }
-                
-                if (filePaths.Count > 0)
-                {
-                    Application app = new Application();
-                    app.Startup += async (s, e) =>
-                    {
-                        var window = new TransferWindow(filePaths);
-                        window.TargetIp = targetIp;
-                        window.Show();
-                        await window.StartTransferAsync();
-                        app.Shutdown();
-                    };
-                    app.Run();
-                    return;
-                }
-            }
+            try { activatedArgs = global::Windows.ApplicationModel.AppInstance.GetActivatedEventArgs(); } catch { }
 
-            // 1.b Direct CLI invocation for Mirror Window (used for UI Testing)
-            if (args != null && args.Length >= 2 && args[0].Equals("-Mirror", StringComparison.OrdinalIgnoreCase))
-            {
-                string alias = args[1];
-                Application app = new Application();
-                app.Startup += (s, e) =>
-                {
-                    var window = new DeXShareTarget.Windows.MirrorWindow(alias, () => { app.Shutdown(); });
-                    window.Show();
-                };
-                app.Run();
-                return;
-            }
-
-            // 2. Windows Share Target Invocation
             if (activatedArgs != null && activatedArgs.Kind == ActivationKind.ShareTarget)
             {
                 var shareArgs = (ShareTargetActivatedEventArgs)activatedArgs;
@@ -163,86 +40,46 @@ namespace DeXShareTarget
                     filePaths.Add(item.Path);
                 }
                 
-                shareOperation.ReportCompleted();
-                
                 if (filePaths.Count > 0)
                 {
-                    Application app = new Application();
-                    app.Startup += async (s, e) =>
-                    {
-                        var window = new TransferWindow(filePaths);
-                        window.Show();
-                        await window.StartTransferAsync();
-                        app.Shutdown();
-                    };
-                    app.Run();
+                    await SendToComposeAsync(filePaths);
                 }
+                
+                shareOperation.ReportCompleted();
             }
             else
             {
                 string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-                string ps1Path = Path.Combine(exeDir, "bin", "Connect-Engine.ps1");
-                if (!File.Exists(ps1Path))
+                string scriptPath = Path.GetFullPath(Path.Combine(exeDir, "..\\..\\..\\..\\gradlew.bat"));
+                if (File.Exists(scriptPath))
                 {
-                    string fallback1 = Path.Combine(exeDir, "Connect-Engine.ps1");
-                    string fallback2 = Path.GetFullPath(Path.Combine(exeDir, "..\\..\\..\\..\\MSIX_Source\\bin\\Connect-Engine.ps1"));
-                    if (File.Exists(fallback1)) ps1Path = fallback1;
-                    else if (File.Exists(fallback2)) ps1Path = fallback2;
-                }
-                string extraArgs = (activatedArgs != null && activatedArgs.Kind == ActivationKind.StartupTask) ? " -Background" : "";
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-STA -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"& '{ps1Path}'{extraArgs}\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                
-                _childPsProc = Process.Start(startInfo);
-                
-                var app = new System.Windows.Application();
-                app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
-                if (_childPsProc != null)
-                {
-                    _childPsProc.EnableRaisingEvents = true;
-                    _childPsProc.Exited += (s, e) =>
+                    var startInfo = new ProcessStartInfo
                     {
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await LocalSendServer.StopAsync();
-                            }
-                            catch { }
-                            try
-                            {
-                                app.Dispatcher.Invoke(() => app.Shutdown());
-                            }
-                            catch { }
-                        });
+                        FileName = scriptPath,
+                        Arguments = "run",
+                        WorkingDirectory = Path.GetDirectoryName(scriptPath),
+                        UseShellExecute = true,
+                        CreateNoWindow = true
                     };
+                    Process.Start(startInfo);
                 }
-                app.Startup += (s, e) => 
-                {
-                    // Run the server and observe its completion so a startup failure is
-                    // logged instead of becoming a silent unobserved task exception.
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await LocalSendServer.StartAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogCrash(ex, "LocalSendServer Startup");
-                        }
-                    });
-                };
-                app.Run();
+            }
+        }
+
+        private async Task SendToComposeAsync(List<string> files)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                var payload = new { files = files };
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                await client.PostAsync("http://127.0.0.1:28425/local/share-target", content);
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText("crash.log", ex.ToString()); } catch { }
             }
         }
     }
-
-
 }

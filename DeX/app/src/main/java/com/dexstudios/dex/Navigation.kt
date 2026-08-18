@@ -199,9 +199,15 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
       visible = true,
       enter = slideInVertically(initialOffsetY = { it }),
       exit = slideOutVertically(targetOffsetY = { it }),
-      modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+      modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .padding(bottom = 16.dp)
+        .graphicsLayer { clip = false }
     ) {
-      Box(contentAlignment = Alignment.Center) {
+      Box(
+        modifier = Modifier.graphicsLayer { clip = false },
+        contentAlignment = Alignment.Center
+      ) {
           FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
       }
     }

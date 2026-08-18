@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -151,7 +152,7 @@ fun PinPairingPanel(
                     },
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DeXTheme.colors.primaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = when (state) {
@@ -160,7 +161,7 @@ fun PinPairingPanel(
                         is PinPairingUiState.Success -> "Device paired successfully"
                     },
                     fontSize = 12.sp,
-                    color = DeXTheme.colors.secondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -168,14 +169,14 @@ fun PinPairingPanel(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onCancel() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = MaterialSymbols.Close,
                     contentDescription = "Close",
-                    tint = DeXTheme.colors.secondaryText,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -225,7 +226,7 @@ fun PinPairingPanel(
                             Text(
                                 text = "Expires in ${currentState.remainingSeconds}s",
                                 fontSize = 13.sp,
-                                color = DeXTheme.colors.secondaryText.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -255,7 +256,7 @@ fun PinPairingPanel(
                             Text(
                                 text = "Expires in ${currentState.remainingSeconds}s",
                                 fontSize = 13.sp,
-                                color = DeXTheme.colors.secondaryText.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -269,7 +270,7 @@ fun PinPairingPanel(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(RoundedCornerShape(32.dp))
-                                    .background(DeXTheme.colors.secondary),
+                                    .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -284,7 +285,7 @@ fun PinPairingPanel(
                                 text = "Pairing Complete",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = DeXTheme.colors.primaryText
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -304,7 +305,7 @@ fun PinPairingPanel(
                     .weight(1f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onCancel() },
                 contentAlignment = Alignment.Center
             ) {
@@ -312,7 +313,7 @@ fun PinPairingPanel(
                     text = "Cancel",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = DeXTheme.colors.primaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -322,7 +323,7 @@ fun PinPairingPanel(
                     .weight(1.1f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DeXTheme.colors.accent)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onToggleQrPin() },
                 contentAlignment = Alignment.Center
             ) {
@@ -330,14 +331,14 @@ fun PinPairingPanel(
                     Icon(
                         imageVector = if (state is PinPairingUiState.QrView) MaterialSymbols.Pin else MaterialSymbols.QrCode,
                         contentDescription = "Toggle QR/PIN",
-                        tint = DeXTheme.colors.primaryText,
-                        modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 4.dp).size(16.dp)
                     )
                     Text(
                         text = if (state is PinPairingUiState.QrView) "PIN CODE" else "QR CODE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DeXTheme.colors.primaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -348,7 +349,7 @@ fun PinPairingPanel(
                     .weight(1f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DeXTheme.colors.secondary)
+                    .background(MaterialTheme.colorScheme.primary)
                     .clickable { onAccept() },
                 contentAlignment = Alignment.Center
             ) {
@@ -366,7 +367,7 @@ fun PinPairingPanel(
                     .weight(1.3f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, DeXTheme.colors.accent, RoundedCornerShape(10.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
                     .clickable { onAcceptOnce() },
                 contentAlignment = Alignment.Center
             ) {
@@ -374,7 +375,7 @@ fun PinPairingPanel(
                     text = "Accept Once",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = DeXTheme.colors.secondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -397,9 +398,9 @@ private fun PinDigitBox(
     )
 
     val borderStroke = when {
-        isError -> BorderStroke(2.dp, DeXTheme.colors.danger)
-        isFilled -> BorderStroke(2.dp, DeXTheme.colors.secondary)
-        else -> BorderStroke(1.dp, DeXTheme.colors.accent)
+        isError -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+        isFilled -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     }
 
     Box(
@@ -411,7 +412,7 @@ private fun PinDigitBox(
                 scaleY = popScale
             }
             .clip(RoundedCornerShape(8.dp))
-            .background(DeXTheme.colors.accent)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(borderStroke, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
@@ -419,7 +420,7 @@ private fun PinDigitBox(
             text = digit,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = DeXTheme.colors.primaryText,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
     }
