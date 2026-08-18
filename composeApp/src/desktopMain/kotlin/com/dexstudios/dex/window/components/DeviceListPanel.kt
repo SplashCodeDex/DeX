@@ -72,6 +72,45 @@ data class DeviceItemUiModel(
     val rawDevice: DiscoveredDevice? = null
 )
 
+/**
+ * WAN placeholder profiles (visual scaffolding for the upcoming WAN cross-email feature).
+ */
+fun defaultWanPlaceholders(): List<DeviceItemUiModel> = listOf(
+    DeviceItemUiModel(
+        id = "wan-ama-serwaa",
+        alias = "Ama Serwaa",
+        modelText = "WAN Device",
+        ip = "0.0.0.0",
+        fingerprint = "wan-ama-serwaa",
+        isPaired = true,
+        isOnline = false,
+        isWanPlaceholder = true,
+        wanEmail = "ama.serwaa@gmail.com"
+    ),
+    DeviceItemUiModel(
+        id = "wan-akua-donkor",
+        alias = "Akua Donkor",
+        modelText = "WAN Device",
+        ip = "0.0.0.0",
+        fingerprint = "wan-akua-donkor",
+        isPaired = true,
+        isOnline = false,
+        isWanPlaceholder = true,
+        wanEmail = "akua.donkor@gmail.com"
+    ),
+    DeviceItemUiModel(
+        id = "wan-kwame-asante",
+        alias = "Kwame Asante",
+        modelText = "WAN Device",
+        ip = "0.0.0.0",
+        fingerprint = "wan-kwame-asante",
+        isPaired = true,
+        isOnline = false,
+        isWanPlaceholder = true,
+        wanEmail = "kwame.asante@gmail.com"
+    )
+)
+
 
 
 /**

@@ -1,22 +1,25 @@
 *.msix
-DeXShareTarget/bin/
-DeXShareTarget/obj/
-DeXShareTarget.Tests/bin/
-DeXShareTarget.Tests/obj/
 *.appx
 
-# Generated C# build output copied into MSIX_Source by PackMSIX.ps1.
-# The engine source under MSIX_Source/bin (Connect-Engine.ps1, Modules/*.ps1,
-# adb.exe, thru.exe, *.ico) is NOT ignored - it is real source.
-MSIX_Source/win-x64/
-MSIX_Source/runtimes/
-MSIX_Source/bin/win-x64/
-MSIX_Source/bin/runtimes/
-MSIX_Source/*.dll
-MSIX_Source/*.exe
-MSIX_Source/*.pdb
-MSIX_Source/*.deps.json
-MSIX_Source/*.runtimeconfig.json
+# Archived legacy WPF/C#/PowerShell build outputs (read-only archive)
+Archived_Legacy_WPF/DeXShareTarget/bin/
+Archived_Legacy_WPF/DeXShareTarget/obj/
+Archived_Legacy_WPF/DeXShareTarget.Tests/bin/
+Archived_Legacy_WPF/DeXShareTarget.Tests/obj/
+Archived_Legacy_WPF/**/bin/
+Archived_Legacy_WPF/**/obj/
+Archived_Legacy_WPF/MSIX_Source/win-x64/
+Archived_Legacy_WPF/MSIX_Source/runtimes/
+Archived_Legacy_WPF/MSIX_Source/bin/win-x64/
+Archived_Legacy_WPF/MSIX_Source/bin/runtimes/
+Archived_Legacy_WPF/MSIX_Source/*.dll
+Archived_Legacy_WPF/MSIX_Source/*.exe
+Archived_Legacy_WPF/MSIX_Source/*.pdb
+Archived_Legacy_WPF/MSIX_Source/*.deps.json
+Archived_Legacy_WPF/MSIX_Source/*.runtimeconfig.json
+Archived_Legacy_WPF/DeXLiveDebugger/
+Archived_Legacy_WPF/oauth.local.json
+Archived_Legacy_WPF/MSIX_Source/oauth.local.json
 
 # Android build junk (standalone Android app at DeX/DeX)
 DeX/DeX/.gradle/
@@ -31,6 +34,7 @@ DeX/DeX/.artifacts/
 # Desktop KMP module build outputs & caches
 /.gradle/
 /build/
+/.kotlin/
 /composeApp/build/
 /core/*/build/
 /feature/*/build/
@@ -47,10 +51,7 @@ test_udp.ps1
 DeX/.artifacts/
 
 # Local OAuth credentials - NEVER commit
-DeXShareTarget/oauth.local.json
-
-MSIX_Source/oauth.local.json
+Archived_Legacy_WPF/**/oauth.local.json
 views.txt
 
 DeX/Problems/
-DeXLiveDebugger/
