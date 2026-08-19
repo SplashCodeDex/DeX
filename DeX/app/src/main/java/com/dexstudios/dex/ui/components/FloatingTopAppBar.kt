@@ -63,6 +63,8 @@ import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -100,7 +102,7 @@ fun FloatingTopAppBar(
     val deviceConfig: DeviceConfig = koinInject()
     val clientEngine: ClientEngine = koinInject()
 
-    val profile by deviceConfig.googleProfileFlow.collectAsState()
+    val profile by deviceConfig.googleProfileFlow.collectAsStateWithLifecycle()
     val downloadState by TcpDownloadService.downloadState.collectAsStateWithLifecycle()
     val uploadState by clientEngine.uploadState.collectAsStateWithLifecycle()
 
@@ -773,6 +775,62 @@ private fun ExpandedProfileContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun KoinPreviewWrapper(content: @Composable () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    org.koin.compose.KoinApplication(application = {
+        // Use a minimal module for previews
+        modules(org.koin.dsl.module {
+            single { com.dexstudios.dex.network.DeviceConfig(context) }
+            single { com.dexstudios.dex.network.ClientEngine(deviceConfig = get()) }
+        })
+    }) {
+        content()
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun TopAppBarSearchExpandedPreview() {
+    TopAppBarState.isSearchExpanded = true
+    TopAppBarState.isProfileExpanded = false
+    KoinPreviewWrapper {
+        MaterialTheme {
+            val backdrop = rememberLayerBackdrop()
+            Box(modifier = Modifier.fillMaxSize()) {
+                Image(
+                    painter = painterResource(id = R.drawable.wallpaper_laptop),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().layerBackdrop(backdrop),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                FloatingTopAppBar(backdrop = backdrop)
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun TopAppBarProfileExpandedPreview() {
+    TopAppBarState.isSearchExpanded = false
+    TopAppBarState.isProfileExpanded = true
+    KoinPreviewWrapper {
+        MaterialTheme {
+            val backdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
+            Box(modifier = Modifier.fillMaxSize()) {
+                Image(
+                    painter = painterResource(id = R.drawable.wallpaper_laptop),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().layerBackdrop(backdrop),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                FloatingTopAppBar(backdrop = backdrop)
             }
         }
     }

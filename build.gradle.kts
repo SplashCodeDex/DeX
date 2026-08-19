@@ -7,3 +7,9 @@ plugins {
   alias(libs.plugins.android.library) apply false
   alias(libs.plugins.android.multiplatform.library) apply false
 }
+
+allprojects {
+    tasks.register("test") {
+        dependsOn(tasks.matching { it.name == "allTests" || it.name == "testDebugUnitTest" || it.name == "desktopTest" || it.name == "jvmTest" })
+    }
+}

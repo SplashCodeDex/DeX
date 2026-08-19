@@ -22,6 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.node.DelegatingNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -66,20 +75,28 @@ fun NetworkErrorDialog(
 ) {
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .layerBackdrop(dialogBackdrop)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Capture the Dim Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f)) // dim layer
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss
-                ),
+                .layerBackdrop(dialogBackdrop)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f)) // dim layer
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss
+                    )
+            )
+        }
+
+        // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
+        Box(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             LiquidGlassPanel(
@@ -180,20 +197,28 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
 
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .layerBackdrop(dialogBackdrop)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Capture the Dim Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                ),
+                .layerBackdrop(dialogBackdrop)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+            )
+        }
+
+        // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
+        Box(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(
@@ -666,21 +691,29 @@ fun PairingRequestDialog(
 
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .layerBackdrop(dialogBackdrop)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Capture the Dim Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = dimAlpha))
-                .imePadding()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                ),
+                .layerBackdrop(dialogBackdrop)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = dimAlpha))
+                    .imePadding()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+            )
+        }
+
+        // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
+        Box(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(
@@ -1030,10 +1063,46 @@ fun PinInputField(
     )
 }
 
-fun Modifier.shake(enabled: Boolean): Modifier = composed {
-    val offset = remember { Animatable(0f) }
-    LaunchedEffect(enabled) {
+fun Modifier.shake(enabled: Boolean): Modifier = this then ShakeElement(enabled)
+
+private data class ShakeElement(val enabled: Boolean) : ModifierNodeElement<ShakeNode>() {
+    override fun create(): ShakeNode = ShakeNode(enabled)
+    override fun update(node: ShakeNode) {
+        if (enabled && !node.enabled) {
+            node.shake()
+        }
+        node.enabled = enabled
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "shake"
+        properties["enabled"] = enabled
+    }
+}
+
+private class ShakeNode(var enabled: Boolean) : Modifier.Node(), LayoutModifierNode {
+    private val offset = Animatable(0f)
+
+    override fun MeasureScope.measure(
+        measurable: Measurable,
+        constraints: Constraints
+    ): MeasureResult {
+        val placeable = measurable.measure(constraints)
+        return layout(placeable.width, placeable.height) {
+            placeable.placeWithLayer(0, 0) {
+                translationX = offset.value.dp.toPx()
+            }
+        }
+    }
+
+    override fun onAttach() {
         if (enabled) {
+            shake()
+        }
+    }
+
+    fun shake() {
+        coroutineScope.launch {
             offset.animateTo(
                 targetValue = 0f,
                 animationSpec = keyframes {
@@ -1048,5 +1117,4 @@ fun Modifier.shake(enabled: Boolean): Modifier = composed {
             )
         }
     }
-    this.offset { IntOffset(offset.value.dp.roundToPx(), 0) }
 }

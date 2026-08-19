@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,14 @@ fun MainScreenCompact(
     modifier: Modifier = Modifier,
     statusBarHeight: androidx.compose.ui.unit.Dp = 0.dp
 ) {
+    // 1. "My Devices" Section Logic
+    val dummyMatchCount = remember(search) {
+        listOf("Gaming PC", "Home Server", "Work Laptop").count { it.contains(search, ignoreCase = true) }
+    }
+    val showGamingPC = remember(search) { "Gaming PC".contains(search, ignoreCase = true) }
+    val showHomeServer = remember(search) { "Home Server".contains(search, ignoreCase = true) }
+    val showWorkLaptop = remember(search) { "Work Laptop".contains(search, ignoreCase = true) }
+
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
@@ -39,8 +48,6 @@ fun MainScreenCompact(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. "My Devices" Section (Horizontal Carousel)
-        val dummyMatchCount = listOf("Gaming PC", "Home Server", "Work Laptop").count { it.contains(search, ignoreCase = true) }
         if (consolidatedTrusted.isNotEmpty() || dummyMatchCount > 0) {
             item {
                 Column(modifier = Modifier.padding(top = statusBarHeight + 64.dp, bottom = 8.dp)) {
@@ -67,7 +74,7 @@ fun MainScreenCompact(
                             )
                         }
 
-                        if ("Gaming PC".contains(search, ignoreCase = true)) {
+                        if (showGamingPC) {
                             item {
                                 DummyDeviceCard(
                                     alias = "Gaming PC",
@@ -76,7 +83,7 @@ fun MainScreenCompact(
                                 )
                             }
                         }
-                        if ("Home Server".contains(search, ignoreCase = true)) {
+                        if (showHomeServer) {
                             item {
                                 DummyDeviceCard(
                                     alias = "Home Server",
@@ -85,7 +92,7 @@ fun MainScreenCompact(
                                 )
                             }
                         }
-                        if ("Work Laptop".contains(search, ignoreCase = true)) {
+                        if (showWorkLaptop) {
                             item {
                                 DummyDeviceCard(
                                     alias = "Work Laptop",

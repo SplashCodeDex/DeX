@@ -96,7 +96,11 @@ object LiquidGlassPresets {
      * Crisp glass tuned for top-bar icon buttons.
      */
     val IconButton: LiquidGlassConfig
-        @Composable get() = resolve(MasterSpec.copy(shadowRadius = 4.dp))
+        @Composable get() = resolve(
+            MasterSpec.copy(
+                shadowRadius = 4.dp
+            )
+        )
 
     /**
      * Theme-aware preset for the expanded Dynamic Island look.
@@ -106,7 +110,9 @@ object LiquidGlassPresets {
             MasterSpec.copy(
                 shape = RoundedCornerShape(48.dp),
                 blurRadius = 4.dp,
-                restRefraction = 1.0f
+                restRefraction = 1.05f,
+                shadowRadius = 12.dp,
+                shadowOffset = DpOffset(0.dp, 4.dp)
             )
         )
 
@@ -116,8 +122,8 @@ object LiquidGlassPresets {
     val NavBar: LiquidGlassConfig
         @Composable get() = resolve(
             MasterSpec.copy(
-                blurRadius = 6.dp,
-                restRefraction = 1.0f,
+                blurRadius = 1.dp,
+                restRefraction = 0.8f,
                 shadowRadius = 12.dp,
                 shadowColor = Color.Black.copy(alpha = 0.2f)
             )

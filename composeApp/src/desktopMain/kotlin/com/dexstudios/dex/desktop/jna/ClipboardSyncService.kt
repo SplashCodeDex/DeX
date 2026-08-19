@@ -3,6 +3,7 @@ package com.dexstudios.dex.desktop.jna
 import kotlinx.coroutines.*
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.FlavorListener
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
@@ -13,48 +14,69 @@ import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.WebSocketEngine
 
 object ClipboardSyncService {
-    private var job: Job? = null
+    private var processJob: Job? = null
     @Volatile private var lastHash: String = ""
+
+    private val flavorListener = FlavorListener {
+        // Debounce rapid bursts (e.g. Excel copying 15 formats at once)
+        processJob?.cancel()
+        processJob = CoroutineScope(Dispatchers.IO).launch {
+            delay(300)
+            processClipboard()
+        }
+    }
 
     fun start() {
         com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = { text ->
             updateHashFromRemote(text)
         }
-        job = CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                try {
-                    val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                    if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
-                        val text = clipboard.getData(DataFlavor.stringFlavor) as String
-                        val hash = hashString(text)
-                        
-                        if (hash != lastHash) {
-                            lastHash = hash
-                            sendToPhone(text)
-                        }
-                    } else if (clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) {
-                        val image = clipboard.getData(DataFlavor.imageFlavor) as BufferedImage
-                        val baos = ByteArrayOutputStream()
-                        ImageIO.write(image, "png", baos)
-                        val imageBytes = baos.toByteArray()
-                        val b64Image = Base64.getEncoder().encodeToString(imageBytes)
-                        val hash = hashString(b64Image)
-
-                        if (hash != lastHash) {
-                            lastHash = hash
-                            // Send image base64 JSON
-                            val jsonPayload = """{"type":"image", "mime":"image/png", "imageBase64":"$b64Image"}"""
-                            sendToPhone(jsonPayload)
-                        }
-                    }
-                } catch (e: Exception) { }
-                delay(100) // 10Hz polling
-            }
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.addFlavorListener(flavorListener)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     fun stop() { 
-        job?.cancel() 
+        processJob?.cancel() 
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.removeFlavorListener(flavorListener)
+        } catch (e: Exception) { }
+    }
+
+    private fun processClipboard() {
+        try {
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+            if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
+                val text = clipboard.getData(DataFlavor.stringFlavor) as? String ?: return
+                val hash = hashString(text)
+                
+                if (hash != lastHash) {
+                    lastHash = hash
+                    sendToPhone(text)
+                }
+            } else if (clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) {
+                val image = clipboard.getData(DataFlavor.imageFlavor) as? BufferedImage ?: return
+                val baos = ByteArrayOutputStream()
+                ImageIO.write(image, "png", baos)
+                val imageBytes = baos.toByteArray()
+                val b64Image = Base64.getEncoder().encodeToString(imageBytes)
+                val hash = hashString(b64Image)
+
+                if (hash != lastHash) {
+                    lastHash = hash
+                    // Send image base64 JSON
+                    val jsonPayload = """{"type":"image", "mime":"image/png", "imageBase64":"$b64Image"}"""
+                    sendToPhone(jsonPayload)
+                }
+            }
+        } catch (e: java.lang.IllegalStateException) {
+            // Clipboard is locked by another process (common on Windows). 
+            // We can safely ignore as the user hasn't successfully copied it yet.
+            println("ClipboardSyncService: Clipboard locked (${e.message})")
+        } catch (e: Exception) { 
+            e.printStackTrace()
+        }
     }
 
     fun updateHashFromRemote(text: String) {

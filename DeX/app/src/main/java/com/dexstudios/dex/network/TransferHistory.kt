@@ -6,11 +6,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
+@Serializable
 data class TransferRecord(
     val id: String,
     val name: String,
@@ -31,6 +31,12 @@ object TransferHistory {
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        encodeDefaults = true
+    }
+
     fun init(context: Context) {
         scope.launch {
             _items.value = read(context)
@@ -38,18 +44,27 @@ object TransferHistory {
     }
 
     fun refresh(context: Context) {
-        _items.value = read(context)
+        scope.launch {
+            _items.value = read(context)
+        }
     }
 
     fun delete(context: Context, id: String) {
-        val updated = _items.value.filter { it.id != id }
-        _items.value = updated
-        write(context, updated)
+        val current = _items.value
+        val updated = current.filter { it.id != id }
+        if (current.size != updated.size) {
+            _items.value = updated
+            scope.launch {
+                write(context, updated)
+            }
+        }
     }
 
     fun clear(context: Context) {
         _items.value = emptyList()
-        write(context, emptyList())
+        scope.launch {
+            write(context, emptyList())
+        }
     }
 
     fun log(
@@ -72,53 +87,31 @@ object TransferHistory {
             peerDevice = peerDevice,
             status = status
         )
-        val updated = (listOf(record) + _items.value).take(MAX_ENTRIES)
+        val current = _items.value
+        val updated = (listOf(record) + current).take(MAX_ENTRIES)
         _items.value = updated
-        write(context, updated)
+        scope.launch {
+            write(context, updated)
+        }
     }
 
     private fun read(context: Context): List<TransferRecord> {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return emptyList()
         return try {
-            val arr = JSONArray(raw)
-            buildList {
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-                    add(
-                        TransferRecord(
-                            id = o.optString("id", i.toString()),
-                            name = o.optString("name", "unknown"),
-                            size = o.optLong("size", 0L),
-                            timestamp = o.optLong("timestamp", 0L),
-                            direction = o.optString("direction", "received"),
-                            uri = if (o.has("uri")) o.optString("uri") else null,
-                            peerDevice = if (o.has("peerDevice")) o.optString("peerDevice") else null,
-                            status = o.optString("status", "success")
-                        )
-                    )
-                }
-            }
-        } catch (_: Exception) {
+            json.decodeFromString<List<TransferRecord>>(raw)
+        } catch (e: Exception) {
             emptyList()
         }
     }
 
     private fun write(context: Context, items: List<TransferRecord>) {
-        val arr = JSONArray()
-        items.forEach { r ->
-            val o = JSONObject()
-            o.put("id", r.id)
-            o.put("name", r.name)
-            o.put("size", r.size)
-            o.put("timestamp", r.timestamp)
-            o.put("direction", r.direction)
-            r.uri?.let { o.put("uri", it) }
-            r.peerDevice?.let { o.put("peerDevice", it) }
-            o.put("status", r.status)
-            arr.put(o)
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
-            putString(KEY, arr.toString())
+        try {
+            val raw = json.encodeToString(items)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+                putString(KEY, raw)
+            }
+        } catch (_: Exception) {
+            // Log error if needed
         }
     }
 }

@@ -77,7 +77,11 @@ fun main() {
             val now = System.currentTimeMillis()
             if (now - lastTrayClickTime >= 300L) {
                 lastTrayClickTime = now
-                controller.toggleVisibility()
+                // Prevent race condition: if clicking the tray icon just caused the window to lose focus
+                // and hide itself, don't immediately toggle it back to visible.
+                if (now - controller.lastHideTime > 250L) {
+                    controller.toggleVisibility()
+                }
             }
         }
 
@@ -159,7 +163,7 @@ fun main() {
                         override fun windowGainedFocus(e: java.awt.event.WindowEvent?) {}
                         override fun windowLostFocus(e: java.awt.event.WindowEvent?) {
                             if (controller.shouldDismissOnFocusLoss()) {
-                                controller.isVisible = false
+                                controller.hide()
                             }
                         }
                     }

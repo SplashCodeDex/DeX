@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.BuildConfig
 import com.dexstudios.dex.R
@@ -162,9 +163,10 @@ fun SettingsScreen(
                             value = deviceConfig.publicAddress.ifBlank { "Unknown" },
                             icon = MaterialSymbols.Wifi
                         )
+                        val fingerprint by deviceConfig.fingerprintFlow.collectAsStateWithLifecycle()
                         SettingsInfoRow(
                             title = stringResource(R.string.settings_device_fingerprint),
-                            value = deviceConfig.fingerprint,
+                            value = fingerprint,
                             icon = MaterialSymbols.Smartphone
                         )
                     }
@@ -173,9 +175,11 @@ fun SettingsScreen(
                 // Reliability Section
                 item {
                     SettingsGroup(title = "Reliability") {
-                        val isIgnoring = remember(context) {
+                        val isIgnoring by produceState(initialValue = false, context) {
                             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                            pm.isIgnoringBatteryOptimizations(context.packageName)
+                            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                pm.isIgnoringBatteryOptimizations(context.packageName)
+                            }
                         }
                         SettingsClickableRow(
                             title = "Background Optimization",

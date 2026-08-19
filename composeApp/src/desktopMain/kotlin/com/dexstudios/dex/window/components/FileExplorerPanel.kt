@@ -63,6 +63,8 @@ import com.dexstudios.dex.core.network.services.PullFileItem
 import com.dexstudios.dex.mirror.toImageBitmap
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -135,8 +137,13 @@ fun FileExplorerPanel(
 
     // Real-time transfer records from TransferHistory & Pull progress
     val transferHistoryItems by TransferHistory.items.collectAsState()
-    val uploadState by clientEngine.uploadState.collectAsState()
-    val pullProgress by fileExplorerService.pullProgress.collectAsState()
+    
+    // Defer rapid progress updates to prevent massive top-level recompositions
+    val isTransferring by remember(clientEngine, fileExplorerService) {
+        combine(clientEngine.uploadState, fileExplorerService.pullProgress) { upload, pull ->
+            upload.isUploading || pull.isPulling
+        }.distinctUntilChanged()
+    }.collectAsState(initial = false)
 
     // 150ms search debounce
     LaunchedEffect(searchQuery) {
@@ -494,17 +501,18 @@ fun FileExplorerPanel(
                     .padding(bottom = 8.dp)
             ) {
                 AnimatedVisibility(
-                    visible = uploadState.isUploading || pullProgress.isPulling,
+                    visible = isTransferring,
                     enter = slideInVertically(initialOffsetY = { 50 }, animationSpec = tween(300)) + fadeIn(),
                     exit = slideOutVertically(targetOffsetY = { 50 }, animationSpec = tween(300)) + fadeOut()
                 ) {
                     PullProgressDock(
-                        uploadState = uploadState,
+                        clientEngine = clientEngine,
                         onCancel = {
                             clientEngine.resetUploadState()
-                            if (pullProgress.isPulling && activeFingerprint.isNotBlank()) {
+                            val currentPull = fileExplorerService.pullProgress.value
+                            if (currentPull.isPulling && activeFingerprint.isNotBlank()) {
                                 coroutineScope.launch {
-                                    fileExplorerService.cancelPull(activeFingerprint, pullProgress.requestId)
+                                    fileExplorerService.cancelPull(activeFingerprint, currentPull.requestId)
                                 }
                             }
                         }
@@ -747,10 +755,12 @@ private fun FileGridItemCard(
  */
 @Composable
 fun PullProgressDock(
-    uploadState: UploadState,
+    clientEngine: ClientEngine,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val uploadState by clientEngine.uploadState.collectAsState()
+    
     Box(
         modifier = modifier
             .fillMaxWidth(0.92f)

@@ -24,6 +24,7 @@ import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.window.components.FileExplorerPanel
+import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
 import com.dexstudios.dex.window.components.PinPairingPanel
 import com.dexstudios.dex.window.components.SettingsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
@@ -148,5 +149,7 @@ fun DockCardContent(
                 )
             }
         }
+        
+        InboundPairingDialogOverlay()
     }
 }

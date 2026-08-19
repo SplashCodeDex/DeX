@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -118,8 +119,12 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
     val contentBackdrop = rememberLayerBackdrop()
     val incomingPairRequest by AuthState.incomingPairRequest.collectAsStateWithLifecycle()
 
-    val isDimmed = (TopAppBarState.isProfileExpanded ||
-                    TopAppBarState.isOnboardingVisible || incomingPairRequest != null)
+    val isDimmed by remember {
+        derivedStateOf {
+            TopAppBarState.isProfileExpanded ||
+            TopAppBarState.isOnboardingVisible || incomingPairRequest != null
+        }
+    }
     val globalDimAlpha by animateFloatAsState(
         targetValue = if (isDimmed) 0.75f else 0f,
         animationSpec = tween(500),
@@ -150,28 +155,60 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
       // Tab switching animates with the iOS-style crossfade. Each tab's UI state
       // (scroll position, etc.) is preserved while it is not visible.
       val tabStateHolder = rememberSaveableStateHolder()
-      AnimatedContent(
-        targetState = currentRoute,
-        transitionSpec = { NavigationTransitions.tabSwitch() },
-        modifier = Modifier.fillMaxSize(),
-        label = "tabs"
-      ) { tab ->
-        tabStateHolder.SaveableStateProvider(tab.toString()) {
-          when (tab) {
-            Main -> MainScreen(
-              modifier = Modifier,
-              listState = mainListState,
-              windowSizeClass = windowSizeClass
-            )
-            History -> HistoryScreen(
-              modifier = Modifier,
-              listState = historyListState
-            )
-            Settings -> SettingsScreen(
-              modifier = Modifier.safeDrawingPadding()
-            )
+      // Persistent composition stack: keeps tabs alive to completely eliminate
+      // initial-composition frame drops (jank) during tab switching, allowing
+      // the navbar spring animation to stay perfectly smooth at 60fps/120fps.
+      Box(modifier = Modifier.fillMaxSize()) {
+          tabs.forEach { tab ->
+              val isSelected = currentRoute == tab
+
+              val alpha by animateFloatAsState(
+                  targetValue = if (isSelected) 1f else 0f,
+                  animationSpec = tween(NavigationTransitions.TAB_DURATION_MS, easing = NavigationTransitions.PushEase),
+                  label = "tabAlpha_${tab}"
+              )
+
+              val scale by animateFloatAsState(
+                  targetValue = if (isSelected) 1f else NavigationTransitions.TAB_SCALE,
+                  animationSpec = tween(NavigationTransitions.TAB_DURATION_MS, easing = NavigationTransitions.PushEase),
+                  label = "tabScale_${tab}"
+              )
+
+              val zIndex = if (isSelected) 1f else 0f
+
+              Box(
+                  modifier = Modifier
+                      .fillMaxSize()
+                      .zIndex(zIndex)
+                      .graphicsLayer {
+                          this.alpha = alpha
+                          this.scaleX = scale
+                          this.scaleY = scale
+                          // Optimization: collapse geometry when fully invisible to assist culling
+                          if (alpha == 0f) {
+                              this.scaleX = 0f
+                              this.scaleY = 0f
+                          }
+                      }
+              ) {
+                  tabStateHolder.SaveableStateProvider(tab.toString()) {
+                      when (tab) {
+                        Main -> MainScreen(
+                          modifier = Modifier,
+                          listState = mainListState,
+                          windowSizeClass = windowSizeClass
+                        )
+                        History -> HistoryScreen(
+                          modifier = Modifier,
+                          listState = historyListState
+                        )
+                        Settings -> SettingsScreen(
+                          modifier = Modifier.safeDrawingPadding()
+                        )
+                      }
+                  }
+              }
           }
-        }
       }
 
       if (globalDimAlpha > 0f) {

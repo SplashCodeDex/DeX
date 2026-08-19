@@ -386,7 +386,7 @@ fun PinPairingPanel(
  * 44x56dp minimum digit box with 32sp bold text and border morphing.
  */
 @Composable
-private fun PinDigitBox(
+internal fun PinDigitBox(
     digit: String,
     isFilled: Boolean,
     isError: Boolean
@@ -452,7 +452,7 @@ fun PinPairingPanel(
     var remainingSeconds by remember { mutableStateOf(60) }
 
     // 60s countdown timer
-    LaunchedEffect(engineState) {
+    LaunchedEffect(Unit) {
         remainingSeconds = 60
         while (remainingSeconds > 0) {
             delay(1000)
@@ -466,7 +466,7 @@ fun PinPairingPanel(
 
     val uiState: PinPairingUiState = when (val s = engineState) {
         is PairingState.Idle -> PinPairingUiState.PinView(
-            pinCode = "482910",
+            pinCode = "------",
             remainingSeconds = remainingSeconds
         )
         is PairingState.QrPhase -> if (isQrMode) {
@@ -476,7 +476,7 @@ fun PinPairingPanel(
             )
         } else {
             PinPairingUiState.PinView(
-                pinCode = "482910",
+                pinCode = "------",
                 remainingSeconds = remainingSeconds
             )
         }
@@ -487,7 +487,7 @@ fun PinPairingPanel(
             )
         } else {
             PinPairingUiState.PinView(
-                pinCode = "482910",
+                pinCode = s.pinCode,
                 enteredDigitCount = s.digitCount,
                 isError = s.isError,
                 remainingSeconds = remainingSeconds

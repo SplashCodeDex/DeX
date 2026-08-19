@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
-import com.dexstudios.dex.window.kinematics.popInTransition
+import com.dexstudios.dex.window.kinematics.dynamicIslandTransition
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.koin.compose.koinInject
 
@@ -24,7 +24,7 @@ import org.koin.compose.koinInject
  * Provides:
  * - Fixed 1420x760dp transparent canvas with Alignment.TopEnd and 25dp padding
  * - Zero-flicker internal expansion (eliminates OS Direct3D swapchain recreation stutter)
- * - Pop-in entrance animation (scale 0.85 -> 1.0, translateY 15 -> 0 dp, alpha 0 -> 1 over 500ms)
+ * - Dynamic Island entrance animation (hyper-fluid expansion from TopEnd)
  * - Continuous high-DPI display density synchronization
  * - Bound directly to DockedWindowStateController
  * - CompositionLocalProvider for LocalBackdrop
@@ -73,7 +73,7 @@ fun FloatingDockCard(
                             32f
                         )
                     }
-                    .popInTransition(visible = controller.isVisible),
+                    .dynamicIslandTransition(visible = controller.isVisible),
                 backdrop = null,
                 onDismiss = onDismiss,
                 onExitEngine = onExitEngine,

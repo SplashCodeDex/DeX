@@ -117,13 +117,15 @@ fun DeviceListItem(
                 .layerBackdrop(localBackdrop)
         ) {
             if (imageRequest != null) {
+                val errorPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(image = MaterialSymbols.Devices)
                 AsyncImage(
                     model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    error = errorPainter
                 )
             } else {
                 Box(

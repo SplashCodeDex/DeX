@@ -1,13 +1,16 @@
 package com.dexstudios.dex.ui.components.glass
 
-import androidx.compose.foundation.border
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
@@ -29,11 +32,47 @@ fun Modifier.shinyGlare(
     tint: Color = Color.White,
     angle: Float = LiquidGlassTokens.GlareAngle,
     intensity: Float = LiquidGlassTokens.GlareFactor
-): Modifier = composed {
-    val brush = remember(tint, angle, intensity) {
-        val angleRad = angle * (PI / 180f).toFloat()
+): Modifier = this then ShinyGlareElement(shape, width, tint, angle, intensity)
 
-        // Direction vector from the angle
+private data class ShinyGlareElement(
+    val shape: Shape,
+    val width: Dp,
+    val tint: Color,
+    val angle: Float,
+    val intensity: Float
+) : ModifierNodeElement<ShinyGlareNode>() {
+    override fun create(): ShinyGlareNode = ShinyGlareNode(shape, width, tint, angle, intensity)
+
+    override fun update(node: ShinyGlareNode) {
+        node.shape = shape
+        node.width = width
+        node.tint = tint
+        node.angle = angle
+        node.intensity = intensity
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "shinyGlare"
+        properties["shape"] = shape
+        properties["width"] = width
+        properties["tint"] = tint
+        properties["angle"] = angle
+        properties["intensity"] = intensity
+    }
+}
+
+private class ShinyGlareNode(
+    var shape: Shape,
+    var width: Dp,
+    var tint: Color,
+    var angle: Float,
+    var intensity: Float
+) : Modifier.Node(), DrawModifierNode {
+
+    override fun ContentDrawScope.draw() {
+        drawContent()
+
+        val angleRad = angle * (PI / 180f).toFloat()
         val dx = cos(angleRad)
         val dy = sin(angleRad)
 
@@ -43,7 +82,7 @@ fun Modifier.shinyGlare(
         val start = Offset(500f - dx * 500f, 500f - dy * 500f)
         val end = Offset(500f + dx * 500f, 500f + dy * 500f)
 
-        Brush.linearGradient(
+        val brush = Brush.linearGradient(
             0.0f to tint.copy(alpha = 0f),
             0.45f to tint.copy(alpha = 0.05f),
             0.5f to tint.copy(alpha = intensity),
@@ -52,7 +91,11 @@ fun Modifier.shinyGlare(
             start = start,
             end = end
         )
-    }
 
-    this.border(width = width, brush = brush, shape = shape)
+        drawOutline(
+            outline = shape.createOutline(size, layoutDirection, this),
+            brush = brush,
+            style = Stroke(width.toPx())
+        )
+    }
 }

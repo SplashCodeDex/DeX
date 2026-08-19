@@ -20,6 +20,7 @@ sealed interface PairingState {
     data class PinPhase(
         val ip: String,
         val fingerprint: String,
+        val pinCode: String,
         val digitCount: Int,
         val isError: Boolean = false
     ) : PairingState
@@ -48,10 +49,16 @@ class PairingEngine(
     fun handlePinDigitEntered(digitCount: Int) {
         val current = _state.value
         if (current is PairingState.QrPhase) {
-            _state.value = PairingState.PinPhase(current.ip, current.fingerprint, digitCount)
+            _state.value = PairingState.PinPhase(current.ip, current.fingerprint, "000000", digitCount)
         } else if (current is PairingState.PinPhase) {
             _state.value = current.copy(digitCount = digitCount)
         }
+    }
+
+    fun handleInboundPairingRequest(ip: String, fingerprint: String): String {
+        val pinCode = (100000..999999).random().toString()
+        _state.value = PairingState.PinPhase(ip, fingerprint, pinCode, digitCount = 0)
+        return pinCode
     }
 
     fun markPairingError() {

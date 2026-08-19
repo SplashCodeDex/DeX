@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.security.MessageDigest
 import java.util.UUID
@@ -61,6 +60,8 @@ class DeviceConfig(private val context: Context) {
     val googleSubFlow: StateFlow<String> = _googleSubFlow.asStateFlow()
 
     private val _fingerprintFlow = MutableStateFlow("")
+    val fingerprintFlow: StateFlow<String> = _fingerprintFlow.asStateFlow()
+
     private val _identityHashFlow = MutableStateFlow("")
     private val _publicAddressFlow = MutableStateFlow("")
 
@@ -119,19 +120,9 @@ class DeviceConfig(private val context: Context) {
             }
         }
 
-    /** Fingerprint, computed once. First access during cold start blocks until DataStore loads. */
+    /** Fingerprint of this device, persistent and unchangeable. */
     val fingerprint: String
-        get() {
-            if (_fingerprintFlow.value.isEmpty()) {
-                _fingerprintFlow.value = runBlocking(Dispatchers.IO) {
-                    val prefs = context.dataStore.data.first()
-                    prefs[FINGERPRINT_KEY] ?: UUID.randomUUID().toString().also { fp ->
-                        context.dataStore.edit { it[FINGERPRINT_KEY] = fp }
-                    }
-                }
-            }
-            return _fingerprintFlow.value
-        }
+        get() = _fingerprintFlow.value
 
     val identityHash: String
         get() = _identityHashFlow.value

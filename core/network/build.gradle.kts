@@ -54,6 +54,12 @@ kotlin {
             implementation(libs.jmdns)
         }
 
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.mockk)
+            }
+        }
+
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

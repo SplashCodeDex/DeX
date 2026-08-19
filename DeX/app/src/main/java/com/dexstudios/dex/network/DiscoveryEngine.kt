@@ -1,6 +1,7 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import com.dexstudios.dex.ShortcutHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +30,7 @@ class DiscoveryEngine(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var cleanupJob: Job? = null
     private var identityWatchJob: Job? = null
+    private var shortcutJob: Job? = null
 
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
@@ -102,6 +104,17 @@ class DiscoveryEngine(
                     }
                 }
         }
+
+        // Shortcut sync: update Direct Share targets when online trusted devices change
+        shortcutJob = scope.launch {
+            devices.collectLatest { deviceMap ->
+                val trustedOnline = deviceMap.values.filter {
+                    AuthState.pairedFingerprints.contains(it.info.fingerprint) ||
+                    (it.info.identityHash != null && it.info.identityHash == deviceConfig.identityHash)
+                }
+                ShortcutHelper.updateShareShortcuts(context, trustedOnline)
+            }
+        }
     }
 
     fun addDevice(device: DiscoveredDevice) {
@@ -146,6 +159,7 @@ class DiscoveryEngine(
         udpManager?.stop()
         cleanupJob?.cancel()
         identityWatchJob?.cancel()
+        shortcutJob?.cancel()
     }
 
     fun sendManualDiscovery(ip: String, port: Int = DeXPorts.HTTPS) {

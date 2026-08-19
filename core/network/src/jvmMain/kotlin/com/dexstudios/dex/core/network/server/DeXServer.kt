@@ -18,6 +18,7 @@ import com.dexstudios.dex.core.network.server.routes.settingsRoutes
 import com.dexstudios.dex.core.network.security.CertificateGenerator
 import org.koin.java.KoinJavaComponent.getKoin
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.auth.PairingEngine
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
@@ -26,17 +27,7 @@ import io.ktor.server.application.install
 import io.ktor.server.routing.routing
 import kotlin.time.Duration.Companion.seconds
 
-val LoopbackSecurityPlugin = createApplicationPlugin(name = "LoopbackSecurity") {
-    onCall { call ->
-        val path = call.request.path()
-        if (path.startsWith("/local/")) {
-            val remoteHost = call.request.origin.remoteHost
-            if (remoteHost != "127.0.0.1" && remoteHost != "0:0:0:0:0:0:0:1" && remoteHost != "localhost") {
-                call.respond(HttpStatusCode.Forbidden, "Access Denied")
-            }
-        }
-    }
-}
+
 
 object DeXServer {
     private var server1: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
@@ -47,7 +38,6 @@ object DeXServer {
         if (server1 != null) return
 
         val appModule: Application.() -> Unit = {
-            install(LoopbackSecurityPlugin)
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
@@ -63,7 +53,8 @@ object DeXServer {
 
             routing {
                 val discoveryEngine = getKoin().get<DiscoveryEngine>()
-                deviceRoutes(discoveryEngine = discoveryEngine)
+                val pairingEngine = getKoin().get<PairingEngine>()
+                deviceRoutes(discoveryEngine = discoveryEngine, pairingEngine = pairingEngine)
                 shareRoutes()
                 controlRoutes()
                 webSocketRoutes()

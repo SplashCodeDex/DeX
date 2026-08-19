@@ -79,11 +79,15 @@ fun HistoryLightbox(
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(record.uri, context) {
+                ImageRequest.Builder(context)
                     .data(record.uri)
                     .crossfade(true)
-                    .build(),
+                    .build()
+            }
+            SubcomposeAsyncImage(
+                model = imageRequest,
                 contentDescription = record.name,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,7 +99,7 @@ fun HistoryLightbox(
                         translationX = offset.x.toFloat()
                         translationY = offset.y.toFloat()
                     }
-                    .pointerInput(Unit) {
+                    .pointerInput(record.uri) {
                         detectTransformGestures { _, pan, zoom, _ ->
                             scale = (scale * zoom).coerceIn(0.5f, 3f)
                             offset = IntOffset(

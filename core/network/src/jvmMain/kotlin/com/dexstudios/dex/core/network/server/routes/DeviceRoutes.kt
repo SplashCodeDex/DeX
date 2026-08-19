@@ -8,8 +8,40 @@ import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.RegisterDto
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.origin
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.serialization.Serializable
+import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.auth.PairingState
+import com.dexstudios.dex.core.network.DeviceManager
+import com.dexstudios.dex.core.network.auth.IdentityManager
+import com.dexstudios.dex.core.network.security.CertificateGenerator
+import io.ktor.http.ContentType
 
-fun Route.deviceRoutes(discoveryEngine: DiscoveryEngine?) {
+@Serializable
+data class PunchResponse(val ip: String, val port: Int)
+
+data class PunchEntry(val ip: String, val port: Int, val ts: Long)
+val punchEndpoints = ConcurrentHashMap<String, PunchEntry>()
+
+fun Route.deviceRoutes(discoveryEngine: DiscoveryEngine?, pairingEngine: PairingEngine?) {
+    get("/punch/endpoint") {
+        val fingerprint = call.request.queryParameters["fingerprint"]
+        val remoteIp = call.request.origin.remoteHost
+        val remotePort = call.request.origin.remotePort
+        
+        if (!fingerprint.isNullOrEmpty() && remoteIp.isNotEmpty() && remotePort > 0) {
+            punchEndpoints[fingerprint] = PunchEntry(remoteIp, remotePort, System.currentTimeMillis())
+            
+            val cutoff = System.currentTimeMillis() - (5 * 60 * 1000L)
+            val stale = punchEndpoints.filter { it.value.ts < cutoff }.keys
+            for (k in stale) punchEndpoints.remove(k)
+            
+            call.respond(PunchResponse(remoteIp, remotePort))
+        } else {
+            call.respond(HttpStatusCode.BadRequest)
+        }
+    }
     route("/api/localsend/v2") {
         get("/info") {
             if (discoveryEngine != null) {
@@ -35,69 +67,4 @@ fun Route.deviceRoutes(discoveryEngine: DiscoveryEngine?) {
         }
     }
 
-    route("/local") {
-        get("/devices") {
-            if (discoveryEngine != null) {
-                val devices = discoveryEngine.devices.value.values.map { it.info }
-                call.respond(devices)
-            } else {
-                call.respond(emptyList<String>())
-            }
-        }
-
-        post("/devices/flush") {
-            // TODO: Clear discovered devices
-            call.respond(HttpStatusCode.OK)
-        }
-
-        get("/devices/ping") {
-            val ip = call.request.queryParameters["ip"]
-            if (ip.isNullOrEmpty()) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@get
-            }
-            // TODO: Ping the IP
-            call.respond(HttpStatusCode.NotFound)
-        }
-
-        get("/token") {
-            val ip = call.request.queryParameters["ip"]
-            if (ip.isNullOrEmpty()) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@get
-            }
-            // TODO: Lookup token by IP via AuthState
-            call.respond(HttpStatusCode.NotFound)
-        }
-
-        post("/unpair") {
-            val fp = call.request.queryParameters["fingerprint"]
-            if (!fp.isNullOrEmpty()) {
-                // TODO: Remove paired device via DeviceManager
-                call.respond(HttpStatusCode.OK)
-            } else {
-                call.respond(HttpStatusCode.BadRequest)
-            }
-        }
-
-        get("/pair-status") {
-            call.respond(HttpStatusCode.NotFound)
-        }
-
-        get("/pending-pair") {
-            call.respond(HttpStatusCode.NotFound)
-        }
-
-        get("/cert") {
-            call.respond(HttpStatusCode.NotFound)
-        }
-
-        post("/pair-initiate") {
-            call.respond(HttpStatusCode.BadRequest)
-        }
-
-        post("/pair-cancel") {
-            call.respond(HttpStatusCode.OK)
-        }
-    }
 }

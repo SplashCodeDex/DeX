@@ -1,5 +1,9 @@
 # Changelog
 
+## [10.1.1.0] - 2026-08-19
+### Fixed
+- **[patch] Tray Icon Focus-Loss Race Condition (Desktop)**: Fixed an issue where clicking the tray icon while the app had focus would cause the app to hide and immediately reappear. This was caused by the window losing focus (triggering an auto-hide) a fraction of a second before the tray click action (which toggled it back to visible). Added a 250ms debounce threshold linking focus loss to the tray click to cleanly suppress the race condition.
+
 ## [10.0.0.1] - 2026-08-18
 ### Fixed
 - **[patch] Compose Canvas Transparent Area Click-Through**: Fixed an issue in the Compose Multiplatform desktop application where the large 1100x700 transparent canvas blocked mouse clicks intended for the desktop or applications behind it. Added a dynamic native AWT `java.awt.Window.setShape()` update triggered via `Modifier.onGloballyPositioned` on the `DockCardContent` to restrict the OS hit-test region precisely to the card's bounds, preserving the zero-flicker expansion architecture while enabling true click-through on all transparent areas.

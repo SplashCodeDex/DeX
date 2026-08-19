@@ -35,7 +35,14 @@ class UdpMulticastManager(
                     acquire()
                 }
 
-                udpSocket = MulticastSocket(DeXPorts.HTTPS).apply {
+                var canReceive = true
+                udpSocket = runCatching {
+                    MulticastSocket(DeXPorts.HTTPS)
+                }.getOrElse {
+                    Timber.w(it, "Failed to bind main discovery port; falling back to ephemeral sending port")
+                    canReceive = false
+                    MulticastSocket(0)
+                }.apply {
                     reuseAddress = true
                     val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
                     NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
@@ -48,7 +55,19 @@ class UdpMulticastManager(
                 }
 
                 val buffer = ByteArray(2048)
+
+                scope.launch {
+                    while (isActive) {
+                        broadcastPresence()
+                        kotlinx.coroutines.delay(2000)
+                    }
+                }
+
                 while (isActive) {
+                    if (!canReceive) {
+                        kotlinx.coroutines.delay(5000)
+                        continue
+                    }
                     val packet = DatagramPacket(buffer, buffer.size)
                     udpSocket?.receive(packet)
                     handleIncomingPacket(packet)
@@ -87,26 +106,30 @@ class UdpMulticastManager(
         }
     }
 
-    private fun sendReply(packet: DatagramPacket) {
-        runCatching {
-            val replyJson = JSONObject().apply {
-                put("alias", localInfo.alias)
-                put("version", localInfo.version)
-                put("deviceModel", localInfo.deviceModel)
-                put("deviceType", localInfo.deviceType)
-                put("fingerprint", localInfo.fingerprint)
-                put("port", localInfo.port)
-                put("quicPort", localInfo.quicPort)
-                put("tcpFallbackPort", localInfo.tcpFallbackPort)
-                put("protocol", localInfo.protocol)
-                put("download", localInfo.download)
-                put("identityHash", localInfo.identityHash)
-                localInfo.googleSub?.let { put("googleSub", it) }
-            }
-            val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
-            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
-            val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
+    private fun getReplyData(): ByteArray {
+        val replyJson = JSONObject().apply {
+            put("alias", localInfo.alias)
+            put("version", localInfo.version)
+            put("deviceModel", localInfo.deviceModel)
+            put("deviceType", localInfo.deviceType)
+            put("fingerprint", localInfo.fingerprint)
+            put("port", localInfo.port)
+            put("quicPort", localInfo.quicPort)
+            put("tcpFallbackPort", localInfo.tcpFallbackPort)
+            put("protocol", localInfo.protocol)
+            put("download", localInfo.download)
+            put("identityHash", localInfo.identityHash)
+            localInfo.googleSub?.let { put("googleSub", it) }
+        }
+        return replyJson.toString().toByteArray(Charsets.UTF_8)
+    }
 
+    private fun broadcastPresence() {
+        runCatching {
+            val replyData = getReplyData()
+            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+
+            // 1. Multicast
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                 runCatching {
                     if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
@@ -115,7 +138,37 @@ class UdpMulticastManager(
                     }
                 }
             }
-            runCatching { DatagramSocket().use { it.send(ucastPacket) } }
+
+            // 2. Directed Subnet Broadcasts & Gateway Pings
+            DatagramSocket().use { ds ->
+                ds.broadcast = true
+                NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
+                    runCatching {
+                        if (ni.isUp && !ni.isLoopback) {
+                            ni.interfaceAddresses.forEach { ia ->
+                                val bcast = ia.broadcast
+                                if (bcast != null) {
+                                    runCatching { ds.send(DatagramPacket(replyData, replyData.size, bcast, DeXPorts.HTTPS)) }
+                                }
+                                val addrBytes = ia.address.address
+                                if (addrBytes.size == 4) {
+                                    addrBytes[3] = 1.toByte()
+                                    runCatching { ds.send(DatagramPacket(replyData, replyData.size, InetAddress.getByAddress(addrBytes), DeXPorts.HTTPS)) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun sendReply(packet: DatagramPacket) {
+        broadcastPresence()
+        runCatching {
+            val replyData = getReplyData()
+            val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
+            DatagramSocket().use { it.send(ucastPacket) }
         }
     }
 

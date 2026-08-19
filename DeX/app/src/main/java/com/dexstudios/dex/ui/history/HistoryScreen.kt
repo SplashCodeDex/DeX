@@ -104,7 +104,24 @@ fun HistoryScreen(
     }
 
     val groupedItems = remember(items) {
-        items.groupBy { getDateGroupLabel(it.timestamp) }
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        val startOfToday = calendar.timeInMillis
+        val startOfYesterday = startOfToday - 86400000L
+        val startOfThisWeek = startOfToday - (6 * 86400000L)
+
+        items.groupBy {
+            when {
+                it.timestamp >= startOfToday -> "Today"
+                it.timestamp >= startOfYesterday -> "Yesterday"
+                it.timestamp >= startOfThisWeek -> "This Week"
+                else -> "Older"
+            }
+        }
     }
     val groupOrder = listOf("Today", "Yesterday", "This Week", "Older")
 
@@ -136,7 +153,6 @@ fun HistoryScreen(
         }
     }
     val collapseThreshold = 200f
-    val scrollFactor = (scrollOffset / collapseThreshold).coerceIn(0f, 1f)
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -156,7 +172,8 @@ fun HistoryScreen(
                     .fillMaxWidth()
                     .graphicsLayer {
                         translationY = -scrollOffset * 0.5f
-                        alpha = 1f - scrollFactor
+                        val factor = (scrollOffset / collapseThreshold).coerceIn(0f, 1f)
+                        alpha = 1f - factor
                     }
                     .padding(top = statusBarHeight + 84.dp)
                     .zIndex(2f)
@@ -398,20 +415,22 @@ fun HistoryScreen(
                                         )
                                     }
 
-                                    DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                        DropdownMenuItem(text = { Text("Delete") }, onClick = { TransferHistory.delete(context, record.id); showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Close, null, modifier = Modifier.size(18.dp)) })
-                                        DropdownMenuItem(text = { Text("Share") }, onClick = {
-                                            val uri = record.uri?.toUri()
-                                            if (uri != null) {
-                                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                                    val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
-                                                    setDataAndType(uri, mime); putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    if (showItemMenu) {
+                                        DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
+                                            DropdownMenuItem(text = { Text("Delete") }, onClick = { TransferHistory.delete(context, record.id); showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Close, null, modifier = Modifier.size(18.dp)) })
+                                            DropdownMenuItem(text = { Text("Share") }, onClick = {
+                                                val uri = record.uri?.toUri()
+                                                if (uri != null) {
+                                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                                        val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+                                                        setDataAndType(uri, mime); putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    }
+                                                    context.startActivity(Intent.createChooser(intent, "Share file"))
                                                 }
-                                                context.startActivity(Intent.createChooser(intent, "Share file"))
-                                            }
-                                            showItemMenu = false
-                                        }, leadingIcon = { Icon(DeXIcons.IosShare, null, modifier = Modifier.size(18.dp)) })
-                                        DropdownMenuItem(text = { Text("Open Folder") }, onClick = { record.uri?.toUri()?.let { openFolderOf(context, it) }; showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Folder, null, modifier = Modifier.size(18.dp)) })
+                                                showItemMenu = false
+                                            }, leadingIcon = { Icon(DeXIcons.IosShare, null, modifier = Modifier.size(18.dp)) })
+                                            DropdownMenuItem(text = { Text("Open Folder") }, onClick = { record.uri?.toUri()?.let { openFolderOf(context, it) }; showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Folder, null, modifier = Modifier.size(18.dp)) })
+                                        }
                                     }
                                 }
                             }
@@ -562,22 +581,20 @@ private fun HistoryRow(
             contentAlignment = Alignment.Center
         ) {
             if (hasThumbnail) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val errorPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(image = fileIcon)
+                val imageRequest = remember(record.uri, context) {
+                    ImageRequest.Builder(context)
                         .data(record.uri)
                         .crossfade(true)
-                        .build(),
+                        .build()
+                }
+                coil3.compose.AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    loading = {
-                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp).align(Alignment.Center), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-                        }
-                    },
-                    error = {
-                        Icon(imageVector = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
-                    }
+                    error = errorPainter
                 )
                 if (isFailed) {
                     Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
@@ -642,20 +659,20 @@ private fun HistoryGridItem(
             contentAlignment = Alignment.Center
         ) {
             if (hasThumbnail) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val errorPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(image = fileIcon)
+                val imageRequest = remember(record.uri, context) {
+                    ImageRequest.Builder(context)
                         .data(record.uri)
                         .crossfade(true)
-                        .build(),
+                        .build()
+                }
+                coil3.compose.AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    loading = {
-                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
-                    },
-                    error = {
-                        Icon(imageVector = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
-                    }
+                    error = errorPainter
                 )
             } else {
                 Icon(imageVector = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(32.dp))

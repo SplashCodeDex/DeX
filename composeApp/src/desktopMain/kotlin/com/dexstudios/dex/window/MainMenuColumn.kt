@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,39 +59,42 @@ fun MainMenuColumn(
     val coroutineScope = rememberCoroutineScope()
     val devicesMap by discoveryEngine.devices.collectAsState()
     val pairedFingerprints by AuthState.pairedFingerprints.collectAsState()
-    val uploadState by clientEngine.uploadState.collectAsState()
+    val isUploading by remember(clientEngine) {
+        clientEngine.uploadState
+            .map { it.isUploading }
+            .distinctUntilChanged()
+    }.collectAsState(initial = false)
     val isClipboardSyncEnabled by deviceConfig.clipboardSyncEnabledFlow.collectAsState()
 
     var isDndActive by remember { mutableStateOf(false) }
     var isMirroringActive by remember { mutableStateOf(false) }
 
-    val devices = devicesMap.values.toList()
-
     // Partition discovered devices vs paired devices
-    val discoveredList = mutableListOf<DeviceItemUiModel>()
-    val pairedList = mutableListOf<DeviceItemUiModel>()
+    val (discoveredList, pairedList) = remember(devicesMap, pairedFingerprints) {
+        val discovered = mutableListOf<DeviceItemUiModel>()
+        val paired = mutableListOf<DeviceItemUiModel>()
 
-    devices.forEach { device ->
-        val isPaired = pairedFingerprints.contains(device.info.fingerprint)
-        val uiModel = DeviceItemUiModel(
-            id = device.info.fingerprint.ifBlank { device.ip },
-            alias = device.info.alias.ifBlank { device.info.deviceModel.ifBlank { "DeX Device" } },
-            modelText = device.info.deviceModel,
-            ip = device.ip,
-            fingerprint = device.info.fingerprint,
-            isPaired = isPaired,
-            isOnline = true,
-            batteryPercent = device.info.battery,
-            isCharging = device.info.isCharging ?: false,
-            wifiBand = device.info.wifiBand ?: device.info.wifiSsid,
-            rawDevice = device
-        )
-        if (isPaired) {
-            pairedList.add(uiModel)
-        } else {
-            discoveredList.add(uiModel)
+        devicesMap.values.forEach { device ->
+            val isPaired = pairedFingerprints.contains(device.info.fingerprint)
+            val uiModel = DeviceItemUiModel(
+                id = device.info.fingerprint.ifBlank { device.ip },
+                alias = device.info.alias.ifBlank { device.info.deviceModel.ifBlank { "DeX Device" } },
+                modelText = device.info.deviceModel,
+                ip = device.ip,
+                fingerprint = device.info.fingerprint,
+                isPaired = isPaired,
+                isOnline = true,
+                batteryPercent = device.info.battery,
+                isCharging = device.info.isCharging ?: false,
+                wifiBand = device.info.wifiBand ?: device.info.wifiSsid,
+                rawDevice = device
+            )
+            if (isPaired) paired.add(uiModel) else discovered.add(uiModel)
         }
+        Pair(discovered, paired)
     }
+
+    val devices = devicesMap.values.toList()
 
     // Mock DeXStudios fallback removed for Phase 4.2 Parity
 
@@ -130,9 +136,14 @@ fun MainMenuColumn(
                 deviceConfig.clipboardSyncEnabled = !deviceConfig.clipboardSyncEnabled
             },
             clipboardBadgeCount = 0,
-            statusTelemetryText = if (uploadState.isUploading) "Transferring" else "Ready",
+            statusTelemetryText = if (isUploading) "Transferring" else "Ready",
             serverIpPort = serverIpPortText,
             showTelemetry = true
+        )
+
+        com.dexstudios.dex.window.components.ActiveTransferDashboard(
+            backdrop = com.dexstudios.dex.core.designsystem.theme.LocalBackdrop.current,
+            modifier = Modifier.fillMaxWidth()
         )
 
         // Device List - occupies flexible viewport
@@ -200,7 +211,7 @@ fun MainMenuColumn(
                 }
             },
             onExitEngine = onExitEngine,
-            hasActiveTransfers = uploadState.isUploading,
+            hasActiveTransfers = isUploading,
             isMirroringActive = isMirroringActive
         )
     }

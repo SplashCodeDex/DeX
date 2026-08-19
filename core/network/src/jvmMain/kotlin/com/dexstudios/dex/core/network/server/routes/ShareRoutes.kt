@@ -28,12 +28,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.encodeToJsonElement
+import com.dexstudios.dex.core.network.auth.IdentityManager
 
 @Serializable
 data class ShareTargetPayload(val files: List<String>)
 
 // Match the C# implementation state variables
 val activeUploadSessions = ConcurrentHashMap<String, PrepareUploadRequestDto>()
+val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
+private val shareRoutesFileLock = Any()
 
 @OptIn(DelicateCoroutinesApi::class)
 fun Route.shareRoutes() {
@@ -90,14 +93,36 @@ fun Route.shareRoutes() {
             try {
                 val req = call.receive<PrepareUploadRequestDto>()
 
-                // TODO: Verify Authorization header with IdentityManager if needed
+                val authHeader = call.request.header("Authorization")
+                val token = authHeader?.removePrefix("Bearer ")?.trim()
+
+                val isAutoTrusted = IdentityManager.isIdentityToken(token)
+                val isPaired = !token.isNullOrEmpty() && IdentityManager.pairedTokens[req.info.fingerprint] == token
+
+                if (!isAutoTrusted && !isPaired) {
+                    call.respond(HttpStatusCode.Forbidden)
+                    return@post
+                }
 
                 val sessionId = UUID.randomUUID().toString()
                 activeUploadSessions[sessionId] = req
+                
+                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+                    sessionId, 
+                    req.info.alias.ifEmpty { "Device" }, 
+                    req.files.size, 
+                    0
+                )
 
                 val resFiles = mutableMapOf<String, String>()
                 val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
                 downloadsFolder.mkdirs()
+
+                val totalSize = req.files.values.sumOf { it.size }
+                if (downloadsFolder.freeSpace < totalSize) {
+                    call.respond(HttpStatusCode.InsufficientStorage)
+                    return@post
+                }
 
                 req.files.forEach { (key, _) ->
                     resFiles[key] = UUID.randomUUID().toString()
@@ -130,12 +155,38 @@ fun Route.shareRoutes() {
                 return@post
             }
 
-            val safeFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
+            val rawFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
+            val safeFileName = rawFileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            
+            val safeRelative = fileMeta.relativePath?.let { path ->
+                val sanitized = path.replace("\\", "/").trim('/')
+                if (sanitized.contains("..")) null else sanitized
+            }
 
             val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
             downloadsFolder.mkdirs()
 
-            val destFile = File(downloadsFolder, safeFileName)
+            var destFile = if (safeRelative.isNullOrEmpty()) {
+                File(downloadsFolder, safeFileName)
+            } else {
+                val file = File(downloadsFolder, safeRelative)
+                file.parentFile?.mkdirs()
+                file
+            }
+
+            synchronized(shareRoutesFileLock) {
+                var counter = 1
+                val originalName = destFile.nameWithoutExtension
+                val ext = destFile.extension
+                val extStr = if (ext.isNotEmpty()) ".$ext" else ""
+                val parent = destFile.parentFile
+
+                while (destFile.exists()) {
+                    destFile = File(parent, "$originalName ($counter)$extStr")
+                    counter++
+                }
+                destFile.createNewFile()
+            }
 
             try {
                 val channel: ByteReadChannel = call.receiveChannel()
@@ -144,8 +195,42 @@ fun Route.shareRoutes() {
                         channel.copyTo(output)
                     }
                 }
+                
+                val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
+                com.dexstudios.dex.core.network.services.RelayService.trackRelayFile(sessionId, safeFileName, destFile.absolutePath, senderAlias)
+                
+                val count = activeUploadSessionsProgress.merge(sessionId, 1) { a, b -> a + b } ?: 1
+                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(sessionId, senderAlias, sessionReq.files.size, count, count == sessionReq.files.size)
+
+                if (count == sessionReq.files.size) {
+                    activeUploadSessions.remove(sessionId)
+                    activeUploadSessionsProgress.remove(sessionId)
+                    
+                    try {
+                        if (java.awt.SystemTray.isSupported()) {
+                            val tray = java.awt.SystemTray.getSystemTray()
+                            val image = java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+                            val trayIcon = java.awt.TrayIcon(image, "DeX")
+                            trayIcon.isImageAutoSize = true
+                            tray.add(trayIcon)
+                            trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
+                            
+                            GlobalScope.launch(Dispatchers.IO) {
+                                delay(5000)
+                                try { tray.remove(trayIcon) } catch (ignored: Exception) {}
+                            }
+                        }
+                    } catch (ignored: Exception) {}
+
+                    GlobalScope.launch(Dispatchers.IO) {
+                        delay(6000) // Keep in UI for 6s
+                        com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
+                    }
+                }
+
                 call.respond(HttpStatusCode.OK)
             } catch (e: Exception) {
+                try { if (destFile.exists()) destFile.delete() } catch (ignored: Exception) {}
                 call.respond(HttpStatusCode.InternalServerError)
             }
         }

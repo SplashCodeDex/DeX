@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +32,14 @@ fun MainScreenGrid(
 ) {
     val gridState = rememberLazyGridState()
 
+    // Optimization: logic moved outside the LazyVerticalGrid builder
+    val dummyMatchCount = remember(search) {
+        listOf("Gaming PC", "Home Server", "Work Laptop").count { it.contains(search, ignoreCase = true) }
+    }
+    val showGamingPC = remember(search) { "Gaming PC".contains(search, ignoreCase = true) }
+    val showHomeServer = remember(search) { "Home Server".contains(search, ignoreCase = true) }
+    val showWorkLaptop = remember(search) { "Work Laptop".contains(search, ignoreCase = true) }
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 300.dp),
         state = gridState,
@@ -45,7 +54,6 @@ fun MainScreenGrid(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 1. "My Devices" Section
-        val dummyMatchCount = listOf("Gaming PC", "Home Server", "Work Laptop").count { it.contains(search, ignoreCase = true) }
         if (consolidatedTrusted.isNotEmpty() || dummyMatchCount > 0) {
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                 Text(
@@ -68,7 +76,7 @@ fun MainScreenGrid(
             }
 
             // Dummy Devices in Grid
-            if ("Gaming PC".contains(search, ignoreCase = true)) {
+            if (showGamingPC) {
                 item {
                     DummyDeviceCard(
                         alias = "Gaming PC",
@@ -77,7 +85,7 @@ fun MainScreenGrid(
                     )
                 }
             }
-            if ("Home Server".contains(search, ignoreCase = true)) {
+            if (showHomeServer) {
                 item {
                     DummyDeviceCard(
                         alias = "Home Server",
@@ -86,7 +94,7 @@ fun MainScreenGrid(
                     )
                 }
             }
-            if ("Work Laptop".contains(search, ignoreCase = true)) {
+            if (showWorkLaptop) {
                 item {
                     DummyDeviceCard(
                         alias = "Work Laptop",

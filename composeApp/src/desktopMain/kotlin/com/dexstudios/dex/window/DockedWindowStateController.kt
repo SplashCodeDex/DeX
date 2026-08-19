@@ -106,8 +106,11 @@ class DockedWindowStateController(
         isVisible = true
     }
 
+    var lastHideTime: Long = 0L
+
     fun hide() {
         isVisible = false
+        lastHideTime = System.currentTimeMillis()
         if (isExpanded) {
             contractPanel()
         }

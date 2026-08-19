@@ -24,6 +24,38 @@ object RelayService {
     val hostedFileTokens = ConcurrentHashMap<String, String>()
     val hostedFileLastAccess = ConcurrentHashMap<String, Long>()
 
+    // Relay fallback maps (phone-to-phone via PC)
+    val relaySessionFiles = ConcurrentHashMap<String, MutableList<Pair<String, String>>>() // sessionId -> [(fileName, absolutePath)]
+    val relaySessionAliases = ConcurrentHashMap<String, String>() // sessionId -> alias
+    private val relaySessionTime = ConcurrentHashMap<String, Long>()
+    private var relayCleanupJob: kotlinx.coroutines.Job? = null
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun trackRelayFile(sessionId: String, fileName: String, absolutePath: String, senderAlias: String) {
+        val list = relaySessionFiles.getOrPut(sessionId) { mutableListOf() }
+        synchronized(list) {
+            list.add(fileName to absolutePath)
+        }
+        relaySessionAliases[sessionId] = senderAlias
+        relaySessionTime[sessionId] = System.currentTimeMillis()
+
+        if (relayCleanupJob?.isActive != true) {
+            relayCleanupJob = GlobalScope.launch(Dispatchers.IO) {
+                while (true) {
+                    delay(60_000L)
+                    val now = System.currentTimeMillis()
+                    val stale = relaySessionTime.entries.filter { (now - it.value) > 10 * 60 * 1000L }.map { it.key }
+                    for (id in stale) {
+                        relaySessionFiles.remove(id)
+                        relaySessionAliases.remove(id)
+                        relaySessionTime.remove(id)
+                    }
+                    if (relaySessionTime.isEmpty()) break
+                }
+            }
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun hostAndPushAsync(
         targetFingerprint: String,

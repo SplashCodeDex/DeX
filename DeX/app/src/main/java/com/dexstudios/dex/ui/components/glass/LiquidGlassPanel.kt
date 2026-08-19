@@ -41,15 +41,15 @@ fun LiquidGlassPanel(
                 blur(config.blurRadius.toPx())
                 if ((config.lensHeight > 0.dp) && (config.lensAmount > 0.dp)) {
                     lens(
-                        refractionHeight = config.lensHeight.toPx(),
-                        refractionAmount = config.lensAmount.toPx(),
+                        refractionHeight = (config.lensHeight * config.restRefraction).toPx(),
+                        refractionAmount = (config.lensAmount * config.restRefraction).toPx(),
                         depthEffect = config.depthEffect,
                         chromaticAberration = config.chromaticAberration,
                     )
                 }
             },
             highlight = { config.highlight },
-            shadow = { Shadow(radius = config.shadowRadius, color = config.shadowColor) },
+            shadow = { Shadow(radius = config.shadowRadius, color = config.shadowColor, offset = config.shadowOffset) },
             innerShadow = { config.innerShadow },
             onDrawSurface = {
                 if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
