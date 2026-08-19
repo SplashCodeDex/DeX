@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.max
+import kotlinx.coroutines.isActive
 
 /**
  * Central State Machine and Kinematics Controller for the DeX Floating Docked Window.
@@ -86,6 +87,8 @@ class DockedWindowStateController(
         windowState.position = WindowPosition(defaultX.dp, defaultY.dp)
     }
 
+    private var dragDropDeferJob: kotlinx.coroutines.Job? = null
+
     /**
      * 5-point safety guard for focus loss deactivation:
      * Card auto-dismisses on click-outside UNLESS:
@@ -94,14 +97,83 @@ class DockedWindowStateController(
      * 3. isPairingActive: Active PIN/QR pairing session in progress
      * 4. isExpanded: File Explorer / Settings drawer is open (external drag-and-drop)
      * 5. isModalDialogOpen: Native OS file/folder picker dialog currently has focus
+     * 6. JNA Drag-and-Drop Hook: User is actively holding the left mouse button (dragging a file)
      */
     fun shouldDismissOnFocusLoss(): Boolean {
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            try {
+                val lButton = com.sun.jna.platform.win32.User32.INSTANCE.GetAsyncKeyState(0x01).toInt()
+                if ((lButton and 0x8000) != 0) {
+                    // Left mouse is actively held down (likely an external drag and drop in progress)
+                    deferHideOnDragDrop()
+                    return false
+                }
+            } catch (e: Throwable) {
+                // Fallback gracefully if JNA isn't available
+            }
+        }
         return !isPinned && !isShowingTransition && !isPairingActive && !isExpanded && !isModalDialogOpen
+    }
+
+    private fun deferHideOnDragDrop() {
+        if (dragDropDeferJob?.isActive == true) return
+        dragDropDeferJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                while (isActive) {
+                    val lButton = com.sun.jna.platform.win32.User32.INSTANCE.GetAsyncKeyState(0x01).toInt()
+                    if ((lButton and 0x8000) == 0) {
+                        // Mouse released!
+                        val point = com.sun.jna.platform.win32.WinDef.POINT()
+                        com.sun.jna.platform.win32.User32.INSTANCE.GetCursorPos(point)
+                        
+                        val winX = windowState.position.x.value.toInt()
+                        val winY = windowState.position.y.value.toInt()
+                        
+                        val currentCardW = when (expandedPanel) {
+                            ExpandedPanel.Settings -> 675
+                            ExpandedPanel.Pairing -> 400
+                            ExpandedPanel.FileExplorer -> 1054
+                            null -> contractedCardWidth
+                        }
+                        val currentCardH = if (isExpanded) 625 else contractedCardHeight
+                        
+                        val contentLeft = winX + canvasWidth - cardMargin - currentCardW
+                        val contentTop = winY + cardMargin
+                        
+                        val isInside = point.x >= contentLeft && point.x <= contentLeft + currentCardW &&
+                                       point.y >= contentTop && point.y <= contentTop + currentCardH
+                        
+                        if (!isInside && shouldDismissOnFocusLoss()) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                hide()
+                            }
+                        }
+                        break
+                    }
+                    kotlinx.coroutines.delay(50)
+                }
+            } catch (e: Throwable) {}
+        }
+    }
+
+    fun validateAndSnapToBounds() {
+        val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
+        val currentX = windowState.position.x.value.toInt()
+        val currentY = windowState.position.y.value.toInt()
+        
+        // If window is outside the boundaries of the active work area
+        val height = workArea.bottom - workArea.top
+        if (currentX < workArea.left || currentX > workArea.left + workArea.width ||
+            currentY < workArea.top || currentY > workArea.top + height) {
+            recalculateDefaultDockPosition()
+        }
     }
 
     fun show() {
         if (!hasBeenDragged) {
             recalculateDefaultDockPosition()
+        } else {
+            validateAndSnapToBounds()
         }
         isVisible = true
     }

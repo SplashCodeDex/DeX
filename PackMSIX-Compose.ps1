@@ -63,7 +63,7 @@ try {
          xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap desktop desktop2 rescap">
-  <Identity Name="CodeDeX.DeX" Publisher="CN=CodeDeX" Version="10.1.1.0" ProcessorArchitecture="x64" />
+  <Identity Name="CodeDeX.DeX" Publisher="CN=CodeDeX" Version="10.1.2.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>DeX - Next Gen Local Send</DisplayName>
     <PublisherDisplayName>CodeDeX</PublisherDisplayName>

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.collectLatest
 import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -302,12 +303,12 @@ fun FloatingPillNavBar(
                     )
 
                     val animatedRestRefraction by animateFloatAsState(
-                        targetValue = if (isHighlighterActive) 0.56f else 0.0f,
+                        targetValue = if (isHighlighterActive) 0.56f else 0.25f,
                         animationSpec = spring(stiffness = Spring.StiffnessLow),
                         label = "navRestRefraction"
                     )
                     val animatedHighlightAlpha by animateFloatAsState(
-                        targetValue = if (isHighlighterActive) 0.15f else 0.0f,
+                        targetValue = if (isHighlighterActive) 0.75f else 0.4f,
                         animationSpec = tween(300),
                         label = "navHighlightAlpha"
                     )
@@ -343,6 +344,11 @@ fun FloatingPillNavBar(
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
                             clip = false // Allow liquid bulge outside bounds
                         }
+                        .shinyGlare(
+                            shape = CircleShape,
+                            width = 2.dp,
+                            intensity = if (isHighlighterActive) 1.0f else 0.6f
+                        )
                         .zIndex(10f)
 
                     // Unified Highlighter: Always a LiquidGlassPanel, but its effects animate to 0 at rest

@@ -9,6 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
@@ -71,18 +73,27 @@ data class PopInTransitionState(
  */
 @Composable
 fun rememberPopInTransition(visible: Boolean): PopInTransitionState {
+    var isVisibleState by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(visible) {
+        if (visible) {
+            // Delay to allow Windows Desktop Window Manager (DWM) to finish native window mapping/fade-in
+            kotlinx.coroutines.delay(150)
+        }
+        isVisibleState = visible
+    }
+
     val scale = animateFloatAsState(
-        targetValue = if (visible) 1.0f else 0.85f,
+        targetValue = if (isVisibleState) 1.0f else 0.85f,
         animationSpec = DockCardAnimations.PopInScaleSpec,
         label = "popInScale"
     )
     val translateY = animateDpAsState(
-        targetValue = if (visible) 0.dp else 15.dp,
+        targetValue = if (isVisibleState) 0.dp else 15.dp,
         animationSpec = DockCardAnimations.PopInTranslateYSpec,
         label = "popInTranslateY"
     )
     val alpha = animateFloatAsState(
-        targetValue = if (visible) 1.0f else 0.0f,
+        targetValue = if (isVisibleState) 1.0f else 0.0f,
         animationSpec = DockCardAnimations.PopInAlphaSpec,
         label = "popInAlpha"
     )
@@ -107,59 +118,3 @@ fun Modifier.popInTransition(visible: Boolean): Modifier {
     }
 }
 
-/**
- * Hyper-fluid Dynamic Island transition.
- * Animates the clip path from a small pill shape to the full bounds,
- * anchored to the TopEnd (top-right) corner.
- */
-@Composable
-fun Modifier.dynamicIslandTransition(visible: Boolean): Modifier {
-    val progress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.65f, stiffness = 200f),
-        label = "islandProgress"
-    )
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 150, easing = LinearEasing),
-        label = "islandAlpha"
-    )
-
-    return this.graphicsLayer {
-        this.alpha = alpha
-        this.clip = true
-        
-        // Physical bounds anchored to TopEnd
-        val pillWidth = 160.dp.toPx()
-        val pillHeight = 48.dp.toPx()
-        
-        val currentWidth = pillWidth + (size.width - pillWidth) * progress
-        val currentHeight = pillHeight + (size.height - pillHeight) * progress
-        
-        val minRadius = 24.dp.toPx()
-        val maxRadius = 34.dp.toPx()
-        val currentRadius = minRadius + (maxRadius - minRadius) * progress
-        
-        // TopEnd anchor means X starts at (size.width - currentWidth)
-        val startX = size.width - currentWidth
-        val startY = 0f
-        
-        this.shape = object : androidx.compose.ui.graphics.Shape {
-            override fun createOutline(
-                size: androidx.compose.ui.geometry.Size,
-                layoutDirection: androidx.compose.ui.unit.LayoutDirection,
-                density: androidx.compose.ui.unit.Density
-            ): androidx.compose.ui.graphics.Outline {
-                return androidx.compose.ui.graphics.Outline.Rounded(
-                    androidx.compose.ui.geometry.RoundRect(
-                        left = startX,
-                        top = startY,
-                        right = size.width,
-                        bottom = currentHeight,
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(currentRadius, currentRadius)
-                    )
-                )
-            }
-        }
-    }
-}

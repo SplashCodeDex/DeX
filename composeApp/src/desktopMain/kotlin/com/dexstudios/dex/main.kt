@@ -65,8 +65,12 @@ fun main() {
         }
 
         LaunchedEffect(Unit) {
-            com.dexstudios.dex.desktop.jna.WiggleToOpenService.start {
-                controller.show()
+            com.dexstudios.dex.desktop.jna.WiggleToOpenService.start(
+                onWake = { controller.hide() },
+                onTrigger = { controller.show() }
+            )
+            com.dexstudios.dex.desktop.jna.GlobalShortcutService.start {
+                controller.toggleVisibility()
             }
             com.dexstudios.dex.desktop.jna.ClipboardSyncService.start()
         }

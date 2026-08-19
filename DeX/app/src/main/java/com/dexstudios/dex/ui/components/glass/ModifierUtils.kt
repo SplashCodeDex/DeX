@@ -28,7 +28,7 @@ import kotlin.math.sin
  */
 fun Modifier.shinyGlare(
     shape: Shape,
-    width: Dp = 1.dp,
+    width: Dp = LiquidGlassTokens.GlareWidth,
     tint: Color = Color.White,
     angle: Float = LiquidGlassTokens.GlareAngle,
     intensity: Float = LiquidGlassTokens.GlareFactor
@@ -76,18 +76,18 @@ private class ShinyGlareNode(
         val dx = cos(angleRad)
         val dy = sin(angleRad)
 
-        // Map angle to start/end points of the linear gradient
-        // We use a large span (1000f) to ensure the linear gradient "sweep"
-        // feels consistent across different component sizes.
-        val start = Offset(500f - dx * 500f, 500f - dy * 500f)
-        val end = Offset(500f + dx * 500f, 500f + dy * 500f)
+        // Map angle to start/end points of the linear gradient relative to the center.
+        // We use the diagonal length as a span to ensure the gradient covers the entire shape.
+        val radius = kotlin.math.sqrt(size.width * size.width + size.height * size.height) / 2f
+        val center = Offset(size.width / 2f, size.height / 2f)
+
+        val start = center - Offset(dx * radius, dy * radius)
+        val end = center + Offset(dx * radius, dy * radius)
 
         val brush = Brush.linearGradient(
             0.0f to tint.copy(alpha = 0f),
-            0.45f to tint.copy(alpha = 0.05f),
-            0.5f to tint.copy(alpha = intensity),
-            0.55f to tint.copy(alpha = 0.05f),
-            1.0f to tint.copy(alpha = 0f),
+            0.3f to tint.copy(alpha = 0.05f),
+            1.0f to tint.copy(alpha = intensity),
             start = start,
             end = end
         )

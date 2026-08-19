@@ -16,6 +16,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.contentOrNull
 import io.ktor.util.generateNonce
 
 import kotlin.time.Duration.Companion.milliseconds
@@ -32,7 +33,7 @@ class MessageHandler(
         try {
             println("Received message from $senderIp:$senderPort")
             val jsonObject = json.decodeFromString<JsonObject>(text)
-            val type = jsonObject["type"]?.jsonPrimitive?.content ?: return
+            val type = jsonObject["type"]?.jsonPrimitive?.contentOrNull ?: return
             val dataElement = jsonObject["data"] ?: return
 
             when (type) {
@@ -216,7 +217,7 @@ class MessageHandler(
 
     /** The PC revoked its trust in us. We must forget it locally so we don't incorrectly show it as "Trusted". */
     private fun handleUnpair(dataElement: JsonElement) {
-        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.content
+        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
         if (!fingerprint.isNullOrBlank()) {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { DeviceManager.removePairedFingerprint(fingerprint) }
             println("PC $fingerprint requested unpair; removed from local trusted list")
@@ -224,8 +225,8 @@ class MessageHandler(
     }
 
     private fun handleTrustCheck(dataElement: JsonElement) {
-        val isTrustedByPC = (dataElement as? JsonObject)?.get("isTrusted")?.jsonPrimitive?.content?.toBoolean() ?: false
-        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.content
+        val isTrustedByPC = (dataElement as? JsonObject)?.get("isTrusted")?.jsonPrimitive?.contentOrNull?.toBoolean() ?: false
+        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
         if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
             if (AuthState.pairedFingerprints.value.contains(fingerprint)) {
                 println("PC $fingerprint reported we are not trusted. Downgrading local trust.")
@@ -236,9 +237,9 @@ class MessageHandler(
         }
     }
 
-    /** The PC pushed clipboard text over the WebSocket — write it to the phone's clipboard. */
+    /** The PC pushed clipboard text over the WebSocket - write it to the phone's clipboard. */
     private fun handleSetClipboard(dataElement: JsonElement) {
-        val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.content
+        val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.contentOrNull
         if (text.isNullOrBlank()) {
             println("set-clipboard with empty text, ignoring")
             return
@@ -282,5 +283,6 @@ class MessageHandler(
         const val GRANT_WAIT_MS = 180_000L
     }
 }
+
 
 

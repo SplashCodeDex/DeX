@@ -55,3 +55,10 @@ Archived_Legacy_WPF/**/oauth.local.json
 views.txt
 
 DeX/Problems/
+MSIX_Compose_Payload/
+oauth.local.json
+*.dll
+*.exe
+*.pdb
+*.deps.json
+*.runtimeconfig.json

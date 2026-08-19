@@ -77,7 +77,7 @@ class UdpMulticastManager(
     }
 
     private fun handleIncomingPacket(packet: DatagramPacket) {
-        val msg = String(packet.data, 0, packet.length)
+        val msg = String(packet.data, 0, packet.length, Charsets.UTF_8)
         runCatching {
             val json = JSONObject(msg)
             val fp = json.optString("fingerprint", "")

@@ -15,6 +15,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.awt.Desktop
 import java.io.File
 import java.net.URI
@@ -144,7 +145,7 @@ object GoogleOAuth {
 
             val responseBody = response.bodyAsText()
             val jsonResponse = json.decodeFromString<JsonObject>(responseBody)
-            val idToken = jsonResponse["id_token"]?.jsonPrimitive?.content ?: return null
+            val idToken = jsonResponse["id_token"]?.jsonPrimitive?.contentOrNull ?: return null
 
             val parts = idToken.split(".")
             if (parts.size != 3) return null
@@ -250,3 +251,4 @@ object GoogleOAuth {
         return candidates.firstOrNull { it.exists() && it.isFile }
     }
 }
+

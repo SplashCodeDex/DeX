@@ -19,6 +19,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -169,17 +170,17 @@ class DiscoveryEngine(
                     if (fp.isNotBlank()) {
                         val dto = RegisterDto(
                             alias = alias,
-                            version = json["version"]?.jsonPrimitive?.content ?: "2.0",
-                            deviceModel = json["deviceModel"]?.jsonPrimitive?.content ?: "Windows PC",
-                            deviceType = json["deviceType"]?.jsonPrimitive?.content ?: "desktop",
+                            version = json["version"]?.jsonPrimitive?.contentOrNull ?: "2.0",
+                            deviceModel = json["deviceModel"]?.jsonPrimitive?.contentOrNull ?: "Windows PC",
+                            deviceType = json["deviceType"]?.jsonPrimitive?.contentOrNull ?: "desktop",
                             fingerprint = fp,
-                            port = json["port"]?.jsonPrimitive?.content?.toIntOrNull() ?: port,
-                            quicPort = json["quicPort"]?.jsonPrimitive?.content?.toIntOrNull() ?: DeXPorts.QUIC,
-                            tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.content?.toIntOrNull() ?: DeXPorts.PULL,
-                            protocol = json["protocol"]?.jsonPrimitive?.content ?: "https",
+                            port = json["port"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: port,
+                            quicPort = json["quicPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.QUIC,
+                            tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.PULL,
+                            protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
                             download = false,
-                            identityHash = json["identityHash"]?.jsonPrimitive?.content?.ifBlank { null },
-                            googleSub = json["googleSub"]?.jsonPrimitive?.content?.ifBlank { null }
+                            identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
+                            googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null }
                         )
                         addDevice(DiscoveredDevice(ip = ip, info = dto))
                     }
@@ -188,3 +189,4 @@ class DiscoveryEngine(
         }
     }
 }
+

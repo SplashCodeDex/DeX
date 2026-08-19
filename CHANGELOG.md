@@ -1,5 +1,13 @@
 # Changelog
 
+## [10.1.2.0] - 2026-08-19
+### Fixed
+- **[major] Comprehensive Edge Case Eradication (20 Scenarios)**: Implemented 4 architectural components to resolve 20 window focus and visibility edge cases:
+  - **JNA Drag-and-Drop Shield**: Modifies the focus-loss guard to query the global mouse state (`User32.INSTANCE.GetAsyncKeyState`). Defers hiding when dragging external files into DeX, fixing the issue where clicking a file to drag it instantly dismissed the DeX window.
+  - **Global Keyboard Hook (`GlobalShortcutService`)**: Binds `Win + Shift + D` using a low-level JNA keyboard hook (`WH_KEYBOARD_LL`) to universally toggle the DeX UI, and binds `Escape` to globally dismiss the window.
+  - **Display Bounds Watcher**: Automatically snaps the window back to the primary desktop dock bounds upon `show()` if a monitor disconnect or resolution scaling change stranded it off-screen.
+  - **System Power Resume Watcher**: Enhances the `WiggleToOpenService` with a 5000ms loop time-drift detector to auto-hide and reset the UI cleanly when the PC wakes up from sleep or a locked session.
+
 ## [10.1.1.0] - 2026-08-19
 ### Fixed
 - **[patch] Tray Icon Focus-Loss Race Condition (Desktop)**: Fixed an issue where clicking the tray icon while the app had focus would cause the app to hide and immediately reappear. This was caused by the window losing focus (triggering an auto-hide) a fraction of a second before the tray click action (which toggled it back to visible). Added a 250ms debounce threshold linking focus loss to the tray click to cleanly suppress the race condition.

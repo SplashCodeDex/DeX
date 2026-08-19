@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.contentOrNull
 
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -69,10 +70,10 @@ class AndroidUdpService(
     }
 
     private fun handleIncomingPacket(packet: DatagramPacket) {
-        val msg = String(packet.data, 0, packet.length)
+        val msg = String(packet.data, 0, packet.length, Charsets.UTF_8)
         runCatching {
             val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(msg).jsonObject
-            val fp = json["fingerprint"]?.jsonPrimitive?.content ?: ""
+            val fp = json["fingerprint"]?.jsonPrimitive?.contentOrNull ?: ""
             if (fp.isEmpty() || fp == localInfo?.fingerprint) return
 
             val ip = packet.address.hostAddress ?: return
@@ -81,18 +82,18 @@ class AndroidUdpService(
                 DiscoveredDevice(
                     ip = ip,
                     info = RegisterDto(
-                        alias = json["alias"]?.jsonPrimitive?.content ?: "Unknown",
-                        version = json["version"]?.jsonPrimitive?.content ?: "2.0",
-                        deviceModel = json["deviceModel"]?.jsonPrimitive?.content ?: "Unknown",
-                        deviceType = json["deviceType"]?.jsonPrimitive?.content ?: "unknown",
+                        alias = json["alias"]?.jsonPrimitive?.contentOrNull ?: "Unknown",
+                        version = json["version"]?.jsonPrimitive?.contentOrNull ?: "2.0",
+                        deviceModel = json["deviceModel"]?.jsonPrimitive?.contentOrNull ?: "Unknown",
+                        deviceType = json["deviceType"]?.jsonPrimitive?.contentOrNull ?: "unknown",
                         fingerprint = fp,
                         port = json["port"]?.jsonPrimitive?.intOrNull ?: DeXPorts.HTTPS,
                         quicPort = json["quicPort"]?.jsonPrimitive?.intOrNull ?: DeXPorts.QUIC,
                         tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.intOrNull ?: DeXPorts.PULL,
-                        protocol = json["protocol"]?.jsonPrimitive?.content ?: "https",
+                        protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
                         download = json["download"]?.jsonPrimitive?.booleanOrNull ?: true,
-                        identityHash = json["identityHash"]?.jsonPrimitive?.content?.ifBlank { null },
-                        googleSub = json["googleSub"]?.jsonPrimitive?.content?.ifBlank { null }
+                        identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
+                        googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null }
                     )
                 )
             )
@@ -139,3 +140,4 @@ class AndroidUdpService(
         runCatching { udpSocket?.close() }
     }
 }
+

@@ -8,7 +8,7 @@ import kotlin.math.abs
 object WiggleToOpenService {
     private var job: Job? = null
     
-    fun start(onTrigger: () -> Unit) {
+    fun start(onWake: (() -> Unit)? = null, onTrigger: () -> Unit) {
         if (!System.getProperty("os.name").lowercase().contains("windows")) {
             println("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
             return
@@ -19,6 +19,8 @@ object WiggleToOpenService {
             var index = 0
             
             while (isActive) {
+                val loopStartTime = System.currentTimeMillis()
+                
                 val point = POINT()
                 if (User32.INSTANCE.GetCursorPos(point)) {
                     buffer[index % 20] = point.x
@@ -58,6 +60,11 @@ object WiggleToOpenService {
                     }
                 }
                 delay(50)
+                
+                // If delay(50) + processing took longer than 5000ms, PC likely slept and woke up
+                if (System.currentTimeMillis() - loopStartTime > 5000L) {
+                    withContext(Dispatchers.Main) { onWake?.invoke() }
+                }
             }
         }
     }

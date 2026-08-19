@@ -25,6 +25,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.contentOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
@@ -60,7 +61,7 @@ class FileShareManager(
 
     /** Handles an incoming PC request; [data] is the JSON `data` object of the message. */
     fun handleRequest(type: String, data: JsonObject) {
-        val requestId = data["requestId"]?.jsonPrimitive?.content ?: return
+        val requestId = data["requestId"]?.jsonPrimitive?.contentOrNull ?: return
         when (type) {
             "list-shared-folders" -> replyList(requestId)
             "browse-folder" -> replyBrowse(requestId, data)
@@ -112,9 +113,9 @@ class FileShareManager(
     }
 
     private fun replyBrowse(requestId: String, data: JsonObject) {
-        val folderUri = data["folderUri"]?.jsonPrimitive?.content
+        val folderUri = data["folderUri"]?.jsonPrimitive?.contentOrNull
         val entries = if (folderUri.isNullOrBlank()) emptyList() else {
-            runCatching { SafStorage.listFolderEntries(context, folderUri.toUri()) }.getOrElse {
+            runCatching { SafStorage.listFolderEntries(context, folderUri!!.toUri()) }.getOrElse {
                 Timber.e(it, "Browse failed for $folderUri")
                 emptyList()
             }
@@ -413,4 +414,5 @@ object SharedFolderGrantState {
 
 /** Resolved details for a file the PC wants pulled back. */
 private data class FileMeta(val uri: String, val name: String, val size: Long)
+
 

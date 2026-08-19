@@ -26,6 +26,8 @@ object LiquidGlassTokens {
     val GlareAngle = -52.82f
     val GlareHardness = 20f
     val GlareFactor = 0.78f
+    val GlareWidth = 1.dp
+    val GlareRestAlpha = 0.35f
     val SurfaceTint = Color.Black
     val DarkTintAlpha = 0.23f
     val ChromaticAberration = false
@@ -122,10 +124,10 @@ object LiquidGlassPresets {
     val NavBar: LiquidGlassConfig
         @Composable get() = resolve(
             MasterSpec.copy(
-                blurRadius = 1.dp,
+                blurRadius = 5.dp,
                 restRefraction = 0.8f,
                 shadowRadius = 12.dp,
-                shadowColor = Color.Black.copy(alpha = 0.2f)
+                shadowColor = Color.Black.copy(alpha = 0.6f)
             )
         )
 

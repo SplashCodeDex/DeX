@@ -14,9 +14,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
-import com.dexstudios.dex.window.kinematics.dynamicIslandTransition
+import com.dexstudios.dex.window.kinematics.popInTransition
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.koin.compose.koinInject
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.KeyEventType
 
 /**
  * Root Floating Docked Card Window Canvas (1420x760 dp).
@@ -49,7 +54,17 @@ fun FloatingDockCard(
 
     CompositionLocalProvider(LocalBackdrop provides backdrop) {
         // 1420x760 Transparent Bounding Canvas
-        Box(modifier = modifier.fillMaxSize()) {
+        Box(modifier = modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && !controller.isPairingActive) {
+                    controller.hide()
+                    true
+                } else {
+                    false
+                }
+            }
+        ) {
             // The actual card container, anchored strictly to TopEnd with 25dp padding
             DockCardContent(
                 controller = controller,
@@ -73,7 +88,7 @@ fun FloatingDockCard(
                             32f
                         )
                     }
-                    .dynamicIslandTransition(visible = controller.isVisible),
+                    .popInTransition(visible = controller.isVisible),
                 backdrop = null,
                 onDismiss = onDismiss,
                 onExitEngine = onExitEngine,
