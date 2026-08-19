@@ -471,7 +471,7 @@ fun PinPairingPanel(
         )
         is PairingState.QrPhase -> if (isQrMode) {
             PinPairingUiState.QrView(
-                qrPayload = "dex://${s.ip}:${s.fingerprint}",
+                qrPayload = com.dexstudios.dex.window.components.QrPayloadGenerator.generateLocalPayload(),
                 remainingSeconds = remainingSeconds
             )
         } else {
@@ -482,7 +482,7 @@ fun PinPairingPanel(
         }
         is PairingState.PinPhase -> if (isQrMode) {
             PinPairingUiState.QrView(
-                qrPayload = "dex://${s.ip}:${s.fingerprint}",
+                qrPayload = com.dexstudios.dex.window.components.QrPayloadGenerator.generateLocalPayload(),
                 remainingSeconds = remainingSeconds
             )
         } else {
@@ -518,3 +518,4 @@ fun PinPairingPanel(
         modifier = modifier
     )
 }
+
