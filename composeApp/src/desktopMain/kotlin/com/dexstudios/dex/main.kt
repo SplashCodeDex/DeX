@@ -50,10 +50,13 @@ fun main() {
         }
     }
 
+    val discoveryEngine = org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.core.network.DiscoveryEngine>()
+    discoveryEngine.startDiscovery()
+
     try {
         DeXServer.start()
     } catch (e: Exception) {
-        println("DeXServer already running or failed to start: ${e.message}")
+        println("DeXServer already running or failed to start: ")
     }
 
     application {
@@ -189,3 +192,4 @@ fun main() {
         }
     }
 }
+
