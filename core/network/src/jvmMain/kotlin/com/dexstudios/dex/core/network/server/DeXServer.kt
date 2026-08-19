@@ -57,7 +57,7 @@ object DeXServer {
                 deviceRoutes(discoveryEngine = discoveryEngine, pairingEngine = pairingEngine)
                 shareRoutes()
                 controlRoutes()
-                webSocketRoutes()
+                webSocketRoutes(pairingEngine)
                 fileExplorerRoutes()
                 clipboardRoutes()
                 settingsRoutes()
@@ -93,3 +93,4 @@ object DeXServer {
         server3 = null
     }
 }
+

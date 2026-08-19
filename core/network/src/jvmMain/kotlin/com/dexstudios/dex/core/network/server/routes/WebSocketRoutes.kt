@@ -11,7 +11,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 
-fun Route.webSocketRoutes() {
+fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         if (fingerprint != null) {
@@ -44,6 +44,10 @@ fun Route.webSocketRoutes() {
                                     DexRequestStore.completeRequest(reqId, dataObj ?: jsonObject)
                                 }
                             }
+                                                        "pin-digit-entered" -> {
+                                val count = jsonObject["count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                                pairingEngine.handlePinDigitEntered(count)
+                            }
                             "pull-progress" -> {
                                 val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
                                 if (reqId != null && dataObj != null) {
@@ -70,3 +74,4 @@ fun Route.webSocketRoutes() {
         }
     }
 }
+
