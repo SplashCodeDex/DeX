@@ -67,6 +67,7 @@ class DesktopUdpService : IDiscoveryService {
 
     private fun handleIncomingPacket(packet: DatagramPacket) {
         val msg = String(packet.data, 0, packet.length, Charsets.UTF_8)
+        runCatching { java.io.File("C:\\Users\\NicoDex\\Desktop\\dex_udp_debug.log").appendText("Received from ${packet.address.hostAddress}: $msg\\n") }
         runCatching {
             val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(msg).jsonObject
             val fp = json["fingerprint"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -94,13 +95,14 @@ class DesktopUdpService : IDiscoveryService {
                 )
             )
             sendReply(packet)
-        }
+        }.onFailure { e -> e.printStackTrace() }
     }
 
     private fun sendReply(packet: DatagramPacket) {
         val info = localInfo ?: return
         runCatching {
-            val replyJson = buildJsonObject {
+            java.io.File("C:\\Users\\NicoDex\\Desktop\\dex_udp_debug.log").appendText("Broadcasting from Desktop!\\n")
+                        val replyJson = buildJsonObject {
                 put("alias", info.alias)
                 put("version", info.version)
                 put("deviceModel", info.deviceModel)
@@ -122,10 +124,11 @@ class DesktopUdpService : IDiscoveryService {
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                 runCatching {
                     if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
-                        httpsSocket?.networkInterface = ni
-                        httpsSocket?.send(mcastPacketHttps)
-                        legacySocket?.networkInterface = ni
-                        legacySocket?.send(mcastPacketLegacy)
+                        MulticastSocket().use { mSocket ->
+                            mSocket.networkInterface = ni
+                            mSocket.send(mcastPacketHttps)
+                            mSocket.send(mcastPacketLegacy)
+                        }
                     }
                 }
             }
@@ -139,6 +142,7 @@ class DesktopUdpService : IDiscoveryService {
                 val info = localInfo
                 if (info != null) {
                     runCatching {
+                        java.io.File("C:\\Users\\NicoDex\\Desktop\\dex_udp_debug.log").appendText("Broadcasting from Desktop!\\n")
                         val replyJson = buildJsonObject {
                             put("alias", info.alias)
                             put("version", info.version)
@@ -200,5 +204,10 @@ class DesktopUdpService : IDiscoveryService {
         runCatching { legacySocket?.close() }
     }
 }
+
+
+
+
+
 
 
