@@ -117,7 +117,7 @@ fun BottomDockPanel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )

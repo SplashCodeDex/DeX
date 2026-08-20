@@ -107,7 +107,7 @@ fun TopActionsPanel(
         ) {
             Column {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     thickness = 1.dp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -165,7 +165,7 @@ fun TopActionsPanel(
         }
 
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp)
         )

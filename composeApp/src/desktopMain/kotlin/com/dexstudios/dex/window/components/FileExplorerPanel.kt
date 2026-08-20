@@ -334,7 +334,7 @@ fun FileExplorerPanel(
                         imageVector = MaterialSymbols.Search,
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp).size(16.dp)
+                        modifier = Modifier.padding(end = 8.dp).size(14.dp)
                     )
 
                     BasicTextField(
@@ -342,9 +342,10 @@ fun FileExplorerPanel(
                         onValueChange = { searchQuery = it },
                         textStyle = TextStyle(
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 13.sp
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
                         ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         decorationBox = { innerTextField ->
@@ -358,7 +359,8 @@ fun FileExplorerPanel(
                                 Text(
                                     text = hint,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    fontSize = 13.sp,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -428,14 +430,16 @@ fun FileExplorerPanel(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (debouncedQuery.isNotBlank()) "No matching files" else "Folder is empty",
+                        text = if (debouncedQuery.isNotBlank()) "No matching files" else "No transfers yet",
                         fontSize = 14.sp,
+                        lineHeight = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                     Text(
                         text = if (mode == ExplorerMode.History) "Received files appear here" else "Shared folders from phone appear here",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
+                        lineHeight = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
@@ -638,18 +642,12 @@ private fun FileGridItemCard(
 
     val scale by animateFloatAsState(
         targetValue = when {
-            isPressed -> 0.94f
-            isHovered -> 1.05f
+            isPressed -> 0.85f
+            isHovered -> 1.08f
             else -> 1.0f
         },
-        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        animationSpec = if (isPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
         label = "itemScale"
-    )
-
-    val translationY by animateDpAsState(
-        targetValue = if (isHovered && !isPressed) (-3).dp else 0.dp,
-        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-        label = "itemTranslateY"
     )
 
     // Decode Base64 micro-thumbnail if present
@@ -670,22 +668,21 @@ private fun FileGridItemCard(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                this.translationY = translationY.toPx()
             }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 when {
-                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    isSelected && isHovered -> androidx.compose.ui.graphics.Color(0xFF3D3647)
+                    isSelected -> androidx.compose.ui.graphics.Color(0xFF332D3B)
+                    isHovered -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> androidx.compose.ui.graphics.Color.Transparent
                 }
             )
             .border(
-                width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.05f),
-                shape = RoundedCornerShape(14.dp)
+                width = 1.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                shape = RoundedCornerShape(10.dp)
             )
-            .hoverable(interactionSource = interactionSource)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
