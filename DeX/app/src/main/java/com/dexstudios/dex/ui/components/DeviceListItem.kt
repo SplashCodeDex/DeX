@@ -155,19 +155,20 @@ fun DeviceListItem(
             config = LiquidGlassPresets.ShinyCard.copy(shadowRadius = 4.dp)
         ) {
             // 3. UI Content Layer
-            // NOT using CompositionLocalProvider for Backdrop here to avoid recursive crash
             Box(modifier = Modifier.fillMaxSize()) {
-                // Bottom Gradient Dim for better text contrast
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0.1f to Color.Transparent,
-                                1f to Color.Black.copy(alpha = 0.95f)
+                // Bottom Gradient Dim only for trusted devices (which have wallpapers)
+                if (isTrusted) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0.1f to Color.Transparent,
+                                    1f to Color.Black.copy(alpha = 0.95f)
+                                )
                             )
-                        )
-                )
+                    )
+                }
 
                 DeviceCardUIContent(
                     device = device,
@@ -189,12 +190,17 @@ private fun DeviceCardUIContent(
     batteryIcon: ImageVector,
     onButtonClick: () -> Unit
 ) {
+    // Trusted devices use white text to contrast with the dark gradient dim.
+    // Discovered devices use onBackground to match the Scan card.
+    val textColor = if (isTrusted) Color.White else MaterialTheme.colorScheme.onBackground
+    val subtitleColor = if (isTrusted) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 24.dp, top = 24.dp),
-        verticalArrangement = Arrangement.Bottom
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.Start
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -205,7 +211,7 @@ private fun DeviceCardUIContent(
                 text = device.info.alias,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.widthIn(max = 180.dp)
@@ -223,14 +229,14 @@ private fun DeviceCardUIContent(
                     imageVector = MaterialSymbols.Wifi,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = Color.White
+                    tint = textColor
                 )
                 if (isTrusted && realBattery != null) {
                     Icon(
                         imageVector = batteryIcon,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = Color.White
+                        tint = textColor
                     )
                 }
             }
@@ -241,16 +247,26 @@ private fun DeviceCardUIContent(
         Text(
             text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = subtitleColor,
             lineHeight = 20.sp
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        val buttonColors = if (isTrusted) {
+            ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            )
+        } else {
+            ButtonDefaults.buttonColors()
+        }
+
         DeXButton(
             onClick = onButtonClick,
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = CircleShape
+            shape = CircleShape,
+            colors = buttonColors
         ) {
             Text(
                 text = if (isTrusted) "Send File" else "Connect",

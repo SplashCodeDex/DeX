@@ -3,6 +3,7 @@ package com.dexstudios.dex.ui.components.glass
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -98,25 +99,91 @@ object LiquidGlassPresets {
      * Crisp glass tuned for top-bar icon buttons.
      */
     val IconButton: LiquidGlassConfig
-        @Composable get() = resolve(
-            MasterSpec.copy(
-                shadowRadius = 4.dp
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shadowRadius = 4.dp,
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f
             )
-        )
+        }
+
+    /**
+     * Dedicated preset for the Search button (collapsed).
+     */
+    val SearchIconButton: LiquidGlassConfig
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shadowRadius = 4.dp,
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f
+            )
+        }
+
+    /**
+     * Dedicated preset for the Profile button (collapsed).
+     */
+    val ProfileIconButton: LiquidGlassConfig
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shadowRadius = 4.dp,
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f
+            )
+        }
 
     /**
      * Theme-aware preset for the expanded Dynamic Island look.
      */
     val DynamicIsland: LiquidGlassConfig
-        @Composable get() = resolve(
-            MasterSpec.copy(
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
                 shape = RoundedCornerShape(48.dp),
-                blurRadius = 4.dp,
+                blurRadius = 25.dp,
                 restRefraction = 1.05f,
                 shadowRadius = 12.dp,
-                shadowOffset = DpOffset(0.dp, 4.dp)
+                shadowOffset = DpOffset(0.dp, 4.dp),
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f
             )
-        )
+        }
+
+    /**
+     * Dedicated preset for the Search island (expanded).
+     */
+    val SearchIsland: LiquidGlassConfig
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shape = RoundedCornerShape(48.dp),
+                blurRadius = 2.dp,
+                restRefraction = 1.05f,
+                shadowRadius = 33.dp,
+                shadowOffset = DpOffset(0.dp, 36.dp),
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.5f
+            )
+        }
+
+    /**
+     * Dedicated preset for the Profile island (expanded).
+     */
+    val ProfileIsland: LiquidGlassConfig
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shape = RoundedCornerShape(48.dp),
+                blurRadius = 2.dp,
+                restRefraction = 1.05f,
+                shadowRadius = 12.dp,
+                shadowOffset = DpOffset(0.dp, 4.dp),
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f
+            )
+        }
 
     /**
      * Theme-aware preset for the floating bottom navigation bar.

@@ -234,7 +234,7 @@ fun FloatingTopAppBar(
                     width = searchWidth,
                     height = searchHeight,
                     backdrop = backdrop,
-                    config = if (isSearchExpanded) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                    config = if (isSearchExpanded) LiquidGlassPresets.SearchIsland else LiquidGlassPresets.SearchIconButton
                 ) {
                     AnimatedContent(
                         targetState = isSearchExpanded,
@@ -253,8 +253,8 @@ fun FloatingTopAppBar(
                                 Icon(
                                     imageVector = MaterialSymbols.Search,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(20.dp)
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 androidx.compose.foundation.text.BasicTextField(
@@ -264,18 +264,18 @@ fun FloatingTopAppBar(
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
                                     textStyle = TextStyle(
-                                        color = Color.White,
+                                        color = Color.Black,
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Medium
                                     ),
-                                    cursorBrush = SolidColor(Color.White),
+                                    cursorBrush = SolidColor(Color.Black),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
                                     decorationBox = { innerTextField ->
                                         if (TopAppBarState.searchQuery.isEmpty()) {
                                             Text(
                                                 "Search devices...",
-                                                color = Color.White.copy(alpha = 0.5f),
+                                                color = Color.Black.copy(alpha = 0.35f),
                                                 fontSize = 18.sp
                                             )
                                         }
@@ -285,13 +285,15 @@ fun FloatingTopAppBar(
                                 if (TopAppBarState.searchQuery.isNotEmpty()) {
                                     IconButton(
                                         onClick = { TopAppBarState.searchQuery = "" },
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(Color.Black.copy(alpha = 0.08f), CircleShape)
                                     ) {
                                         Icon(
                                             imageVector = MaterialSymbols.Close,
                                             contentDescription = "Clear",
-                                            tint = Color.White.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(20.dp)
+                                            tint = Color.Black.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
@@ -339,7 +341,7 @@ fun FloatingTopAppBar(
                     width = islandWidth,
                     height = islandHeight,
                     backdrop = backdrop,
-                    config = if (islandState != IslandContentState.IDLE && islandState != IslandContentState.COLLAPSED_TRANSFER) LiquidGlassPresets.DynamicIsland else LiquidGlassPresets.IconButton
+                    config = if (islandState != IslandContentState.IDLE && islandState != IslandContentState.COLLAPSED_TRANSFER) LiquidGlassPresets.ProfileIsland else LiquidGlassPresets.ProfileIconButton
                 ) {
                     AnimatedContent(
                         targetState = islandState,
