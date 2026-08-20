@@ -1,0 +1,23 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Dark Theme (Default) -->
+    
+    <!-- Backgrounds & Borders -->
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#16121A" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#2B2631" />
+    
+    <!-- Text -->
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="White" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A0" />
+    
+    <!-- Secondary & Status -->
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#0AE66D" />
+    <SolidColorBrush x:Key="SecondaryForegroundBrush" Color="#000000" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#FF453A" />
+    
+    <!-- Item Highlights (Selected & Hover) - 100% Solid Colors -->
+    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#2B2631" />
+    <SolidColorBrush x:Key="SecondarySelectedBrush" Color="#332D3B" />
+    <SolidColorBrush x:Key="SecondarySelectedHoverBrush" Color="#3D3647" />
+    <SolidColorBrush x:Key="SecondarySelectedBorderBrush" Color="#0AE66D" />
+</ResourceDictionary>

@@ -1,0 +1,14 @@
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\DeXShareTarget.exe
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\DeXShareTarget.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\DeXShareTarget.deps.json
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\DeXShareTarget.runtimeconfig.json
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\DeXShareTarget.pdb
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\Microsoft.Windows.SDK.NET.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\WinRT.Runtime.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\Common.Logging.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\Common.Logging.Core.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\System.Net.IPNetwork.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\Makaretu.Dns.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\Makaretu.Dns.Multicast.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\QRCoder.dll
+W:\CodeDeX\DeX\DeXShareTarget\bin\Release\net10.0-windows10.0.22000.0\win-x64\publish\SimpleBase.dll

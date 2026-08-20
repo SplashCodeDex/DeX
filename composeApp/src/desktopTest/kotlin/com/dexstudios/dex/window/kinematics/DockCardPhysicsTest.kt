@@ -50,10 +50,10 @@ class DockCardPhysicsTest {
     @Test
     fun testCalculateExpansionNudgeOnNormalScreen() {
         // Positioned at normal resting dock on 1920x1080:
-        // winX = 1920 - 1420 + 12 = 512, winY = 1040 - 430 - 38 = 572
+        // winX = 1920 - 1420 + 12 = 512, winY = 1040 - 760 + 12 = 292
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(
             currentWindowX = 512,
-            currentWindowY = 572,
+            currentWindowY = 292,
             cardWidth = 300,
             cardHeight = 430,
             expandDeltaWidth = 754,
@@ -66,8 +66,8 @@ class DockCardPhysicsTest {
         // Expanded card left: targetX + 1420 - 25 - (300 + 754) = targetX + 1395 - 1054 = targetX + 341
         // For winX = 512: expLeft = 512 + 341 = 853 >= 0 (no clipping on left, targetX remains 512)
         assertEquals(512, targetX)
-        // Resting card is 13px above taskbar, so expanding downwards by 195dp causes targetY to nudge upward
-        val expBottom = targetY + 25 + (430 + 195)
+        // With 760dp canvas, expanding upwards doesn't change bottom bounds.
+        val expBottom = targetY + 760 - 25
         assertTrue(expBottom <= testWorkArea.bottom, "expBottom ($expBottom) must not exceed workArea.bottom (1040)")
     }
 
@@ -76,7 +76,7 @@ class DockCardPhysicsTest {
         // If window is dragged near left edge so expansion would go off-screen
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(
             currentWindowX = -200,
-            currentWindowY = 572,
+            currentWindowY = 292,
             cardWidth = 300,
             cardHeight = 430,
             expandDeltaWidth = 754,

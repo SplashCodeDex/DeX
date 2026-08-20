@@ -1,0 +1,2 @@
+W:\CodeDeX\DeX\MSIX_Source\win-x64\DeXShareTarget.pdb
+W:\CodeDeX\DeX\MSIX_Source\win-x64\DeXShareTarget.exe

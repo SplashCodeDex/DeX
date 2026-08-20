@@ -94,19 +94,25 @@ object DockCardPhysics {
         expandDeltaHeight: Int,
         workArea: WorkAreaBounds,
         canvasWidth: Int = 1420,
+        canvasHeight: Int = 760,
         margin: Int = 25
     ): Pair<Int, Int> {
         val contentLeft = currentWindowX + canvasWidth - margin - cardWidth
         val contentRight = currentWindowX + canvasWidth - margin
-        val contentTop = currentWindowY + margin
+        
+        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+        
+        val contentTop = if (isMacOS) {
+            currentWindowY + margin
+        } else {
+            currentWindowY + canvasHeight - margin - cardHeight
+        }
         val contentBottom = contentTop + cardHeight
 
         val spaceLeft = contentLeft - workArea.left
         val spaceRight = workArea.right - contentRight
         val spaceUp = contentTop - workArea.top
         val spaceDown = workArea.bottom - contentBottom
-
-        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
 
         val canExpandLeft = spaceLeft >= (expandDeltaWidth + 20) || spaceLeft >= spaceRight
 
@@ -137,8 +143,8 @@ object DockCardPhysics {
                 targetY += (expandDeltaHeight - spaceUp + 20).coerceAtLeast(expandDeltaHeight)
             }
             // Due to native Compose upward offset, the expBottom is physically pinned, and expTop moves up
-            expTop = targetY + margin - expandDeltaHeight
-            expBottom = targetY + margin + cardHeight
+            expBottom = targetY + canvasHeight - margin
+            expTop = expBottom - expH
         }
 
         // Post-expansion boundary clamping: evaluate against target expanded dimensions (e.g. 1054x625 dp)

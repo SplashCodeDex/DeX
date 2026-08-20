@@ -33,7 +33,7 @@ class DockedWindowStateControllerStressTest {
     private fun createController(): DockedWindowStateController {
         val windowState = WindowState(
             size = DpSize(1420.dp, 760.dp),
-            position = WindowPosition(512.dp, 572.dp)
+            position = WindowPosition(512.dp, 292.dp)
         )
         return DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
@@ -247,8 +247,8 @@ class DockedWindowStateControllerStressTest {
         // Verify post-expansion boundaries stay within lowResWorkArea
         val expLeft = targetX + 1420 - 25 - 1054
         val expRight = targetX + 1420 - 25
-        val expTop = targetY + 25
-        val expBottom = expTop + 625
+        val expTop = targetY + 760 - 25 - 625
+        val expBottom = targetY + 760 - 25
 
         assertTrue(expLeft >= lowResWorkArea.left, "expLeft ($expLeft) must be >= 0")
         assertTrue(expTop >= lowResWorkArea.top, "expTop ($expTop) must be >= 0")

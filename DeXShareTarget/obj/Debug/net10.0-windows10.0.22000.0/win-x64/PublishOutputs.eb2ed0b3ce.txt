@@ -1,0 +1,14 @@
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\DeXShareTarget.exe
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\DeXShareTarget.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\DeXShareTarget.deps.json
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\DeXShareTarget.runtimeconfig.json
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\DeXShareTarget.pdb
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\Microsoft.Windows.SDK.NET.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\WinRT.Runtime.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\Common.Logging.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\Common.Logging.Core.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\System.Net.IPNetwork.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\Makaretu.Dns.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\Makaretu.Dns.Multicast.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\QRCoder.dll
+w:\CodeDeX\DeX\MSIX_Source\win-x64\publish\SimpleBase.dll

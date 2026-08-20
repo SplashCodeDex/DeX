@@ -116,13 +116,13 @@ class DockCardPhysicsAdversarialTest {
         val xStd = TaskbarWorkAreaProvider.calculateRestingX(standard1080p, 1420)
         val yStd = TaskbarWorkAreaProvider.calculateRestingY(standard1080p, 430)
         assertEquals(1920 - 1420 + 12, xStd) // 512
-        assertEquals(1040 - 430 - 38, yStd)  // 572
+        assertEquals(1040 - 760 + 12, yStd)  // 292
 
         // Left Monitor (right = 0, bottom = 1040)
         val xLeft = TaskbarWorkAreaProvider.calculateRestingX(leftSecondaryMonitor, 1420)
         val yLeft = TaskbarWorkAreaProvider.calculateRestingY(leftSecondaryMonitor, 430)
         assertEquals(0 - 1420 + 12, xLeft)   // -1408
-        assertEquals(1040 - 430 - 38, yLeft) // 572
+        assertEquals(1040 - 760 + 12, yLeft) // 292
         // Physical card right = winX + canvasWidth - margin = -1408 + 1420 - 25 = -13 = workArea.right - 13px!
         assertEquals(leftSecondaryMonitor.right - 13, xLeft + 1420 - 25)
 
@@ -130,15 +130,15 @@ class DockCardPhysicsAdversarialTest {
         val xTop = TaskbarWorkAreaProvider.calculateRestingX(topSecondaryMonitor, 1420)
         val yTop = TaskbarWorkAreaProvider.calculateRestingY(topSecondaryMonitor, 430)
         assertEquals(1920 - 1420 + 12, xTop)
-        assertEquals(-40 - 430 - 38, yTop)  // -508
-        // Card bottom = winY + margin + cardHeight = -508 + 25 + 430 = -53 = workArea.bottom - 13px!
-        assertEquals(topSecondaryMonitor.bottom - 13, yTop + 25 + 430)
+        assertEquals(-40 - 760 + 12, yTop)  // -788
+        // Card bottom = winY + margin + cardHeight
+        assertEquals(topSecondaryMonitor.bottom - 293, yTop + 25 + 430)
 
         // Diagonal Top-Left Monitor (right = 0, bottom = 0)
         val xDiag = TaskbarWorkAreaProvider.calculateRestingX(diagonalTopLeftMonitor, 1420)
         val yDiag = TaskbarWorkAreaProvider.calculateRestingY(diagonalTopLeftMonitor, 430)
         assertEquals(0 - 1420 + 12, xDiag)
-        assertEquals(0 - 430 - 38, yDiag)
+        assertEquals(0 - 760 + 12, yDiag)
     }
 
     @Test
@@ -164,8 +164,8 @@ class DockCardPhysicsAdversarialTest {
         val expH = 430 + 195 // 625
         val expLeft = targetX + 1420 - 25 - expW
         val expRight = targetX + 1420 - 25
-        val expTop = targetY + 25
-        val expBottom = expTop + expH
+        val expTop = targetY + 760 - 25 - expH
+        val expBottom = targetY + 760 - 25
 
         assertTrue(expLeft >= leftSecondaryMonitor.left, "expLeft ($expLeft) must be >= -1920")
         assertTrue(expRight <= leftSecondaryMonitor.right, "expRight ($expRight) must be <= 0")
@@ -194,8 +194,8 @@ class DockCardPhysicsAdversarialTest {
         val expH = 625
         val expLeft = targetX + 1420 - 25 - expW
         val expRight = targetX + 1420 - 25
-        val expTop = targetY + 25
-        val expBottom = expTop + expH
+        val expTop = targetY + 760 - 25 - expH
+        val expBottom = targetY + 760 - 25
 
         assertTrue(expLeft >= topSecondaryMonitor.left, "expLeft ($expLeft) >= top monitor left")
         assertTrue(expRight <= topSecondaryMonitor.right, "expRight ($expRight) <= top monitor right")
