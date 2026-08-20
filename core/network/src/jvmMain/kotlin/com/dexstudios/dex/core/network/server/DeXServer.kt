@@ -54,10 +54,16 @@ object DeXServer {
             routing {
                 val discoveryEngine = getKoin().get<DiscoveryEngine>()
                 val pairingEngine = getKoin().get<PairingEngine>()
+                val mirrorEngine = getKoin().get<com.dexstudios.dex.core.network.IMirrorEngine>()
+                
+                pairingEngine.outboundSender = { fp, json -> 
+                    WebSocketConnectionManager.sendRequest(fp, json) 
+                }
+
                 deviceRoutes(discoveryEngine = discoveryEngine, pairingEngine = pairingEngine)
                 shareRoutes()
                 controlRoutes()
-                webSocketRoutes(pairingEngine)
+                webSocketRoutes(pairingEngine, mirrorEngine)
                 fileExplorerRoutes()
                 clipboardRoutes()
                 settingsRoutes()

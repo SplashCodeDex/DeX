@@ -84,27 +84,29 @@ object ClipboardSyncService {
     }
 
     private fun sendToPhone(data: String) {
-        var success = false
-        try {
-            val wsEngine = GlobalContext.getOrNull()?.getOrNull<WebSocketEngine>()
-            val escapedData = data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
-            val payload = """{"type":"set-clipboard","data":{"text":"$escapedData"}}"""
-            
-            // Assuming sendToConnected isn't suspend, or launch it
-            // Wait, let's see how WebSocketEngine sends messages. I'll just use ADB as reliable fallback.
-            // If wsEngine?.broadcast is available...
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        if (!success) {
-            // ADB Fallback
-            val b64 = Base64.getEncoder().encodeToString(data.toByteArray(Charsets.UTF_8))
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                Runtime.getRuntime().exec(
-                    arrayOf("adb", "shell", "am", "broadcast", "-a", "com.dexstudios.dex.SET_CLIPBOARD", "-e", "text_b64", b64)
-                ).waitFor()
-            } catch (e: Exception) { }
+                val escapedData = data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
+                val payload = if (data.startsWith("{") && data.endsWith("}")) {
+                    data
+                } else {
+                    """{"type":"set-clipboard","data":{"text":"$escapedData"}}"""
+                }
+                
+                val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)
+                
+                if (!success) {
+                    // ADB Fallback
+                    val b64 = Base64.getEncoder().encodeToString(data.toByteArray(Charsets.UTF_8))
+                    try {
+                        Runtime.getRuntime().exec(
+                            arrayOf("adb", "shell", "am", "broadcast", "-a", "com.dexstudios.dex.SET_CLIPBOARD", "-e", "text_b64", b64)
+                        ).waitFor()
+                    } catch (e: Exception) { }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

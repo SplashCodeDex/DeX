@@ -238,7 +238,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
       exit = slideOutVertically(targetOffsetY = { it }),
       modifier = Modifier
         .align(Alignment.BottomCenter)
-        .padding(bottom = 16.dp)
+        .padding(bottom = 8.dp)
         .graphicsLayer { clip = false }
     ) {
       FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)

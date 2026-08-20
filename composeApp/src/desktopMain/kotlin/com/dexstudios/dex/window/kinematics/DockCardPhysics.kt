@@ -106,8 +106,9 @@ object DockCardPhysics {
         val spaceUp = contentTop - workArea.top
         val spaceDown = workArea.bottom - contentBottom
 
+        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+
         val canExpandLeft = spaceLeft >= (expandDeltaWidth + 20) || spaceLeft >= spaceRight
-        val canExpandDown = spaceDown >= (expandDeltaHeight + 20) || spaceDown >= spaceUp
 
         var targetX = currentWindowX
         var targetY = currentWindowY
@@ -115,17 +116,34 @@ object DockCardPhysics {
         if (!canExpandLeft) {
             targetX += (expandDeltaWidth - spaceLeft + 20).coerceAtLeast(expandDeltaWidth)
         }
-        if (!canExpandDown) {
-            targetY -= (expandDeltaHeight - spaceDown + 20).coerceAtLeast(expandDeltaHeight)
+
+        val expW = cardWidth + expandDeltaWidth
+        val expH = cardHeight + expandDeltaHeight
+        val expTop: Int
+        val expBottom: Int
+
+        if (isMacOS) {
+            // macOS uses TopDock, expands Downwards natively
+            val canExpandDown = spaceDown >= (expandDeltaHeight + 20) || spaceDown >= spaceUp
+            if (!canExpandDown) {
+                targetY -= (expandDeltaHeight - spaceDown + 20).coerceAtLeast(expandDeltaHeight)
+            }
+            expTop = targetY + margin
+            expBottom = expTop + expH
+        } else {
+            // Windows/Linux uses BottomDock, expands Upwards natively via Compose offset
+            val canExpandUp = spaceUp >= (expandDeltaHeight + 20) || spaceUp >= spaceDown
+            if (!canExpandUp) {
+                targetY += (expandDeltaHeight - spaceUp + 20).coerceAtLeast(expandDeltaHeight)
+            }
+            // Due to native Compose upward offset, the expBottom is physically pinned, and expTop moves up
+            expTop = targetY + margin - expandDeltaHeight
+            expBottom = targetY + margin + cardHeight
         }
 
         // Post-expansion boundary clamping: evaluate against target expanded dimensions (e.g. 1054x625 dp)
-        val expW = cardWidth + expandDeltaWidth
-        val expH = cardHeight + expandDeltaHeight
         val expLeft = targetX + canvasWidth - margin - expW
         val expRight = targetX + canvasWidth - margin
-        val expTop = targetY + margin
-        val expBottom = expTop + expH
 
         if (expLeft < workArea.left) targetX += (workArea.left - expLeft)
         if (expRight > workArea.right) targetX -= (expRight - workArea.right)

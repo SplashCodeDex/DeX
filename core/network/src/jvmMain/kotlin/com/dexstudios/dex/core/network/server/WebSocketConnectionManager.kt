@@ -40,6 +40,21 @@ object WebSocketConnectionManager {
         }
         return sentAny
     }
+
+    suspend fun broadcastToPaired(json: String): Boolean {
+        if (sessions.isEmpty()) return false
+        var sentAny = false
+        val pairedFps = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value
+        for ((fp, session) in sessions) {
+            if (pairedFps.contains(fp)) {
+                try {
+                    session.send(Frame.Text(json))
+                    sentAny = true
+                } catch (e: Exception) { }
+            }
+        }
+        return sentAny
+    }
 }
 
 object DexRequestStore {

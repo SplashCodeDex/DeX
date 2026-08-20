@@ -69,17 +69,17 @@ import kotlin.math.roundToInt
 sealed interface PinPairingUiState {
     data class PinView(
         val title: String = "Pairing Request",
-        val subtitle: String = "Enter This Pin On Your Phone 📱 or PC 💻",
+        val subtitle: String = "",
         val pinCode: String = "482910",
         val enteredDigitCount: Int = 0,
         val remainingSeconds: Int = 60,
         val isError: Boolean = false,
-        val statusText: String = "Enter This Pin On Your Phone 📱 or PC 💻"
+        val statusText: String = "Waiting for acceptance..."
     ) : PinPairingUiState
 
     data class QrView(
         val title: String = "Pairing Request",
-        val subtitle: String = "Scan with DeX Mobile",
+        val subtitle: String = "",
         val qrPayload: String = "",
         val remainingSeconds: Int = 60
     ) : PinPairingUiState
@@ -276,7 +276,7 @@ fun PinPairingPanel(
                                 Icon(
                                     imageVector = MaterialSymbols.Check,
                                     contentDescription = "Success",
-                                    tint = Color.Black,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(36.dp)
                                 )
                             }
@@ -294,87 +294,91 @@ fun PinPairingPanel(
         }
 
         // Action Buttons Row: Cancel, QR/PIN Toggle, Accept, Accept Once (Guest)
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Cancel Button (80dp)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onCancel() },
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Cancel",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // QR / PIN Toggle Button
-            Box(
-                modifier = Modifier
-                    .weight(1.1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onToggleQrPin() },
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (state is PinPairingUiState.QrView) MaterialSymbols.Pin else MaterialSymbols.QrCode,
-                        contentDescription = "Toggle QR/PIN",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(end = 4.dp).size(16.dp)
-                    )
+                // Cancel Button (80dp minimum)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onCancel() },
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = if (state is PinPairingUiState.QrView) "PIN CODE" else "QR CODE",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        text = "Cancel",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-            }
 
-            // Accept Button
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable { onAccept() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Accept",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
+                // QR / PIN Toggle Button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.secondary)
+                        .clickable { onToggleQrPin() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (state is PinPairingUiState.QrView) MaterialSymbols.Pin else MaterialSymbols.QrCode,
+                            contentDescription = "Toggle QR/PIN",
+                            tint = Color.Black,
+                            modifier = Modifier.padding(end = 4.dp).size(16.dp)
+                        )
+                        Text(
+                            text = if (state is PinPairingUiState.QrView) "PIN CODE" else "QR CODE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.Black
+                        )
+                    }
+                }
+
+                // Accept Button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.secondary)
+                        .clickable { onAccept() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Accept",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSecondary
+                    )
+                }
             }
 
             // Accept Once (Guest) Button
             Box(
                 modifier = Modifier
-                    .weight(1.3f)
+                    .fillMaxWidth()
                     .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                     .clickable { onAcceptOnce() },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Accept Once",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = "Accept Once (Guest)",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -504,15 +508,15 @@ fun PinPairingPanel(
         state = uiState,
         onToggleQrPin = { isQrMode = !isQrMode },
         onAccept = {
-            pairingEngine.reset()
+            pairingEngine.acceptInboundPairing(isOneTime = false)
             onClose()
         },
         onAcceptOnce = {
-            pairingEngine.reset()
+            pairingEngine.acceptInboundPairing(isOneTime = true)
             onClose()
         },
         onCancel = {
-            pairingEngine.reset()
+            pairingEngine.rejectInboundPairing()
             onClose()
         },
         modifier = modifier

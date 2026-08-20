@@ -31,8 +31,8 @@ data class WorkAreaBounds(
  */
 object TaskbarWorkAreaProvider {
 
-    const val DEFAULT_CANVAS_WIDTH = 1100
-    const val DEFAULT_CANVAS_HEIGHT = 700
+    const val DEFAULT_CANVAS_WIDTH = 1420
+    const val DEFAULT_CANVAS_HEIGHT = 760
     const val DEFAULT_CARD_CONTRACTED_WIDTH = 300
     const val DEFAULT_CARD_CONTRACTED_HEIGHT = 430
     const val CARD_MARGIN = 25
@@ -169,7 +169,10 @@ object TaskbarWorkAreaProvider {
         return if (isMacOS) {
             workArea.top + 10
         } else {
-            workArea.bottom - cardCollapsedHeight - 38
+            // Anchor the Native OS Window so the UI perfectly rests exactly 38px above the taskbar
+            // Old math: Y = workArea.bottom - 430 - 38. Canvas top = Y.
+            // New math: Canvas top = workArea.bottom - 800 + 12.
+            workArea.bottom - DEFAULT_CANVAS_HEIGHT + 12
         }
     }
 }

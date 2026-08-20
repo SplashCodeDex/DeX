@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,40 +87,63 @@ fun DragPillHandle(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (showPinButton) {
-            // Pin Button
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(if (controller.isPinned) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    .clickable { controller.isPinned = !controller.isPinned },
-                contentAlignment = Alignment.Center
-            ) {
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        var isPinTemporarilyVisible by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+        val shouldShowPin = showPinButton && (controller.isPinned || isPinTemporarilyVisible)
+
+        androidx.compose.runtime.LaunchedEffect(isPinTemporarilyVisible) {
+            if (isPinTemporarilyVisible) {
+                kotlinx.coroutines.delay(3000)
+                isPinTemporarilyVisible = false
+            }
+        }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = shouldShowPin,
+            enter = androidx.compose.animation.expandHorizontally() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.shrinkHorizontally() + androidx.compose.animation.fadeOut()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Pin Button
+                val pinHoverState = remember { MutableInteractionSource() }
+                val isPinHovered by pinHoverState.collectIsHoveredAsState()
+                
                 Box(
                     modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (controller.isPinned)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                )
-            }
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (isPinHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else Color.Transparent)
+                        .hoverable(pinHoverState)
+                        .clickable(
+                            interactionSource = pinHoverState,
+                            indication = null
+                        ) { controller.isPinned = !controller.isPinned },
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = com.dexstudios.dex.core.designsystem.icons.MaterialSymbols.Pin,
+                        contentDescription = "Pin Location",
+                        tint = if (controller.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+            }
         }
 
         // 3-Phase Drag Pill Container with Double-Click Reset & Pin Shake
         Box(
             modifier = Modifier
-                .width(76.dp)
-                .height(24.dp)
+                .width(66.dp)
+                .height(16.dp)
                 .hoverable(interactionSource)
                 .pointerInput(Unit) {
                     detectTapGestures(
+                        onPress = {
+                            isPinTemporarilyVisible = true
+                        },
                         onDoubleTap = {
                             controller.onDoubleTapReset()
                         }
@@ -128,6 +152,7 @@ fun DragPillHandle(
                 .pointerInput(density) {
                     detectDragGestures(
                         onDragStart = {
+                            isPinTemporarilyVisible = true
                             val mouseLoc = try {
                                 MouseInfo.getPointerInfo()?.location
                             } catch (_: Exception) {
@@ -165,12 +190,12 @@ fun DragPillHandle(
             // Visual pill bar
             Box(
                 modifier = Modifier
-                    .width(48.dp)
+                    .width(66.dp)
                     .height(4.dp)
                     .graphicsLayer {
                         scaleX = pillScaleX
                     }
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(2.dp))
                     .background(pillColor.copy(alpha = pillAlpha))
             )
         }

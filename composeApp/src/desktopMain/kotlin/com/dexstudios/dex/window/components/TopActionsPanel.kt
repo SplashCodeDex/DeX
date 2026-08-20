@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.size
+import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,7 +70,7 @@ fun TopActionsPanel(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp),
+                .padding(bottom = 14.dp),
             contentAlignment = Alignment.Center
         ) {
             DragPillHandle(
@@ -104,14 +107,14 @@ fun TopActionsPanel(
         ) {
             Column {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primary,
                     thickness = 1.dp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = 24.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -124,16 +127,13 @@ fun TopActionsPanel(
                     Text(
                         text = displayText,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 13.sp,
                         maxLines = 1
                     )
 
                     if (serverIpPort.isNotBlank()) {
-                        Text(
-                            text = if (isCopied) "Copied!" else "Copy IP",
-                            fontSize = 11.sp,
-                            fontWeight = if (isCopied) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable {
@@ -149,15 +149,23 @@ fun TopActionsPanel(
                                         isCopied = false
                                     }
                                 }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isCopied) MaterialSymbols.Check else MaterialSymbols.Clipboard,
+                                contentDescription = "Copy IP",
+                                tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp)
         )

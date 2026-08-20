@@ -208,7 +208,7 @@ fun SettingsPanel(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF332D3B))
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
                                 .clickable { deviceConfig.signOut() }
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
@@ -434,7 +434,7 @@ private fun SettingsItem(
                     text = badge,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isBadgeDanger) Color.White else Color.Black
+                    color = if (isBadgeDanger) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
                 )
             }
         }

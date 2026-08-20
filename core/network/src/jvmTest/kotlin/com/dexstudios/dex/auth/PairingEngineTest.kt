@@ -31,7 +31,7 @@ class PairingEngineTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         webSocketEngine = mockk(relaxed = true)
-        pairingEngine = PairingEngine(webSocketEngine)
+        pairingEngine = PairingEngine()
     }
 
     @After

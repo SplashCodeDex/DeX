@@ -52,5 +52,5 @@ val commonNetworkModule = module {
     single { DiscoveryEngine(deviceConfig = get(), discoveryServices = getAll(), httpClient = get()) }
     single { ClientEngine(client = get(), quicClient = getOrNull(), deviceConfig = get()) }
     single { WebSocketEngine(client = get(), deviceConfig = get(), discoveryEngine = get(), messageHandler = get(), hardwareTelemetry = get(), mirrorEngine = get()) }
-    single { PairingEngine(get()) }
+    single { PairingEngine() }
 }

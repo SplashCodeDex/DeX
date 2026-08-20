@@ -8,10 +8,16 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.buildJsonObject
 import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 
-fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine) {
+fun Route.webSocketRoutes(
+    pairingEngine: com.dexstudios.dex.auth.PairingEngine,
+    mirrorEngine: com.dexstudios.dex.core.network.IMirrorEngine
+) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         if (fingerprint != null) {
@@ -44,7 +50,29 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine) 
                                     DexRequestStore.completeRequest(reqId, dataObj ?: jsonObject)
                                 }
                             }
-                                                        "pin-digit-entered" -> {
+                            "pair-request" -> {
+                                if (fingerprint != null) {
+                                    val ip = call.request.local.remoteHost
+                                    val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
+                                    val promptJson = buildJsonObject {
+                                        put("type", "pair-prompt")
+                                        putJsonObject("data") {
+                                            put("pin", pin)
+                                            put("alias", "DeX Desktop")
+                                            put("fingerprint", com.dexstudios.dex.core.network.auth.IdentityManager.fingerprint)
+                                        }
+                                    }.toString()
+                                    WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
+                                }
+                            }
+                            "pair-response" -> {
+                                val accepted = dataObj?.get("accepted")?.jsonPrimitive?.content?.toBoolean() == true
+                                if (accepted && fingerprint != null) {
+                                    com.dexstudios.dex.core.network.DeviceManager.savePairedFingerprint(fingerprint)
+                                }
+                                pairingEngine.handlePairResponse(accepted)
+                            }
+                            "pin-digit-entered" -> {
                                 val count = jsonObject["count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
                                 pairingEngine.handlePinDigitEntered(count)
                             }
@@ -62,6 +90,9 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine) 
                     } catch (e: Exception) {
                         println("Failed to parse WebSocket message: ${e.message}")
                     }
+                } else if (frame is Frame.Binary) {
+                    val bytes = frame.readBytes()
+                    mirrorEngine.receiveFrame(bytes)
                 }
             }
         } catch (e: Exception) {
@@ -74,4 +105,3 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine) 
         }
     }
 }
-

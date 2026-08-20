@@ -137,8 +137,13 @@ class DockedWindowStateController(
                         }
                         val currentCardH = if (isExpanded) 625 else contractedCardHeight
                         
+                        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
                         val contentLeft = winX + canvasWidth - cardMargin - currentCardW
-                        val contentTop = winY + cardMargin
+                        val contentTop = if (isMacOS) {
+                            winY + cardMargin
+                        } else {
+                            winY + canvasHeight - cardMargin - currentCardH
+                        }
                         
                         val isInside = point.x >= contentLeft && point.x <= contentLeft + currentCardW &&
                                        point.y >= contentTop && point.y <= contentTop + currentCardH
@@ -328,8 +333,13 @@ class DockedWindowStateController(
             }
             val currentCardH = if (isExpanded) 625 else contractedCardHeight
 
+            val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
             val contentLeft = candidateX + canvasWidth - cardMargin - currentCardW
-            val contentTop = candidateY + cardMargin
+            val contentTop = if (isMacOS) {
+                candidateY + cardMargin
+            } else {
+                candidateY + canvasHeight - cardMargin - currentCardH
+            }
 
             // 20px Magnetic Edge Snapping
             val (snappedLeft, snappedTop) = DockCardPhysics.evaluateMagneticSnap(
@@ -341,7 +351,11 @@ class DockedWindowStateController(
             )
 
             val finalWinX = snappedLeft - canvasWidth + cardMargin + currentCardW
-            val finalWinY = snappedTop - cardMargin
+            val finalWinY = if (isMacOS) {
+                snappedTop - cardMargin
+            } else {
+                snappedTop - canvasHeight + cardMargin + currentCardH
+            }
 
             windowState.position = WindowPosition(finalWinX.dp, finalWinY.dp)
         }
@@ -375,8 +389,13 @@ class DockedWindowStateController(
             }
             val currentCardH = if (isExpanded) 625 else contractedCardHeight
 
+            val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
             val cLeft = winX + canvasWidth - cardMargin - currentCardW
-            val cTop = winY + cardMargin
+            val cTop = if (isMacOS) {
+                winY + cardMargin
+            } else {
+                winY + canvasHeight - cardMargin - currentCardH
+            }
 
             val (clampedLeft, clampedTop) = DockCardPhysics.applySanityClamp(
                 contentLeft = cLeft,
@@ -387,7 +406,11 @@ class DockedWindowStateController(
             )
 
             val finalWinX = clampedLeft - canvasWidth + cardMargin + currentCardW
-            val finalWinY = clampedTop - cardMargin
+            val finalWinY = if (isMacOS) {
+                clampedTop - cardMargin
+            } else {
+                clampedTop - canvasHeight + cardMargin + currentCardH
+            }
 
             windowState.position = WindowPosition(finalWinX.dp, finalWinY.dp)
         }

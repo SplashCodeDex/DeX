@@ -2,21 +2,21 @@ package com.dexstudios.dex.core.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 
-val LightBackground = Color(0xFFDAD9DD)
-val LightSurface = Color(0xFFFFFFFF)
-val LightSurfaceVariant = Color(0xFFE0E2EC)
-val LightPrimary = Color(0xFF000000)
-val LightOnPrimary = Color(0xFFFFFFFF)
-val LightText = Color(0xFF1A1C1E)
-val LightSecondaryText = Color(0xFF44474E)
+val LightBackground = Color(0xFFF2F2F7) // AccentBrush for window background equivalent
+val LightSurface = Color(0xFFFFFFFF) // PrimaryBrush
+val LightSurfaceVariant = Color(0xFFF2F2F7) // AccentBrush
+val LightPrimary = Color(0xFF0AE66D) // SecondaryBrush
+val LightOnPrimary = Color(0xFF000000) // SecondaryForegroundBrush
+val LightText = Color(0xFF000000) // PrimaryTextBrush
+val LightSecondaryText = Color(0xFF3A3A3C) // SecondaryTextBrush
 
-val DarkBackground = Color(0xFF111318)
-val DarkSurface = Color(0xFF1E1E20)
-val DarkSurfaceVariant = Color(0xFF2F3033)
-val DarkPrimary = Color(0xFFFFFFFF)
-val DarkOnPrimary = Color(0xFF000000)
-val DarkText = Color(0xFFE3E2E6)
-val DarkSecondaryText = Color(0xFFC4C6CF)
+val DarkBackground = Color(0xFF2B2631) // AccentBrush equivalent
+val DarkSurface = Color(0xFF16121A) // PrimaryBrush
+val DarkSurfaceVariant = Color(0xFF2B2631) // AccentBrush
+val DarkPrimary = Color(0xFF0AE66D) // SecondaryBrush
+val DarkOnPrimary = Color(0xFF000000) // SecondaryForegroundBrush
+val DarkText = Color(0xFFFFFFFF) // PrimaryTextBrush
+val DarkSecondaryText = Color(0xFFA0A0A0) // SecondaryTextBrush
 
 // Glass Spec (No glow, pure glass)
 const val GlassSurfaceAlpha = 0.85f

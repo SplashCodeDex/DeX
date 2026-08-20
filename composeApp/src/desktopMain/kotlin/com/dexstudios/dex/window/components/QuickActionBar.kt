@@ -159,21 +159,26 @@ fun DeXQuickActionButton(
     // Emerald State Morphing Background Color
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            isDanger && (isHovered || isPressed) -> Color(0xFFFF453A)
-            isChecked -> Color(0xFF0AE66D)
-            isHovered -> Color(0xFF332D3B)
-            else -> Color(0xFF2B2631)
+            isDanger && (isHovered || isPressed) -> androidx.compose.material3.MaterialTheme.colorScheme.error
+            isChecked -> androidx.compose.material3.MaterialTheme.colorScheme.primary
+            else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
         },
         animationSpec = tween(200),
         label = "btnBgColor"
     )
 
+    val hoverOverlayColor by animateColorAsState(
+        targetValue = if (isHovered && !isChecked && !isDanger) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
+        animationSpec = tween(200),
+        label = "btnHoverOverlay"
+    )
+
     // Icon Color Morphing
     val iconColor by animateColorAsState(
         targetValue = when {
-            isChecked -> Color(0xFF000000)
-            isDanger && (isHovered || isPressed) -> Color(0xFFFFFFFF)
-            else -> Color(0xFFFFFFFF)
+            isChecked -> androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+            isDanger && (isHovered || isPressed) -> androidx.compose.material3.MaterialTheme.colorScheme.onError
+            else -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface
         },
         animationSpec = tween(200),
         label = "btnIconColor"
@@ -189,6 +194,7 @@ fun DeXQuickActionButton(
             }
             .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor, RoundedCornerShape(20.dp))
+            .background(hoverOverlayColor, RoundedCornerShape(20.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -205,9 +211,9 @@ fun DeXQuickActionButton(
 
         if (badgeCount > 0) {
             // Contrast Inversion for Badge Counter
-            val badgeBgColor = if (isChecked) Color(0xFF16121A) else Color(0xFF0AE66D)
-            val badgeTextColor = if (isChecked) Color(0xFFFFFFFF) else Color(0xFF000000)
-            val badgeBorder = if (isChecked) BorderStroke(1.dp, Color(0xFF0AE66D)) else null
+            val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
+            val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+            val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
 
             Box(
                 modifier = Modifier

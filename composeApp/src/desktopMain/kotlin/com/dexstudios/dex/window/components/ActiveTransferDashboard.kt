@@ -3,6 +3,7 @@ package com.dexstudios.dex.window.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,12 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.network.TransferStateMonitor
 import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.Shadow
 
 @Composable
 fun ActiveTransferDashboard(
@@ -45,18 +40,8 @@ fun ActiveTransferDashboard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .drawBackdrop(
-                            backdrop = backdrop ?: continue,
-                            shape = { RoundedCornerShape(16.dp) },
-                            effects = {
-                                vibrancy()
-                                blur(12.dp.toPx())
-                                lens(16.dp.toPx(), 24.dp.toPx())
-                            },
-                            highlight = { Highlight.Default },
-                            shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.2f)) },
-                            onDrawSurface = { drawRect(Color.White.copy(alpha = 0.15f)) }
-                        )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(16.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {

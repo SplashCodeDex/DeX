@@ -126,7 +126,7 @@ object LiquidGlassPresets {
             MasterSpec.copy(
                 blurRadius = 5.dp,
                 restRefraction = 0.8f,
-                shadowRadius = 12.dp,
+                shadowRadius = 0.dp,
                 shadowColor = Color.Black.copy(alpha = 0.6f)
             )
         )

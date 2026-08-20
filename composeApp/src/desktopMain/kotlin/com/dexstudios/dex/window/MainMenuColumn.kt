@@ -42,6 +42,18 @@ import java.awt.datatransfer.StringSelection
  * - DeviceListPanel (Discovered untrusted devices, paired trusted live/offline devices, and WAN scaffolding)
  * - BottomDockPanel (Avatar button -> Settings, 2-stage Exit Engine confirmation)
  */
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.graphicsLayer
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
+import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import androidx.compose.ui.unit.Dp
+
 @Composable
 fun MainMenuColumn(
     controller: DockedWindowStateController,
@@ -68,6 +80,37 @@ fun MainMenuColumn(
 
     var isDndActive by remember { mutableStateOf(false) }
     var isMirroringActive by remember { mutableStateOf(false) }
+
+    var isContentVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(controller.isVisible) {
+        if (controller.isVisible) {
+            delay(80)
+            isContentVisible = true
+        } else {
+            isContentVisible = false
+        }
+    }
+
+    val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+
+    val menuTranslateY by animateDpAsState(
+        targetValue = if (controller.isVisible) 0.dp else if (isMacOS) (-20).dp else 20.dp,
+        animationSpec = if (controller.isVisible) DockCardAnimations.PopInMenuTranslateYSpec else tween(200, easing = FastOutSlowInEasing),
+        label = "menuTranslateY"
+    )
+
+    val contentTranslateY by animateDpAsState(
+        targetValue = if (isContentVisible) 0.dp else if (isMacOS) (-35).dp else 35.dp,
+        animationSpec = if (isContentVisible) DockCardAnimations.PopInMenuContentTranslateYSpec else tween(200, easing = FastOutSlowInEasing),
+        label = "contentTranslateY"
+    )
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isContentVisible) 1f else 0f,
+        animationSpec = tween(if (isContentVisible) 400 else 150),
+        label = "contentAlpha"
+    )
 
     // Partition discovered devices vs paired devices
     val (discoveredList, pairedList) = remember(devicesMap, pairedFingerprints) {
@@ -115,31 +158,39 @@ fun MainMenuColumn(
         modifier = modifier
             .fillMaxHeight()
             .padding(vertical = 12.dp)
+            .graphicsLayer {
+                translationY = menuTranslateY.toPx()
+            }
     ) {
         // Top Actions Panel with DragPillHandle & Tactile QuickActionBar
-        TopActionsPanel(
-            controller = controller,
-            isDndActive = isDndActive,
-            onToggleDnd = { isDndActive = !isDndActive },
-            isMirroringActive = isMirroringActive,
-            onToggleMirror = { isMirroringActive = !isMirroringActive },
-            isTransfersActive = controller.expandedPanel == ExpandedPanel.FileExplorer,
-            onToggleTransfers = {
-                if (controller.expandedPanel == ExpandedPanel.FileExplorer) {
-                    controller.collapsePanel()
-                } else {
-                    controller.expandPanel(ExpandedPanel.FileExplorer)
-                }
-            },
-            isClipboardActive = isClipboardSyncEnabled,
-            onToggleClipboard = {
-                deviceConfig.clipboardSyncEnabled = !deviceConfig.clipboardSyncEnabled
-            },
-            clipboardBadgeCount = 0,
-            statusTelemetryText = if (isUploading) "Transferring" else "Ready",
-            serverIpPort = serverIpPortText,
-            showTelemetry = true
-        )
+        Box(modifier = Modifier.graphicsLayer { 
+            translationY = contentTranslateY.toPx()
+            alpha = contentAlpha
+        }) {
+            TopActionsPanel(
+                controller = controller,
+                isDndActive = isDndActive,
+                onToggleDnd = { isDndActive = !isDndActive },
+                isMirroringActive = isMirroringActive,
+                onToggleMirror = { isMirroringActive = !isMirroringActive },
+                isTransfersActive = controller.expandedPanel == ExpandedPanel.FileExplorer,
+                onToggleTransfers = {
+                    if (controller.expandedPanel == ExpandedPanel.FileExplorer) {
+                        controller.collapsePanel()
+                    } else {
+                        controller.expandPanel(ExpandedPanel.FileExplorer)
+                    }
+                },
+                isClipboardActive = isClipboardSyncEnabled,
+                onToggleClipboard = {
+                    deviceConfig.clipboardSyncEnabled = !deviceConfig.clipboardSyncEnabled
+                },
+                clipboardBadgeCount = 0,
+                statusTelemetryText = if (isUploading) "Transferring" else "Ready",
+                serverIpPort = serverIpPortText,
+                showTelemetry = false // WPF pnlAdbStatus is hidden by default (Height=0) until connected
+            )
+        }
 
         com.dexstudios.dex.window.components.ActiveTransferDashboard(
             backdrop = com.dexstudios.dex.core.designsystem.theme.LocalBackdrop.current,
@@ -147,7 +198,14 @@ fun MainMenuColumn(
         )
 
         // Device List - occupies flexible viewport
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+        Box(modifier = Modifier
+            .weight(1f)
+            .fillMaxSize()
+            .graphicsLayer { 
+                translationY = contentTranslateY.toPx()
+                alpha = contentAlpha
+            }
+        ) {
             DeviceListPanel(
                 discoveredDevices = discoveredList,
                 pairedDevices = pairedList,
@@ -202,17 +260,23 @@ fun MainMenuColumn(
         }
 
         // Bottom Dock Panel (Profile avatar -> Settings, 2-stage Exit Engine)
-        BottomDockPanel(
-            onProfileClick = {
-                if (controller.expandedPanel == ExpandedPanel.Settings) {
-                    controller.collapsePanel()
-                } else {
-                    controller.expandPanel(ExpandedPanel.Settings)
-                }
-            },
-            onExitEngine = onExitEngine,
-            hasActiveTransfers = isUploading,
-            isMirroringActive = isMirroringActive
-        )
+        Box(modifier = Modifier.graphicsLayer { 
+            translationY = contentTranslateY.toPx()
+            alpha = contentAlpha
+        }) {
+            BottomDockPanel(
+                onProfileClick = {
+                    if (controller.expandedPanel == ExpandedPanel.Settings) {
+                        controller.collapsePanel()
+                    } else {
+                        controller.expandPanel(ExpandedPanel.Settings)
+                    }
+                },
+                onExitEngine = onExitEngine,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                hasActiveTransfers = isUploading,
+                isMirroringActive = isMirroringActive
+            )
+        }
     }
 }

@@ -202,14 +202,14 @@ object DeXGlassPresets {
         @ReadOnlyComposable
         get() = LiquidGlassConfig(
             shape = RoundedCornerShape(34.dp),
-            blurRadius = 24.dp,
+            blurRadius = 0.dp,
             lensHeight = 0.dp, // No glow/lens gradient
             lensAmount = 0.dp, // pure glass
             surfaceTint = MaterialTheme.colorScheme.surface,
             surfaceTintAlpha = 1.0f,
-            highlight = Highlight.Ambient.copy(alpha = 0.1f),
-            shadowRadius = 8.dp,
-            shadowColor = Color.Black.copy(alpha = 0.15f),
+            highlight = Highlight.Ambient.copy(alpha = 0.0f),
+            shadowRadius = 0.dp,
+            shadowColor = Color.Transparent,
             innerShadow = null // no inset glow
         )
 
@@ -218,30 +218,35 @@ object DeXGlassPresets {
         @ReadOnlyComposable
         get() = LiquidGlassConfig(
             shape = RoundedCornerShape(34.dp),
-            blurRadius = 24.dp,
+            blurRadius = 0.dp,
             lensHeight = 0.dp,
             lensAmount = 0.dp,
             surfaceTint = MaterialTheme.colorScheme.surface,
             surfaceTintAlpha = 1.0f,
-            highlight = Highlight.Ambient.copy(alpha = 0.1f),
-            shadowRadius = 8.dp,
-            shadowColor = Color.Black.copy(alpha = 0.1f),
+            highlight = Highlight.Ambient.copy(alpha = 0.0f),
+            shadowRadius = 0.dp,
+            shadowColor = Color.Transparent,
             innerShadow = null
         )
+
+    val DockCard: LiquidGlassConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = if (androidx.compose.foundation.isSystemInDarkTheme()) DockCardDark else DockCardLight
 
     val QuickActionDark: LiquidGlassConfig
         @Composable
         @ReadOnlyComposable
         get() = LiquidGlassConfig(
             shape = RoundedCornerShape(20.dp),
-            blurRadius = 4.dp,
+            blurRadius = 0.dp,
             lensHeight = 0.dp,
             lensAmount = 0.dp,
             surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-            surfaceTintAlpha = 0.70f,
-            highlight = Highlight.Default,
-            shadowRadius = 4.dp,
-            shadowColor = Color.Black.copy(alpha = 0.15f)
+            surfaceTintAlpha = 1.0f,
+            highlight = Highlight.Ambient.copy(alpha = 0.0f),
+            shadowRadius = 0.dp,
+            shadowColor = Color.Transparent
         )
 
     val QuickActionActive: LiquidGlassConfig
@@ -249,13 +254,13 @@ object DeXGlassPresets {
         @ReadOnlyComposable
         get() = LiquidGlassConfig(
             shape = RoundedCornerShape(20.dp),
-            blurRadius = 6.dp,
+            blurRadius = 0.dp,
             lensHeight = 0.dp,
             lensAmount = 0.dp,
             surfaceTint = MaterialTheme.colorScheme.primary,
-            surfaceTintAlpha = 0.85f,
-            highlight = Highlight.Ambient.copy(alpha = 0.1f),
-            shadowRadius = 4.dp,
-            shadowColor = Color.Black.copy(alpha = 0.15f)
+            surfaceTintAlpha = 1.0f,
+            highlight = Highlight.Ambient.copy(alpha = 0.0f),
+            shadowRadius = 0.dp,
+            shadowColor = Color.Transparent
         )
 }

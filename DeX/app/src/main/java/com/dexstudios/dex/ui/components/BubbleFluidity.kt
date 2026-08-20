@@ -32,18 +32,21 @@ import kotlinx.coroutines.launch
  */
 fun Modifier.bubbleFluidity(
     targetScale: Float = 0.85f,
-    pullFactor: Float = 0.2f
-): Modifier = this then BubbleFluidityElement(targetScale, pullFactor)
+    pullFactor: Float = 0.2f,
+    onPhysicsUpdated: ((scale: Float, tx: Float, ty: Float) -> Unit)? = null
+): Modifier = this then BubbleFluidityElement(targetScale, pullFactor, onPhysicsUpdated)
 
 private data class BubbleFluidityElement(
     val targetScale: Float,
-    val pullFactor: Float
+    val pullFactor: Float,
+    val onPhysicsUpdated: ((Float, Float, Float) -> Unit)?
 ) : ModifierNodeElement<BubbleFluidityNode>() {
-    override fun create(): BubbleFluidityNode = BubbleFluidityNode(targetScale, pullFactor)
+    override fun create(): BubbleFluidityNode = BubbleFluidityNode(targetScale, pullFactor, onPhysicsUpdated)
 
     override fun update(node: BubbleFluidityNode) {
         node.targetScale = targetScale
         node.pullFactor = pullFactor
+        node.onPhysicsUpdated = onPhysicsUpdated
     }
 
     override fun InspectorInfo.inspectableProperties() {
@@ -55,7 +58,8 @@ private data class BubbleFluidityElement(
 
 private class BubbleFluidityNode(
     var targetScale: Float,
-    var pullFactor: Float
+    var pullFactor: Float,
+    var onPhysicsUpdated: ((Float, Float, Float) -> Unit)?
 ) : DelegatingNode(), LayoutModifierNode, PointerInputModifierNode {
 
     private val scale = Animatable(1f)
@@ -129,6 +133,7 @@ private class BubbleFluidityNode(
                 scaleY = scale.value
                 translationX = this@BubbleFluidityNode.translationX.value
                 translationY = this@BubbleFluidityNode.translationY.value
+                onPhysicsUpdated?.invoke(scale.value, translationX, translationY)
             }
         }
     }

@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -115,27 +117,46 @@ fun BottomDockPanel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary,
             thickness = 1.dp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val avatarInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val avatarHovered by avatarInteraction.collectIsHoveredAsState()
+            val avatarPressed by avatarInteraction.collectIsPressedAsState()
+            
+            val avatarHoverScale by animateFloatAsState(
+                targetValue = when {
+                    avatarPressed -> 0.85f
+                    avatarHovered -> 1.08f
+                    else -> 1.0f
+                },
+                animationSpec = if (avatarPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                label = "avatarHoverScale"
+            )
+
             // 34x34dp Profile Avatar Button
             Box(
                 modifier = Modifier
+                    .padding(start = 16.dp, end = 4.dp)
                     .size(34.dp)
                     .graphicsLayer {
-                        scaleX = avatarScale
-                        scaleY = avatarScale
+                        scaleX = avatarScale * avatarHoverScale
+                        scaleY = avatarScale * avatarHoverScale
                     }
                     .clip(CircleShape)
-                    .clickable { onProfileClick() },
+                    .clickable(
+                        interactionSource = avatarInteraction,
+                        indication = null,
+                        onClick = onProfileClick
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -146,15 +167,32 @@ fun BottomDockPanel(
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            val exitInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val exitHovered by exitInteraction.collectIsHoveredAsState()
+            val exitPressed by exitInteraction.collectIsPressedAsState()
+            
+            val exitHoverScale by animateFloatAsState(
+                targetValue = when {
+                    exitPressed -> 0.85f
+                    exitHovered -> 1.08f
+                    else -> 1.0f
+                },
+                animationSpec = if (exitPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                label = "exitHoverScale"
+            )
 
             // 2-Stage Exit Button Container
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 1.dp)
                     .height(40.dp)
                     .offset(x = exitButtonOffsetX)
-                    .clip(RoundedCornerShape(8.dp))
+                    .graphicsLayer {
+                        scaleX = exitHoverScale
+                        scaleY = exitHoverScale
+                    }
+                    .clip(RoundedCornerShape(12.dp))
                     .background(exitButtonBgColor)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
@@ -167,7 +205,7 @@ fun BottomDockPanel(
                         }
                     }
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = exitInteraction,
                         indication = null
                     ) {
                         // Check Shift modifier via both PointerEvent and AWT EventQueue
@@ -192,7 +230,7 @@ fun BottomDockPanel(
                             }
                         }
                     }
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
@@ -220,7 +258,8 @@ fun BottomDockPanel(
                                     "Cancel / Shift+Click Exit"
                                 else -> "Exit Engine"
                             },
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
+                            lineHeight = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.error,
                             maxLines = 1,
@@ -231,7 +270,8 @@ fun BottomDockPanel(
                     if (confirmationStage == ExitConfirmationStage.Idle) {
                         Text(
                             text = "⌘Q",
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
+                            lineHeight = 14.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.error

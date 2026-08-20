@@ -118,9 +118,22 @@ fun main() {
         // (AWT setType() must run before the native peer is created).
         var windowReady by remember { mutableStateOf(false) }
 
+        // Anti-Flash Cache: Delay hiding the OS window by 150ms to allow the Compose exit animation to finish.
+        // This ensures the OS caches a 100% transparent bitmap when hidden, preventing the "double opening" flash.
+        var isWindowReallyVisible by remember { mutableStateOf(false) }
+
+        LaunchedEffect(controller.isVisible, windowReady) {
+            if (controller.isVisible && windowReady) {
+                isWindowReallyVisible = true
+            } else {
+                if (windowReady) kotlinx.coroutines.delay(150)
+                isWindowReallyVisible = false
+            }
+        }
+
         Window(
             onCloseRequest = { controller.hide() },
-            visible = controller.isVisible && windowReady,
+            visible = isWindowReallyVisible,
             state = controller.windowState,
             undecorated = true,
             transparent = true,

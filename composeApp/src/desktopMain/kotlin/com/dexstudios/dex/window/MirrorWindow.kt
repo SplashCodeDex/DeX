@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -30,11 +31,16 @@ import com.dexstudios.dex.core.designsystem.theme.DeXTheme
  * Dedicated desktop window for phone screen mirroring.
  * Renders JPEG frame stream received from the phone via WebSocket / MediaProjection.
  */
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun MirrorWindow(
     onClose: () -> Unit,
     peerName: String = "Connected Phone",
-    latestFrame: ImageBitmap? = null
+    mirrorEngine: com.dexstudios.dex.core.network.IMirrorEngine = org.koin.compose.koinInject()
 ) {
     val windowState = rememberWindowState(
         size = DpSize(420.dp, 840.dp),
@@ -42,6 +48,23 @@ fun MirrorWindow(
     )
 
     var isLandscape by remember { mutableStateOf(false) }
+
+    val frameBytes by mirrorEngine.latestFrame.collectAsState()
+    val latestFrame = remember(frameBytes) {
+        frameBytes?.let { org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap() }
+    }
+
+    LaunchedEffect(Unit) {
+        com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-start","data":{}}""")
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            GlobalScope.launch {
+                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-stop","data":{}}""")
+            }
+        }
+    }
 
     Window(
         onCloseRequest = onClose,
