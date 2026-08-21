@@ -65,7 +65,7 @@ fun FloatingDockCard(
                 }
             }
         ) {
-            val isMacOS = remember { System.getProperty("os.name")?.lowercase()?.contains("mac") == true }
+            val isMacOS = remember { com.dexstudios.dex.platform.DesktopEnvironment.isMacOS }
             // The actual card container, anchored strictly to TopEnd with 25dp padding
             DockCardContent(
                 controller = controller,

@@ -18,7 +18,7 @@ object WiggleToOpenService {
     )
     
     fun start(deviceConfig: com.dexstudios.dex.core.network.DeviceConfig, onWake: (() -> Unit)? = null, onTrigger: () -> Unit) {
-        if (!System.getProperty("os.name").lowercase().contains("windows")) {
+        if (!com.dexstudios.dex.platform.DesktopEnvironment.isWindows) {
             println("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
             return
         }

@@ -12,7 +12,7 @@ object GlobalShortcutService {
     private var hookProc: WinUser.LowLevelKeyboardProc? = null
 
     fun start(onToggle: () -> Unit) {
-        if (!System.getProperty("os.name").lowercase().contains("windows")) return
+        if (!com.dexstudios.dex.platform.DesktopEnvironment.isWindows) return
 
         job = CoroutineScope(Dispatchers.IO).launch {
             val module = Kernel32.INSTANCE.GetModuleHandle(null)

@@ -129,7 +129,7 @@ class DockedWindowStateController(
                         }
                         val currentCardH = if (isExpanded) 625 else contractedCardHeight
                         
-                        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+                        val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
                         val contentLeft = winX + canvasWidth - cardMargin - currentCardW
                         val contentTop = if (isMacOS) {
                             winY + cardMargin
@@ -325,7 +325,7 @@ class DockedWindowStateController(
             }
             val currentCardH = if (isExpanded) 625 else contractedCardHeight
 
-            val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+            val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
             val contentLeft = candidateX + canvasWidth - cardMargin - currentCardW
             val contentTop = if (isMacOS) {
                 candidateY + cardMargin
@@ -381,7 +381,7 @@ class DockedWindowStateController(
             }
             val currentCardH = if (isExpanded) 625 else contractedCardHeight
 
-            val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+            val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
             val cLeft = winX + canvasWidth - cardMargin - currentCardW
             val cTop = if (isMacOS) {
                 winY + cardMargin

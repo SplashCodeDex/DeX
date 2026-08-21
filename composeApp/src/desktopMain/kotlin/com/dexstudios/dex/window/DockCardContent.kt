@@ -91,7 +91,7 @@ fun DockCardContent(
         label = "cardAlpha"
     )
 
-    val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+    val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
 
     val cardTranslationY by animateDpAsState(
         targetValue = if (controller.isVisible) 0.dp else if (isMacOS) (-15).dp else 15.dp,

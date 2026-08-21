@@ -100,7 +100,7 @@ object DockCardPhysics {
         val contentLeft = currentWindowX + canvasWidth - margin - cardWidth
         val contentRight = currentWindowX + canvasWidth - margin
         
-        val isMacOS = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+        val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
         
         val contentTop = if (isMacOS) {
             currentWindowY + margin

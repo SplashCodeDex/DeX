@@ -144,7 +144,7 @@ object TaskbarWorkAreaProvider {
     }
 
     private val isMacOS: Boolean by lazy {
-        System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+        com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
     }
 
     /**

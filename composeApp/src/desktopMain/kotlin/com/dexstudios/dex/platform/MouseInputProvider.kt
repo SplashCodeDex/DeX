@@ -7,7 +7,7 @@ interface MouseInputProvider {
 
 object DesktopMouseInputProvider : MouseInputProvider {
     override fun isLeftMouseButtonDown(): Boolean {
-        if (System.getProperty("os.name").lowercase().contains("windows")) {
+        if (com.dexstudios.dex.platform.DesktopEnvironment.isWindows) {
             try {
                 val lButton = com.sun.jna.platform.win32.User32.INSTANCE.GetAsyncKeyState(0x01).toInt()
                 return (lButton and 0x8000) != 0
@@ -19,7 +19,7 @@ object DesktopMouseInputProvider : MouseInputProvider {
     }
 
     override fun getCursorPosition(): Pair<Int, Int> {
-        if (System.getProperty("os.name").lowercase().contains("windows")) {
+        if (com.dexstudios.dex.platform.DesktopEnvironment.isWindows) {
             try {
                 val point = com.sun.jna.platform.win32.WinDef.POINT()
                 com.sun.jna.platform.win32.User32.INSTANCE.GetCursorPos(point)
