@@ -14,12 +14,12 @@ kotlin {
         val desktopMain = getByName("desktopMain")
         
         commonMain.dependencies {
-            implementation(libs.jb.compose.runtime)
-            implementation(libs.jb.compose.foundation)
-            implementation(libs.jb.compose.material3)
-            implementation(libs.jb.compose.ui)
-            implementation(libs.jb.compose.components.resources)
-            implementation(libs.jb.compose.components.uiToolingPreview)
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(compose.components.uiToolingPreview)
             
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.navigation.compose)
