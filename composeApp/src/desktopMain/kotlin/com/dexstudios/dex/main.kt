@@ -1,5 +1,6 @@
 package com.dexstudios.dex
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import okio.Path.Companion.toPath
+import java.awt.Taskbar
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
@@ -56,7 +58,14 @@ fun main() {
     try {
         DeXServer.start()
     } catch (e: Exception) {
-        println("DeXServer already running or failed to start: ")
+        e.printStackTrace()
+        javax.swing.JOptionPane.showMessageDialog(
+            null,
+            "Failed to start DeX internal server.\nEnsure port 48425 is not in use by another instance.\nError: ${e.message}",
+            "DeX Startup Error",
+            javax.swing.JOptionPane.ERROR_MESSAGE
+        )
+        kotlin.system.exitProcess(1)
     }
 
     application {
@@ -143,6 +152,28 @@ fun main() {
             resizable = false,
             title = "DeX"
         ) {
+            val clientEngine = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.core.network.ClientEngine>() }
+            val uploadState by clientEngine.uploadState.collectAsState()
+
+            LaunchedEffect(window, uploadState.isUploading, uploadState.progress, uploadState.error) {
+                try {
+                    if (Taskbar.isTaskbarSupported() && Taskbar.getTaskbar().isSupported(Taskbar.Feature.PROGRESS_VALUE_WINDOW)) {
+                        val tb = Taskbar.getTaskbar()
+                        if (uploadState.isUploading) {
+                            tb.setWindowProgressState(window, Taskbar.State.NORMAL)
+                            tb.setWindowProgressValue(window, (uploadState.progress * 100).toInt())
+                        } else if (uploadState.error != null) {
+                            tb.setWindowProgressState(window, Taskbar.State.ERROR)
+                            tb.setWindowProgressValue(window, 100)
+                        } else {
+                            tb.setWindowProgressState(window, Taskbar.State.OFF)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignore taskbar errors
+                }
+            }
+
             DeXTheme {
                 LaunchedEffect(window) {
                     // Taskbar icon suppression via AWT UTILITY window type (if not already displayable)

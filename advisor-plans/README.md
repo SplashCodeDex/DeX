@@ -12,7 +12,7 @@ honor its STOP conditions, and update your row when done.
 | 002  | fix-certificate-hardcoded-password | P1 | S | — | DONE |
 | 003  | remove-android-targets | P1 | M | — | DONE |
 | 004  | fix-hardcoded-javahome | P1 | S | — | DONE |
-| 005  | fix-dexserver-startup | P1 | S | — | TODO |
+| 005  | fix-dexserver-startup | P1 | S | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
