@@ -65,7 +65,7 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "com.dexstudios.dex.MainKt"
-        javaHome = "C:/Program Files/Eclipse Adoptium/jdk-26.0.2.10-hotspot"
+
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
