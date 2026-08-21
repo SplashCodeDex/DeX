@@ -4,8 +4,9 @@ import java.io.File
 import java.security.KeyStore
 
 object CertificateGenerator {
-    private val keyStoreFile = File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
-    private val passwordFile = File(System.getProperty("java.io.tmpdir"), ".dex_cert_pwd")
+    private val appDataDir = File(System.getProperty("user.home"), ".dex/security").apply { mkdirs() }
+    private val keyStoreFile = File(appDataDir, "dex_cert.jks")
+    private val passwordFile = File(appDataDir, ".dex_cert_pwd")
 
     fun getPassword(): String {
         if (!passwordFile.exists()) {

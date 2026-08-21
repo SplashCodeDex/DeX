@@ -59,7 +59,8 @@ fun Route.webSocketRoutes(
                                         putJsonObject("data") {
                                             put("pin", pin)
                                             put("alias", "DeX Desktop")
-                                            put("fingerprint", com.dexstudios.dex.core.network.auth.IdentityManager.fingerprint)
+                                            val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+                                            put("fingerprint", deviceConfig.fingerprint)
                                         }
                                     }.toString()
                                     WebSocketConnectionManager.sendRequest(fingerprint, promptJson)

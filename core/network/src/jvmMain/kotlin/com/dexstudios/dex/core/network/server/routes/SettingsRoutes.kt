@@ -4,7 +4,6 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.request.receiveText
-import com.dexstudios.dex.core.network.auth.IdentityManager
 import com.dexstudios.dex.core.network.auth.GoogleOAuth
 import kotlinx.serialization.Serializable
 
@@ -14,7 +13,8 @@ data class ProfileDto(val email: String, val name: String, val picture: String)
 fun Route.settingsRoutes() {
     post("/local/settings/email") {
         val email = call.receiveText()
-        IdentityManager.email = email
+        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+        deviceConfig.email = email
         call.respond(io.ktor.http.HttpStatusCode.OK)
     }
 
@@ -28,7 +28,8 @@ fun Route.settingsRoutes() {
         }
         val profile = GoogleOAuth.signInAsync()
         if (profile != null) {
-            IdentityManager.email = profile.email
+            val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+            deviceConfig.email = profile.email
             val name = if (profile.name.isEmpty()) profile.email else profile.name
             call.respondText(
                 "<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Signed in as $name &mdash; DeX devices with this email are now auto-trusted.</h3></body></html>",
@@ -77,7 +78,8 @@ fun Route.settingsRoutes() {
     }
 
     post("/local/settings/signout") {
-        IdentityManager.email = ""
+        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+        deviceConfig.signOut()
         GoogleOAuth.signOut()
         call.respond(io.ktor.http.HttpStatusCode.OK)
     }

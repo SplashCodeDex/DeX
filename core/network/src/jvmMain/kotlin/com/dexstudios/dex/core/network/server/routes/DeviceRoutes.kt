@@ -14,7 +14,6 @@ import kotlinx.serialization.Serializable
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.auth.PairingState
 import com.dexstudios.dex.core.network.DeviceManager
-import com.dexstudios.dex.core.network.auth.IdentityManager
 import com.dexstudios.dex.core.network.security.CertificateGenerator
 import io.ktor.http.ContentType
 

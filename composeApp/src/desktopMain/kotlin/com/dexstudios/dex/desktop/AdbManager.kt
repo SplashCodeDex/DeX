@@ -12,9 +12,12 @@ import java.util.zip.ZipInputStream
 object AdbManager {
     private val dexSettingsDir = File(System.getProperty("user.home"), ".dex_settings")
     private val toolsDir = File(dexSettingsDir, "tools")
-    private val adbExeFile = File(toolsDir, "platform-tools/adb.exe")
+    private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    private val adbExeName = if (isWindows) "adb.exe" else "adb"
+    private val adbExeFile = File(toolsDir, "platform-tools/$adbExeName")
 
-    private const val ADB_DOWNLOAD_URL = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+    private val downloadOsSuffix = if (isWindows) "windows" else "darwin"
+    private val ADB_DOWNLOAD_URL = "https://dl.google.com/android/repository/platform-tools-latest-$downloadOsSuffix.zip"
 
     /**
      * Tries to find ADB in the system PATH. If not found, uses the bundled version.
@@ -68,6 +71,9 @@ object AdbManager {
                         newFile.parentFile?.mkdirs()
                         FileOutputStream(newFile).use { fos ->
                             zis.copyTo(fos)
+                        }
+                        if (!isWindows && entry.name.endsWith("adb")) {
+                            newFile.setExecutable(true)
                         }
                     }
                     zis.closeEntry()

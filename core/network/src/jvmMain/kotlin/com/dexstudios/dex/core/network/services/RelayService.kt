@@ -16,7 +16,6 @@ import kotlinx.serialization.json.put
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import com.dexstudios.dex.core.network.auth.IdentityManager
 
 object RelayService {
     val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -89,13 +88,14 @@ object RelayService {
 
         if (fileMap.isEmpty()) return false
 
+        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
         val prepareReq = PrepareUploadRequestDto(
             info = RegisterDto(
                 alias = senderAlias,
                 version = "2.0",
                 deviceModel = "PC",
                 deviceType = "desktop",
-                fingerprint = IdentityManager.fingerprint.ifEmpty { "desktop-migration" },
+                fingerprint = deviceConfig.fingerprint.ifEmpty { "desktop-migration" },
                 port = 48424,
                 protocol = "localsend",
                 download = false

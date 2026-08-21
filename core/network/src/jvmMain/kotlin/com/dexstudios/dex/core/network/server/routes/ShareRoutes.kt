@@ -28,16 +28,32 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.encodeToJsonElement
-import com.dexstudios.dex.core.network.auth.IdentityManager
 
 @Serializable
 data class ShareTargetPayload(val files: List<String>)
 
+data class SessionEntry(val request: PrepareUploadRequestDto, val createdAt: Long = System.currentTimeMillis())
+
 // Match the C# implementation state variables
-val activeUploadSessions = ConcurrentHashMap<String, PrepareUploadRequestDto>()
+val activeUploadSessions = ConcurrentHashMap<String, SessionEntry>()
 val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
 private val shareRoutesFileLock = Any()
-private val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+private val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO).apply {
+    launch {
+        while (true) {
+            delay(60_000) // 1 minute
+            val now = System.currentTimeMillis()
+            val iterator = activeUploadSessions.entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (now - entry.value.createdAt > 10 * 60_000) { // 10 mins
+                    iterator.remove()
+                    activeUploadSessionsProgress.remove(entry.key)
+                }
+            }
+        }
+    }
+}
 
 fun Route.shareRoutes() {
     route("/local") {
@@ -96,8 +112,13 @@ fun Route.shareRoutes() {
                 val authHeader = call.request.header("Authorization")
                 val token = authHeader?.removePrefix("Bearer ")?.trim()
 
-                val isAutoTrusted = IdentityManager.isIdentityToken(token)
-                val isPaired = !token.isNullOrEmpty() && IdentityManager.pairedTokens[req.info.fingerprint] == token
+                val koin = org.koin.core.context.GlobalContext.get()
+                val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
+                
+                val isAutoTrusted = !token.isNullOrEmpty() && (token == deviceConfig.identityHash || (deviceConfig.googleSub.isNotEmpty() && token == deviceConfig.googleSub))
+                
+                val pairedTokens = com.dexstudios.dex.auth.AuthState.pairedTokens.value
+                val isPaired = !token.isNullOrEmpty() && pairedTokens[req.info.fingerprint] == token
 
                 if (!isAutoTrusted && !isPaired) {
                     call.respond(HttpStatusCode.Forbidden)
@@ -105,7 +126,7 @@ fun Route.shareRoutes() {
                 }
 
                 val sessionId = UUID.randomUUID().toString()
-                activeUploadSessions[sessionId] = req
+                activeUploadSessions[sessionId] = SessionEntry(req)
                 
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
                     sessionId, 
@@ -143,7 +164,7 @@ fun Route.shareRoutes() {
                 return@post
             }
 
-            val sessionReq = activeUploadSessions[sessionId]
+            val sessionReq = activeUploadSessions[sessionId]?.request
             if (sessionReq == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
@@ -158,18 +179,24 @@ fun Route.shareRoutes() {
             val rawFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
             val safeFileName = rawFileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
             
-            val safeRelative = fileMeta.relativePath?.let { path ->
-                val sanitized = path.replace("\\", "/").trim('/')
-                if (sanitized.contains("..")) null else sanitized
-            }
-
             val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
             downloadsFolder.mkdirs()
 
-            var destFile = if (safeRelative.isNullOrEmpty()) {
+            var destFile = if (fileMeta.relativePath.isNullOrEmpty()) {
                 File(downloadsFolder, safeFileName)
             } else {
-                val file = File(downloadsFolder, safeRelative)
+                val relativePathStr = fileMeta.relativePath
+                val relativePath = relativePathStr!!.replace("\\", "/")
+                if (relativePath.contains("..")) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+                val resolvedPath = downloadsFolder.toPath().resolve(relativePath).normalize()
+                if (!resolvedPath.startsWith(downloadsFolder.toPath())) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+                val file = resolvedPath.toFile()
                 file.parentFile?.mkdirs()
                 file
             }

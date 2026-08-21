@@ -22,6 +22,11 @@ honor its STOP conditions, and update your row when done.
 | 012  | remove-device-list-hardcodings | P1 | S | — | DONE |
 | 013  | centralize-os-detection | P2 | S | — | DONE |
 | 014  | implement-desktop-notifications | P3 | S | — | DONE |
+| 015  | fix-path-traversal-arbitrary-file-write | P1 | S | — | DONE |
+| 016  | fix-predictable-ssl-cert-temp-dir | P1 | S | — | DONE |
+| 017  | fix-unbounded-session-maps-dos | P1 | S | — | DONE |
+| 018  | unify-split-brain-identity-systems | P1 | M | — | DONE |
+| 019  | replace-hardcoded-windows-binaries | P1 | M | — | DONE |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Dependency notes
@@ -35,3 +40,18 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - [DX-02] Add code formatter and linter baseline: Deferred.
 - [DOCS-01] Document local OAuth credentials setup: Deferred.
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).
+- [DX-01] Add Kotlin linting and formatting tooling: Deferred.
+- [DX-02] Migrate println statements to structured logging: Deferred.
+- [DIR-01] Implement desktop file fetching and sharing: Deferred. Need to prioritize security first.
+- [DIR-02] Implement system tray notifications: Rejected. Duplicate of Plan 014.
+- [SEC-01] Remove instructional directives in dependency plan: Deferred.
+- [SEC-02] Rotate and externalize Google Sign-In Client ID: Deferred. Low risk for public client ID.
+- [CORRECTNESS-01] Swallowed exceptions in File I/O: Rejected. Superseded by Plan 018 (IdentityManager deletion).
+- [CORRECTNESS-02] InputStream leak on upload cancellation: Deferred.
+- [CORRECTNESS-03] Resource leak in DexRequestStore: Deferred.
+- [SECURITY-04] Prompt injection via agent directives: Rejected. By-design behavior for AGENTS.md.
+- [Test Coverage-01] Missing unit tests for KMP core network engines: Deferred.
+- [Test Coverage-02] Suppressed Milestone 4 tests via block comments: Deferred.
+- [Performance-01] Unbounded TCP timeouts in manual discovery probe: Deferred.
+- [TECH DEBT-02] Delete diverged duplicated discovery services: Deferred.
+- [TECH DEBT-04] Extract logic from FileExplorerPanel God object: Deferred.
