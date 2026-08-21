@@ -29,7 +29,7 @@ import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.window.styling.skiaDropShadow
-import com.dexstudios.dex.window.styling.subpixelBorderGlow
+import androidx.compose.foundation.border
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 
@@ -112,11 +112,10 @@ private fun InboundPairingCard(
                 offsetX = 0.dp,
                 offsetY = 8.dp
             )
-            .subpixelBorderGlow(
-                strokeWidth = 1.dp,
-                borderColor = MaterialTheme.colorScheme.surfaceVariant,
-                glowColor = Color.Transparent,
-                cornerRadius = 24.dp
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(24.dp)
             )
             .clip(cardShape)
     ) {

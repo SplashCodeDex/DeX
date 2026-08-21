@@ -39,7 +39,7 @@ import com.dexstudios.dex.window.components.SettingsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import com.dexstudios.dex.window.styling.skiaDropShadow
-import com.dexstudios.dex.window.styling.subpixelBorderGlow
+import androidx.compose.foundation.border
 import com.kyant.backdrop.Backdrop
 
 /**
@@ -124,11 +124,10 @@ fun DockCardContent(
                 offsetX = 0.dp,
                 offsetY = 8.dp
             )
-            .subpixelBorderGlow(
-                strokeWidth = 1.dp,
-                borderColor = MaterialTheme.colorScheme.surfaceVariant,
-                glowColor = Color.Transparent,
-                cornerRadius = 34.dp
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(34.dp)
             )
             .graphicsLayer {
                 shape = cardShape
