@@ -7,9 +7,20 @@ import java.awt.datatransfer.StringSelection
 
 class DesktopPlatformEngine : IPlatformEngine {
 
+    private fun showSystemNotification(title: String, message: String, type: java.awt.TrayIcon.MessageType) {
+        if (!java.awt.SystemTray.isSupported()) return
+        val tray = java.awt.SystemTray.getSystemTray()
+        val trayIcons = tray.trayIcons
+        if (trayIcons.isNotEmpty()) {
+            trayIcons.first().displayMessage(title, message, type)
+        } else {
+            println("[$title] $message")
+        }
+    }
+
     override fun showPairingRequestNotification(alias: String) {
         println("[DesktopPlatformEngine] Pairing request from $alias")
-        // TODO: Show desktop notification (java.awt.SystemTray or local push)
+        showSystemNotification("Pairing Request", "$alias wants to connect.", java.awt.TrayIcon.MessageType.INFO)
     }
 
     override fun cancelPairingNotification() {
@@ -18,6 +29,7 @@ class DesktopPlatformEngine : IPlatformEngine {
 
     override fun showIncomingFileNotification(sessionId: String, notificationId: Int, fileCount: Int) {
         println("[DesktopPlatformEngine] Incoming file transfer: $fileCount files (session $sessionId)")
+        showSystemNotification("Incoming Files", "Receiving $fileCount files.", java.awt.TrayIcon.MessageType.INFO)
     }
 
     override fun setClipboardText(text: String) {
