@@ -18,7 +18,7 @@ honor its STOP conditions, and update your row when done.
 | 008  | replace-mock-data-in-file-explorer | P2 | S | — | DONE |
 | 009  | robust-json-payload-for-clipboard-sync | P2 | S | — | DONE |
 | 010  | fix-layering-violation-jna-docked-window | P2 | M | — | DONE |
-| 011  | remove-glow-effects | P1 | S | — | TODO |
+| 011  | remove-glow-effects | P1 | S | — | DONE |
 | 012  | remove-device-list-hardcodings | P1 | S | — | TODO |
 | 013  | centralize-os-detection | P2 | S | — | TODO |
 | 014  | implement-desktop-notifications | P3 | S | — | TODO |

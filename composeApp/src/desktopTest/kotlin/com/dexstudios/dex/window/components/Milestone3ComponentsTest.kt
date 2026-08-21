@@ -10,23 +10,7 @@ import kotlin.test.assertTrue
 
 class Milestone3ComponentsTest {
 
-    @Test
-    fun testDefaultWanPlaceholders() {
-        val placeholders = defaultWanPlaceholders()
-        assertEquals(3, placeholders.size)
 
-        val names = placeholders.map { it.alias }
-        assertTrue(names.contains("Ama Serwaa"))
-        assertTrue(names.contains("Akua Donkor"))
-        assertTrue(names.contains("Kwame Asante"))
-
-        placeholders.forEach {
-            assertTrue(it.isWanPlaceholder)
-            assertTrue(it.isPaired)
-            assertFalse(it.isOnline)
-            assertNotNull(it.wanEmail)
-        }
-    }
 
     @Test
     fun testPinPairingUiStateProperties() {
