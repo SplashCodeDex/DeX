@@ -76,8 +76,8 @@ object DeXServer {
             sslConnector(
                 keyStore = keyStore,
                 keyAlias = "dex",
-                keyStorePassword = { CertificateGenerator.PASSWORD.toCharArray() },
-                privateKeyPassword = { CertificateGenerator.PASSWORD.toCharArray() }
+                keyStorePassword = { CertificateGenerator.getPassword().toCharArray() },
+                privateKeyPassword = { CertificateGenerator.getPassword().toCharArray() }
             ) {
                 host = "0.0.0.0"
                 port = 48424

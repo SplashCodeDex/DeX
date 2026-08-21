@@ -9,7 +9,7 @@ honor its STOP conditions, and update your row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001  | fix-adb-zip-slip | P1 | S | — | DONE |
-| 002  | fix-certificate-hardcoded-password | P1 | S | — | TODO |
+| 002  | fix-certificate-hardcoded-password | P1 | S | — | DONE |
 | 003  | remove-android-targets | P1 | M | — | TODO |
 | 004  | fix-hardcoded-javahome | P1 | S | — | TODO |
 | 005  | fix-dexserver-startup | P1 | S | — | TODO |

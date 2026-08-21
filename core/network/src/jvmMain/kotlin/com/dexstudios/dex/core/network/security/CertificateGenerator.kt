@@ -5,21 +5,41 @@ import java.security.KeyStore
 
 object CertificateGenerator {
     private val keyStoreFile = File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
-    const val PASSWORD = "dexpassword"
+    private val passwordFile = File(System.getProperty("java.io.tmpdir"), ".dex_cert_pwd")
+
+    fun getPassword(): String {
+        if (!passwordFile.exists()) {
+            passwordFile.writeText(java.util.UUID.randomUUID().toString())
+        }
+        return passwordFile.readText()
+    }
     
     fun getOrCreateKeyStore(): KeyStore {
         if (!keyStoreFile.exists()) {
-            generateKeyStore()
+            generateKeyStore(getPassword())
         }
         
-        return keyStoreFile.inputStream().use {
-            val ks = KeyStore.getInstance("JKS")
-            ks.load(it, PASSWORD.toCharArray())
-            ks
+        return try {
+            keyStoreFile.inputStream().use {
+                val ks = KeyStore.getInstance("JKS")
+                ks.load(it, getPassword().toCharArray())
+                ks
+            }
+        } catch (e: Exception) {
+            // Password mismatch or corrupted keystore
+            keyStoreFile.delete()
+            passwordFile.delete()
+            val newPassword = getPassword()
+            generateKeyStore(newPassword)
+            keyStoreFile.inputStream().use {
+                val ks = KeyStore.getInstance("JKS")
+                ks.load(it, newPassword.toCharArray())
+                ks
+            }
         }
     }
     
-    private fun generateKeyStore() {
+    private fun generateKeyStore(password: String) {
         try {
             keyStoreFile.delete()
             val javaHome = System.getProperty("java.home")
@@ -36,8 +56,8 @@ object CertificateGenerator {
                 "-keysize", "2048",
                 "-validity", "3650",
                 "-keystore", keyStoreFile.absolutePath,
-                "-storepass", PASSWORD,
-                "-keypass", PASSWORD,
+                "-storepass", password,
+                "-keypass", password,
                 "-dname", "CN=DeX, OU=DeXStudios, O=DeXStudios, L=Unknown, ST=Unknown, C=Unknown"
             ).inheritIO().start()
             
