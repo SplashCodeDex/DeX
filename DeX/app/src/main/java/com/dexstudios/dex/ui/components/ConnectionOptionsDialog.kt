@@ -27,12 +27,12 @@ import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.Backdrop
 
 @Composable
 fun ConnectionOptionsDialog(
     device: DiscoveredDevice,
+    backdrop: Backdrop,
     onPinCode: () -> Unit,
     onQrCode: () -> Unit,
     onDismiss: () -> Unit,
@@ -55,8 +55,6 @@ fun ConnectionOptionsDialog(
         if (hasOpened && transitionState.isIdle && !transitionState.targetState) onDismiss()
     }
 
-    val dialogBackdrop = rememberLayerBackdrop()
-
     AnimatedVisibility(
         visibleState = transitionState,
         enter = spatialMenuEnter(),
@@ -66,7 +64,6 @@ fun ConnectionOptionsDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .layerBackdrop(dialogBackdrop)
         ) {
             Box(
                 modifier = Modifier
@@ -80,7 +77,7 @@ fun ConnectionOptionsDialog(
                 contentAlignment = Alignment.Center
             ) {
                 LiquidGlassPanel(
-                    backdrop = dialogBackdrop,
+                    backdrop = backdrop,
                     shape = RoundedCornerShape(48.dp),
                     config = LiquidGlassPresets.Dialog,
                     modifier = Modifier

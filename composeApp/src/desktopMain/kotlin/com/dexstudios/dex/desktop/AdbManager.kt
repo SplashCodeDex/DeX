@@ -6,7 +6,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.URL
+import java.net.URI
 import java.util.zip.ZipInputStream
 
 object AdbManager {
@@ -48,7 +48,7 @@ object AdbManager {
             }
 
             val zipFile = File(toolsDir, "platform-tools.zip")
-            URL(ADB_DOWNLOAD_URL).openStream().use { input ->
+            URI(ADB_DOWNLOAD_URL).toURL().openStream().use { input ->
                 FileOutputStream(zipFile).use { output ->
                     input.copyTo(output)
                 }

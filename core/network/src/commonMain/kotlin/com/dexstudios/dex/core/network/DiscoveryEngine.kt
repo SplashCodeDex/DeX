@@ -28,6 +28,8 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 
+private val lenientJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
 // We still use java.net.DatagramSocket for the manual probe fallback since both targets are JVM.
 // If this ever targets iOS, we would expect/actual the manual probe as well.
 
@@ -163,7 +165,7 @@ class DiscoveryEngine(
                 val response: HttpResponse = httpClient.get("http://$ip:$port/api/localsend/v2/info")
                 if (response.status.value == 200) {
                     val responseText = response.bodyAsText()
-                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.parseToJsonElement(responseText).jsonObject
+                    val json = lenientJson.parseToJsonElement(responseText).jsonObject
 
                     val fp = json["fingerprint"]?.jsonPrimitive?.content ?: ""
                     val alias = json["alias"]?.jsonPrimitive?.content ?: "PC Engine"

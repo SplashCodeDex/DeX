@@ -14,12 +14,12 @@ kotlin {
         val desktopMain = getByName("desktopMain")
         
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
+            implementation(libs.compose.components.uiToolingPreview)
             
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.navigation.compose)
@@ -58,6 +58,8 @@ kotlin {
 
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.mockk)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

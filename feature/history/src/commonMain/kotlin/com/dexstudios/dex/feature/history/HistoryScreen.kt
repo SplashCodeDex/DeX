@@ -296,7 +296,7 @@ fun HistoryScreen(
                                     Text("Seed Demo Data")
                                 }
                                 com.dexstudios.dex.core.designsystem.components.DeXButton(
-                                    onClick = { {} }
+                                    onClick = {}
                                 ) {
                                     Text("Demo Down")
                                 }
@@ -328,64 +328,25 @@ fun HistoryScreen(
                                 items(groupItems, key = { it.id }) { record ->
                                     var showItemMenu by remember { mutableStateOf(false) }
                                     val isSelected = selectedIds.contains(record.id)
-                                    val dismissState = rememberSwipeToDismissBoxState(
-                                        confirmValueChange = { value ->
-                                            if (value == SwipeToDismissBoxValue.EndToStart) {
-                                                TransferHistory.delete(record.id)
-                                                true
-                                            } else if (value == SwipeToDismissBoxValue.StartToEnd) {
-                                                record.uri?.let { uri -> platformHelper.shareFile(uri) }
-                                                false
-                                            } else false
-                                        }
-                                    )
-
-                                    SwipeToDismissBox(
-                                        state = dismissState,
-                                        backgroundContent = {
-                                            val color = when (dismissState.dismissDirection) {
-                                                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                                                else -> Color.Transparent
-                                            }
-                                            val alignment = when (dismissState.dismissDirection) {
-                                                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                                                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                                                else -> Alignment.Center
-                                            }
-                                            val icon: androidx.compose.ui.graphics.painter.Painter? = when (dismissState.dismissDirection) {
-                                                SwipeToDismissBoxValue.StartToEnd -> painterResource(Res.drawable.ic_fluent_ios_share)
-                                                SwipeToDismissBoxValue.EndToStart -> painterResource(Res.drawable.ic_fluent_delete)
-                                                else -> null
-                                            }
-                                            Box(
-                                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(color).padding(horizontal = 24.dp),
-                                                contentAlignment = alignment
-                                            ) {
-                                                icon?.let { Icon(it, null, tint = if (alignment == Alignment.CenterStart) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
+                                    HistoryRow(
+                                        record = record,
+                                        isSelected = isSelected,
+                                        isSelectionMode = selectionActive,
+                                        onClick = {
+                                            if (selectionActive) {
+                                                selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
+                                            } else {
+                                                openRecord(platformHelper, record, onShowLightbox = { lightboxRecord = record })
                                             }
                                         },
+                                        onLongClick = {
+                                            if (!selectionActive) selectedIds = setOf(record.id) else showItemMenu = true
+                                        },
+                                        onThumbnailClick = {
+                                            lightboxRecord = record
+                                        },
                                         modifier = Modifier.animateItem()
-                                    ) {
-                                        HistoryRow(
-                                            record = record,
-                                            isSelected = isSelected,
-                                            isSelectionMode = selectionActive,
-                                            onClick = {
-                                                if (selectionActive) {
-                                                    selectedIds = if (isSelected) selectedIds - record.id else selectedIds + record.id
-                                                } else {
-                                                    openRecord(platformHelper, record, onShowLightbox = { lightboxRecord = record })
-                                                }
-                                            },
-                                            onLongClick = {
-                                                if (!selectionActive) selectedIds = setOf(record.id) else showItemMenu = true
-                                            },
-                                            onThumbnailClick = {
-                                                lightboxRecord = record
-                                            }
-                                        )
-                                    }
+                                    )
 
                                     DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
                                         DropdownMenuItem(text = { Text("Delete") }, onClick = { TransferHistory.delete(record.id); showItemMenu = false }, leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_close), null, modifier = Modifier.size(18.dp)) })
@@ -503,6 +464,7 @@ private fun HistoryFilterChip(label: String, selected: Boolean, onClick: () -> U
 
 @Composable
 private fun HistoryRow(
+    modifier: Modifier = Modifier,
     record: TransferRecord,
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
@@ -517,7 +479,7 @@ private fun HistoryRow(
     val isFailed = record.status != "success"
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))

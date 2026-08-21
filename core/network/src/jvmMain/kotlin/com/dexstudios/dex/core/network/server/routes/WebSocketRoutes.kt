@@ -79,7 +79,7 @@ fun Route.webSocketRoutes(
                             }
                             "pull-progress" -> {
                                 val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
-                                if (reqId != null && dataObj != null) {
+                                if (reqId != null) {
                                     // Progress update
                                     println("Pull progress for $reqId: $dataObj")
                                 }

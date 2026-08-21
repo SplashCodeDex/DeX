@@ -11,11 +11,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            api(compose.components.resources)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            api(libs.compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)

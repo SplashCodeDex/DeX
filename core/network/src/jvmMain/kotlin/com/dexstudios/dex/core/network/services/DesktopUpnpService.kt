@@ -67,7 +67,14 @@ class DesktopUpnpService(
         val socket = MulticastSocket(null)
         socket.reuseAddress = true
         socket.bind(InetSocketAddress(0))
-        socket.joinGroup(InetAddress.getByName(SSDP_MULTICAST))
+        val groupAddr = InetSocketAddress(InetAddress.getByName(SSDP_MULTICAST), SSDP_PORT)
+        java.net.NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
+            runCatching {
+                if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
+                    socket.joinGroup(groupAddr, ni)
+                }
+            }
+        }
         socket.soTimeout = 3000
 
         val search = """

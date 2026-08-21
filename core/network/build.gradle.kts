@@ -34,7 +34,7 @@ kotlin {
             implementation(libs.jmdns)
         }
 
-        val jvmTest by getting {
+        val jvmTest = getByName("jvmTest") {
             dependencies {
                 implementation(libs.mockk)
             }

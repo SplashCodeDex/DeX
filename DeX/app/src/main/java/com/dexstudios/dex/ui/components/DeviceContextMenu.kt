@@ -27,8 +27,6 @@ import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * A floating bubble card that appears on long-press of a [device].
@@ -62,8 +60,6 @@ fun DeviceContextMenu(
         if (hasOpened && transitionState.isIdle && !transitionState.targetState) onDismiss()
     }
 
-    val dialogBackdrop = rememberLayerBackdrop()
-
     AnimatedVisibility(
         visibleState = transitionState,
         enter = spatialMenuEnter(),
@@ -73,7 +69,6 @@ fun DeviceContextMenu(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .layerBackdrop(dialogBackdrop)
         ) {
             Box(
                 modifier = Modifier

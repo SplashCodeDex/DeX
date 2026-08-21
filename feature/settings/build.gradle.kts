@@ -9,12 +9,16 @@ kotlin {
 
     jvm()
     
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+    
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)

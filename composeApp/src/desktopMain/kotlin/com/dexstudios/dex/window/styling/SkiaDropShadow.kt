@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.skiaCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -74,7 +74,7 @@ fun Modifier.skiaDropShadow(
                 size.height + dy + sp,
                 rPx
             )
-            canvas.nativeCanvas.drawRRect(rrect, paint)
+            canvas.skiaCanvas.drawRRect(rrect, paint)
         }
     }
 }

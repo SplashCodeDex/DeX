@@ -17,7 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.contentOrNull
-import io.ktor.util.generateNonce
+import io.ktor.util.generateNonceBlocking
 
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -137,7 +137,7 @@ class MessageHandler(
         val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
         println("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
 
-        val sessionId = generateNonce()
+        val sessionId = generateNonceBlocking()
         val deferred = CompletableDeferred<Boolean>()
         TransferState.pendingPrompts[sessionId] = deferred
         val notificationId = sessionId.hashCode()

@@ -415,6 +415,7 @@ fun MainScreen(
     connectOptionsDevice?.let { device ->
         ConnectionOptionsDialog(
             device = device,
+            backdrop = contentBackdrop,
             onPinCode = {
                 // Original pairing logic
                 if (AuthState.incomingPairRequest.value != null) return@ConnectionOptionsDialog

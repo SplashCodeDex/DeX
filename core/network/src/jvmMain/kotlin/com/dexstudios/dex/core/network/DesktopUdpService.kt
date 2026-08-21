@@ -21,6 +21,8 @@ import java.net.InetSocketAddress
 import java.net.MulticastSocket
 import java.net.NetworkInterface
 
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 class DesktopUdpService : IDiscoveryService {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var httpsJob: Job? = null
@@ -69,7 +71,7 @@ class DesktopUdpService : IDiscoveryService {
         val msg = String(packet.data, 0, packet.length, Charsets.UTF_8)
         runCatching { java.io.File("C:\\Users\\NicoDex\\Desktop\\dex_udp_debug.log").appendText("Received from ${packet.address.hostAddress}: $msg\\n") }
         runCatching {
-            val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(msg).jsonObject
+            val json = lenientJson.parseToJsonElement(msg).jsonObject
             val fp = json["fingerprint"]?.jsonPrimitive?.contentOrNull ?: ""
             if (fp.isEmpty() || fp == localInfo?.fingerprint) return
 
