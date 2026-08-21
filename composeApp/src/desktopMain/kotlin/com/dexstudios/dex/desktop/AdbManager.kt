@@ -53,9 +53,15 @@ object AdbManager {
 
             println("Extracting platform-tools...")
             ZipInputStream(zipFile.inputStream()).use { zis ->
+                val canonicalToolsDir = toolsDir.canonicalPath
                 var entry = zis.nextEntry
                 while (entry != null) {
                     val newFile = File(toolsDir, entry.name)
+                    val canonicalDestination = newFile.canonicalPath
+                    if (!canonicalDestination.startsWith(canonicalToolsDir)) {
+                        throw SecurityException("Zip entry is outside of the target directory: ${entry.name}")
+                    }
+
                     if (entry.isDirectory) {
                         newFile.mkdirs()
                     } else {
