@@ -12,12 +12,12 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -37,8 +37,8 @@ data class ShareTargetPayload(val files: List<String>)
 val activeUploadSessions = ConcurrentHashMap<String, PrepareUploadRequestDto>()
 val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
 private val shareRoutesFileLock = Any()
+private val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-@OptIn(DelicateCoroutinesApi::class)
 fun Route.shareRoutes() {
     route("/local") {
         post("/share-target") {
@@ -215,14 +215,18 @@ fun Route.shareRoutes() {
                             tray.add(trayIcon)
                             trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
                             
-                            GlobalScope.launch(Dispatchers.IO) {
+                            shareRouteScope.launch {
                                 delay(5000)
-                                try { tray.remove(trayIcon) } catch (ignored: Exception) {}
+                                try { tray.remove(trayIcon) } catch (ignored: Exception) {
+                                    println("Failed to remove SystemTray notification: ${ignored.message}")
+                                }
                             }
                         }
-                    } catch (ignored: Exception) {}
+                    } catch (ignored: Exception) {
+                        println("Failed to display SystemTray notification: ${ignored.message}")
+                    }
 
-                    GlobalScope.launch(Dispatchers.IO) {
+                    shareRouteScope.launch {
                         delay(6000) // Keep in UI for 6s
                         com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
                     }

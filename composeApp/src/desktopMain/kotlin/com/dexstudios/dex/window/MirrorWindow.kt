@@ -1,4 +1,11 @@
 package com.dexstudios.dex.window
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.material3.MaterialTheme
 
@@ -23,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 
 /**
@@ -32,10 +38,12 @@ import com.dexstudios.dex.core.designsystem.theme.DeXTheme
  * Renders JPEG frame stream received from the phone via WebSocket / MediaProjection.
  */
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
 
-@OptIn(DelicateCoroutinesApi::class)
+private val mirrorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
 @Composable
 fun MirrorWindow(
     onClose: () -> Unit,
@@ -60,7 +68,7 @@ fun MirrorWindow(
 
     DisposableEffect(Unit) {
         onDispose {
-            GlobalScope.launch {
+            mirrorScope.launch {
                 com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-stop","data":{}}""")
             }
         }
@@ -100,7 +108,7 @@ fun MirrorWindow(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = MaterialSymbols.Smartphone,
+                                painter = painterResource(Res.drawable.ic_fluent_smartphone),
                                 contentDescription = "Mirroring",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(36.dp)
@@ -181,7 +189,7 @@ fun MirrorWindow(
                                 .background(Color.Black.copy(alpha = 0.65f))
                         ) {
                             Icon(
-                                imageVector = MaterialSymbols.History,
+                                painter = painterResource(Res.drawable.ic_fluent_history),
                                 contentDescription = "Rotate",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
@@ -196,7 +204,7 @@ fun MirrorWindow(
                                 .background(Color.Black.copy(alpha = 0.65f))
                         ) {
                             Icon(
-                                imageVector = MaterialSymbols.Close,
+                                painter = painterResource(Res.drawable.ic_fluent_close),
                                 contentDescription = "Disconnect",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)

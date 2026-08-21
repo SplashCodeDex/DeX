@@ -1,4 +1,12 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -57,7 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.auth.PairingState
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.ui.modifiers.shake
 import kotlinx.coroutines.delay
@@ -174,7 +181,7 @@ fun PinPairingPanel(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = MaterialSymbols.Close,
+                    painter = painterResource(Res.drawable.ic_fluent_close),
                     contentDescription = "Close",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
@@ -274,7 +281,7 @@ fun PinPairingPanel(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = MaterialSymbols.Check,
+                                    painter = painterResource(Res.drawable.ic_fluent_check),
                                     contentDescription = "Success",
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(36.dp)
@@ -332,7 +339,7 @@ fun PinPairingPanel(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = if (state is PinPairingUiState.QrView) MaterialSymbols.Pin else MaterialSymbols.QrCode,
+                            painter = if (state is PinPairingUiState.QrView) painterResource(Res.drawable.ic_fluent_pin) else painterResource(Res.drawable.ic_fluent_qr_code),
                             contentDescription = "Toggle QR/PIN",
                             tint = Color.Black,
                             modifier = Modifier.padding(end = 4.dp).size(16.dp)

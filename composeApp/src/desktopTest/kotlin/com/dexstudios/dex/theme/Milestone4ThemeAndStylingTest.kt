@@ -18,7 +18,7 @@ class Milestone4ThemeAndStylingTest {
 
     @Test
     fun testDarkThemeColorTokensParityWithWpf() {
-        // Source of Truth: MSIX_Source/Themes/DarkTheme.xaml
+        // Source of Truth: Archived_Legacy_WPF/MSIX_Source/Themes/DarkTheme.xaml
         assertEquals(Color(0xFF16121A), DeXColors.Dark.Primary, "PrimaryBrush must match #16121A")
         assertEquals(Color(0xFF2B2631), DeXColors.Dark.Accent, "AccentBrush must match #2B2631")
         assertEquals(Color(0xFFFFFFFF), DeXColors.Dark.PrimaryText, "PrimaryTextBrush must match #FFFFFF")
@@ -34,7 +34,7 @@ class Milestone4ThemeAndStylingTest {
 
     @Test
     fun testLightThemeColorTokensParityWithWpf() {
-        // Source of Truth: MSIX_Source/Themes/LightTheme.xaml
+        // Source of Truth: Archived_Legacy_WPF/MSIX_Source/Themes/LightTheme.xaml
         assertEquals(Color(0xFFFFFFFF), DeXColors.Light.Primary, "PrimaryBrush must match #FFFFFF")
         assertEquals(Color(0xFFF2F2F7), DeXColors.Light.Accent, "AccentBrush must match #F2F2F7")
         assertEquals(Color(0xFF000000), DeXColors.Light.PrimaryText, "PrimaryTextBrush must match #000000")

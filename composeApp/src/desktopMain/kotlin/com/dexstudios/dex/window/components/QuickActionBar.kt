@@ -1,4 +1,13 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -32,11 +41,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 
@@ -72,7 +80,7 @@ fun QuickActionBar(
     ) {
         // 1. Do Not Disturb Pill (56x44dp)
         DeXQuickActionButton(
-            icon = MaterialSymbols.Notifications,
+            icon = painterResource(Res.drawable.ic_fluent_notifications),
             tooltip = "Do Not Disturb",
             isChecked = isDndActive,
             onClick = onToggleDnd
@@ -80,7 +88,7 @@ fun QuickActionBar(
 
         // 2. Screen Mirror Pill (56x44dp)
         DeXQuickActionButton(
-            icon = MaterialSymbols.Smartphone,
+            icon = painterResource(Res.drawable.ic_fluent_smartphone),
             tooltip = "Mirror Phone",
             isChecked = isMirroringActive,
             onClick = onToggleMirror
@@ -88,7 +96,7 @@ fun QuickActionBar(
 
         // 3. Transfers / File Explorer Pill (56x44dp)
         DeXQuickActionButton(
-            icon = MaterialSymbols.Folder,
+            icon = painterResource(Res.drawable.ic_fluent_folder),
             tooltip = "Transfers",
             isChecked = isTransfersActive,
             onClick = onToggleTransfers
@@ -96,7 +104,7 @@ fun QuickActionBar(
 
         // 4. Clipboard Sync Pill (56x44dp)
         DeXQuickActionButton(
-            icon = MaterialSymbols.Clipboard,
+            icon = painterResource(Res.drawable.ic_fluent_clipboard),
             tooltip = "Clipboard",
             isChecked = isClipboardActive,
             badgeCount = clipboardBadgeCount,
@@ -110,7 +118,7 @@ fun QuickActionBar(
             exit = shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeOut()
         ) {
             DeXQuickActionButton(
-                icon = MaterialSymbols.Close,
+                icon = painterResource(Res.drawable.ic_fluent_close),
                 tooltip = "Close",
                 isChecked = false,
                 isDanger = true,
@@ -122,7 +130,7 @@ fun QuickActionBar(
 
 @Composable
 fun DeXQuickActionButton(
-    icon: ImageVector,
+    icon: Painter,
     tooltip: String,
     isChecked: Boolean,
     onClick: () -> Unit,
@@ -203,7 +211,7 @@ fun DeXQuickActionButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = icon,
+            painter = icon,
             contentDescription = tooltip,
             tint = iconColor,
             modifier = Modifier.size(20.dp)

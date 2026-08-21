@@ -1,4 +1,14 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_full
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery4
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery2
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -53,7 +63,6 @@ import com.dexstudios.dex.core.designsystem.generated.resources.joe_avatar
 import com.dexstudios.dex.core.designsystem.generated.resources.user1_avatar
 import com.dexstudios.dex.core.designsystem.generated.resources.user2_avatar
 import com.dexstudios.dex.core.designsystem.generated.resources.user3_avatar
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import org.jetbrains.compose.resources.DrawableResource
@@ -315,7 +324,7 @@ private fun DeviceListItemRow(
                     )
                 } else {
                     Icon(
-                        imageVector = if (device.isWanPlaceholder) MaterialSymbols.AccountCircle else MaterialSymbols.Smartphone,
+                        painter = if (device.isWanPlaceholder) painterResource(Res.drawable.ic_fluent_account_circle) else painterResource(Res.drawable.ic_fluent_smartphone),
                         contentDescription = device.alias,
                         tint = if (device.isOnline) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
@@ -372,7 +381,7 @@ private fun DeviceListItemRow(
                 if (device.isOnline) {
                     if (!device.wifiBand.isNullOrBlank()) {
                         Icon(
-                            imageVector = MaterialSymbols.Wifi,
+                            painter = painterResource(Res.drawable.ic_fluent_wifi),
                             contentDescription = "WiFi",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = 4.dp).size(12.dp)
@@ -396,14 +405,14 @@ private fun DeviceListItemRow(
                     .alpha(0.8f)
             ) {
                 val batteryIcon = when {
-                    device.isCharging -> MaterialSymbols.BatteryCharging
-                    device.batteryPercent >= 80 -> MaterialSymbols.BatteryFull
-                    device.batteryPercent >= 50 -> MaterialSymbols.Battery4
-                    device.batteryPercent >= 20 -> MaterialSymbols.Battery2
-                    else -> MaterialSymbols.Battery1
+                    device.isCharging -> painterResource(Res.drawable.ic_fluent_battery_charging)
+                    device.batteryPercent >= 80 -> painterResource(Res.drawable.ic_fluent_battery_full)
+                    device.batteryPercent >= 50 -> painterResource(Res.drawable.ic_fluent_battery4)
+                    device.batteryPercent >= 20 -> painterResource(Res.drawable.ic_fluent_battery2)
+                    else -> painterResource(Res.drawable.ic_fluent_battery1)
                 }
                 Icon(
-                    imageVector = batteryIcon,
+                    painter = batteryIcon,
                     contentDescription = "Battery",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(end = 4.dp).size(12.dp)
@@ -524,7 +533,7 @@ private fun ProfileListItemRow(
 
         // Chevron
         Icon(
-            imageVector = MaterialSymbols.ArrowBack,
+            painter = painterResource(Res.drawable.ic_fluent_arrow_back),
             contentDescription = "Settings",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
@@ -594,7 +603,7 @@ private fun LocalDeviceItemRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = MaterialSymbols.Computer,
+                painter = painterResource(Res.drawable.ic_fluent_computer),
                 contentDescription = "Windows",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)

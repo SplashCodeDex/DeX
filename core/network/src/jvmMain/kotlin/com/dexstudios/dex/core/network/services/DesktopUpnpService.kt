@@ -4,7 +4,12 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.net.DatagramPacket
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -16,6 +21,9 @@ class DesktopUpnpService(
     private val httpClient: HttpClient,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
+    private val _publicIp = MutableStateFlow<String?>(null)
+    val publicIp = _publicIp.asStateFlow()
+
     private val SSDP_MULTICAST = "239.255.255.250"
     private val SSDP_PORT = 1900
     private val IGD_SERVICES = listOf(
@@ -44,10 +52,10 @@ class DesktopUpnpService(
                 addPortMapping(igd, 48423, "UDP")
                 addPortMapping(igd, 48425, "TCP")
 
-                val publicIp = getExternalIp(igd)
-                if (publicIp != null) {
-                    println("[UPNP] Public IP: $publicIp")
-                    // TODO: Set public address in state
+                val externalIp = getExternalIp(igd)
+                if (externalIp != null) {
+                    println("[UPNP] Public IP: $externalIp")
+                    _publicIp.value = externalIp
                 }
             } catch (e: Exception) {
                 println("[UPNP] Configure failed: ${e.message}")

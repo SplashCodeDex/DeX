@@ -37,7 +37,7 @@ class Milestone4AdversarialStressTest {
 
     @Test
     fun testAllDarkThemeHexTokensExactParity() {
-        // Source of Truth: MSIX_Source/Themes/DarkTheme.xaml
+        // Source of Truth: Archived_Legacy_WPF/MSIX_Source/Themes/DarkTheme.xaml
         val expectedTokens = mapOf(
             "PrimaryBrush" to Color(0xFF16121A),
             "AccentBrush" to Color(0xFF2B2631),
@@ -67,7 +67,7 @@ class Milestone4AdversarialStressTest {
 
     @Test
     fun testAllLightThemeHexTokensExactParity() {
-        // Source of Truth: MSIX_Source/Themes/LightTheme.xaml
+        // Source of Truth: Archived_Legacy_WPF/MSIX_Source/Themes/LightTheme.xaml
         val expectedTokens = mapOf(
             "PrimaryBrush" to Color(0xFFFFFFFF),
             "AccentBrush" to Color(0xFFF2F2F7),

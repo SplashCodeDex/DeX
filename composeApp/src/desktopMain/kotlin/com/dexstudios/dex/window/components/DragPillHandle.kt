@@ -1,4 +1,9 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -122,7 +127,7 @@ fun DragPillHandle(
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.material3.Icon(
-                        imageVector = com.dexstudios.dex.core.designsystem.icons.MaterialSymbols.Pin,
+                        painter = painterResource(Res.drawable.ic_fluent_pin),
                         contentDescription = "Pin Location",
                         tint = if (controller.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)

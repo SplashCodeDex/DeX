@@ -68,14 +68,16 @@ fun main() {
         }
 
         LaunchedEffect(Unit) {
+            val deviceConfig = org.koin.java.KoinJavaComponent.getKoin().get<DeviceConfig>()
             com.dexstudios.dex.desktop.jna.WiggleToOpenService.start(
+                deviceConfig = deviceConfig,
                 onWake = { controller.hide() },
                 onTrigger = { controller.show() }
             )
             com.dexstudios.dex.desktop.jna.GlobalShortcutService.start {
                 controller.toggleVisibility()
             }
-            com.dexstudios.dex.desktop.jna.ClipboardSyncService.start()
+            com.dexstudios.dex.desktop.jna.ClipboardSyncService.start(deviceConfig)
         }
 
         // 300ms Click Debounce Filter for Tray Action

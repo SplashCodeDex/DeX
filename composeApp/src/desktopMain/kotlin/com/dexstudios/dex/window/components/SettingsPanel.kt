@@ -1,4 +1,14 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_palette
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_info
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,7 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.window.DockedWindowStateController
@@ -81,7 +90,7 @@ fun SettingsPanel(
     var isDndActive by remember { mutableStateOf(false) }
     var isAutoAdbHotspotActive by remember { mutableStateOf(true) }
     var isDarkTheme by remember { mutableStateOf(true) }
-    var isWiggleEnabled by remember { mutableStateOf(true) }
+    val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     var downloadPath by remember {
         val userHome = System.getProperty("user.home") ?: ""
         mutableStateOf(File(userHome, "Downloads" + File.separator + "DeX").absolutePath)
@@ -108,7 +117,7 @@ fun SettingsPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = MaterialSymbols.Settings,
+                        painter = painterResource(Res.drawable.ic_fluent_settings),
                         contentDescription = "Settings",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(end = 6.dp).size(18.dp)
@@ -135,7 +144,7 @@ fun SettingsPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = MaterialSymbols.Info,
+                        painter = painterResource(Res.drawable.ic_fluent_info),
                         contentDescription = "About",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = 6.dp).size(16.dp)
@@ -227,7 +236,7 @@ fun SettingsPanel(
             SettingsSectionHeader("Connection")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.DoNotDisturb,
+                    icon = painterResource(Res.drawable.ic_fluent_do_not_disturb),
                     title = "Do Not Disturb",
                     subtitle = "Auto-reject all pairing/transfer requests",
                     badge = if (isDndActive) "ON" else "OFF",
@@ -240,13 +249,13 @@ fun SettingsPanel(
             SettingsSectionHeader("Developer Tools")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.Tune,
+                    icon = painterResource(Res.drawable.ic_fluent_tune),
                     title = "Connect ADB",
                     subtitle = "Enable ADB terminal debugging for power users",
                     onClick = { /* Launch ADB connection */ }
                 )
                 SettingsItem(
-                    icon = MaterialSymbols.Bolt,
+                    icon = painterResource(Res.drawable.ic_fluent_bolt),
                     title = "Auto-Connect ADB Hotspot",
                     subtitle = "Auto-connect ADB daemon when joining phone hotspot",
                     badge = if (isAutoAdbHotspotActive) "ON" else "OFF",
@@ -258,7 +267,7 @@ fun SettingsPanel(
             SettingsSectionHeader("Identity")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.AccountCircle,
+                    icon = painterResource(Res.drawable.ic_fluent_account_circle),
                     title = "Sign in with Google",
                     subtitle = if (googleProfile.email.isNotBlank()) "Signed in as ${googleProfile.email}" else "Trust all devices signed in with your email",
                     onClick = {
@@ -278,7 +287,7 @@ fun SettingsPanel(
             SettingsSectionHeader("Appearance")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.Palette,
+                    icon = painterResource(Res.drawable.ic_fluent_palette),
                     title = "Theme",
                     subtitle = if (isDarkTheme) "Dark" else "Light",
                     onClick = { isDarkTheme = !isDarkTheme }
@@ -289,10 +298,10 @@ fun SettingsPanel(
             SettingsSectionHeader("Interaction")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.TouchApp,
+                    icon = painterResource(Res.drawable.ic_fluent_touch_app),
                     title = "Wiggle-to-Open Menu",
                     subtitle = if (isWiggleEnabled) "Enabled" else "Disabled",
-                    onClick = { isWiggleEnabled = !isWiggleEnabled }
+                    onClick = { deviceConfig.wiggleEnabled = !isWiggleEnabled }
                 )
             }
 
@@ -300,7 +309,7 @@ fun SettingsPanel(
             SettingsSectionHeader("Storage")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.Folder,
+                    icon = painterResource(Res.drawable.ic_fluent_folder),
                     title = "Download Location",
                     subtitle = downloadPath,
                     onClick = {
@@ -333,7 +342,7 @@ fun SettingsPanel(
             SettingsSectionHeader("About & Maintenance")
             SettingsCard {
                 SettingsItem(
-                    icon = MaterialSymbols.Info,
+                    icon = painterResource(Res.drawable.ic_fluent_info),
                     title = "DeX Project",
                     subtitle = "Version 1.0.0 — View on GitHub",
                     onClick = {
@@ -343,7 +352,7 @@ fun SettingsPanel(
                     }
                 )
                 SettingsItem(
-                    icon = MaterialSymbols.Warning,
+                    icon = painterResource(Res.drawable.ic_fluent_warning),
                     title = "Reset Identity & Trust",
                     subtitle = "Revokes all paired devices and restarts identity",
                     isDanger = true,
@@ -384,7 +393,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun SettingsItem(
-    icon: ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     badge: String? = null,
@@ -401,7 +410,7 @@ private fun SettingsItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
+            painter = icon,
             contentDescription = title,
             tint = if (isDanger) MaterialTheme.colorScheme.error else if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 12.dp).size(20.dp)

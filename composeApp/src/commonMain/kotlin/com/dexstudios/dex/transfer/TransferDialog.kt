@@ -1,4 +1,10 @@
 package com.dexstudios.dex.transfer
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_download
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -12,7 +18,6 @@ import androidx.compose.ui.window.Dialog
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 
 @Composable
 fun TransferDialog(
@@ -31,7 +36,7 @@ fun TransferDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
-                    imageVector = if (isReceiving) MaterialSymbols.FileDownload else MaterialSymbols.FileUpload,
+                    painter = if (isReceiving) painterResource(Res.drawable.ic_fluent_file_download) else painterResource(Res.drawable.ic_fluent_file_upload),
                     contentDescription = "Transfer Icon",
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary

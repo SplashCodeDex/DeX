@@ -4,9 +4,9 @@ import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.RegisterDto
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
-import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap
 import com.dexstudios.dex.core.network.auth.IdentityManager
 
 object RelayService {
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // Shared maps for both PC-to-Phone pushes and phone-to-phone Relay hosted files (fileId -> absolute path)
     val hostedFiles = ConcurrentHashMap<String, String>()
     val hostedFileTokens = ConcurrentHashMap<String, String>()
@@ -30,7 +32,6 @@ object RelayService {
     private val relaySessionTime = ConcurrentHashMap<String, Long>()
     private var relayCleanupJob: kotlinx.coroutines.Job? = null
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun trackRelayFile(sessionId: String, fileName: String, absolutePath: String, senderAlias: String) {
         val list = relaySessionFiles.getOrPut(sessionId) { mutableListOf() }
         synchronized(list) {
@@ -40,7 +41,7 @@ object RelayService {
         relaySessionTime[sessionId] = System.currentTimeMillis()
 
         if (relayCleanupJob?.isActive != true) {
-            relayCleanupJob = GlobalScope.launch(Dispatchers.IO) {
+            relayCleanupJob = serviceScope.launch {
                 while (true) {
                     delay(60_000L)
                     val now = System.currentTimeMillis()
@@ -56,7 +57,6 @@ object RelayService {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     suspend fun hostAndPushAsync(
         targetFingerprint: String,
         files: List<Pair<String, String?>>,
@@ -110,7 +110,7 @@ object RelayService {
 
         // Sliding TTL cleanup: files expire 5 minutes after their last pull request
         val hostedIds = fileMap.keys.toList()
-        GlobalScope.launch(Dispatchers.IO) {
+        serviceScope.launch {
             while (true) {
                 delay(60_000L) // Check every minute
                 val now = System.currentTimeMillis()

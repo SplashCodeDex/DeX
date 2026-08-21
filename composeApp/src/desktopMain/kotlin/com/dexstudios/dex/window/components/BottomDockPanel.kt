@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_settings_new
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -52,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -244,7 +244,7 @@ fun BottomDockPanel(
                         modifier = Modifier.weight(1f, fill = false)
                     ) {
                         Icon(
-                            imageVector = MaterialSymbols.PowerSettingsNew,
+                            painter = painterResource(Res.drawable.ic_fluent_power_settings_new),
                             contentDescription = "Exit Engine",
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(16.dp)

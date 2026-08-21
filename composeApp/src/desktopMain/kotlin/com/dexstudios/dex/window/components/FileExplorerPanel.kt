@@ -1,4 +1,18 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_search
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_inventory
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_article
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_photo
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.material3.MaterialTheme
 
@@ -40,7 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +63,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
@@ -307,7 +320,7 @@ fun FileExplorerPanel(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = MaterialSymbols.ArrowBack,
+                    painter = painterResource(Res.drawable.ic_fluent_arrow_back),
                     contentDescription = "Up Directory",
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp)
@@ -331,7 +344,7 @@ fun FileExplorerPanel(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.Search,
+                        painter = painterResource(Res.drawable.ic_fluent_search),
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = 8.dp).size(14.dp)
@@ -385,7 +398,7 @@ fun FileExplorerPanel(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (mode == ExplorerMode.History) MaterialSymbols.History else MaterialSymbols.Smartphone,
+                    painter = if (mode == ExplorerMode.History) painterResource(Res.drawable.ic_fluent_history) else painterResource(Res.drawable.ic_fluent_smartphone),
                     contentDescription = "Toggle Explorer Mode",
                     tint = if (mode == ExplorerMode.Saf) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp)
@@ -423,7 +436,7 @@ fun FileExplorerPanel(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.Folder,
+                        painter = painterResource(Res.drawable.ic_fluent_folder),
                         contentDescription = "Empty",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         modifier = Modifier.size(48.dp)
@@ -570,7 +583,7 @@ fun FileExplorerPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.FileUpload,
+                        painter = painterResource(Res.drawable.ic_fluent_file_upload),
                         contentDescription = "Send Files",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(end = 8.dp).size(18.dp)
@@ -610,7 +623,7 @@ fun FileExplorerPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.Folder,
+                        painter = painterResource(Res.drawable.ic_fluent_folder),
                         contentDescription = "Send Folders",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(end = 8.dp).size(18.dp)
@@ -713,7 +726,7 @@ private fun FileGridItemCard(
                     )
                 } else {
                     Icon(
-                        imageVector = getFileIcon(item),
+                        painter = getFileIcon(item),
                         contentDescription = item.name,
                         tint = getFileIconColor(item),
                         modifier = Modifier.size(28.dp)
@@ -789,7 +802,7 @@ fun PullProgressDock(
                 }
 
                 Icon(
-                    imageVector = MaterialSymbols.Close,
+                    painter = painterResource(Res.drawable.ic_fluent_close),
                     contentDescription = "Cancel Transfer",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -816,14 +829,15 @@ fun PullProgressDock(
     }
 }
 
-private fun getFileIcon(item: ExplorerFileItem): ImageVector {
-    if (item.isAddFolderButton) return MaterialSymbols.Folder
-    if (item.isDirectory) return MaterialSymbols.Folder
+@Composable
+private fun getFileIcon(item: ExplorerFileItem): androidx.compose.ui.graphics.painter.Painter {
+    if (item.isAddFolderButton) return painterResource(Res.drawable.ic_fluent_folder)
+    if (item.isDirectory) return painterResource(Res.drawable.ic_fluent_folder)
     val ext = item.name.substringAfterLast('.', "").lowercase()
     return when (ext) {
-        "jpg", "jpeg", "png", "webp", "gif" -> MaterialSymbols.Photo
-        "zip", "rar", "7z", "tar", "gz" -> MaterialSymbols.Inventory
-        else -> MaterialSymbols.Article
+        "jpg", "jpeg", "png", "webp", "gif" -> painterResource(Res.drawable.ic_fluent_photo)
+        "zip", "rar", "7z", "tar", "gz" -> painterResource(Res.drawable.ic_fluent_inventory)
+        else -> painterResource(Res.drawable.ic_fluent_article)
     }
 }
 

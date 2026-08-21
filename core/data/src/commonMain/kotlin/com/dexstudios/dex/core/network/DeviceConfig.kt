@@ -41,6 +41,7 @@ class DeviceConfig(
         val GOOGLE_SUB_KEY = stringPreferencesKey("google_sub")
         val ALIAS_KEY = stringPreferencesKey("alias")
         val CLIPBOARD_SYNC_ENABLED_KEY = booleanPreferencesKey("clipboard_sync_enabled")
+        val WIGGLE_ENABLED_KEY = booleanPreferencesKey("wiggle_enabled")
     }
 
     private val _emailFlow = MutableStateFlow("")
@@ -51,6 +52,9 @@ class DeviceConfig(
 
     private val _clipboardSyncEnabledFlow = MutableStateFlow(true)
     val clipboardSyncEnabledFlow: StateFlow<Boolean> = _clipboardSyncEnabledFlow.asStateFlow()
+
+    private val _wiggleEnabledFlow = MutableStateFlow(true)
+    val wiggleEnabledFlow: StateFlow<Boolean> = _wiggleEnabledFlow.asStateFlow()
 
     private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
@@ -112,6 +116,17 @@ class DeviceConfig(
             scope.launch {
                 dataStore.edit { prefs ->
                     prefs[CLIPBOARD_SYNC_ENABLED_KEY] = value
+                }
+            }
+        }
+
+    var wiggleEnabled: Boolean
+        get() = _wiggleEnabledFlow.value
+        set(value) {
+            _wiggleEnabledFlow.value = value
+            scope.launch {
+                dataStore.edit { prefs ->
+                    prefs[WIGGLE_ENABLED_KEY] = value
                 }
             }
         }
@@ -184,6 +199,7 @@ class DeviceConfig(
             _googleSubFlow.value = prefs[GOOGLE_SUB_KEY] ?: ""
             _aliasFlow.value = prefs[ALIAS_KEY] ?: ""
             _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
+            _wiggleEnabledFlow.value = prefs[WIGGLE_ENABLED_KEY] ?: true
             println("DeviceConfig fully initialized.")
         }
     }

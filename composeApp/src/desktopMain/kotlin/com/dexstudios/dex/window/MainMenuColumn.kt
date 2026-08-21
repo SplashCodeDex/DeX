@@ -157,7 +157,7 @@ fun MainMenuColumn(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .padding(vertical = 12.dp)
+            .padding(horizontal = 8.dp, vertical = 12.dp)
             .graphicsLayer {
                 translationY = menuTranslateY.toPx()
             }

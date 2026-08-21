@@ -26,7 +26,10 @@ object ClipboardSyncService {
         }
     }
 
-    fun start() {
+    private var deviceConfig: com.dexstudios.dex.core.network.DeviceConfig? = null
+
+    fun start(config: com.dexstudios.dex.core.network.DeviceConfig) {
+        this.deviceConfig = config
         com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = { text ->
             updateHashFromRemote(text)
         }
@@ -45,6 +48,8 @@ object ClipboardSyncService {
     }
 
     private fun processClipboard() {
+        if (deviceConfig?.clipboardSyncEnabled != true) return
+        
         try {
             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
             if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {

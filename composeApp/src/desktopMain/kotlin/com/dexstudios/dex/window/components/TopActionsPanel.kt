@@ -1,4 +1,10 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -15,7 +21,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.size
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -153,7 +158,7 @@ fun TopActionsPanel(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (isCopied) MaterialSymbols.Check else MaterialSymbols.Clipboard,
+                                painter = if (isCopied) painterResource(Res.drawable.ic_fluent_check) else painterResource(Res.drawable.ic_fluent_clipboard),
                                 contentDescription = "Copy IP",
                                 tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(14.dp)
