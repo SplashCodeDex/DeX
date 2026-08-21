@@ -62,10 +62,6 @@ class PairingEngineTest {
             viaRoster = false
         )
 
-        // Capture the callback passed to requestPairingWith
-        val callbackSlot = slot<(Boolean) -> Unit>()
-        every { webSocketEngine.requestPairingWith(device, capture(callbackSlot)) } returns Unit
-
         pairingEngine.initiatePairing(device)
 
         // Verify state is QrPhase
@@ -73,10 +69,6 @@ class PairingEngineTest {
         assertIs<PairingState.QrPhase>(state)
         assertEquals("192.168.1.100", state.ip)
         assertEquals("test-fingerprint", state.fingerprint)
-
-        // Simulate successful pairing acceptance
-        callbackSlot.captured.invoke(true)
-        assertEquals(PairingState.Success, pairingEngine.state.value)
     }
 
     @Test

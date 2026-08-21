@@ -161,7 +161,7 @@ class ClientEngine(
     suspend fun uploadFile(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: suspend (Long) -> Unit = {}
+        onProgress: (Long) -> Unit = {}
     ): UploadOutcome = withContext(Dispatchers.IO) {
         try {
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
@@ -171,7 +171,7 @@ class ClientEngine(
                     parameters.append("token", token)
                 }
                 onUpload { bytesSentTotal, _ ->
-                    kotlinx.coroutines.runBlocking { onProgress(bytesSentTotal) }
+                    onProgress(bytesSentTotal)
                 }
 setBody(object : OutgoingContent.WriteChannelContent() {
                     override val contentType = ContentType.Application.OctetStream
@@ -208,13 +208,13 @@ setBody(object : OutgoingContent.WriteChannelContent() {
     suspend fun uploadFileQuic(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: suspend (Long) -> Unit = {}
+        onProgress: (Long) -> Unit = {}
     ): UploadOutcome {
         val qc = quicClient ?: return UploadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.uploadFile(
                 ip, port, sessionId, fileId, fileName, token, stream, fileSize,
-                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status ->
                     if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status))
                 }
@@ -243,13 +243,13 @@ setBody(object : OutgoingContent.WriteChannelContent() {
         fileId: String,
         token: String?,
         output: java.nio.channels.WritableByteChannel,
-        onProgress: suspend (Long) -> Unit = {}
+        onProgress: (Long) -> Unit = {}
     ): DownloadOutcome {
         val qc = quicClient ?: return DownloadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.downloadFile(
                 ip, port, fileId, token, output,
-                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status, protocol ->
                     if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol))
                 }

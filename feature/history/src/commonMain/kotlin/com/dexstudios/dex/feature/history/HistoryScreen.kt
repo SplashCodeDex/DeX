@@ -21,6 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import org.jetbrains.compose.resources.painterResource
+import com.dexstudios.dex.core.designsystem.generated.resources.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -52,7 +54,6 @@ import com.dexstudios.dex.core.designsystem.state.HistoryDirection
 import coil3.compose.LocalPlatformContext
 import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.TransferRecord
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols as DeXIcons
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -168,7 +169,7 @@ fun HistoryScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { selectedIds = emptySet() }) {
-                                Icon(DeXIcons.Close, contentDescription = "Cancel")
+                                Icon(painterResource(Res.drawable.ic_fluent_close), contentDescription = "Cancel")
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -183,10 +184,10 @@ fun HistoryScreen(
                                 val allIds = items.map { it.id }.toSet()
                                 selectedIds = if (selectedIds.size == allIds.size) emptySet() else allIds
                             }) {
-                                Icon(if (selectedIds.size == items.size) DeXIcons.CheckCircle else DeXIcons.CheckCircleOutlined, null)
+                                Icon(if (selectedIds.size == items.size) painterResource(Res.drawable.ic_fluent_check_circle) else painterResource(Res.drawable.ic_fluent_check_circle_outlined), null)
                             }
                             IconButton(onClick = { showBulkDeleteConfirm = true }) {
-                                Icon(DeXIcons.Delete, null, tint = MaterialTheme.colorScheme.error)
+                                Icon(painterResource(Res.drawable.ic_fluent_delete), null, tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -207,17 +208,17 @@ fun HistoryScreen(
                         if (!isSearchExpanded) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = { TopAppBarState.isHistoryFilterVisible = !isFilterVisible }) {
-                                    Icon(DeXIcons.FilterList, null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                    Icon(painterResource(Res.drawable.ic_fluent_filter_list), null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 IconButton(onClick = {
                                     TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
                                 }) {
-                                    Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                    Icon(if (viewMode == HistoryViewMode.LIST) painterResource(Res.drawable.ic_fluent_grid_view) else painterResource(Res.drawable.ic_fluent_view_list), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 var showMoreMenu by remember { mutableStateOf(false) }
                                 Box {
                                     IconButton(onClick = { showMoreMenu = true }) {
-                                        Icon(DeXIcons.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                        Icon(painterResource(Res.drawable.ic_fluent_more_vert), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                     }
                                     DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
                                         // Sort Submenu
@@ -225,14 +226,14 @@ fun HistoryScreen(
                                         DropdownMenuItem(
                                             text = { Text("Sort by...") },
                                             onClick = { showSortSubmenu = true },
-                                            leadingIcon = { Icon(DeXIcons.Sort, null, modifier = Modifier.size(18.dp)) },
-                                            trailingIcon = { Icon(DeXIcons.ExpandMore, null, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = -90f }) }
+                                            leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_sort), null, modifier = Modifier.size(18.dp)) },
+                                            trailingIcon = { Icon(painterResource(Res.drawable.ic_fluent_expand_more), null, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = -90f }) }
                                         )
                                         if (items.isNotEmpty()) {
                                             DropdownMenuItem(
                                                 text = { Text(stringResource(Res.string.history_clear_all)) },
                                                 onClick = { showClearConfirm = true; showMoreMenu = false },
-                                                leadingIcon = { Icon(DeXIcons.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
+                                                leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_delete), null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
                                             )
                                         }
 
@@ -245,7 +246,7 @@ fun HistoryScreen(
                                                         HistorySort.NAME_ASC -> "A-Z"
                                                     }) },
                                                     onClick = { TopAppBarState.historySortOrder = order; showSortSubmenu = false; showMoreMenu = false },
-                                                    leadingIcon = { if (sortOrder == order) Icon(DeXIcons.Check, null, modifier = Modifier.size(18.dp)) }
+                                                    leadingIcon = { if (sortOrder == order) Icon(painterResource(Res.drawable.ic_fluent_check), null, modifier = Modifier.size(18.dp)) }
                                                 )
                                             }
                                         }
@@ -282,7 +283,7 @@ fun HistoryScreen(
             if (items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 32.dp)) {
-                        Icon(DeXIcons.History, null, modifier = Modifier.size(80.dp).graphicsLayer { alpha = 0.2f }, tint = MaterialTheme.colorScheme.primary)
+                        Icon(painterResource(Res.drawable.ic_fluent_history), null, modifier = Modifier.size(80.dp).graphicsLayer { alpha = 0.2f }, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(text = if (search.isNotBlank()) "No matching records" else stringResource(Res.string.history_empty), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
 
@@ -352,9 +353,9 @@ fun HistoryScreen(
                                                 SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
                                                 else -> Alignment.Center
                                             }
-                                            val icon: ImageVector? = when (dismissState.dismissDirection) {
-                                                SwipeToDismissBoxValue.StartToEnd -> DeXIcons.IosShare
-                                                SwipeToDismissBoxValue.EndToStart -> DeXIcons.Delete
+                                            val icon: androidx.compose.ui.graphics.painter.Painter? = when (dismissState.dismissDirection) {
+                                                SwipeToDismissBoxValue.StartToEnd -> painterResource(Res.drawable.ic_fluent_ios_share)
+                                                SwipeToDismissBoxValue.EndToStart -> painterResource(Res.drawable.ic_fluent_delete)
                                                 else -> null
                                             }
                                             Box(
@@ -387,12 +388,12 @@ fun HistoryScreen(
                                     }
 
                                     DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                        DropdownMenuItem(text = { Text("Delete") }, onClick = { TransferHistory.delete(record.id); showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Close, null, modifier = Modifier.size(18.dp)) })
+                                        DropdownMenuItem(text = { Text("Delete") }, onClick = { TransferHistory.delete(record.id); showItemMenu = false }, leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_close), null, modifier = Modifier.size(18.dp)) })
                                         DropdownMenuItem(text = { Text("Share") }, onClick = {
                                             record.uri?.let { uri -> platformHelper.shareFile(uri) }
                                             showItemMenu = false
-                                        }, leadingIcon = { Icon(DeXIcons.IosShare, null, modifier = Modifier.size(18.dp)) })
-                                        DropdownMenuItem(text = { Text("Open Folder") }, onClick = { record.uri?.let { platformHelper.openFolder(it) }; showItemMenu = false }, leadingIcon = { Icon(DeXIcons.Folder, null, modifier = Modifier.size(18.dp)) })
+                                        }, leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_ios_share), null, modifier = Modifier.size(18.dp)) })
+                                        DropdownMenuItem(text = { Text("Open Folder") }, onClick = { record.uri?.let { platformHelper.openFolder(it) }; showItemMenu = false }, leadingIcon = { Icon(painterResource(Res.drawable.ic_fluent_folder), null, modifier = Modifier.size(18.dp)) })
                                     }
                                 }
                             }
@@ -510,7 +511,7 @@ private fun HistoryRow(
     onThumbnailClick: () -> Unit
 ) {
     val isSent = record.direction == "sent"
-    val fileIcon = remember(record.name) { getFileIcon(record.name) }
+    val fileIcon = getFileIcon(record.name)
     val type = remember(record.name) { getHistoryType(record.name) }
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
@@ -528,7 +529,7 @@ private fun HistoryRow(
     ) {
         if (isSelectionMode) {
             Icon(
-                imageVector = if (isSelected) DeXIcons.CheckCircle else DeXIcons.CheckCircleOutlined,
+                painter = if (isSelected) painterResource(Res.drawable.ic_fluent_check_circle) else painterResource(Res.drawable.ic_fluent_check_circle_outlined),
                 contentDescription = null,
                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(end = 12.dp).size(20.dp)
@@ -557,17 +558,17 @@ private fun HistoryRow(
                         }
                     },
                     error = {
-                        Icon(imageVector = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                        Icon(painter = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                     }
                 )
                 if (isFailed) {
                     Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
                 }
             } else {
-                Icon(imageVector = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                Icon(painter = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
             }
             Icon(
-                imageVector = if (isSent) DeXIcons.FileUpload else DeXIcons.FileDownload,
+                painter = if (isSent) painterResource(Res.drawable.ic_fluent_file_upload) else painterResource(Res.drawable.ic_fluent_file_download),
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp).size(10.dp)
@@ -598,7 +599,7 @@ private fun HistoryGridItem(
     onLongClick: () -> Unit
 ) {
     val isSent = record.direction == "sent"
-    val fileIcon = remember(record.name) { getFileIcon(record.name) }
+    val fileIcon = getFileIcon(record.name)
     val type = remember(record.name) { getHistoryType(record.name) }
     val hasThumbnail = (type == HistoryType.IMAGES || type == HistoryType.VIDEOS) && record.uri != null
     val isFailed = record.status != "success"
@@ -635,11 +636,11 @@ private fun HistoryGridItem(
                         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
                     },
                     error = {
-                        Icon(imageVector = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
+                        Icon(painter = fileIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
                     }
                 )
             } else {
-                Icon(imageVector = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(32.dp))
+                Icon(painter = fileIcon, contentDescription = null, tint = if (isFailed) MaterialTheme.colorScheme.error else if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(32.dp))
             }
 
             if (isSelectionMode) {
@@ -654,13 +655,13 @@ private fun HistoryGridItem(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
-                        Icon(DeXIcons.Check, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(painterResource(Res.drawable.ic_fluent_check), null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
 
             Icon(
-                imageVector = if (isSent) DeXIcons.FileUpload else DeXIcons.FileDownload,
+                painter = if (isSent) painterResource(Res.drawable.ic_fluent_file_upload) else painterResource(Res.drawable.ic_fluent_file_download),
                 contentDescription = null,
                 tint = (if (isSent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary).copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(12.dp)
@@ -755,14 +756,15 @@ private fun getHistoryType(fileName: String): HistoryType {
     }
 }
 
-private fun getFileIcon(fileName: String): ImageVector {
+@Composable
+private fun getFileIcon(fileName: String): androidx.compose.ui.graphics.painter.Painter {
     val type = getHistoryType(fileName)
     return when (type) {
-        HistoryType.IMAGES -> DeXIcons.Photo
-        HistoryType.VIDEOS -> DeXIcons.VideoCamera
-        HistoryType.DOCUMENTS -> DeXIcons.Article
-        HistoryType.APPS -> DeXIcons.Inventory
-        else -> DeXIcons.Article
+        HistoryType.IMAGES -> painterResource(Res.drawable.ic_fluent_photo)
+        HistoryType.VIDEOS -> painterResource(Res.drawable.ic_fluent_video_camera)
+        HistoryType.DOCUMENTS -> painterResource(Res.drawable.ic_fluent_article)
+        HistoryType.APPS -> painterResource(Res.drawable.ic_fluent_inventory)
+        else -> painterResource(Res.drawable.ic_fluent_article)
     }
 }
 

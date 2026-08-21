@@ -13,6 +13,11 @@ honor its STOP conditions, and update your row when done.
 | 003  | remove-android-targets | P1 | M | — | DONE |
 | 004  | fix-hardcoded-javahome | P1 | S | — | DONE |
 | 005  | fix-dexserver-startup | P1 | S | — | DONE |
+| 006  | serialize-websocket-outgoing-messages | P1 | S | — | DONE |
+| 007  | propagate-io-failures-in-googleoauth | P2 | S | — | DONE |
+| 008  | replace-mock-data-in-file-explorer | P2 | S | — | DONE |
+| 009  | robust-json-payload-for-clipboard-sync | P2 | S | — | DONE |
+| 010  | fix-layering-violation-jna-docked-window | P2 | M | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
@@ -23,11 +28,6 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 ## Findings considered and rejected (or deferred)
 
 - [TEST-01] Add verification baseline to feature modules: Deferred. Need basic correctness fixes first.
-- [BUG-02] Serialize WebSocket outgoing messages: Deferred to next batch.
-- [BUG-03] Propagate I/O failures in GoogleOAuth profile operations: Deferred.
-- [TECHDEBT-02] Replace hardcoded mock user profile and local device data: Deferred.
-- [TECHDEBT-03] Robust JSON payload generation for clipboard sync: Deferred.
-- [TECHDEBT-04] Layering violation with Windows JNA in DockedWindowStateController: Deferred.
 - [PERF-01] Busy-waiting polling loop for external drag-and-drop state: Deferred.
 - [DX-02] Add code formatter and linter baseline: Deferred.
 - [DOCS-01] Document local OAuth credentials setup: Deferred.

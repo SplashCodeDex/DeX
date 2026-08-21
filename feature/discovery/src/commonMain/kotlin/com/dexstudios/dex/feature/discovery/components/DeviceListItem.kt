@@ -1,4 +1,15 @@
 package com.dexstudios.dex.feature.discovery.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_full
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery5
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery4
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery3
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery2
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_devices
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -23,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.DeXButton
 import com.dexstudios.dex.core.designsystem.components.DeXPanel
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.*
 import com.dexstudios.dex.core.network.DiscoveredDevice
@@ -45,22 +55,21 @@ fun DeviceListItem(
     val isCharging = device.info.isCharging == true
     val realWifiBand = device.info.wifiBand?.ifBlank { "5GHz" } ?: "5GHz"
 
-    val batteryIcon = remember(realBattery, isCharging) {
+    val batteryIcon =
         if (isCharging) {
-            MaterialSymbols.BatteryCharging
+            painterResource(Res.drawable.ic_fluent_battery_charging)
         } else if (realBattery != null) {
             when {
-                realBattery <= 15 -> MaterialSymbols.Battery1
-                realBattery <= 35 -> MaterialSymbols.Battery2
-                realBattery <= 50 -> MaterialSymbols.Battery3
-                realBattery <= 70 -> MaterialSymbols.Battery4
-                realBattery <= 85 -> MaterialSymbols.Battery5
-                else -> MaterialSymbols.BatteryFull
+                realBattery <= 15 -> painterResource(Res.drawable.ic_fluent_battery1)
+                realBattery <= 35 -> painterResource(Res.drawable.ic_fluent_battery2)
+                realBattery <= 50 -> painterResource(Res.drawable.ic_fluent_battery3)
+                realBattery <= 70 -> painterResource(Res.drawable.ic_fluent_battery4)
+                realBattery <= 85 -> painterResource(Res.drawable.ic_fluent_battery5)
+                else -> painterResource(Res.drawable.ic_fluent_battery_full)
             }
         } else {
-            MaterialSymbols.BatteryFull
+            painterResource(Res.drawable.ic_fluent_battery_full)
         }
-    }
 
     val cardShape = RoundedCornerShape(48.dp)
 
@@ -94,7 +103,7 @@ fun DeviceListItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = MaterialSymbols.Devices,
+                        painter = painterResource(Res.drawable.ic_fluent_devices),
                         contentDescription = null,
                         modifier = Modifier
                             .size(120.dp)
@@ -152,7 +161,7 @@ fun DeviceListItem(
 
                 // Tags Row
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DeviceIconTag(icon = MaterialSymbols.Wifi)
+                    DeviceIconTag(icon = painterResource(Res.drawable.ic_fluent_wifi))
                     if (isTrusted && realBattery != null) {
                         DeviceIconTag(icon = batteryIcon)
                         DeviceTag(text = realWifiBand)
@@ -184,14 +193,14 @@ fun DeviceListItem(
 }
 
 @Composable
-private fun DeviceIconTag(icon: ImageVector) {
+private fun DeviceIconTag(icon: androidx.compose.ui.graphics.painter.Painter) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Icon(
-            imageVector = icon,
+            painter = icon,
             contentDescription = null,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).size(18.dp)
         )

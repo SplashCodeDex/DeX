@@ -238,17 +238,7 @@ fun FileExplorerPanel(
                         uri = f.uri
                     )
                 }
-                // Fallback mock items if phone is not connected yet (scaffolding visual parity)
-                val fallbackItems = if (folderItems.isEmpty()) {
-                    listOf(
-                        ExplorerFileItem("saf_dcim", "DCIM", "/storage/emulated/0/DCIM", 0L, true, System.currentTimeMillis()),
-                        ExplorerFileItem("saf_downloads", "Download", "/storage/emulated/0/Download", 0L, true, System.currentTimeMillis()),
-                        ExplorerFileItem("saf_documents", "Documents", "/storage/emulated/0/Documents", 0L, true, System.currentTimeMillis()),
-                        ExplorerFileItem("saf_pictures", "Pictures", "/storage/emulated/0/Pictures", 0L, true, System.currentTimeMillis())
-                    )
-                } else folderItems
-
-                fallbackItems + ExplorerFileItem(
+                folderItems + ExplorerFileItem(
                     id = "add_saf_folder",
                     name = "+ Add Folder",
                     path = "",

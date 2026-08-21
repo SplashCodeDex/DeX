@@ -9,6 +9,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_accoun
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settings
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -91,6 +92,7 @@ fun SettingsPanel(
     var isAutoAdbHotspotActive by remember { mutableStateOf(true) }
     var isDarkTheme by remember { mutableStateOf(true) }
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
+    val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
     var downloadPath by remember {
         val userHome = System.getProperty("user.home") ?: ""
         mutableStateOf(File(userHome, "Downloads" + File.separator + "DeX").absolutePath)
@@ -242,6 +244,13 @@ fun SettingsPanel(
                     badge = if (isDndActive) "ON" else "OFF",
                     isBadgeDanger = isDndActive,
                     onClick = { isDndActive = !isDndActive }
+                )
+                SettingsItem(
+                    icon = painterResource(Res.drawable.ic_fluent_wifi),
+                    title = "UPnP Port Forwarding",
+                    subtitle = "Allow file transfers over the Internet via WAN router forwarding",
+                    badge = if (isUpnpEnabled) "ON" else "OFF",
+                    onClick = { deviceConfig.upnpEnabled = !isUpnpEnabled }
                 )
             }
 

@@ -12,6 +12,9 @@ import javax.imageio.ImageIO
 import org.koin.core.context.GlobalContext
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.WebSocketEngine
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 
 object ClipboardSyncService {
     private var processJob: Job? = null
@@ -91,11 +94,15 @@ object ClipboardSyncService {
     private fun sendToPhone(data: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val escapedData = data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
                 val payload = if (data.startsWith("{") && data.endsWith("}")) {
                     data
                 } else {
-                    """{"type":"set-clipboard","data":{"text":"$escapedData"}}"""
+                    buildJsonObject {
+                        put("type", "set-clipboard")
+                        putJsonObject("data") {
+                            put("text", data)
+                        }
+                    }.toString()
                 }
                 
                 val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)

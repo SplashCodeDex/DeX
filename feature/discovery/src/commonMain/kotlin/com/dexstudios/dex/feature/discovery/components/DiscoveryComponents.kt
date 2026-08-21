@@ -1,4 +1,11 @@
 package com.dexstudios.dex.feature.discovery.components
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code_scanner
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -22,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.DeXButton
 import com.dexstudios.dex.core.designsystem.components.DeXPanel
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.*
 import com.dexstudios.dex.core.network.DiscoveredDevice
@@ -104,7 +110,7 @@ fun ScanToAddDeviceCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = MaterialSymbols.QrCodeScanner,
+                                painter = painterResource(Res.drawable.ic_fluent_qr_code_scanner),
                                 contentDescription = "Scan",
                                 modifier = Modifier.size(56.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -135,7 +141,7 @@ fun ScanToAddDeviceCard(
                             if (hintActive) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = MaterialSymbols.CheckCircle,
+                                        painter = painterResource(Res.drawable.ic_fluent_check_circle),
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary

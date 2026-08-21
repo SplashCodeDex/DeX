@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -21,14 +21,12 @@ object DeviceManager {
 
     private lateinit var dataStore: DataStore<Preferences>
 
-    fun init(store: DataStore<Preferences>) {
+    suspend fun init(store: DataStore<Preferences>) {
         dataStore = store
-        runBlocking {
-            val prefs = dataStore.data.first()
-            loadPairedFingerprints(prefs)
-            loadPairedTokens(prefs)
-            loadPairedTimes(prefs)
-        }
+        val prefs = dataStore.data.first()
+        loadPairedFingerprints(prefs)
+        loadPairedTokens(prefs)
+        loadPairedTimes(prefs)
     }
 
     private fun loadPairedFingerprints(prefs: Preferences) {

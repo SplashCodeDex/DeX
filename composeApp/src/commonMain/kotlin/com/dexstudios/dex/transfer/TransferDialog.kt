@@ -23,6 +23,7 @@ import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
 fun TransferDialog(
     filename: String,
     progress: Float,
+    speedBps: Long,
     isReceiving: Boolean,
     onDismiss: () -> Unit,
     onCancel: () -> Unit
@@ -62,6 +63,18 @@ fun TransferDialog(
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     strokeCap = StrokeCap.Round
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val mbps = speedBps / 1048576.0
+                val pct = (progress * 100).toInt()
+                
+                Text(
+                    text = "${mbps.toString().take(4)} MB/s - $pct%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.End)
+                )
+
                 Spacer(modifier = Modifier.height(24.dp))
                 TextButton(onClick = onCancel) {
                     Text("Cancel")

@@ -39,7 +39,8 @@ class DockedWindowStateController(
         size = DpSize(TaskbarWorkAreaProvider.DEFAULT_CANVAS_WIDTH.dp, TaskbarWorkAreaProvider.DEFAULT_CANVAS_HEIGHT.dp),
         position = WindowPosition(0.dp, 0.dp)
     ),
-    var density: Float = 1.0f
+    var density: Float = 1.0f,
+    val mouseInputProvider: com.dexstudios.dex.platform.MouseInputProvider = com.dexstudios.dex.platform.DesktopMouseInputProvider
 ) {
     val canvasWidth = TaskbarWorkAreaProvider.DEFAULT_CANVAS_WIDTH
     val canvasHeight = TaskbarWorkAreaProvider.DEFAULT_CANVAS_HEIGHT
@@ -100,17 +101,10 @@ class DockedWindowStateController(
      * 6. JNA Drag-and-Drop Hook: User is actively holding the left mouse button (dragging a file)
      */
     fun shouldDismissOnFocusLoss(): Boolean {
-        if (System.getProperty("os.name").lowercase().contains("windows")) {
-            try {
-                val lButton = com.sun.jna.platform.win32.User32.INSTANCE.GetAsyncKeyState(0x01).toInt()
-                if ((lButton and 0x8000) != 0) {
-                    // Left mouse is actively held down (likely an external drag and drop in progress)
-                    deferHideOnDragDrop()
-                    return false
-                }
-            } catch (e: Throwable) {
-                // Fallback gracefully if JNA isn't available
-            }
+        if (mouseInputProvider.isLeftMouseButtonDown()) {
+            // Left mouse is actively held down (likely an external drag and drop in progress)
+            deferHideOnDragDrop()
+            return false
         }
         return !isPinned && !isShowingTransition && !isPairingActive && !isExpanded && !isModalDialogOpen
     }
@@ -120,11 +114,9 @@ class DockedWindowStateController(
         dragDropDeferJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 while (isActive) {
-                    val lButton = com.sun.jna.platform.win32.User32.INSTANCE.GetAsyncKeyState(0x01).toInt()
-                    if ((lButton and 0x8000) == 0) {
+                    if (!mouseInputProvider.isLeftMouseButtonDown()) {
                         // Mouse released!
-                        val point = com.sun.jna.platform.win32.WinDef.POINT()
-                        com.sun.jna.platform.win32.User32.INSTANCE.GetCursorPos(point)
+                        val (cursorX, cursorY) = mouseInputProvider.getCursorPosition()
                         
                         val winX = windowState.position.x.value.toInt()
                         val winY = windowState.position.y.value.toInt()
@@ -145,8 +137,8 @@ class DockedWindowStateController(
                             winY + canvasHeight - cardMargin - currentCardH
                         }
                         
-                        val isInside = point.x >= contentLeft && point.x <= contentLeft + currentCardW &&
-                                       point.y >= contentTop && point.y <= contentTop + currentCardH
+                        val isInside = cursorX >= contentLeft && cursorX <= contentLeft + currentCardW &&
+                                       cursorY >= contentTop && cursorY <= contentTop + currentCardH
                         
                         if (!isInside && shouldDismissOnFocusLoss()) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

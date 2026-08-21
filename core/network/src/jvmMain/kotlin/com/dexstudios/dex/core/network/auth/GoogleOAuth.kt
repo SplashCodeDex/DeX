@@ -176,7 +176,9 @@ object GoogleOAuth {
             }
             val file = File(baseDirectory, "google_profile.json")
             file.writeText(json.encodeToString(profile))
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            println("GoogleOAuth error: ${e.message}")
+        }
     }
 
     fun loadProfile(): GoogleProfile? {
@@ -193,7 +195,9 @@ object GoogleOAuth {
         try {
             val file = File(baseDirectory, "google_profile.json")
             if (file.exists()) file.delete()
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            println("GoogleOAuth error: ${e.message}")
+        }
     }
 
     private fun log(message: String) {
@@ -204,7 +208,9 @@ object GoogleOAuth {
             val file = File(baseDirectory, "oauth.log")
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)
             file.appendText("[$timestamp] $message\n")
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            println("GoogleOAuth file I/O error: ${e.message}")
+        }
     }
 
     private fun base64Url(bytes: ByteArray): String {
@@ -230,7 +236,9 @@ object GoogleOAuth {
             if (!id.isNullOrEmpty() && !secret.isNullOrEmpty()) {
                 cachedCredentials = Pair(id, secret)
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            println("GoogleOAuth file I/O error: ${e.message}")
+        }
         return cachedCredentials
     }
 

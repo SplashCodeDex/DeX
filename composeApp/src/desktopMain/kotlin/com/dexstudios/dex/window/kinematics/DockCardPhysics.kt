@@ -120,7 +120,7 @@ object DockCardPhysics {
         var targetY = currentWindowY
 
         if (!canExpandLeft) {
-            targetX += (expandDeltaWidth - spaceLeft + 20).coerceAtLeast(expandDeltaWidth)
+            targetX += expandDeltaWidth
         }
 
         val expW = cardWidth + expandDeltaWidth
@@ -132,7 +132,7 @@ object DockCardPhysics {
             // macOS uses TopDock, expands Downwards natively
             val canExpandDown = spaceDown >= (expandDeltaHeight + 20) || spaceDown >= spaceUp
             if (!canExpandDown) {
-                targetY -= (expandDeltaHeight - spaceDown + 20).coerceAtLeast(expandDeltaHeight)
+                targetY -= expandDeltaHeight
             }
             expTop = targetY + margin
             expBottom = expTop + expH
@@ -140,7 +140,7 @@ object DockCardPhysics {
             // Windows/Linux uses BottomDock, expands Upwards natively via Compose offset
             val canExpandUp = spaceUp >= (expandDeltaHeight + 20) || spaceUp >= spaceDown
             if (!canExpandUp) {
-                targetY += (expandDeltaHeight - spaceUp + 20).coerceAtLeast(expandDeltaHeight)
+                targetY += expandDeltaHeight
             }
             // Due to native Compose upward offset, the expBottom is physically pinned, and expTop moves up
             expBottom = targetY + canvasHeight - margin
@@ -176,10 +176,23 @@ object DockCardPhysics {
         var finalLeft = candidateContentLeft
         var finalTop = candidateContentTop
 
-        if (abs(candidateContentLeft - workArea.left) < snapThreshold) finalLeft = workArea.left
-        if (abs(contentRight - workArea.right) < snapThreshold) finalLeft = workArea.right - cardWidth
-        if (abs(candidateContentTop - workArea.top) < snapThreshold) finalTop = workArea.top
-        if (abs(contentBottom - workArea.bottom) < snapThreshold) finalTop = workArea.bottom - cardHeight
+        // 2. Inward-only magnetic snapping (matches legacy WPF behavior)
+        // We do NOT use abs() because snapping outwardly would create a 40px "sticky wall"
+        // when dragging across multi-monitor boundaries, trapping the window.
+        // It must only snap when the content is INWARD of the work area bounds by < 20px.
+        
+        if (candidateContentLeft > workArea.left && candidateContentLeft - workArea.left < snapThreshold) {
+            finalLeft = workArea.left
+        }
+        if (contentRight < workArea.right && workArea.right - contentRight < snapThreshold) {
+            finalLeft = workArea.right - cardWidth
+        }
+        if (candidateContentTop > workArea.top && candidateContentTop - workArea.top < snapThreshold) {
+            finalTop = workArea.top
+        }
+        if (contentBottom < workArea.bottom && workArea.bottom - contentBottom < snapThreshold) {
+            finalTop = workArea.bottom - cardHeight
+        }
 
         return Pair(finalLeft, finalTop)
     }

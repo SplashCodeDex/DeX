@@ -47,7 +47,7 @@ fun SettingsClickableRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: ImageVector? = null,
+    icon: androidx.compose.ui.graphics.painter.Painter? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -61,7 +61,7 @@ fun SettingsClickableRow(
     ) {
         if (icon != null) {
             Icon(
-                imageVector = icon,
+                painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -89,7 +89,7 @@ fun SettingsInfoRow(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null
+    icon: androidx.compose.ui.graphics.painter.Painter? = null
 ) {
     Row(
         modifier = modifier
@@ -100,7 +100,7 @@ fun SettingsInfoRow(
     ) {
         if (icon != null) {
             Icon(
-                imageVector = icon,
+                painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -128,7 +128,7 @@ fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: ImageVector? = null
+    icon: androidx.compose.ui.graphics.painter.Painter? = null
 ) {
     Row(
         modifier = modifier
@@ -140,7 +140,7 @@ fun SettingsSwitchRow(
     ) {
         if (icon != null) {
             Icon(
-                imageVector = icon,
+                painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)

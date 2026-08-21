@@ -42,6 +42,7 @@ class DeviceConfig(
         val ALIAS_KEY = stringPreferencesKey("alias")
         val CLIPBOARD_SYNC_ENABLED_KEY = booleanPreferencesKey("clipboard_sync_enabled")
         val WIGGLE_ENABLED_KEY = booleanPreferencesKey("wiggle_enabled")
+        val UPNP_ENABLED_KEY = booleanPreferencesKey("upnp_enabled")
     }
 
     private val _emailFlow = MutableStateFlow("")
@@ -55,6 +56,9 @@ class DeviceConfig(
 
     private val _wiggleEnabledFlow = MutableStateFlow(true)
     val wiggleEnabledFlow: StateFlow<Boolean> = _wiggleEnabledFlow.asStateFlow()
+
+    private val _upnpEnabledFlow = MutableStateFlow(false)
+    val upnpEnabledFlow: StateFlow<Boolean> = _upnpEnabledFlow.asStateFlow()
 
     private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
@@ -131,18 +135,19 @@ class DeviceConfig(
             }
         }
 
-    val fingerprint: String
-        get() {
-            if (_fingerprintFlow.value.isEmpty()) {
-                _fingerprintFlow.value = runBlocking {
-                    val prefs = dataStore.data.first()
-                    prefs[FINGERPRINT_KEY] ?: com.dexstudios.dex.core.network.HashUtils.generateUUID().also { fp ->
-                        dataStore.edit { it[FINGERPRINT_KEY] = fp }
-                    }
+    var upnpEnabled: Boolean
+        get() = _upnpEnabledFlow.value
+        set(value) {
+            _upnpEnabledFlow.value = value
+            scope.launch {
+                dataStore.edit { prefs ->
+                    prefs[UPNP_ENABLED_KEY] = value
                 }
             }
-            return _fingerprintFlow.value
         }
+
+    val fingerprint: String
+        get() = _fingerprintFlow.value
 
     val identityHash: String
         get() = _identityHashFlow.value
@@ -200,6 +205,7 @@ class DeviceConfig(
             _aliasFlow.value = prefs[ALIAS_KEY] ?: ""
             _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
             _wiggleEnabledFlow.value = prefs[WIGGLE_ENABLED_KEY] ?: true
+            _upnpEnabledFlow.value = prefs[UPNP_ENABLED_KEY] ?: false
             println("DeviceConfig fully initialized.")
         }
     }

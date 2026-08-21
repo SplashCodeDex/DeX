@@ -8,8 +8,14 @@
 
 # ⚠️ NON-NEGOTIABLE MIGRATION RULES — READ BEFORE ANY WORK ⚠️
 
-## THE MIGRATION
-The legacy **WPF / C# / PowerShell** desktop implementation is being migrated to **Kotlin + Compose Multiplatform**.
+
+### ALWAYS prioritize BEST PRACTICES, Modularization, refactorization and Centralization for a healthy implementations, maintainability, reusability, readability, debuggability and scalability
+### AVOID Hardcodings.
+### AVOID AI slops.
+### AVOID the use of Emojis.
+### AVOID the use of Gradients.
+### AVOID GLOW effects.
+### YOU MUST USE THE MOST ADVANCED AND ROBUST PATTERNS, ARCHITECTURES, AND TECHNOLOGIES AVAILABLE FOR KOTLIN MULTIPLATFORM AND COMPOSE FOR DESKTOP
 
 ## SCOPE: DESKTOP ONLY — WINDOWS AND macOS
 1. **DESKTOP ONLY.** The Compose/Kotlin Multiplatform codebase is the desktop application for **Windows AND macOS** — both platforms run the **SAME shared Kotlin code** (`composeApp` + shared `core/*` + `feature/*` modules). That is the ONLY target.
@@ -46,3 +52,4 @@ The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. 
 ## Bleeding Edge Dependency Protocol
 - Always prefer the absolutely latest modern versions of frameworks/libraries (e.g. Ktor 3.x+ over Ktor 2.x).
 - Auto-trigger the `/stale-knowledge-research` protocol proactively whenever introducing a dependency or making architectural decisions to ensure you aren't referencing deprecated APIs.
+

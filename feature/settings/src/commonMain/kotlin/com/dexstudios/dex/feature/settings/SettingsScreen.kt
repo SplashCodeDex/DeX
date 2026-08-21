@@ -1,4 +1,14 @@
 package com.dexstudios.dex.feature.settings
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
+
+import org.jetbrains.compose.resources.painterResource
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +28,6 @@ import coil3.compose.AsyncImage
 import com.dexstudios.dex.core.designsystem.generated.resources.*
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.network.DeviceConfig
-import com.dexstudios.dex.core.designsystem.icons.MaterialSymbols
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.launch
@@ -73,7 +82,7 @@ fun SettingsScreen(
                             SettingsClickableRow(
                                 title = stringResource(Res.string.google_sign_in),
                                 subtitle = stringResource(Res.string.trust_identity_desc),
-                                icon = MaterialSymbols.AccountCircle,
+                                icon = painterResource(Res.drawable.ic_fluent_account_circle),
                                 onClick = {
                                     platformHelper.signInWithGoogle(deviceConfig)
                                 }
@@ -109,7 +118,7 @@ fun SettingsScreen(
 
                             SettingsClickableRow(
                                 title = stringResource(Res.string.settings_sign_out),
-                                icon = MaterialSymbols.Tune, // Placeholder for Exit
+                                icon = painterResource(Res.drawable.ic_fluent_tune), // Placeholder for Exit
                                 onClick = { deviceConfig.signOut() }
                             )
                         }
@@ -122,7 +131,7 @@ fun SettingsScreen(
                         SettingsClickableRow(
                             title = stringResource(Res.string.settings_device_alias),
                             subtitle = alias.ifBlank { platformHelper.getDeviceName() },
-                            icon = MaterialSymbols.Smartphone,
+                            icon = painterResource(Res.drawable.ic_fluent_smartphone),
                             onClick = {
                                 tempAlias = alias.ifBlank { platformHelper.getDeviceName() }
                                 showAliasDialog = true
@@ -131,19 +140,19 @@ fun SettingsScreen(
                         SettingsSwitchRow(
                             title = stringResource(Res.string.settings_clipboard_sync),
                             subtitle = stringResource(Res.string.settings_clipboard_sync_desc),
-                            icon = MaterialSymbols.CheckCircle, // Placeholder for clipboard
+                            icon = painterResource(Res.drawable.ic_fluent_check_circle), // Placeholder for clipboard
                             checked = clipboardSyncEnabled,
                             onCheckedChange = { deviceConfig.clipboardSyncEnabled = it }
                         )
                         SettingsInfoRow(
                             title = stringResource(Res.string.settings_ip_address),
                             value = deviceConfig.publicAddress.ifBlank { "Unknown" },
-                            icon = MaterialSymbols.Wifi
+                            icon = painterResource(Res.drawable.ic_fluent_wifi)
                         )
                         SettingsInfoRow(
                             title = stringResource(Res.string.settings_device_fingerprint),
                             value = deviceConfig.fingerprint,
-                            icon = MaterialSymbols.Smartphone
+                            icon = painterResource(Res.drawable.ic_fluent_smartphone)
                         )
                     }
                 }
@@ -157,7 +166,7 @@ fun SettingsScreen(
                         SettingsClickableRow(
                             title = "Background Optimization",
                             subtitle = if (isIgnoring) "Unrestricted" else "Optimized",
-                            icon = MaterialSymbols.BatteryCharging,
+                            icon = painterResource(Res.drawable.ic_fluent_battery_charging),
                             onClick = {
                                 platformHelper.requestIgnoreBatteryOptimizations()
                             }
@@ -167,7 +176,7 @@ fun SettingsScreen(
                             SettingsClickableRow(
                                 title = "Add Quick Settings Tile",
                                 subtitle = "Quickly toggle Clipboard Sync",
-                                icon = MaterialSymbols.Clipboard,
+                                icon = painterResource(Res.drawable.ic_fluent_clipboard),
                                 onClick = {
                                     platformHelper.addQuickSettingsTile()
                                 }
@@ -182,7 +191,7 @@ fun SettingsScreen(
                         SettingsInfoRow(
                             title = stringResource(Res.string.settings_app_version),
                             value = platformHelper.appVersion,
-                            icon = MaterialSymbols.CheckCircle
+                            icon = painterResource(Res.drawable.ic_fluent_check_circle)
                         )
                     }
                 }
@@ -230,7 +239,7 @@ fun SettingsScreen(
 private fun SettingsSwitchRow(
     title: String,
     subtitle: String,
-    icon: ImageVector,
+    icon: androidx.compose.ui.graphics.painter.Painter,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -249,7 +258,7 @@ private fun SettingsSwitchRow(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = icon,
+                    painter = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)

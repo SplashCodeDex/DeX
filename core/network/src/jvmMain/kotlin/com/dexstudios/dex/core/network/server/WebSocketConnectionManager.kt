@@ -8,11 +8,19 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+private data class SessionHolder(
+    val session: WebSocketSession,
+    val mutex: Mutex = Mutex()
+)
+
 object WebSocketConnectionManager {
-    private val sessions = ConcurrentHashMap<String, WebSocketSession>()
+    private val sessions = ConcurrentHashMap<String, SessionHolder>()
 
     fun register(fingerprint: String, session: WebSocketSession) {
-        sessions[fingerprint] = session
+        sessions[fingerprint] = SessionHolder(session)
     }
 
     fun unregister(fingerprint: String) {
@@ -20,9 +28,11 @@ object WebSocketConnectionManager {
     }
 
     suspend fun sendRequest(fingerprint: String, json: String): Boolean {
-        val session = sessions[fingerprint] ?: return false
+        val holder = sessions[fingerprint] ?: return false
         return try {
-            session.send(Frame.Text(json))
+            holder.mutex.withLock {
+                holder.session.send(Frame.Text(json))
+            }
             true
         } catch (e: Exception) {
             false
@@ -32,9 +42,11 @@ object WebSocketConnectionManager {
     suspend fun broadcast(json: String): Boolean {
         if (sessions.isEmpty()) return false
         var sentAny = false
-        for (session in sessions.values) {
+        for (holder in sessions.values) {
             try {
-                session.send(Frame.Text(json))
+                holder.mutex.withLock {
+                    holder.session.send(Frame.Text(json))
+                }
                 sentAny = true
             } catch (e: Exception) { }
         }
@@ -45,10 +57,12 @@ object WebSocketConnectionManager {
         if (sessions.isEmpty()) return false
         var sentAny = false
         val pairedFps = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value
-        for ((fp, session) in sessions) {
+        for ((fp, holder) in sessions) {
             if (pairedFps.contains(fp)) {
                 try {
-                    session.send(Frame.Text(json))
+                    holder.mutex.withLock {
+                        holder.session.send(Frame.Text(json))
+                    }
                     sentAny = true
                 } catch (e: Exception) { }
             }

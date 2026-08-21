@@ -252,7 +252,7 @@ class DockCardPhysicsAdversarialTest {
         )
         assertEquals(0, left19, "Delta 19px must snap to workArea.left (0)")
 
-        // Case 3: delta = -19 (inside snap from negative side) -> snaps to 0
+        // Case 3: delta = -19 (outside snap from negative side) -> no snap because outward snapping is disabled
         val (leftNeg19, _) = DockCardPhysics.evaluateMagneticSnap(
             candidateContentLeft = -19,
             candidateContentTop = 100,
@@ -261,7 +261,7 @@ class DockCardPhysicsAdversarialTest {
             workArea = standard1080p,
             snapThreshold = 20
         )
-        assertEquals(0, leftNeg19, "Delta -19px must snap to workArea.left (0)")
+        assertEquals(-19, leftNeg19, "Delta -19px must not snap to workArea.left (outward snap is disabled)")
     }
 
     @Test
