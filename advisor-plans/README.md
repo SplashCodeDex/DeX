@@ -21,7 +21,7 @@ honor its STOP conditions, and update your row when done.
 | 011  | remove-glow-effects | P1 | S | — | DONE |
 | 012  | remove-device-list-hardcodings | P1 | S | — | DONE |
 | 013  | centralize-os-detection | P2 | S | — | DONE |
-| 014  | implement-desktop-notifications | P3 | S | — | TODO |
+| 014  | implement-desktop-notifications | P3 | S | — | DONE |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Dependency notes
