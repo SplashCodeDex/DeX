@@ -1,5 +1,9 @@
 # Changelog
 
+## [10.1.3.0] - 2026-08-22
+### Changed
+- **[minor] Compose Desktop BubbleFluidity**: Ported the more performant `Modifier.Node` based `BubbleFluidity` implementation from the standalone Android DeX app to the Desktop Compose Multiplatform project (`core/designsystem`), replacing the legacy `composed` API version.
+
 ## [10.1.2.0] - 2026-08-19
 ### Fixed
 - **[major] Comprehensive Edge Case Eradication (20 Scenarios)**: Implemented 4 architectural components to resolve 20 window focus and visibility edge cases:
