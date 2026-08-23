@@ -114,4 +114,48 @@ class PairingEngineTest {
         assertIs<PairingState.PinPhase>(state)
         assertEquals(6, state.digitCount)
     }
+
+    @Test
+    fun `verifyInboundPin accepts only the exact PIN for the requesting fingerprint`() = runTest {
+        val pin = pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+
+        assertTrue(pairingEngine.verifyInboundPin("inbound-fp", pin), "Correct PIN must verify")
+    }
+
+    @Test
+    fun `verifyInboundPin rejects wrong PIN blank PIN or wrong fingerprint`() = runTest {
+        val pin = pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+
+        assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", pin.drop(1) + if (pin.last() != '0') '0' else '1'), "Wrong PIN must not verify")
+        assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", ""), "Blank PIN must not verify")
+        assertTrue(!pairingEngine.verifyInboundPin("other-fp", pin), "Wrong fingerprint must not verify")
+    }
+
+    @Test
+    fun `verifyInboundPin fails once pairing already resolved`() = runTest {
+        val pin = pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+        pairingEngine.handlePairResponse(true)
+        assertIs<PairingState.Success>(pairingEngine.state.value)
+
+        assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", pin), "PIN must not verify after pairing resolved")
+    }
+
+    @Test
+    fun `handlePairResponse ignores stray responses after resolution`() = runTest {
+        pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+        pairingEngine.handlePairResponse(true)
+        assertIs<PairingState.Success>(pairingEngine.state.value)
+
+        // A late duplicate rejection must never flip Success back to Error.
+        pairingEngine.handlePairResponse(false)
+        assertIs<PairingState.Success>(pairingEngine.state.value)
+    }
+
+    @Test
+    fun `handlePairResponse rejects while awaiting resolution`() = runTest {
+        pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+
+        pairingEngine.handlePairResponse(false)
+        assertIs<PairingState.Error>(pairingEngine.state.value)
+    }
 }

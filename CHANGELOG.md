@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.1.8.1] - 2026-08-23
+### Fixed
+- **[fix] Pairing Trust Hardening — PIN proof is now enforced server-side**:
+  - `pair-response` on the desktop WebSocket route no longer persists trust on a bare `accepted:true` assertion. The responder must echo the displayed 6-digit PIN (`data.pin`), which `PairingEngine.verifyInboundPin(fingerprint, pin)` checks against the active inbound pairing for that exact fingerprint. Unproven assertions are logged and treated as rejected; the desktop user can still grant access manually via the pairing panel (Accept / Accept Once), keeping peers that do not yet echo the PIN pairable.
+  - `PairingEngine.handlePairResponse` is now state-aware: only a pairing still in QrPhase/PinPhase transitions, so stray or duplicate responses (e.g. arriving after the user already accepted locally) can never flip Success back to Error.
+  - **Live keystroke telemetry repaired**: the route read top-level `count` while senders emit `data.digitCount`, so remote digit progress never reached the panel; now reads `data.digitCount`.
+  - **Placeholder digits removed**: digit telemetry arriving before an inbound pair-request no longer seeds `PinPhase` with fake `000000`; it uses the masked `"------"` convention already used by the Idle panel state.
+  - **De-hardcoded alias**: the outbound `pair-prompt` advertises `deviceConfig.alias` (falling back to "DeX Desktop" only when blank) instead of a constant.
+  - **Testability**: `PairingEngine` accepts an injected `CoroutineScope` (defaults to `Dispatchers.Default`) so accept/reject paths can run under virtual time.
+  - Regression coverage: 5 new `PairingEngineTest` cases — correct-PIN acceptance, wrong/blank/wrong-fingerprint rejection, PIN dead once resolved, stray-response immunity, rejection-while-pending. Full `core:network` and `composeApp` desktop suites green.
+  - Build repair (pre-existing working-tree breakage): added the missing `kotlinx.coroutines.flow.asStateFlow` import in `DesktopFileSendService` that broke `composeApp` desktop compilation.
+
 ## [10.1.8.0] - 2026-08-23
 ### Added
 - **[TEST-01] Network Engine Test Baseline (`core:network`) — 35 new tests guarding the transfer/network hot zone**:

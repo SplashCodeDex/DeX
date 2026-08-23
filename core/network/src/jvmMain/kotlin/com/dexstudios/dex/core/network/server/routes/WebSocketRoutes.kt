@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -54,12 +55,12 @@ fun Route.webSocketRoutes(
                                 if (fingerprint != null) {
                                     val ip = call.request.local.remoteHost
                                     val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
+                                    val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
                                     val promptJson = buildJsonObject {
                                         put("type", "pair-prompt")
                                         putJsonObject("data") {
                                             put("pin", pin)
-                                            put("alias", "DeX Desktop")
-                                            val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+                                            put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
                                             put("fingerprint", deviceConfig.fingerprint)
                                         }
                                     }.toString()
@@ -68,13 +69,26 @@ fun Route.webSocketRoutes(
                             }
                             "pair-response" -> {
                                 val accepted = dataObj?.get("accepted")?.jsonPrimitive?.content?.toBoolean() == true
-                                if (accepted && fingerprint != null) {
-                                    com.dexstudios.dex.core.network.DeviceManager.savePairedFingerprint(fingerprint)
+                                val claimedPin = dataObj?.get("pin")?.jsonPrimitive?.contentOrNull
+                                val verifiedByPin = accepted && fingerprint != null &&
+                                        pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
+                                when {
+                                    // Peer proved knowledge of the displayed PIN: grant and persist trust.
+                                    verifiedByPin -> {
+                                        com.dexstudios.dex.core.network.DeviceManager.savePairedFingerprint(fingerprint!!)
+                                        pairingEngine.handlePairResponse(true)
+                                    }
+                                    // Trust assertion without PIN proof is never persisted; the desktop
+                                    // user can still grant access manually via the pairing panel.
+                                    accepted -> {
+                                        println("Rejected pair-response from $fingerprint: PIN not proven")
+                                        pairingEngine.handlePairResponse(false)
+                                    }
+                                    else -> pairingEngine.handlePairResponse(false)
                                 }
-                                pairingEngine.handlePairResponse(accepted)
                             }
                             "pin-digit-entered" -> {
-                                val count = jsonObject["count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                                val count = dataObj?.get("digitCount")?.jsonPrimitive?.content?.toIntOrNull() ?: 0
                                 pairingEngine.handlePinDigitEntered(count)
                             }
                             "pull-progress" -> {

@@ -20,6 +20,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
@@ -56,13 +57,23 @@ class DesktopFileSendService(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionJob: Job? = null
 
+    /** User-pinned default send destination; honored for drops and as first relay candidate. */
+    private val _preferredTargetFingerprint = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val preferredTargetFlow = _preferredTargetFingerprint.asStateFlow()
+    private val preferredTargetFingerprint: String? get() = _preferredTargetFingerprint.value
+
+    fun setPreferredTarget(fingerprint: String?) {
+        _preferredTargetFingerprint.value = fingerprint
+    }
+
     fun isSessionActive(): Boolean = sessionJob?.isActive == true
 
     /**
-     * Sends [files] to the resolved target device. The target is, in priority order:
-     * the device matching [targetFingerprint], the first paired online LAN device, or
-     * the first same-account online LAN device. Without a trusted target the request
-     * fails fast with a surfaced error state.
+     * Sends [files] to the resolved target device. LAN delivery is attempted first
+     * (explicit [targetFingerprint] -> preferred pin -> paired online LAN device ->
+     * same-account device). When no LAN device exists, delivery falls back to the
+     * WebSocket relay ([RelayService.hostAndPushAsync]), where the phone pulls the
+     * hosted files over its persistent connection.
      */
     fun sendFiles(files: List<File>, targetFingerprint: String? = null) {
         val regularFiles = files.filter { it.isFile }
@@ -76,7 +87,12 @@ class DesktopFileSendService(
         }
 
         sessionJob = scope.launch {
-            runSession(regularFiles, targetFingerprint)
+            val lanTarget = resolveLanTarget(targetFingerprint)
+            if (lanTarget != null) {
+                runSession(regularFiles, lanTarget)
+            } else {
+                sendViaRelay(regularFiles, targetFingerprint)
+            }
         }
     }
 
@@ -88,14 +104,7 @@ class DesktopFileSendService(
         )
     }
 
-    private suspend fun runSession(files: List<File>, targetFingerprint: String?) {
-        val target = resolveTarget(targetFingerprint)
-        if (target == null) {
-            clientEngine.updateUploadState(
-                UploadState(error = "No trusted device online", isUploading = false)
-            )
-            return
-        }
+    private suspend fun runSession(files: List<File>, target: DiscoveredDevice) {
         val peerName = target.info.alias.ifBlank { target.info.deviceModel.ifBlank { "device" } }
 
         var attempt = 0
@@ -259,15 +268,19 @@ class DesktopFileSendService(
     )
 
     /**
-     * Resolves the drop target among live discoveries. WAN/roster entries carry synthetic
-     * IPs and are excluded because direct uploads require a reachable LAN address.
+     * Resolves the LAN drop target among live discoveries. WAN/roster entries carry
+     * synthetic IPs and are excluded here because direct uploads require a reachable
+     * LAN address; they are handled by [sendViaRelay] instead.
      */
-    private fun resolveTarget(targetFingerprint: String?): DiscoveredDevice? {
+    private fun resolveLanTarget(targetFingerprint: String?): DiscoveredDevice? {
         val lanDevices = discoveryEngine.devices.value.values.filter { !it.viaWan && it.info.port > 0 }
         if (lanDevices.isEmpty()) return null
 
         targetFingerprint?.let { fp ->
             return lanDevices.firstOrNull { it.info.fingerprint == fp }
+        }
+        preferredTargetFingerprint?.let { fp ->
+            lanDevices.firstOrNull { it.info.fingerprint == fp }?.let { return it }
         }
         val paired = AuthState.pairedFingerprints.value
         return lanDevices.firstOrNull { it.info.fingerprint in paired }
@@ -275,6 +288,66 @@ class DesktopFileSendService(
                 val mySub = deviceConfig.googleSub
                 mySub.isNotBlank() && device.info.googleSub == mySub
             }
+    }
+
+    /**
+     * Relay delivery when no LAN path exists: the PC hosts the files (ShareRoutes pull
+     * endpoints) and pushes a prepare-upload prompt over the phone's persistent
+     * WebSocket session. Candidate order: explicit fingerprint -> preferred pin ->
+     * the first paired remotely-known device. Exactly ONE candidate receives the
+     * prompt — spraying every connected phone would trigger duplicate pulls.
+     */
+    private suspend fun sendViaRelay(files: List<File>, explicitFingerprint: String?): Boolean {
+        val remoteDevices = discoveryEngine.devices.value.values.filter { it.viaWan || it.viaRoster }
+        val candidates = buildList {
+            explicitFingerprint?.let(::add)
+            preferredTargetFingerprint?.let { fp -> if (fp !in this) add(fp) }
+            remoteDevices.map { it.info.fingerprint }.filter { it !in this && it in AuthState.pairedFingerprints.value }.forEach(::add)
+        }
+
+        val chosenFingerprint = candidates.firstOrNull()
+            ?: run {
+                clientEngine.updateUploadState(
+                    UploadState(error = "No trusted device online", isUploading = false)
+                )
+                return false
+            }
+        val peerName = remoteDevices.firstOrNull { it.info.fingerprint == chosenFingerprint }
+            ?.info?.alias?.ifBlank { null } ?: "relay"
+
+        val alias = deviceConfig.alias.ifBlank { "PC" }
+        val payload = files.map { it.absolutePath to (null as String?) }
+
+        clientEngine.resetUploadState()
+        clientEngine.updateUploadState(
+            UploadState(
+                fileName = if (files.size == 1) files.first().name else "Preparing ${files.size} files",
+                totalFiles = files.size,
+                isUploading = true,
+                peerName = peerName,
+                targetFingerprint = chosenFingerprint
+            )
+        )
+
+        val delivered = com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
+            targetFingerprint = chosenFingerprint,
+            files = payload,
+            senderAlias = alias
+        )
+
+        if (delivered) {
+            files.forEach { logSent(it, peerName) }
+            clientEngine.finishUpload(files.size, files.size)
+        } else {
+            clientEngine.updateUploadState(
+                UploadState(
+                    fileName = if (files.size == 1) files.first().name else "${files.size} files",
+                    error = "$peerName is not connected - open DeX on the phone and try again",
+                    isUploading = false
+                )
+            )
+        }
+        return delivered
     }
 
     private fun mimeOf(file: File): String =
