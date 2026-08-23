@@ -233,7 +233,7 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth(0.9f)
-                        .bubbleFluidity(targetScale = 0.98f)
+                        .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.02f)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,

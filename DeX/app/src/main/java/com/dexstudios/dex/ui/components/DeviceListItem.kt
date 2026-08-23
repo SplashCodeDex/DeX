@@ -1,5 +1,12 @@
 package com.dexstudios.dex.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import com.dexstudios.dex.ui.theme.PopInEase
+import com.dexstudios.dex.ui.theme.SpatialPhysics
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -13,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +50,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 fun DeviceListItem(
     device: DiscoveredDevice,
     onClick: () -> Unit,
@@ -49,7 +58,13 @@ fun DeviceListItem(
     onLongClick: (() -> Unit)? = null,
     isTrusted: Boolean = AuthState.pairedFingerprints.contains(device.info.fingerprint),
     wallpaper: Any? = null, // Allow passing a custom image source
-    onButtonClick: () -> Unit = onClick
+    onButtonClick: () -> Unit = onClick,
+    pairingMode: Boolean = false,
+    onPinCode: () -> Unit = {},
+    onQrCode: () -> Unit = {},
+    isConnecting: Boolean = false,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val context = LocalContext.current
     val wallpaperRevision by WallpaperState.revision.collectAsStateWithLifecycle()
@@ -99,11 +114,36 @@ fun DeviceListItem(
     val cardShape = RoundedCornerShape(48.dp)
     val localBackdrop = rememberLayerBackdrop()
 
+    val sharedModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedBounds(
+                rememberSharedContentState(key = "card-${device.info.fingerprint}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = { _, _ ->
+                    tween(
+                        durationMillis = SpatialPhysics.POP_IN_DURATION_MS,
+                        easing = PopInEase
+                    )
+                },
+                renderInOverlayDuringTransition = true
+            )
+        }
+    } else {
+        Modifier
+    }
+
+    // "Single Physical Card" illusion: Hide the source card in the list when it's transitioning/connected
+    val contentAlpha = if (isConnecting && !pairingMode) 0f else 1f
+    // Disable interactive fluidity during flight to keep geometry stable
+    val shouldApplyFluidity = !isConnecting
+
     Box(
         modifier = modifier
             .width(300.dp)
             .height(340.dp)
-            .bubbleFluidity(targetScale = 0.98f)
+            .then(sharedModifier)
+            .graphicsLayer { alpha = contentAlpha }
+            .then(if (shouldApplyFluidity) Modifier.bubbleFluidity(targetScale = 0.98f, pullFactor = 0.02f) else Modifier)
             .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
@@ -148,11 +188,31 @@ fun DeviceListItem(
         }
 
         // 2. The Glass Panel (Drawn on top, provides glare and shadow)
+        // Optimization: When transitioning (isConnecting), use a static color panel instead of live backdrop blur
+        val glassConfig = if (isConnecting) {
+            LiquidGlassPresets.ShinyCard.copy(
+                blurRadius = 0.dp, // Disable expensive blur during movement
+                lensHeight = 0.dp, // Disable lens
+                lensAmount = 0.dp,
+                restRefraction = 0f,
+                vibrancyEnabled = false,
+                surfaceTintAlpha = 0.8f,
+                shadowRadius = 0.dp // Shadows are heavy to move
+            )
+        } else {
+            LiquidGlassPresets.ShinyCard.copy(
+                lensHeight = 0.dp,
+                lensAmount = 0.dp,
+                restRefraction = 0f,
+                shadowRadius = 4.dp
+            )
+        }
+
         LiquidGlassPanel(
             backdrop = localBackdrop,
             modifier = Modifier.fillMaxSize(),
             shape = cardShape,
-            config = LiquidGlassPresets.ShinyCard.copy(shadowRadius = 4.dp)
+            config = glassConfig
         ) {
             // 3. UI Content Layer
             Box(modifier = Modifier.fillMaxSize()) {
@@ -170,13 +230,29 @@ fun DeviceListItem(
                     )
                 }
 
-                DeviceCardUIContent(
-                    device = device,
-                    isTrusted = isTrusted,
-                    realBattery = realBattery,
-                    batteryIcon = batteryIcon,
-                    onButtonClick = onButtonClick
-                )
+                AnimatedContent(
+                    targetState = pairingMode,
+                    transitionSpec = {
+                        fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                    },
+                    label = "device_card_content_morph"
+                ) { isPairing ->
+                    if (isPairing) {
+                        DeviceCardPairingContent(
+                            device = device,
+                            onPinCode = onPinCode,
+                            onQrCode = onQrCode
+                        )
+                    } else {
+                        DeviceCardUIContent(
+                            device = device,
+                            isTrusted = isTrusted,
+                            realBattery = realBattery,
+                            batteryIcon = batteryIcon,
+                            onButtonClick = onButtonClick
+                        )
+                    }
+                }
             }
         }
     }
@@ -273,6 +349,85 @@ private fun DeviceCardUIContent(
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
+        }
+    }
+}
+
+@Composable
+private fun DeviceCardPairingContent(
+    device: DiscoveredDevice,
+    onPinCode: () -> Unit,
+    onQrCode: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Device Identity Header (Smaller version)
+        Icon(
+            imageVector = MaterialSymbols.Devices,
+            contentDescription = null,
+            modifier = Modifier.size(32.dp).alpha(0.6f),
+            tint = Color.White
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = device.info.alias,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Connection Options
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PairingOptionButton(
+                icon = MaterialSymbols.Pin,
+                label = stringResource(R.string.connect_option_pin),
+                onClick = onPinCode
+            )
+            PairingOptionButton(
+                icon = MaterialSymbols.QrCodeScanner,
+                label = stringResource(R.string.connect_option_qr),
+                onClick = onQrCode
+            )
+        }
+    }
+}
+
+@Composable
+private fun PairingOptionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    DeXButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(64.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White.copy(alpha = 0.15f),
+            contentColor = Color.White
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = label, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }

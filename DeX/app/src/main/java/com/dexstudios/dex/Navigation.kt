@@ -210,14 +210,27 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
               }
           }
       }
+    }
 
-      if (globalDimAlpha > 0f) {
-        // Dim recorded INTO the backdrop (not overlaid on top) so the glass PIN
-        // card samples the dimmed scene behind it - the documented pattern for
-        // glass dialogs.
+    androidx.compose.animation.AnimatedVisibility(
+      visible = true,
+      enter = slideInVertically(initialOffsetY = { it }),
+      exit = slideOutVertically(targetOffsetY = { it }),
+      modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .padding(bottom = 8.dp)
+        .graphicsLayer { clip = false }
+        .zIndex(1f)
+    ) {
+      FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
+    }
+
+    if (globalDimAlpha > 0f) {
+        // Dimming overlay drawn over the NavBar but under the TopAppBar
         Box(
           modifier = Modifier
             .fillMaxSize()
+            .zIndex(2f)
             .graphicsLayer { alpha = globalDimAlpha }
             .background(Color.Black)
             .clickable(
@@ -229,26 +242,15 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
                 }
             )
         )
-      }
-    }
-
-    androidx.compose.animation.AnimatedVisibility(
-      visible = true,
-      enter = slideInVertically(initialOffsetY = { it }),
-      exit = slideOutVertically(targetOffsetY = { it }),
-      modifier = Modifier
-        .align(Alignment.BottomCenter)
-        .padding(bottom = 8.dp)
-        .graphicsLayer { clip = false }
-    ) {
-      FloatingPillNavBar(items = navItems, backdrop = contentBackdrop)
     }
 
     AnimatedVisibility(
         visible = currentRoute == Main || currentRoute == History,
         enter = fadeIn(),
         exit = fadeOut(),
-        modifier = Modifier.align(Alignment.TopCenter)
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .zIndex(3f)
     ) {
         Box {
             val activeListState = if (currentRoute == Main) mainListState else historyListState

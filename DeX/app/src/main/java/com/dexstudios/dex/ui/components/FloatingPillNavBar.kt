@@ -369,10 +369,14 @@ fun FloatingPillNavBar(
                     surfaceTintAlpha = animatedTintAlpha,
                     restRefraction = animatedRefraction,
                     shadowRadius = animatedShadow,
-                    shadowOffset = DpOffset(0.dp, animatedShadow / 2f),
                     depthEffect = true,
                     highlight = LiquidGlassPresets.IconButton.highlight.copy(
                         alpha = LiquidGlassTokens.GlareRestAlpha
+                    ),
+                    innerShadow = com.kyant.backdrop.shadow.InnerShadow(
+                        radius = 2.dp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 1.dp)
                     )
                 ),
                 content = {}

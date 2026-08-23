@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
@@ -141,26 +142,17 @@ fun DeXQuickActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Tactile Scale: 1.0 -> 1.08 (hover) -> 0.85 (press sink)
+    // Tactile Scale: 1.0 -> 1.08 (hover)
     val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.85f
-            isHovered -> 1.08f
-            else -> 1.0f
-        },
-        animationSpec = if (isPressed) tween(100) else tween(300, easing = DockCardPhysics.HoverEase),
+        targetValue = if (isHovered) 1.08f else 1.0f,
+        animationSpec = tween(300, easing = DockCardPhysics.HoverEase),
         label = "btnScale"
     )
 
-    // Tactile Translation: 0 -> -3dp (lift) -> +3dp (sink)
+    // Tactile Translation: 0 -> -3dp (lift)
     val translateY by animateDpAsState(
-        targetValue = when {
-            isPressed -> 3.dp
-            isHovered -> (-3).dp
-            else -> 0.dp
-        },
-        animationSpec = if (isPressed) tween(100) else tween(300, easing = DockCardPhysics.HoverEase),
+        targetValue = if (isHovered) (-3).dp else 0.dp,
+        animationSpec = tween(300, easing = DockCardPhysics.HoverEase),
         label = "btnTransY"
     )
 
@@ -200,6 +192,7 @@ fun DeXQuickActionButton(
                 scaleY = scale
                 this.translationY = translateY.toPx()
             }
+            .bubbleFluidity()
             .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor, RoundedCornerShape(20.dp))
             .background(hoverOverlayColor, RoundedCornerShape(20.dp))

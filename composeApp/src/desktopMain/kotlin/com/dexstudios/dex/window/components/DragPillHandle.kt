@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
@@ -117,6 +118,7 @@ fun DragPillHandle(
                 Box(
                     modifier = Modifier
                         .size(16.dp)
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(4.dp))
                         .background(if (isPinHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else Color.Transparent)
                         .hoverable(pinHoverState)

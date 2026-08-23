@@ -247,7 +247,7 @@ class ShareTargetActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .width(100.dp)
-                .bubbleFluidity(targetScale = 0.95f)
+                .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.02f)
                 .clickable(onClick = onClick)
                 .padding(8.dp)
         ) {

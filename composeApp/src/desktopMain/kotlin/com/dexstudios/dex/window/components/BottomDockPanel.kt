@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_settings_new
 
 import androidx.compose.animation.animateColorAsState
@@ -130,15 +131,10 @@ fun BottomDockPanel(
         ) {
             val avatarInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val avatarHovered by avatarInteraction.collectIsHoveredAsState()
-            val avatarPressed by avatarInteraction.collectIsPressedAsState()
             
             val avatarHoverScale by animateFloatAsState(
-                targetValue = when {
-                    avatarPressed -> 0.85f
-                    avatarHovered -> 1.08f
-                    else -> 1.0f
-                },
-                animationSpec = if (avatarPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                targetValue = if (avatarHovered) 1.08f else 1.0f,
+                animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
                 label = "avatarHoverScale"
             )
 
@@ -151,6 +147,7 @@ fun BottomDockPanel(
                         scaleX = avatarScale * avatarHoverScale
                         scaleY = avatarScale * avatarHoverScale
                     }
+                    .bubbleFluidity()
                     .clip(CircleShape)
                     .clickable(
                         interactionSource = avatarInteraction,
@@ -169,15 +166,10 @@ fun BottomDockPanel(
 
             val exitInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val exitHovered by exitInteraction.collectIsHoveredAsState()
-            val exitPressed by exitInteraction.collectIsPressedAsState()
             
             val exitHoverScale by animateFloatAsState(
-                targetValue = when {
-                    exitPressed -> 0.85f
-                    exitHovered -> 1.08f
-                    else -> 1.0f
-                },
-                animationSpec = if (exitPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                targetValue = if (exitHovered) 1.08f else 1.0f,
+                animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
                 label = "exitHoverScale"
             )
 
@@ -192,6 +184,7 @@ fun BottomDockPanel(
                         scaleX = exitHoverScale
                         scaleY = exitHoverScale
                     }
+                    .bubbleFluidity()
                     .clip(RoundedCornerShape(12.dp))
                     .background(exitButtonBgColor)
                     .pointerInput(Unit) {

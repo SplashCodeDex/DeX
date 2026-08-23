@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_search
@@ -641,15 +642,10 @@ private fun FileGridItemCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.85f
-            isHovered -> 1.08f
-            else -> 1.0f
-        },
-        animationSpec = if (isPressed) tween(100) else tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+        targetValue = if (isHovered) 1.08f else 1.0f,
+        animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
         label = "itemScale"
     )
 
@@ -672,6 +668,7 @@ private fun FileGridItemCard(
                 scaleX = scale
                 scaleY = scale
             }
+            .bubbleFluidity()
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when {

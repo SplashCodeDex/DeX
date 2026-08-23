@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
@@ -175,6 +176,7 @@ fun PinPairingPanel(
             Box(
                 modifier = Modifier
                     .size(28.dp)
+                    .bubbleFluidity()
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onCancel() },
@@ -314,6 +316,7 @@ fun PinPairingPanel(
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp)
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { onCancel() },
@@ -332,6 +335,7 @@ fun PinPairingPanel(
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp)
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onToggleQrPin() },
@@ -358,6 +362,7 @@ fun PinPairingPanel(
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp)
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onAccept() },
@@ -377,6 +382,7 @@ fun PinPairingPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(38.dp)
+                    .bubbleFluidity()
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                     .clickable { onAcceptOnce() },
