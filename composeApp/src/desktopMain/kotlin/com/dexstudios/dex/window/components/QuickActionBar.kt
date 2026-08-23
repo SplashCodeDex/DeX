@@ -145,14 +145,14 @@ fun DeXQuickActionButton(
     // Tactile Scale: 1.0 -> 1.08 (hover)
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = tween(300, easing = DockCardPhysics.HoverEase),
+        animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
         label = "btnScale"
     )
 
     // Tactile Translation: 0 -> -3dp (lift)
     val translateY by animateDpAsState(
         targetValue = if (isHovered) (-3).dp else 0.dp,
-        animationSpec = tween(300, easing = DockCardPhysics.HoverEase),
+        animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
         label = "btnTransY"
     )
 

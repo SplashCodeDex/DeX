@@ -134,7 +134,7 @@ fun BottomDockPanel(
             
             val avatarHoverScale by animateFloatAsState(
                 targetValue = if (avatarHovered) 1.08f else 1.0f,
-                animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
                 label = "avatarHoverScale"
             )
 
@@ -169,7 +169,7 @@ fun BottomDockPanel(
             
             val exitHoverScale by animateFloatAsState(
                 targetValue = if (exitHovered) 1.08f else 1.0f,
-                animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
                 label = "exitHoverScale"
             )
 

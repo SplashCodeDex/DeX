@@ -263,6 +263,7 @@ fun FloatingTopAppBar(
                                     modifier = Modifier
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
+                                    singleLine = true,
                                     textStyle = TextStyle(
                                         color = Color.Black,
                                         fontSize = 18.sp,

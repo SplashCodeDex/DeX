@@ -27,7 +27,7 @@ import kotlinx.coroutines.delay
 object DockCardAnimations {
 
     // === Standard Dimensions ===
-    val CARD_WIDTH_CONTRACTED = 300.dp
+    val CARD_WIDTH_CONTRACTED = 320.dp
     val CARD_WIDTH_EXPANDED = 1054.dp      // File Explorer: 300 + 754
     val SETTINGS_WIDTH_EXPANDED = 675.dp   // Settings: 300 + 375
     val PAIRING_WIDTH_EXPANDED = 400.dp    // PIN/QR: 300 + 100
@@ -45,8 +45,8 @@ object DockCardAnimations {
 
     // === Hover & Sink Specs ===
     val HoverEase = DockCardPhysics.HoverEase
-    val HoverSpec = tween<Float>(durationMillis = 300, easing = HoverEase)
-    val HoverDpSpec = tween<Dp>(durationMillis = 300, easing = HoverEase)
+    val HoverSpec = tween<Float>(durationMillis = 500, easing = HoverEase)
+    val HoverDpSpec = tween<Dp>(durationMillis = 500, easing = HoverEase)
     val PressSinkSpec = tween<Float>(durationMillis = 100, easing = FastOutSlowInEasing)
     val PressSinkDpSpec = tween<Dp>(durationMillis = 100, easing = FastOutSlowInEasing)
 

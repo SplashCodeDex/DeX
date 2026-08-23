@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.dexstudios.dex.ui.components.glass.shinyGlare
 
 // ============================================================================
 // DeX Button Wrappers
@@ -24,7 +25,9 @@ fun DeXButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.bubbleFluidity(),
+        modifier = modifier
+            .bubbleFluidity()
+            .shinyGlare(shape = shape),
         enabled = enabled,
         colors = colors,
         shape = shape,
@@ -39,14 +42,18 @@ fun DeXTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
+    shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.textShape,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
 ) {
     TextButton(
         onClick = onClick,
-        modifier = modifier.bubbleFluidity(),
+        modifier = modifier
+            .bubbleFluidity()
+            .shinyGlare(shape = shape),
         enabled = enabled,
         colors = colors,
+        shape = shape,
         interactionSource = interactionSource,
         content = content
     )

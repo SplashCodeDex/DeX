@@ -136,6 +136,18 @@ fun FloatingPillNavBar(
         label = "blur"
     )
 
+    // --- Inner shadow on interact ---
+    val animatedInnerShadowRadius by animateDpAsState(
+        targetValue = if (isInteracting) 12.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "innerShadowR"
+    )
+    val animatedInnerShadowAlpha by animateFloatAsState(
+        targetValue = if (isInteracting) 0.45f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "innerShadowA"
+    )
+
     // --- Highlighter position: drag follows finger, otherwise follows selected tab (with peak offset) ---
     val targetCenterDp by remember {
         derivedStateOf {
@@ -374,9 +386,9 @@ fun FloatingPillNavBar(
                         alpha = LiquidGlassTokens.GlareRestAlpha
                     ),
                     innerShadow = com.kyant.backdrop.shadow.InnerShadow(
-                        radius = 2.dp,
-                        color = Color.White.copy(alpha = 0.5f),
-                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 1.dp)
+                        radius = animatedInnerShadowRadius,
+                        color = Color.Black.copy(alpha = animatedInnerShadowAlpha),
+                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 6.dp)
                     )
                 ),
                 content = {}

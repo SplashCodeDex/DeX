@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_full
@@ -195,10 +196,9 @@ private fun DeviceListItemRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
 
     val cardBg = when {
-        isPressed || isHovered || device.isActive -> MaterialTheme.colorScheme.surfaceVariant
+        isHovered || device.isActive -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
     }
 
@@ -206,20 +206,12 @@ private fun DeviceListItemRow(
 
     // WPF Kinematics
     val transX by animateDpAsState(
-        targetValue = when {
-            isPressed -> 12.dp
-            isHovered -> 6.dp
-            else -> 0.dp
-        },
+        targetValue = if (isHovered) 6.dp else 0.dp,
         animationSpec = DockCardPhysics.ElasticDpSpec
     )
     val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.85f
-            isHovered -> 1.08f
-            else -> 1.0f
-        },
-        animationSpec = if (isPressed) androidx.compose.animation.core.tween(100) else androidx.compose.animation.core.tween(300, easing = DockCardPhysics.HoverEase)
+        targetValue = if (isHovered) 1.08f else 1.0f,
+        animationSpec = androidx.compose.animation.core.tween(300, easing = DockCardPhysics.HoverEase)
     )
 
     Row(
@@ -231,6 +223,7 @@ private fun DeviceListItemRow(
                 scaleX = scale
                 scaleY = scale
             }
+            .bubbleFluidity()
             .clip(RoundedCornerShape(12.dp))
             .background(cardBg)
             .hoverable(interactionSource = interactionSource)

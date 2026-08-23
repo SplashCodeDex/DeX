@@ -1,6 +1,5 @@
 package com.dexstudios.dex.window.kinematics
 
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
@@ -55,8 +54,14 @@ object DockCardPhysics {
         stiffness = 300f
     )
 
-    // === Button Hover Micro-Lift Easing (1:1 Port of WPF BackEase Amplitude=1.22 / CubicBezier) ===
-    val HoverEase = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f)
+    // === Button Hover Micro-Lift Easing (1:1 Port of WPF BackEase Amplitude=1.22 EaseOut) ===
+    // Formula: f(t) = 1 + (t-1)^2 * ((A+1)*(t-1) + A) where A = 1.22
+    // This produces the characteristic overshoot-then-settle curve.
+    val HoverEase = Easing { fraction ->
+        val t = fraction - 1f
+        val a = 1.22f
+        1f + t * t * ((a + 1f) * t + a)
+    }
 
     // === Drawer Contraction Easing (1:1 Port of WPF BackEase Amplitude=0.15) ===
     val ContractEase = Easing { fraction ->

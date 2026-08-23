@@ -44,10 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.network.WallpaperState
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.ui.draw.shadow
+import com.dexstudios.dex.ui.components.glass.shinyGlare
+import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
@@ -112,7 +111,6 @@ fun DeviceListItem(
     }
 
     val cardShape = RoundedCornerShape(48.dp)
-    val localBackdrop = rememberLayerBackdrop()
 
     val sharedModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
         with(sharedTransitionScope) {
@@ -144,115 +142,80 @@ fun DeviceListItem(
             .then(sharedModifier)
             .graphicsLayer { alpha = contentAlpha }
             .then(if (shouldApplyFluidity) Modifier.bubbleFluidity(targetScale = 0.98f, pullFactor = 0.02f) else Modifier)
+            .shinyGlare(shape = cardShape)
             .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
     ) {
-        // 1. The Captured Layer (Wallpaper/Background)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .layerBackdrop(localBackdrop)
-        ) {
-            if (imageRequest != null) {
-                val errorPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(image = MaterialSymbols.Devices)
-                AsyncImage(
-                    model = imageRequest,
+        // 1. The Background Layer (Wallpaper or Placeholder)
+        if (imageRequest != null) {
+            val errorPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(image = MaterialSymbols.Devices)
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop,
+                error = errorPainter
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = MaterialSymbols.Devices,
                     contentDescription = null,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop,
-                    error = errorPainter
+                        .size(120.dp)
+                        .offset(y = (-32).dp)
+                        .alpha(0.15f),
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = MaterialSymbols.Devices,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(120.dp)
-                            .offset(y = (-32).dp)
-                            .alpha(0.15f),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
             }
         }
 
-        // 2. The Glass Panel (Drawn on top, provides glare and shadow)
-        // Optimization: When transitioning (isConnecting), use a static color panel instead of live backdrop blur
-        val glassConfig = if (isConnecting) {
-            LiquidGlassPresets.ShinyCard.copy(
-                blurRadius = 0.dp, // Disable expensive blur during movement
-                lensHeight = 0.dp, // Disable lens
-                lensAmount = 0.dp,
-                restRefraction = 0f,
-                vibrancyEnabled = false,
-                surfaceTintAlpha = 0.8f,
-                shadowRadius = 0.dp // Shadows are heavy to move
-            )
-        } else {
-            LiquidGlassPresets.ShinyCard.copy(
-                lensHeight = 0.dp,
-                lensAmount = 0.dp,
-                restRefraction = 0f,
-                shadowRadius = 4.dp
+        // 2. Bottom Gradient Dim only for trusted devices (which have wallpapers)
+        if (isTrusted) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.1f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.95f)
+                        )
+                    )
             )
         }
 
-        LiquidGlassPanel(
-            backdrop = localBackdrop,
-            modifier = Modifier.fillMaxSize(),
-            shape = cardShape,
-            config = glassConfig
-        ) {
-            // 3. UI Content Layer
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Bottom Gradient Dim only for trusted devices (which have wallpapers)
-                if (isTrusted) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0.1f to Color.Transparent,
-                                    1f to Color.Black.copy(alpha = 0.95f)
-                                )
-                            )
-                    )
-                }
-
-                AnimatedContent(
-                    targetState = pairingMode,
-                    transitionSpec = {
-                        fadeIn(tween(300)) togetherWith fadeOut(tween(300))
-                    },
-                    label = "device_card_content_morph"
-                ) { isPairing ->
-                    if (isPairing) {
-                        DeviceCardPairingContent(
-                            device = device,
-                            onPinCode = onPinCode,
-                            onQrCode = onQrCode
-                        )
-                    } else {
-                        DeviceCardUIContent(
-                            device = device,
-                            isTrusted = isTrusted,
-                            realBattery = realBattery,
-                            batteryIcon = batteryIcon,
-                            onButtonClick = onButtonClick
-                        )
-                    }
-                }
+        // 3. UI Content Layer
+        AnimatedContent(
+            targetState = pairingMode,
+            transitionSpec = {
+                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+            },
+            label = "device_card_content_morph"
+        ) { isPairing ->
+            if (isPairing) {
+                DeviceCardPairingContent(
+                    device = device,
+                    onPinCode = onPinCode,
+                    onQrCode = onQrCode
+                )
+            } else {
+                DeviceCardUIContent(
+                    device = device,
+                    isTrusted = isTrusted,
+                    realBattery = realBattery,
+                    batteryIcon = batteryIcon,
+                    onButtonClick = onButtonClick
+                )
             }
         }
     }

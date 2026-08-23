@@ -85,9 +85,10 @@ private class ShinyGlareNode(
         val end = center + Offset(dx * radius, dy * radius)
 
         val brush = Brush.linearGradient(
-            0.0f to tint.copy(alpha = 0f),
-            0.3f to tint.copy(alpha = 0.05f),
-            1.0f to tint.copy(alpha = intensity),
+            0.0f to tint.copy(alpha = intensity * 0.35f), // Secondary bounced highlight (bottom-left)
+            0.2f to tint.copy(alpha = 0f),                // Fade to transparent
+            0.7f to tint.copy(alpha = 0f),                // Keep transparent across the middle
+            1.0f to tint.copy(alpha = intensity),         // Tight primary highlight (top-right)
             start = start,
             end = end
         )

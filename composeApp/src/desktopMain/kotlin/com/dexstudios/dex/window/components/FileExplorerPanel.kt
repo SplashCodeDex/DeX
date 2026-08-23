@@ -551,6 +551,7 @@ fun FileExplorerPanel(
                 // Send Files Action (Native File Picker)
                 Row(
                     modifier = Modifier
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable {
@@ -590,6 +591,7 @@ fun FileExplorerPanel(
                 // Send Folders Action (Native Directory Picker)
                 Row(
                     modifier = Modifier
+                        .bubbleFluidity()
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable {
@@ -645,7 +647,7 @@ private fun FileGridItemCard(
 
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = tween(300, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+        animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
         label = "itemScale"
     )
 
@@ -794,6 +796,7 @@ fun PullProgressDock(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(20.dp)
+                        .bubbleFluidity()
                         .clip(CircleShape)
                         .clickable { onCancel() }
                         .padding(2.dp)

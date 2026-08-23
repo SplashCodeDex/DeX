@@ -31,11 +31,9 @@ import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.DeXButton
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import androidx.compose.ui.draw.shadow
+import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.dexstudios.dex.ui.icons.MaterialSymbols
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -46,42 +44,29 @@ fun ScanToAddDeviceCard(
     var showHelpContent by remember { mutableStateOf(false) }
 
     val cardShape = RoundedCornerShape(48.dp)
-    val localBackdrop = rememberLayerBackdrop()
 
     Box(
         modifier = Modifier
             .width(300.dp)
             .height(340.dp)
             .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.02f)
+            .shinyGlare(shape = cardShape)
             .clip(cardShape)
     ) {
-        // 1. The Captured Layer (Background)
+        // 1. The Background Layer
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .layerBackdrop(localBackdrop)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-        }
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
 
-        // 2. The Glass Panel (provides glare and shadow)
-        LiquidGlassPanel(
-            backdrop = localBackdrop,
-            shape = cardShape,
-            modifier = Modifier.fillMaxSize(),
-            config = LiquidGlassPresets.ShinyCard.copy(shadowRadius = 4.dp)
-        ) {
-            ScanCardContent(
-                showHelpContent = showHelpContent,
-                showHelpHint = showHelpHint,
-                onScanClick = onScanClick,
-                onToggleHelp = { showHelpContent = it }
-            )
-        }
+        // 2. The Content
+        ScanCardContent(
+            showHelpContent = showHelpContent,
+            showHelpHint = showHelpHint,
+            onScanClick = onScanClick,
+            onToggleHelp = { showHelpContent = it }
+        )
     }
 }
 
