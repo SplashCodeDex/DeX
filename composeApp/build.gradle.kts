@@ -41,6 +41,8 @@ kotlin {
             
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.qrcode.kotlin)
+            implementation(libs.coil.compose)
+            implementation(libs.compottie)
         }
         
         desktopMain.dependencies {

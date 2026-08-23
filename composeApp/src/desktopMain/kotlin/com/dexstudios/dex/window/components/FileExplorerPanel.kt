@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -502,6 +504,22 @@ fun FileExplorerPanel(
                 }
             }
 
+            // Fading gradient edge for individual items to scroll into
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    )
+            )
+
             // Floating PullProgressDock Toast
             Column(
                 modifier = Modifier
@@ -533,28 +551,32 @@ fun FileExplorerPanel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = 8.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                thickness = 1.dp,
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .padding(bottom = 12.dp)
-            )
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val sendFilesInteraction = remember { MutableInteractionSource() }
+                val sendFilesHovered by sendFilesInteraction.collectIsHoveredAsState()
+                val sendFilesScale by animateFloatAsState(targetValue = if (sendFilesHovered) 1.08f else 1.0f, animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase), label = "sendFilesScale")
+
                 // Send Files Action (Native File Picker)
                 Row(
                     modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = sendFilesScale
+                            scaleY = sendFilesScale
+                        }
                         .bubbleFluidity()
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable {
+                        .clickable(
+                            interactionSource = sendFilesInteraction,
+                            indication = null
+                        ) {
                             controller?.isModalDialogOpen = true
                             onSendFiles()
                             coroutineScope.launch(Dispatchers.IO) {
@@ -588,13 +610,24 @@ fun FileExplorerPanel(
                     )
                 }
 
+                val sendFoldersInteraction = remember { MutableInteractionSource() }
+                val sendFoldersHovered by sendFoldersInteraction.collectIsHoveredAsState()
+                val sendFoldersScale by animateFloatAsState(targetValue = if (sendFoldersHovered) 1.08f else 1.0f, animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase), label = "sendFoldersScale")
+
                 // Send Folders Action (Native Directory Picker)
                 Row(
                     modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = sendFoldersScale
+                            scaleY = sendFoldersScale
+                        }
                         .bubbleFluidity()
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable {
+                        .clickable(
+                            interactionSource = sendFoldersInteraction,
+                            indication = null
+                        ) {
                             controller?.isModalDialogOpen = true
                             onSendFolders()
                             coroutineScope.launch(Dispatchers.IO) {
@@ -665,7 +698,7 @@ private fun FileGridItemCard(
 
     Box(
         modifier = Modifier
-            .size(width = 100.dp, height = 105.dp)
+            .size(width = 100.dp, height = 115.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -678,11 +711,6 @@ private fun FileGridItemCard(
                     isHovered -> MaterialTheme.colorScheme.surfaceVariant
                     else -> androidx.compose.ui.graphics.Color.Transparent
                 }
-            )
-            .border(
-                width = 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
-                shape = RoundedCornerShape(10.dp)
             )
             .clickable(
                 interactionSource = interactionSource,
@@ -705,9 +733,22 @@ private fun FileGridItemCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
+                val isMedia = item.name.endsWith(".jpg", true) || item.name.endsWith(".png", true) || item.name.endsWith(".jpeg", true)
                 if (thumbnailBitmap != null) {
                     Image(
                         bitmap = thumbnailBitmap,
+                        contentDescription = item.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (isMedia && !item.isDirectory) {
+                    val coilUri = if (item.path.startsWith("C:", ignoreCase = true) || item.path.startsWith("W:", ignoreCase = true) || item.path.contains(":\\")) {
+                        "file:///" + item.path.replace('\\', '/')
+                    } else {
+                        item.path
+                    }
+                    coil3.compose.SubcomposeAsyncImage(
+                        model = coilUri,
                         contentDescription = item.name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
@@ -731,8 +772,10 @@ private fun FileGridItemCard(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
+                softWrap = false,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
             )
 
             // File Size or Timestamp Sub-label
@@ -741,8 +784,10 @@ private fun FileGridItemCard(
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                softWrap = false,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
             )
         }
     }

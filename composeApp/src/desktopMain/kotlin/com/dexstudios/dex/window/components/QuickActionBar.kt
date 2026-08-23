@@ -4,6 +4,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifi
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
@@ -101,10 +102,10 @@ fun QuickActionBar(
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
 
-        // 3. Transfers / File Explorer Pill (56x44dp)
+        // 3. History Pill (opens FileExplorerPanel in History mode)
         DeXQuickActionButton(
-            icon = painterResource(Res.drawable.ic_fluent_folder),
-            tooltip = "Transfers",
+            icon = painterResource(Res.drawable.ic_fluent_history),
+            tooltip = "History",
             isChecked = isTransfersActive,
             onClick = onToggleTransfers
         )

@@ -39,6 +39,7 @@ playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
 jna = "5.14.0"
 qrcode = "3.3.0"
+compottie = "2.2.4"
 [libraries]
 compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
 compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-multiplatform" }
@@ -115,6 +116,7 @@ androidx-lifecycle-viewmodel-compose-multiplatform = { module = "org.jetbrains.a
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
+compottie = { module = "io.github.alexzhirkevich:compottie", version.ref = "compottie" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

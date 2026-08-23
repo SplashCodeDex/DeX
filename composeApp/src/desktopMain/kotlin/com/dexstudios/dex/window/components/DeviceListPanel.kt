@@ -117,6 +117,12 @@ fun DeviceListPanel(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (discoveredDevices.isEmpty() && pairedDevices.isEmpty()) {
+            item(key = "empty_state") {
+                DeviceEmptyState()
+            }
+        }
+
         // Discovered Devices Section (Only rendered if devices discovered)
         if (discoveredDevices.isNotEmpty()) {
             item(key = "hdr_discovered") {
@@ -375,3 +381,56 @@ private fun DeviceListItemRow(
 }
 
 
+
+@Composable
+private fun DeviceEmptyState() {
+    var jsonString by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            jsonString = com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes("files/DevicesMorph.json").decodeToString()
+        } catch (e: Exception) {
+            println("Failed to load DevicesMorph.json: ${e.message}")
+        }
+    }
+
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) {
+            if (jsonString != null) {
+                val composition by io.github.alexzhirkevich.compottie.rememberLottieComposition {
+                    io.github.alexzhirkevich.compottie.LottieCompositionSpec.JsonString(jsonString!!)
+                }
+                
+                Image(
+                    painter = io.github.alexzhirkevich.compottie.rememberLottiePainter(
+                        composition = composition,
+                        iterations = io.github.alexzhirkevich.compottie.Compottie.IterateForever
+                    ),
+                    contentDescription = "Scanning",
+                    modifier = Modifier.fillMaxWidth().height(190.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+            } else {
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(140.dp))
+            }
+            
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Searching for devices...",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}

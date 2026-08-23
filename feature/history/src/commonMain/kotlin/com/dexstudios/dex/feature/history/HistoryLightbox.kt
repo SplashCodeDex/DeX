@@ -81,7 +81,16 @@ fun HistoryLightbox(
         ) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
-                    .data(record.uri)
+                    .data(
+                        record.uri?.let { uriStr ->
+                            if (uriStr.startsWith("http") || uriStr.startsWith("android.resource") || uriStr.startsWith("file://")) {
+                                uriStr
+                            } else {
+                                val normalized = uriStr.replace('\\', '/')
+                                if (normalized.startsWith("/")) "file://$normalized" else "file:///$normalized"
+                            }
+                        }
+                    )
                     .crossfade(true)
                     .build(),
                 contentDescription = record.name,
