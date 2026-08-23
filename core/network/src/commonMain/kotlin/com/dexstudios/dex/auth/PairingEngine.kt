@@ -11,13 +11,18 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import io.ktor.util.date.getTimeMillis
 
 sealed interface PairingState {
     data object Idle : PairingState
 
     data class QrPhase(
         val ip: String,
-        val fingerprint: String
+        val fingerprint: String,
+        // Absolute wall-clock deadline; the panel countdown and the expiry sweep both honor it.
+        val expiresAtMillis: Long = 0L
     ) : PairingState
 
     data class PinPhase(
@@ -25,7 +30,8 @@ sealed interface PairingState {
         val fingerprint: String,
         val pinCode: String,
         val digitCount: Int,
-        val isError: Boolean = false
+        val isError: Boolean = false,
+        val expiresAtMillis: Long = 0L
     ) : PairingState
 
     data object Success : PairingState
@@ -34,15 +40,20 @@ sealed interface PairingState {
 
 class PairingEngine(
     // Injectable so tests can drive the accept/reject paths under virtual time.
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    // Injectable clock so PIN expiry logic is deterministically testable.
+    private val nowMillis: () -> Long = ::getTimeMillis
 ) {
     private val _state = MutableStateFlow<PairingState>(PairingState.Idle)
     val state: StateFlow<PairingState> = _state.asStateFlow()
 
     var outboundSender: suspend (fingerprint: String, json: String) -> Boolean = { _, _ -> false }
 
+    private var expiryJob: Job? = null
+
     fun initiatePairing(device: DiscoveredDevice) {
-        _state.value = PairingState.QrPhase(device.ip, device.info.fingerprint)
+        _state.value = PairingState.QrPhase(device.ip, device.info.fingerprint, nowMillis() + PIN_TTL_MS)
+        armExpiry(device.info.fingerprint)
         // If the Android phone is already connected and discovering the PC, it will send pair-request
         // when the user scans the QR code or clicks Connect.
     }
@@ -52,7 +63,14 @@ class PairingEngine(
         if (current is PairingState.QrPhase) {
             // No PIN exists yet in this phase (the remote device is typing before its pair-request
             // reached us), so render the masked placeholder instead of fake digits.
-            _state.value = PairingState.PinPhase(current.ip, current.fingerprint, "------", digitCount)
+            _state.value = PairingState.PinPhase(
+                current.ip,
+                current.fingerprint,
+                "------",
+                digitCount,
+                expiresAtMillis = current.expiresAtMillis
+            )
+            armExpiry(current.fingerprint)
         } else if (current is PairingState.PinPhase) {
             _state.value = current.copy(digitCount = digitCount)
         }
@@ -60,13 +78,22 @@ class PairingEngine(
 
     fun handleInboundPairingRequest(ip: String, fingerprint: String): String {
         val pinCode = (100000..999999).random().toString()
-        _state.value = PairingState.PinPhase(ip, fingerprint, pinCode, digitCount = 0)
+        _state.value = PairingState.PinPhase(
+            ip,
+            fingerprint,
+            pinCode,
+            digitCount = 0,
+            expiresAtMillis = nowMillis() + PIN_TTL_MS
+        )
+        armExpiry(fingerprint)
         return pinCode
     }
 
     fun acceptInboundPairing(isOneTime: Boolean) {
         val current = _state.value
         if (current is PairingState.PinPhase) {
+            // Cancel the sweep synchronously so it cannot fire between the click and the reply.
+            expiryJob?.cancel()
             scope.launch {
                 if (!isOneTime) {
                     DeviceManager.savePairedFingerprint(current.fingerprint)
@@ -84,6 +111,7 @@ class PairingEngine(
     }
 
     fun rejectInboundPairing() {
+        expiryJob?.cancel()
         val current = _state.value
         if (current is PairingState.PinPhase) {
             scope.launch {
@@ -103,16 +131,18 @@ class PairingEngine(
 
     /**
      * Server-side PIN proof for inbound pair-responses. Returns true only when [pin] matches
-     * the PIN generated for [fingerprint] by the currently active inbound pairing. A connected
-     * peer that merely asserts accepted=true without proving knowledge of the displayed PIN
-     * must never be persisted as trusted.
+     * the PIN generated for [fingerprint] by the currently active, unexpired inbound pairing.
+     * A connected peer that merely asserts accepted=true without proving knowledge of the
+     * displayed PIN must never be persisted as trusted.
      */
     fun verifyInboundPin(fingerprint: String, pin: String): Boolean {
         val current = _state.value
         return current is PairingState.PinPhase &&
                 current.fingerprint == fingerprint &&
                 pin.isNotBlank() &&
-                pin == current.pinCode
+                pin == current.pinCode &&
+                current.expiresAtMillis > 0L &&
+                nowMillis() <= current.expiresAtMillis
     }
 
     fun handlePairResponse(accepted: Boolean) {
@@ -120,12 +150,14 @@ class PairingEngine(
         // responses (e.g. arriving after the user already accepted locally) are ignored so
         // they can never flip Success back to Error.
         when (_state.value) {
-            is PairingState.QrPhase, is PairingState.PinPhase ->
+            is PairingState.QrPhase, is PairingState.PinPhase -> {
+                expiryJob?.cancel()
                 _state.value = if (accepted) {
                     PairingState.Success
                 } else {
                     PairingState.Error("Pairing rejected or timed out")
                 }
+            }
             else -> Unit
         }
     }
@@ -138,6 +170,24 @@ class PairingEngine(
     }
 
     fun reset() {
+        expiryJob?.cancel()
         _state.value = PairingState.Idle
+    }
+
+    /** Auto-expires an unresolved pairing offer once its TTL elapses; a no-op if already resolved. */
+    private fun armExpiry(fingerprint: String) {
+        expiryJob?.cancel()
+        expiryJob = scope.launch {
+            delay(PIN_TTL_MS)
+            val current = _state.value
+            if (current is PairingState.PinPhase && !current.isError && current.fingerprint == fingerprint) {
+                _state.value = PairingState.Error("Pairing timed out")
+            }
+        }
+    }
+
+    private companion object {
+        /** Server-side pairing offers expire; the panel countdown mirrors this deadline. */
+        const val PIN_TTL_MS = 60_000L
     }
 }

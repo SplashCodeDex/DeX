@@ -69,6 +69,7 @@ import com.dexstudios.dex.auth.PairingState
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.ui.modifiers.shake
 import kotlinx.coroutines.delay
+import io.ktor.util.date.getTimeMillis
 import io.github.g0dkar.qrcode.QRCode
 import org.jetbrains.skia.Image as SkiaImage
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -466,18 +467,26 @@ fun PinPairingPanel(
 ) {
     val engineState by pairingEngine.state.collectAsState()
     var isQrMode by remember { mutableStateOf(false) }
+
+    // Countdown derives from the engine's enforced PIN deadline (the same TTL the expiry
+    // sweep honors), so the panel can never advertise time the engine will not accept.
+    val deadlineMs = when (val s = engineState) {
+        is PairingState.QrPhase -> s.expiresAtMillis
+        is PairingState.PinPhase -> s.expiresAtMillis
+        else -> 0L
+    }
     var remainingSeconds by remember { mutableStateOf(60) }
 
-    // 60s countdown timer
-    LaunchedEffect(Unit) {
-        remainingSeconds = 60
-        while (remainingSeconds > 0) {
-            delay(1000)
-            remainingSeconds--
-        }
-        if (remainingSeconds == 0) {
-            pairingEngine.reset()
-            onClose()
+    LaunchedEffect(deadlineMs) {
+        if (deadlineMs <= 0L) {
+            remainingSeconds = 60
+        } else {
+            while (true) {
+                val remaining = ((deadlineMs - getTimeMillis()) / 1000).toInt().coerceAtLeast(0)
+                remainingSeconds = remaining
+                if (remaining <= 0) break
+                delay(500)
+            }
         }
     }
 

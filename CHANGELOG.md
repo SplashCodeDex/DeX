@@ -1,5 +1,13 @@
 # Changelog
 
+## [10.1.8.2] - 2026-08-23
+### Fixed
+- **[fix] Enforced PIN TTL — pairing offers now actually expire**:
+  - `PairingState.QrPhase`/`PinPhase` carry an absolute `expiresAtMillis` deadline (60s, centralized as `PIN_TTL_MS` in the engine). `verifyInboundPin` rejects expired PINs, so a PIN observed during one session can never be replayed against a stale pairing later.
+  - The engine arms an expiry sweep (on the injected scope) whenever a phase is entered and cancels it synchronously on accept/reject/response/reset, so resolution can never race the sweep. An unresolved offer transitions to `Error("Pairing timed out")`.
+  - The `PinPairingPanel` countdown now derives from the engine's enforced deadline instead of a decorative local 60s counter started at composition; the panel therefore shows time the engine will actually honor.
+  - Testability: injected `nowMillis` clock (defaults to `getTimeMillis`, matching `MessageHandler`). New tests (13/13 in `PairingEngineTest`): fresh-PIN acceptance vs expired-PIN rejection under a controllable clock, TTL transition to Error under virtual time, and immunity of already-resolved pairings to the sweep.
+
 ## [10.1.8.1] - 2026-08-23
 ### Fixed
 - **[fix] Pairing Trust Hardening — PIN proof is now enforced server-side**:

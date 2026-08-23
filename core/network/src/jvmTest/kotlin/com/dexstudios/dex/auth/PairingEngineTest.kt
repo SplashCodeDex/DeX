@@ -10,6 +10,7 @@ import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runTest
@@ -157,5 +158,45 @@ class PairingEngineTest {
 
         pairingEngine.handlePairResponse(false)
         assertIs<PairingState.Error>(pairingEngine.state.value)
+    }
+
+    @Test
+    fun `verifyInboundPin rejects an expired PIN`() = runTest {
+        var now = 1_000_000L
+        val engine = PairingEngine(scope = backgroundScope, nowMillis = { now })
+        val pin = engine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+
+        assertTrue(engine.verifyInboundPin("inbound-fp", pin), "Fresh PIN must verify")
+
+        now += 60_001L
+        assertTrue(!engine.verifyInboundPin("inbound-fp", pin), "Expired PIN must not verify")
+    }
+
+    @Test
+    fun `unresolved pairing offer expires to Error after the TTL`() = runTest {
+        var now = 1_000_000L
+        val engine = PairingEngine(scope = backgroundScope, nowMillis = { now })
+        engine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+        assertIs<PairingState.PinPhase>(engine.state.value)
+
+        advanceTimeBy(59_000L)
+        assertIs<PairingState.PinPhase>(engine.state.value)
+
+        advanceTimeBy(2_000L)
+        val state = engine.state.value
+        assertIs<PairingState.Error>(state)
+        assertEquals("Pairing timed out", state.message)
+    }
+
+    @Test
+    fun `resolved pairings are immune to the expiry sweep`() = runTest {
+        var now = 1_000_000L
+        val engine = PairingEngine(scope = backgroundScope, nowMillis = { now })
+        engine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+        engine.handlePairResponse(true)
+        assertIs<PairingState.Success>(engine.state.value)
+
+        advanceTimeBy(120_000L)
+        assertIs<PairingState.Success>(engine.state.value)
     }
 }
