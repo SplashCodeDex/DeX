@@ -68,7 +68,7 @@ fun ConnectionOptionsDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -76,10 +76,8 @@ fun ConnectionOptionsDialog(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                LiquidGlassPanel(
-                    backdrop = backdrop,
+                DeXGlareCard(
                     shape = RoundedCornerShape(48.dp),
-                    config = LiquidGlassPresets.Dialog,
                     modifier = Modifier
                         .widthIn(max = 340.dp)
                         .fillMaxWidth()
@@ -107,7 +105,7 @@ fun ConnectionOptionsDialog(
                             text = stringResource(R.string.connect_device_title, device.info.alias),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
 
@@ -156,14 +154,14 @@ private fun ConnectionOptionItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(22.dp),
-                    tint = Color.White
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -171,7 +169,7 @@ private fun ConnectionOptionItem(
                 text = label,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

@@ -85,7 +85,7 @@ fun NetworkErrorDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f)) // dim layer
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)) // dim layer
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -99,10 +99,8 @@ fun NetworkErrorDialog(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            LiquidGlassPanel(
-                backdrop = dialogBackdrop,
+            DeXGlareCard(
                 shape = RoundedCornerShape(32.dp),
-                config = LiquidGlassPresets.Dialog,
                 modifier = Modifier
                     .widthIn(max = 400.dp)
                     .fillMaxWidth(0.9f)
@@ -115,7 +113,7 @@ fun NetworkErrorDialog(
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(16.dp))
-                    Text(error, color = Color.White)
+                    Text(error, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.height(24.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         DeXTextButton(onClick = onDismiss) {
@@ -207,7 +205,7 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -226,10 +224,8 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
                 enter = fadeIn(tween(500)) + scaleIn(tween(500, easing = BackOut), initialScale = 0.9f),
                 exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.9f)
             ) {
-                LiquidGlassPanel(
-                    backdrop = dialogBackdrop,
-                    shape = RoundedCornerShape(32.dp),
-                    config = LiquidGlassPresets.Dialog,
+                DeXGlareCard(
+                shape = RoundedCornerShape(32.dp),
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth(0.9f)
@@ -348,7 +344,7 @@ private fun OnboardingWelcome(onNext: () -> Unit) {
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(16.dp))
         Image(
@@ -360,7 +356,7 @@ private fun OnboardingWelcome(onNext: () -> Unit) {
         Text(
             stringResource(R.string.onboarding_step_welcome_desc),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
@@ -395,14 +391,14 @@ private fun OnboardingConnectivity(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(12.dp))
         Text(
             if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_connectivity_rationale)
             else stringResource(R.string.onboarding_step_connectivity_desc),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
@@ -456,14 +452,14 @@ private fun OnboardingNotifications(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(12.dp))
         Text(
             if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_notifications_rationale)
             else stringResource(R.string.onboarding_step_notifications_desc),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
@@ -513,13 +509,13 @@ private fun OnboardingIdentity(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(12.dp))
         Text(
             stringResource(R.string.onboarding_step_identity_desc),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
@@ -554,7 +550,7 @@ private fun OnboardingIdentity(
             }
             Spacer(Modifier.height(12.dp))
             DeXTextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.onboarding_skip), color = Color.White.copy(alpha = 0.5f))
+                Text(stringResource(R.string.onboarding_skip), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
             }
         } else {
             DeXButton(onClick = onNext, modifier = Modifier.fillMaxWidth().height(56.dp)) {
@@ -571,7 +567,7 @@ private fun OnboardingCompletion(onFinish: () -> Unit) {
             imageVector = DeXIcons.CheckCircle,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = Color(0xFF4CAF50)
+            tint = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -579,13 +575,13 @@ private fun OnboardingCompletion(onFinish: () -> Unit) {
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(12.dp))
         Text(
             "You are ready to use DeX. Enjoy seamless file sharing!",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
@@ -600,28 +596,28 @@ private fun OnboardingStepIcon(icon: ImageVector, isGranted: Boolean) {
     Box(contentAlignment = Alignment.Center) {
         Surface(
             shape = CircleShape,
-            color = if (isGranted) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
+            color = if (isGranted) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
             modifier = Modifier.size(96.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.padding(24.dp),
-                tint = if (isGranted) Color(0xFF4CAF50) else Color.White
+                tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         }
         if (isGranted) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFF4CAF50),
-                modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
-            ) {
-                Icon(
-                    imageVector = DeXIcons.Check,
-                    contentDescription = null,
-                    modifier = Modifier.padding(6.dp),
-                    tint = Color.White
-                )
+                color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
+                    ) {
+                        Icon(
+                            imageVector = DeXIcons.Check,
+                            contentDescription = null,
+                            modifier = Modifier.padding(6.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
             }
         }
     }
@@ -701,7 +697,7 @@ fun PairingRequestDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = dimAlpha))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = dimAlpha))
                     .imePadding()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -721,10 +717,8 @@ fun PairingRequestDialog(
                 enter = fadeIn(tween(400)) + scaleIn(tween(400, easing = BackOut), initialScale = 0.85f),
                 exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.85f)
             ) {
-                LiquidGlassPanel(
-                    backdrop = dialogBackdrop,
-                    shape = RoundedCornerShape(32.dp),
-                    config = LiquidGlassPresets.Dialog,
+                DeXGlareCard(
+                shape = RoundedCornerShape(32.dp),
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth(0.9f)
@@ -735,7 +729,7 @@ fun PairingRequestDialog(
                             .align(Alignment.TopEnd)
                             .padding(16.dp)
                             .size(36.dp)
-                            .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -749,7 +743,7 @@ fun PairingRequestDialog(
                         Icon(
                             imageVector = DeXIcons.Close,
                             contentDescription = "Close",
-                            tint = Color.White.copy(alpha = 0.7f),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -772,7 +766,7 @@ fun PairingRequestDialog(
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
 
@@ -795,7 +789,7 @@ fun PairingRequestDialog(
                                     imageVector = DeXIcons.CheckCircle,
                                     contentDescription = "Success",
                                     modifier = Modifier.size(64.dp),
-                                    tint = Color(0xFF4CAF50)
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             } else {
                                 PinInputField(
@@ -839,7 +833,7 @@ fun PairingRequestDialog(
                                     .clip(CircleShape),
                                 color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
                                         else MaterialTheme.colorScheme.primary,
-                                trackColor = Color.White.copy(alpha = 0.1f),
+                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                             )
                             Spacer(Modifier.height(8.dp))
@@ -847,7 +841,7 @@ fun PairingRequestDialog(
                                 stringResource(R.string.pairing_expires_in, secondsLeft),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = if (secondsLeft <= 10) MaterialTheme.colorScheme.error
-                                        else Color.White.copy(alpha = 0.6f),
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -871,8 +865,8 @@ fun PairingRequestDialog(
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             enabled = isComplete && !isSuccess,
                             colors = if (isSuccess) ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50),
-                                contentColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) else ButtonDefaults.buttonColors()
                         ) {
                             ConfirmButtonContent(isComplete, isSuccess)
@@ -898,7 +892,7 @@ private fun ConfirmButtonContent(isComplete: Boolean, isSuccess: Boolean = false
                 "Connected",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         } else {
             Crossfade(targetState = isComplete, animationSpec = tween(300), label = "confirm_crossfade") { complete ->
@@ -907,14 +901,14 @@ private fun ConfirmButtonContent(isComplete: Boolean, isSuccess: Boolean = false
                         "confirm",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 } else {
                     Text(
                         "enter pin",
                         fontWeight = FontWeight.Medium,
                         fontSize = 16.sp,
-                        color = Color.White.copy(alpha = 0.4f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
                 }
             }
@@ -1005,21 +999,21 @@ fun PinInputField(
                                 }
                                 .background(
                                     color = when {
-                                        isGreen -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                        isGreen -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                         isError -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
                                         isFocused -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-                                        else -> Color.White.copy(alpha = 0.1f)
+                                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                                     },
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .border(
                                     width = if (isFocused || isGreen) 2.dp else 1.dp,
                                     color = when {
-                                        isGreen -> Color(0xFF4CAF50)
+                                        isGreen -> MaterialTheme.colorScheme.primary
                                         isError -> MaterialTheme.colorScheme.error
                                         isFocused -> MaterialTheme.colorScheme.primary
                                         isFilled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                        else -> Color.White.copy(alpha = 0.2f)
+                                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                     },
                                     shape = RoundedCornerShape(16.dp)
                                 ),
@@ -1037,7 +1031,7 @@ fun PinInputField(
                                     text = digit,
                                     style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isError) MaterialTheme.colorScheme.error else Color.White
+                                        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                     )
                                 )
                             }
@@ -1118,3 +1112,5 @@ private class ShakeNode(var enabled: Boolean) : Modifier.Node(), LayoutModifierN
         }
     }
 }
+
+

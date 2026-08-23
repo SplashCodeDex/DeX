@@ -75,7 +75,7 @@ class Milestone3ComponentsTest {
         assertEquals(0.65f, DockCardPhysics.SPRING_DAMPING_RATIO)
         assertEquals(300f, DockCardPhysics.SPRING_STIFFNESS)
 
-        assertEquals(300f, DockCardAnimations.CARD_WIDTH_CONTRACTED.value)
+        assertEquals(320f, DockCardAnimations.CARD_WIDTH_CONTRACTED.value)
         assertEquals(1054f, DockCardAnimations.CARD_WIDTH_EXPANDED.value)
         assertEquals(675f, DockCardAnimations.SETTINGS_WIDTH_EXPANDED.value)
         assertEquals(400f, DockCardAnimations.PAIRING_WIDTH_EXPANDED.value)

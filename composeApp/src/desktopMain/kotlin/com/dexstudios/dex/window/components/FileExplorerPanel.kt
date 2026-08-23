@@ -280,7 +280,7 @@ fun FileExplorerPanel(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(start = 24.dp, top = 20.dp, end = 16.dp, bottom = 16.dp)
+            .padding(start = 24.dp, top = 28.dp, end = 16.dp, bottom = 16.dp)
     ) {
         // === Row 0: Top Navigation Controls ===
         Row(
@@ -453,7 +453,7 @@ fun FileExplorerPanel(
                     columns = GridCells.Adaptive(minSize = 100.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 8.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(displayedFiles, key = { it.id }) { item ->
@@ -670,7 +670,6 @@ private fun FileGridItemCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .bubbleFluidity()
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when {

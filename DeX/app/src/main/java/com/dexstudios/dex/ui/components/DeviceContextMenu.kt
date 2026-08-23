@@ -73,7 +73,7 @@ fun DeviceContextMenu(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -103,27 +103,27 @@ fun DeviceContextMenu(
 
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            color = Color.White.copy(alpha = 0.15f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
                         )
 
                         if (isTrusted) {
                             DeviceContextMenuItem(
                                 icon = MaterialSymbols.Send,
                                 label = stringResource(R.string.device_send_file),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 onClick = { onSendFile(); dismiss() }
                             )
                             DeviceContextMenuItem(
                                 icon = MaterialSymbols.Tune,
                                 label = stringResource(R.string.device_forget),
-                                tint = Color(0xFFFF5252),
+                                tint = MaterialTheme.colorScheme.error,
                                 onClick = { onForget(); dismiss() }
                             )
                         } else {
                             DeviceContextMenuItem(
                                 icon = MaterialSymbols.Devices,
                                 label = stringResource(R.string.device_pair),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 onClick = { onPair(); dismiss() }
                             )
                         }
@@ -134,7 +134,7 @@ fun DeviceContextMenu(
                                 if (showDetails) R.string.device_details_hide
                                 else R.string.device_details
                             ),
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             onClick = { showDetails = !showDetails }
                         )
 
@@ -142,7 +142,7 @@ fun DeviceContextMenu(
                             Spacer(modifier = Modifier.height(8.dp))
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 20.dp),
-                                color = Color.White.copy(alpha = 0.15f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             DeviceContextMenuDetails(device = device)
@@ -170,13 +170,13 @@ private fun DeviceContextMenuHeader(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.15f)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = MaterialSymbols.Computer,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -190,15 +190,15 @@ private fun DeviceContextMenuHeader(
                     text = device.info.alias,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (isTrusted) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Text(
                             text = stringResource(R.string.device_paired),
@@ -212,7 +212,7 @@ private fun DeviceContextMenuHeader(
             Text(
                 text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -223,7 +223,7 @@ private fun DeviceContextMenuItem(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    tint: Color = Color.White
+    tint: Color
 ) {
     Row(
         modifier = Modifier
@@ -284,13 +284,13 @@ private fun DeviceDetailRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.width(96.dp)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)

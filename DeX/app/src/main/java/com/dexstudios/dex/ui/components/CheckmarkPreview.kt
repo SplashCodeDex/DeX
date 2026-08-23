@@ -26,7 +26,7 @@ fun CheckmarkIconsPreview() {
                     imageVector = DeXIcons.Check,
                     contentDescription = "Check",
                     modifier = Modifier.size(48.dp),
-                    tint = Color(0xFF4CAF50)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text("Check", style = MaterialTheme.typography.labelMedium)
             }
@@ -35,7 +35,7 @@ fun CheckmarkIconsPreview() {
                     imageVector = DeXIcons.CheckCircle,
                     contentDescription = "Check Circle",
                     modifier = Modifier.size(48.dp),
-                    tint = Color(0xFF4CAF50)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text("CheckCircle", style = MaterialTheme.typography.labelMedium)
             }
@@ -52,26 +52,26 @@ fun OnboardingStepIconGrantedPreview() {
             Box(contentAlignment = Alignment.Center) {
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     modifier = Modifier.size(96.dp)
                 ) {
                     Icon(
                         imageVector = DeXIcons.Wifi,
                         contentDescription = null,
                         modifier = Modifier.padding(24.dp),
-                        tint = Color(0xFF4CAF50)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xFF4CAF50),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
                 ) {
                     Icon(
                         imageVector = DeXIcons.Check,
                         contentDescription = null,
                         modifier = Modifier.padding(6.dp),
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -91,7 +91,7 @@ fun OnboardingCompletionPreview() {
                 imageVector = DeXIcons.CheckCircle,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color(0xFF4CAF50)
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(24.dp))
             Text(

@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -48,12 +50,12 @@ import com.kyant.backdrop.Backdrop
  * Main Content Surface for the DeX Floating Dock Card.
  *
  * Responsibilities:
- * - Animates width (300dp contracted <-> 1054dp expanded / 675dp settings / 400dp pairing)
+ * - Animates width (320dp contracted <-> 1054dp expanded / 675dp settings / 400dp pairing)
  * - Animates height (430dp contracted <-> 625dp expanded) with spring(0.65f, 300f)
  * - Container with RoundedCornerShape(34.dp), LiquidGlassPanel styling, and Row layout
  * - GPU Gaussian Drop Shadow via Skia + Subpixel Border Glow
  * - Left animated drawer (FileExplorer, Settings, Pairing)
- * - Right 300dp MainMenuColumn
+ * - Right 310dp MainMenuColumn
  */
 @Composable
 fun DockCardContent(
@@ -177,28 +179,29 @@ fun DockCardContent(
                     }
                 }
 
-                // Right Column: Always-visible Main Menu Column (300dp), morphs into Pairing Panel
+                // Right Column: Wrapper of 320dp to prevent layout jumps, centering the 310dp content
                 AnimatedContent(
                     targetState = controller.expandedPanel == ExpandedPanel.Pairing,
                     transitionSpec = {
                         if (targetState) {
                             // Slide PinPairingPanel in from right, MainMenuColumn out to left
-                            (slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                    (slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                            (slideInHorizontally(initialOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
+                                    (slideOutHorizontally(targetOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
                         } else {
                             // Slide MainMenuColumn in from left, PinPairingPanel out to right
-                            (slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                    (slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                            (slideInHorizontally(initialOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
+                                    (slideOutHorizontally(targetOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
                         }
                     },
-                    modifier = Modifier.width(300.dp),
+                    modifier = Modifier.width(320.dp),
+                    contentAlignment = Alignment.Center,
                     label = "PairingSlide"
                 ) { isPairing ->
                     if (isPairing) {
                         PinPairingPanel(
                             pairingEngine = pairingEngine,
                             onClose = { controller.collapsePanel() },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.width(310.dp).fillMaxHeight()
                         )
                     } else {
                         MainMenuColumn(
@@ -212,7 +215,7 @@ fun DockCardContent(
                             },
                             onExitEngine = onExitEngine,
                             onDismiss = onDismiss,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.width(310.dp).fillMaxHeight()
                         )
                     }
                 }

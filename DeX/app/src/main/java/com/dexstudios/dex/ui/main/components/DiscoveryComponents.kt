@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.dexstudios.dex.ui.components.DeXGlareCard
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -45,21 +46,13 @@ fun ScanToAddDeviceCard(
 
     val cardShape = RoundedCornerShape(48.dp)
 
-    Box(
+    DeXGlareCard(
+        shape = cardShape,
         modifier = Modifier
             .width(300.dp)
             .height(340.dp)
             .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.02f)
-            .shinyGlare(shape = cardShape)
-            .clip(cardShape)
     ) {
-        // 1. The Background Layer
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-
         // 2. The Content
         ScanCardContent(
             showHelpContent = showHelpContent,
@@ -261,3 +254,4 @@ fun DummyDeviceCard(alias: String, model: String, wallpaper: Any) {
         wallpaper = wallpaper
     )
 }
+

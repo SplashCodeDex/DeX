@@ -29,6 +29,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,7 +78,7 @@ fun QuickActionBar(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 1. Do Not Disturb Pill (56x44dp)
@@ -87,6 +89,8 @@ fun QuickActionBar(
             onClick = onToggleDnd
         )
 
+        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+
         // 2. Screen Mirror Pill (56x44dp)
         DeXQuickActionButton(
             icon = painterResource(Res.drawable.ic_fluent_smartphone),
@@ -95,6 +99,8 @@ fun QuickActionBar(
             onClick = onToggleMirror
         )
 
+        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+
         // 3. Transfers / File Explorer Pill (56x44dp)
         DeXQuickActionButton(
             icon = painterResource(Res.drawable.ic_fluent_folder),
@@ -102,6 +108,8 @@ fun QuickActionBar(
             isChecked = isTransfersActive,
             onClick = onToggleTransfers
         )
+
+        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
 
         // 4. Clipboard Sync Pill (56x44dp)
         DeXQuickActionButton(
@@ -118,13 +126,16 @@ fun QuickActionBar(
             enter = expandHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeIn(),
             exit = shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeOut()
         ) {
-            DeXQuickActionButton(
-                icon = painterResource(Res.drawable.ic_fluent_close),
-                tooltip = "Close",
-                isChecked = false,
-                isDanger = true,
-                onClick = onCloseExpandedPanel
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+                DeXQuickActionButton(
+                    icon = painterResource(Res.drawable.ic_fluent_close),
+                    tooltip = "Close",
+                    isChecked = false,
+                    isDanger = true,
+                    onClick = onCloseExpandedPanel
+                )
+            }
         }
     }
 }

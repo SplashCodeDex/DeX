@@ -43,9 +43,10 @@ object DockCardPhysics {
 
     // === Pop-In Entrance Easing (1:1 Port of WPF BackEase Amplitude=3.53) ===
     val PopInEase = Easing { fraction ->
-        val t = fraction - 1f
+        val t = 1f - fraction
         val a = 3.53f
-        1f + t * t * ((a + 1f) * t + a)
+        val easeIn = (t * t * t) - (t * a * kotlin.math.sin(t * kotlin.math.PI).toFloat())
+        1f - easeIn
     }
 
     // === Pop-In Entrance Spring Spec (500ms feel) ===
@@ -55,19 +56,21 @@ object DockCardPhysics {
     )
 
     // === Button Hover Micro-Lift Easing (1:1 Port of WPF BackEase Amplitude=1.22 EaseOut) ===
-    // Formula: f(t) = 1 + (t-1)^2 * ((A+1)*(t-1) + A) where A = 1.22
-    // This produces the characteristic overshoot-then-settle curve.
+    // Exact WPF BackEase math: EaseIn(t) = t^3 - t * A * sin(t * PI)
+    // EaseOut(t) = 1 - EaseIn(1 - t)
     val HoverEase = Easing { fraction ->
-        val t = fraction - 1f
+        val t = 1f - fraction
         val a = 1.22f
-        1f + t * t * ((a + 1f) * t + a)
+        val easeIn = (t * t * t) - (t * a * kotlin.math.sin(t * kotlin.math.PI).toFloat())
+        1f - easeIn
     }
 
     // === Drawer Contraction Easing (1:1 Port of WPF BackEase Amplitude=0.15) ===
     val ContractEase = Easing { fraction ->
-        val t = fraction - 1f
+        val t = 1f - fraction
         val a = 0.15f
-        1f + t * t * ((a + 1f) * t + a)
+        val easeIn = (t * t * t) - (t * a * kotlin.math.sin(t * kotlin.math.PI).toFloat())
+        1f - easeIn
     }
 
     // === Magnetic Snap Settle Spec (120ms CubicEase EaseOut) ===

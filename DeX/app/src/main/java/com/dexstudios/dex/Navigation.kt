@@ -232,7 +232,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
             .fillMaxSize()
             .zIndex(2f)
             .graphicsLayer { alpha = globalDimAlpha }
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.scrim)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
