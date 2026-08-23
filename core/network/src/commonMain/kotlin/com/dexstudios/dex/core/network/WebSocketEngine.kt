@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.auth.AuthState
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
@@ -117,7 +118,7 @@ class WebSocketEngine(
         if (lastFingerprint != null) {
             desktops.firstOrNull { it.info.fingerprint == lastFingerprint }?.let { return it }
         }
-        desktops.firstOrNull { AuthState.pairedTokens.containsKey(it.info.fingerprint) }?.let { return it }
+        desktops.firstOrNull { AuthState.pairedTokens.value.containsKey(it.info.fingerprint) }?.let { return it }
         desktops.firstOrNull()?.let { return it }
         return wanTarget()
     }
@@ -125,7 +126,7 @@ class WebSocketEngine(
     private suspend fun wanTarget(): DiscoveredDevice? {
         val address = deviceConfig.publicAddress.trim()
         if (address.isBlank()) return null
-        val fingerprint = PcMemory.fingerprint() ?: AuthState.pairedTokens.keys.firstOrNull() ?: return null
+        val fingerprint = PcMemory.fingerprint() ?: AuthState.pairedTokens.value.keys.firstOrNull() ?: return null
         return DiscoveredDevice(
             ip = address,
             info = RegisterDto(
@@ -169,7 +170,7 @@ class WebSocketEngine(
         val token = when {
             googleSub.isNotEmpty() && googleSub == pcGoogleSub -> googleSub
             identityHash.isNotEmpty() && identityHash == pcIdentityHash -> identityHash
-            else -> AuthState.pairedTokens[pcFingerprint]
+            else -> AuthState.pairedTokens.value[pcFingerprint]
         }
         val tokenParam = if (!token.isNullOrEmpty()) "&token=${java.net.URLEncoder.encode(token, "UTF-8")}" else ""
 

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
-import com.dexstudios.dex.network.AuthState
+import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.window.styling.skiaDropShadow
 import androidx.compose.foundation.border
 import io.ktor.util.date.getTimeMillis

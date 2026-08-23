@@ -42,16 +42,16 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).
 - [DX-01] Add Kotlin linting and formatting tooling: Deferred.
 - [DX-02] Migrate println statements to structured logging: Deferred.
-- [DIR-01] Implement desktop file fetching and sharing: Deferred. Need to prioritize security first.
+- [DIR-01] Implement desktop file fetching and sharing: REJECTED (with one-line rationale). Largely implemented independently since the audit: ShareRoutes prepare-upload/upload/download/share-target with auth + path-traversal guard, RelayService hostAndPushAsync with TTL cleanup. Revisit only for gaps found in use.
 - [DIR-02] Implement system tray notifications: Rejected. Duplicate of Plan 014.
 - [SEC-01] Remove instructional directives in dependency plan: Deferred.
 - [SEC-02] Rotate and externalize Google Sign-In Client ID: Deferred. Low risk for public client ID.
 - [CORRECTNESS-01] Swallowed exceptions in File I/O: Rejected. Superseded by Plan 018 (IdentityManager deletion).
-- [CORRECTNESS-02] InputStream leak on upload cancellation: Deferred.
-- [CORRECTNESS-03] Resource leak in DexRequestStore: Deferred.
+- [CORRECTNESS-02] InputStream leak on upload cancellation: REJECTED (with one-line rationale). Not present in current code: /upload streams ByteReadChannel into a `use {}` output and deletes partial files on failure; PC-side uploads stream via Ktor/Cronet with no leaked raw InputStream.
+- [CORRECTNESS-03] Resource leak in DexRequestStore: REJECTED (with one-line rationale). Not present in current code: DexRequestStore removes entries on complete/cancel and every caller cancels on send-failure and timeout.
 - [SECURITY-04] Prompt injection via agent directives: Rejected. By-design behavior for AGENTS.md.
 - [Test Coverage-01] Missing unit tests for KMP core network engines: Deferred.
-- [Test Coverage-02] Suppressed Milestone 4 tests via block comments: Deferred.
-- [Performance-01] Unbounded TCP timeouts in manual discovery probe: Deferred.
-- [TECH DEBT-02] Delete diverged duplicated discovery services: Deferred.
-- [TECH DEBT-04] Extract logic from FileExplorerPanel God object: Deferred.
+- [Test Coverage-02] Suppressed Milestone 4 tests via block comments: REJECTED (with one-line rationale). No suppressed/disabled tests remain anywhere; fixed independently since the audit.
+- [Performance-01] Unbounded TCP timeouts in manual discovery probe: RESOLVED 2026-08-23. Shared HttpClient installs HttpTimeout (10s connect); manual probe overrides with a 3s per-request timeout.
+- [TECH DEBT-02] Delete diverged duplicated discovery services: RESOLVED 2026-08-23. Abandoned com.dexstudios.dex.network mirror tree deleted (13 dead files); identity state unified into com.dexstudios.dex.auth.AuthState.
+- [TECH DEBT-04] Extract logic from FileExplorerPanel God object: RESOLVED 2026-08-23. Panel split into slim container + FileExplorerViewModel wiring, ExplorerModels, FileUiUtils, FileGridItemCard, PullProgressDock; behavior preserved.

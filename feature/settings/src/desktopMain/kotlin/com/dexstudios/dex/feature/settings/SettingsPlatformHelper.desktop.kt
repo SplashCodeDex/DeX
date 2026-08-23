@@ -2,7 +2,7 @@ package com.dexstudios.dex.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.dexstudios.dex.network.DeviceConfig
+import com.dexstudios.dex.core.network.DeviceConfig
 
 actual class SettingsPlatformHelper {
     actual val appVersion: String = "Desktop 2.0.0"

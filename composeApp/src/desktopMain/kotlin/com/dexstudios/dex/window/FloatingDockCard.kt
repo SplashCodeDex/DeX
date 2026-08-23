@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
+import com.dexstudios.dex.platform.DisplayCoordinateSpace
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.koin.compose.koinInject
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -78,17 +79,20 @@ fun FloatingDockCard(
                     )
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInWindow()
-                        val logicalX = bounds.left / density
-                        val logicalY = bounds.top / density
-                        val logicalWidth = bounds.width / density
-                        val logicalHeight = bounds.height / density
-                        
+                        // AWT window shape space: device pixels on Windows (compose px pass
+                        // through), logical points on macOS (divide by the Retina scale).
+                        val awtScale = DisplayCoordinateSpace.scaleFactor(density)
+                        val shapeX = bounds.left / awtScale
+                        val shapeY = bounds.top / awtScale
+                        val shapeWidth = bounds.width / awtScale
+                        val shapeHeight = bounds.height / awtScale
+
                         // Restrict native OS hit-testing to the card bounds for true click-through
                         window.shape = java.awt.geom.RoundRectangle2D.Float(
-                            logicalX,
-                            logicalY,
-                            logicalWidth,
-                            logicalHeight,
+                            shapeX,
+                            shapeY,
+                            shapeWidth,
+                            shapeHeight,
                             32f,
                             32f
                         )

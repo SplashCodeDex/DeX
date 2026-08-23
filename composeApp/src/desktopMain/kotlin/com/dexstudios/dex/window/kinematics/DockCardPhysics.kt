@@ -90,26 +90,70 @@ object DockCardPhysics {
     const val MIN_GRAB_PX = 60
 
     /**
+     * Maps a window origin to its card content rectangle origin.
+     * Windows/Linux: card anchored BottomEnd; macOS: card anchored TopEnd.
+     */
+    fun windowToContent(
+        windowX: Int,
+        windowY: Int,
+        cardWidth: Int,
+        cardHeight: Int,
+        canvasWidth: Int,
+        canvasHeight: Int,
+        margin: Int,
+        isMacOS: Boolean
+    ): IntOffset {
+        val left = windowX + canvasWidth - margin - cardWidth
+        val top = if (isMacOS) {
+            windowY + margin
+        } else {
+            windowY + canvasHeight - margin - cardHeight
+        }
+        return IntOffset(left, top)
+    }
+
+    /**
+     * Inverse of [windowToContent]: maps a card content origin back to the window origin.
+     */
+    fun contentToWindow(
+        contentLeft: Int,
+        contentTop: Int,
+        cardWidth: Int,
+        cardHeight: Int,
+        canvasWidth: Int,
+        canvasHeight: Int,
+        margin: Int,
+        isMacOS: Boolean
+    ): IntOffset {
+        val x = contentLeft - canvasWidth + margin + cardWidth
+        val y = if (isMacOS) {
+            contentTop - margin
+        } else {
+            contentTop - canvasHeight + margin + cardHeight
+        }
+        return IntOffset(x, y)
+    }
+
+    /**
      * Computes the required window displacement (Nudge) when expanding the card,
      * ensuring that the post-expansion dimensions never clip off-screen.
      */
     fun calculateExpansionNudge(
         currentWindowX: Int,
         currentWindowY: Int,
-        cardWidth: Int = 300,
-        cardHeight: Int = 430,
+        cardWidth: Int = com.dexstudios.dex.platform.DockCardMetrics.CARD_WIDTH_CONTRACTED,
+        cardHeight: Int = com.dexstudios.dex.platform.DockCardMetrics.CARD_HEIGHT_CONTRACTED,
         expandDeltaWidth: Int,
         expandDeltaHeight: Int,
         workArea: WorkAreaBounds,
-        canvasWidth: Int = 1420,
-        canvasHeight: Int = 760,
-        margin: Int = 25
+        canvasWidth: Int = com.dexstudios.dex.platform.DockCardMetrics.CANVAS_WIDTH,
+        canvasHeight: Int = com.dexstudios.dex.platform.DockCardMetrics.CANVAS_HEIGHT,
+        margin: Int = com.dexstudios.dex.platform.DockCardMetrics.CARD_MARGIN,
+        isMacOS: Boolean = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
     ): Pair<Int, Int> {
         val contentLeft = currentWindowX + canvasWidth - margin - cardWidth
         val contentRight = currentWindowX + canvasWidth - margin
-        
-        val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
-        
+
         val contentTop = if (isMacOS) {
             currentWindowY + margin
         } else {
@@ -181,32 +225,42 @@ object DockCardPhysics {
         val contentRight = candidateContentLeft + cardWidth
         val contentBottom = candidateContentTop + cardHeight
 
-        var finalLeft = candidateContentLeft
-        var finalTop = candidateContentTop
-
         // 2. Inward-only magnetic snapping (matches legacy WPF behavior)
         // We do NOT use abs() because snapping outwardly would create a 40px "sticky wall"
         // when dragging across multi-monitor boundaries, trapping the window.
         // It must only snap when the content is INWARD of the work area bounds by < 20px.
-        
-        if (candidateContentLeft > workArea.left && candidateContentLeft - workArea.left < snapThreshold) {
-            finalLeft = workArea.left
+        // If BOTH edges of an axis fall inside the threshold simultaneously (degenerate
+        // narrow work areas), the NEAREST edge wins deterministically instead of the
+        // trailing check silently overwriting the leading one.
+
+        val dLeft = candidateContentLeft - workArea.left
+        val dRight = workArea.right - contentRight
+        val snapToLeft = dLeft in 1 until snapThreshold
+        val snapToRight = dRight in 1 until snapThreshold
+        val finalLeft = when {
+            snapToLeft && snapToRight -> if (dLeft <= dRight) workArea.left else workArea.right - cardWidth
+            snapToLeft -> workArea.left
+            snapToRight -> workArea.right - cardWidth
+            else -> candidateContentLeft
         }
-        if (contentRight < workArea.right && workArea.right - contentRight < snapThreshold) {
-            finalLeft = workArea.right - cardWidth
-        }
-        if (candidateContentTop > workArea.top && candidateContentTop - workArea.top < snapThreshold) {
-            finalTop = workArea.top
-        }
-        if (contentBottom < workArea.bottom && workArea.bottom - contentBottom < snapThreshold) {
-            finalTop = workArea.bottom - cardHeight
+
+        val dTop = candidateContentTop - workArea.top
+        val dBottom = workArea.bottom - contentBottom
+        val snapToTop = dTop in 1 until snapThreshold
+        val snapToBottom = dBottom in 1 until snapThreshold
+        val finalTop = when {
+            snapToTop && snapToBottom -> if (dTop <= dBottom) workArea.top else workArea.bottom - cardHeight
+            snapToTop -> workArea.top
+            snapToBottom -> workArea.bottom - cardHeight
+            else -> candidateContentTop
         }
 
         return Pair(finalLeft, finalTop)
     }
 
     /**
-     * Sanity clamps coordinates to ensure at least MIN_GRAB_PX (or 20% width) remains reachable inside the work area.
+     * Sanity clamps coordinates to ensure at least MIN_GRAB_PX (or 20% of the card's
+     * dimension on that axis) remains reachable inside the work area.
      */
     fun applySanityClamp(
         contentLeft: Int,
@@ -216,14 +270,15 @@ object DockCardPhysics {
         workArea: WorkAreaBounds,
         minGrab: Int = MIN_GRAB_PX
     ): Pair<Int, Int> {
-        val grab = max((cardWidth * 0.2f).toInt(), minGrab)
+        val grabX = max((cardWidth * 0.2f).toInt(), minGrab)
+        val grabY = max((cardHeight * 0.2f).toInt(), minGrab)
         var clampedLeft = contentLeft
         var clampedTop = contentTop
 
-        if (contentLeft + cardWidth < workArea.left + grab) clampedLeft = workArea.left + grab - cardWidth
-        if (contentLeft > workArea.right - grab) clampedLeft = workArea.right - grab
-        if (contentTop + cardHeight < workArea.top + grab) clampedTop = workArea.top + grab - cardHeight
-        if (contentTop > workArea.bottom - grab) clampedTop = workArea.bottom - grab
+        if (contentLeft + cardWidth < workArea.left + grabX) clampedLeft = workArea.left + grabX - cardWidth
+        if (contentLeft > workArea.right - grabX) clampedLeft = workArea.right - grabX
+        if (contentTop + cardHeight < workArea.top + grabY) clampedTop = workArea.top + grabY - cardHeight
+        if (contentTop > workArea.bottom - grabY) clampedTop = workArea.bottom - grabY
 
         return Pair(clampedLeft, clampedTop)
     }
@@ -263,10 +318,10 @@ object DockCardPhysics {
      */
     fun calculateContractionOrigin(
         currentWindowX: Int,
-        contractedCardWidth: Int = 300,
+        contractedCardWidth: Int = com.dexstudios.dex.platform.DockCardMetrics.CARD_WIDTH_CONTRACTED,
         workArea: WorkAreaBounds,
-        canvasWidth: Int = 1420,
-        margin: Int = 25,
+        canvasWidth: Int = com.dexstudios.dex.platform.DockCardMetrics.CANVAS_WIDTH,
+        margin: Int = com.dexstudios.dex.platform.DockCardMetrics.CARD_MARGIN,
         minGrab: Int = MIN_GRAB_PX
     ): Int {
         val cRight = currentWindowX + canvasWidth - margin

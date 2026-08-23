@@ -59,5 +59,6 @@
   "touch_app": "catch_up_24_regular",
   "bolt": "bot_24_regular",
   "edit": "edit_24_regular",
-  "do_not_disturb": "note_edit_24_regular"
+  "do_not_disturb": "note_edit_24_regular",
+  "rotate": "arrow_rotate_clockwise_24_regular"
 }

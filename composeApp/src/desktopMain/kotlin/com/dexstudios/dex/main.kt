@@ -43,6 +43,7 @@ val desktopAppModule = module {
     }
 
     single { DeviceConfig(get(), get()) }
+    single { com.dexstudios.dex.desktop.transfer.DesktopFileSendService(get(), get(), get()) }
 }
 
 fun main() {
@@ -153,6 +154,7 @@ fun main() {
             title = "DeX"
         ) {
             val clientEngine = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.core.network.ClientEngine>() }
+            val fileSender = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.desktop.transfer.DesktopFileSendService>() }
             val uploadState by clientEngine.uploadState.collectAsState()
 
             LaunchedEffect(window, uploadState.isUploading, uploadState.progress, uploadState.error) {
@@ -194,12 +196,14 @@ fun main() {
                                     val droppedFiles = dtde.transferable.getTransferData(
                                         java.awt.datatransfer.DataFlavor.javaFileListFlavor
                                     ) as? List<*>
-                                    val files = droppedFiles?.filterIsInstance<File>() ?: emptyList()
+                                    val files = droppedFiles?.filterIsInstance<File>()?.filter { it.isFile } ?: emptyList()
                                     if (files.isNotEmpty()) {
-                                        println("Dropped ${files.size} external files onto DeX window")
+                                        fileSender.sendFiles(files)
                                     }
+                                    dtde.dropComplete(files.isNotEmpty())
                                 } catch (e: Exception) {
                                     e.printStackTrace()
+                                    runCatching { dtde.dropComplete(false) }
                                 }
                             }
                         })

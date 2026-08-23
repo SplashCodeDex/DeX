@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -20,19 +19,22 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import com.dexstudios.dex.platform.DockCardMetrics
 
 /**
  * Complete Animation Specifications and Presets for the DeX Floating Dock Card.
+ * Dimensional values derive exclusively from [DockCardMetrics] so rendered Compose
+ * geometry and window-placement math share one source of truth.
  */
 object DockCardAnimations {
 
     // === Standard Dimensions ===
-    val CARD_WIDTH_CONTRACTED = 320.dp
-    val CARD_WIDTH_EXPANDED = 1054.dp      // File Explorer: 300 + 754
-    val SETTINGS_WIDTH_EXPANDED = 675.dp   // Settings: 300 + 375
-    val PAIRING_WIDTH_EXPANDED = 400.dp    // PIN/QR: 300 + 100
-    val CARD_HEIGHT_CONTRACTED = 430.dp
-    val CARD_HEIGHT_EXPANDED = 625.dp      // 430 + 195
+    val CARD_WIDTH_CONTRACTED = DockCardMetrics.CARD_WIDTH_CONTRACTED.dp
+    val CARD_WIDTH_EXPANDED = DockCardMetrics.FILE_EXPLORER_WIDTH_EXPANDED.dp
+    val SETTINGS_WIDTH_EXPANDED = DockCardMetrics.SETTINGS_WIDTH_EXPANDED.dp
+    val PAIRING_WIDTH_EXPANDED = DockCardMetrics.PAIRING_WIDTH_EXPANDED.dp
+    val CARD_HEIGHT_CONTRACTED = DockCardMetrics.CARD_HEIGHT_CONTRACTED.dp
+    val CARD_HEIGHT_EXPANDED = DockCardMetrics.CARD_HEIGHT_EXPANDED.dp
 
     // === Spring Specs (WPF ElasticEase Oscillations=1, Springiness=7 Equivalent) ===
     val BouncyEase = DockCardPhysics.ElasticExpansionSpec

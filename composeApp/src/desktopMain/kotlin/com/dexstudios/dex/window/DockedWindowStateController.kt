@@ -8,45 +8,55 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
+import com.dexstudios.dex.platform.DisplayCoordinateSpace
+import com.dexstudios.dex.platform.DockCardMetrics
+import com.dexstudios.dex.platform.MouseInputProvider
 import com.dexstudios.dex.platform.TaskbarWorkAreaProvider
 import com.dexstudios.dex.platform.WorkAreaBounds
+import com.dexstudios.dex.platform.toDpSpace
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
-import kotlin.math.max
-import kotlinx.coroutines.isActive
+import kotlin.math.roundToInt
 
 /**
  * Central State Machine and Kinematics Controller for the DeX Floating Docked Window.
  *
  * Coordinates:
  * - Window visibility, pinning, modal dialogues, pairing state
- * - Multi-monitor resting position calculations
- * - 3-phase drag gestures with high-DPI scaling and 20px magnetic edge snapping
+ * - Multi-monitor resting position calculations anchored to the window's own display
+ * - 3-phase drag gestures with density-aware scaling and 20px magnetic edge snapping
  * - 5-point focus loss deactivation guard
- * - Dynamic Nudge-ForExpand boundary math and contraction clamping
- * - 450ms atomic 2D double-tap position reset
+ * - Dynamic Nudge-ForExpand boundary math with signed panel-switch deltas
+ * - Cancellable atomic 2D window animations (450ms double-tap reset, expand, restore)
  */
 class DockedWindowStateController(
     val scope: CoroutineScope,
     val windowState: WindowState = WindowState(
-        size = DpSize(TaskbarWorkAreaProvider.DEFAULT_CANVAS_WIDTH.dp, TaskbarWorkAreaProvider.DEFAULT_CANVAS_HEIGHT.dp),
+        size = DpSize(DockCardMetrics.CANVAS_WIDTH.dp, DockCardMetrics.CANVAS_HEIGHT.dp),
         position = WindowPosition(0.dp, 0.dp)
     ),
     var density: Float = 1.0f,
-    val mouseInputProvider: com.dexstudios.dex.platform.MouseInputProvider = com.dexstudios.dex.platform.DesktopMouseInputProvider
+    val mouseInputProvider: MouseInputProvider = com.dexstudios.dex.platform.DesktopMouseInputProvider
 ) {
-    val canvasWidth = TaskbarWorkAreaProvider.DEFAULT_CANVAS_WIDTH
-    val canvasHeight = TaskbarWorkAreaProvider.DEFAULT_CANVAS_HEIGHT
-    val cardMargin = TaskbarWorkAreaProvider.CARD_MARGIN
-    val contractedCardWidth = TaskbarWorkAreaProvider.DEFAULT_CARD_CONTRACTED_WIDTH
-    val contractedCardHeight = TaskbarWorkAreaProvider.DEFAULT_CARD_CONTRACTED_HEIGHT
+    val canvasWidth = DockCardMetrics.CANVAS_WIDTH
+    val canvasHeight = DockCardMetrics.CANVAS_HEIGHT
+    val cardMargin = DockCardMetrics.CARD_MARGIN
+    val contractedCardWidth = DockCardMetrics.CARD_WIDTH_CONTRACTED
+    val contractedCardHeight = DockCardMetrics.CARD_HEIGHT_CONTRACTED
+
+    private val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
 
     var isVisible by mutableStateOf(false)
     var isPinned by mutableStateOf(false)
@@ -71,24 +81,95 @@ class DockedWindowStateController(
     private var dragStartWindowX = 0
     private var dragStartWindowY = 0
 
+    /**
+     * Work area resolved once at gesture start from the window's own location.
+     * Keeps snap/clamp reference stable even when the cursor crosses monitors mid-drag.
+     */
+    private var dragGestureWorkArea: WorkAreaBounds? = null
+
+    /** Single writer for window-position animations; re-entry cancels the previous run. */
+    private var positionAnimationJob: Job? = null
+
     init {
         recalculateDefaultDockPosition()
+    }
+
+    // === Content geometry helpers (single source of truth: DockCardMetrics) ===
+
+    private fun currentContentWidth(): Int =
+        expandedPanel?.expandedWidth ?: DockCardMetrics.CARD_WIDTH_CONTRACTED
+
+    private fun currentContentHeight(): Int =
+        if (expandedPanel != null) {
+            DockCardMetrics.CARD_HEIGHT_EXPANDED
+        } else {
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+        }
+
+    private fun windowToContent(winX: Int, winY: Int): IntOffset =
+        DockCardPhysics.windowToContent(
+            windowX = winX,
+            windowY = winY,
+            cardWidth = currentContentWidth(),
+            cardHeight = currentContentHeight(),
+            canvasWidth = canvasWidth,
+            canvasHeight = canvasHeight,
+            margin = cardMargin,
+            isMacOS = isMacOS
+        )
+
+    private fun contentToWindow(contentLeft: Int, contentTop: Int): IntOffset =
+        DockCardPhysics.contentToWindow(
+            contentLeft = contentLeft,
+            contentTop = contentTop,
+            cardWidth = currentContentWidth(),
+            cardHeight = currentContentHeight(),
+            canvasWidth = canvasWidth,
+            canvasHeight = canvasHeight,
+            margin = cardMargin,
+            isMacOS = isMacOS
+        )
+
+    /**
+     * Resolves the work area of the display that currently owns most of the card content.
+     * Falls back to the cursor-based active screen when the point lies on no device.
+     */
+    private fun resolveWindowWorkArea(): WorkAreaBounds {
+        val winX = windowState.position.x.value.toInt()
+        val winY = windowState.position.y.value.toInt()
+        val (contentLeft, contentTop) = windowToContent(winX, winY)
+        val centerDpX = contentLeft + currentContentWidth() / 2
+        val centerDpY = contentTop + currentContentHeight() / 2
+        return TaskbarWorkAreaProvider.getWorkAreaForPoint(
+            DisplayCoordinateSpace.dpToNative(centerDpX, density),
+            DisplayCoordinateSpace.dpToNative(centerDpY, density)
+        )
+    }
+
+    private fun anchoredWorkAreaInDp(densityOverride: Float = density): WorkAreaBounds {
+        val area = if (isDragging) {
+            dragGestureWorkArea ?: resolveWindowWorkArea()
+        } else {
+            resolveWindowWorkArea()
+        }
+        return area.toDpSpace(densityOverride)
     }
 
     /**
      * Recomputes resting dock coordinates above the taskbar on the active monitor.
      * Formula:
-     *   X = workArea.right - 1420 + 12
-     *   Y = workArea.bottom - 430 - 38
+     *   X = workArea.right - CANVAS_WIDTH + RESTING_CANVAS_OVERHANG
+     *   Y = workArea.bottom - CANVAS_HEIGHT + RESTING_CANVAS_OVERHANG   (Windows/Linux)
+     *   Y = workArea.top + 10                                           (macOS)
      */
     fun recalculateDefaultDockPosition() {
-        val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
+        val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea().toDpSpace(density)
         val defaultX = TaskbarWorkAreaProvider.calculateRestingX(workArea, canvasWidth)
         val defaultY = TaskbarWorkAreaProvider.calculateRestingY(workArea, contractedCardHeight)
         windowState.position = WindowPosition(defaultX.dp, defaultY.dp)
     }
 
-    private var dragDropDeferJob: kotlinx.coroutines.Job? = null
+    private var dragDropDeferJob: Job? = null
 
     /**
      * 5-point safety guard for focus loss deactivation:
@@ -111,35 +192,25 @@ class DockedWindowStateController(
 
     private fun deferHideOnDragDrop() {
         if (dragDropDeferJob?.isActive == true) return
-        dragDropDeferJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        dragDropDeferJob = scope.launch(Dispatchers.IO) {
             try {
                 while (isActive) {
                     if (!mouseInputProvider.isLeftMouseButtonDown()) {
                         // Mouse released!
-                        val (cursorX, cursorY) = mouseInputProvider.getCursorPosition()
-                        
+                        val (cursorNativeX, cursorNativeY) = mouseInputProvider.getCursorPosition()
+
                         val winX = windowState.position.x.value.toInt()
                         val winY = windowState.position.y.value.toInt()
-                        
-                        val currentCardW = when (expandedPanel) {
-                            ExpandedPanel.Settings -> 675
-                            ExpandedPanel.Pairing -> 400
-                            ExpandedPanel.FileExplorer -> 1054
-                            null -> contractedCardWidth
-                        }
-                        val currentCardH = if (isExpanded) 625 else contractedCardHeight
-                        
-                        val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
-                        val contentLeft = winX + canvasWidth - cardMargin - currentCardW
-                        val contentTop = if (isMacOS) {
-                            winY + cardMargin
-                        } else {
-                            winY + canvasHeight - cardMargin - currentCardH
-                        }
-                        
-                        val isInside = cursorX >= contentLeft && cursorX <= contentLeft + currentCardW &&
-                                       cursorY >= contentTop && cursorY <= contentTop + currentCardH
-                        
+                        val (contentLeft, contentTop) = windowToContent(winX, winY)
+                        val cardW = currentContentWidth()
+                        val cardH = currentContentHeight()
+
+                        val cursorDpX = DisplayCoordinateSpace.nativeToDp(cursorNativeX, density)
+                        val cursorDpY = DisplayCoordinateSpace.nativeToDp(cursorNativeY, density)
+
+                        val isInside = cursorDpX >= contentLeft && cursorDpX <= contentLeft + cardW &&
+                            cursorDpY >= contentTop && cursorDpY <= contentTop + cardH
+
                         if (!isInside && shouldDismissOnFocusLoss()) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 hide()
@@ -147,21 +218,31 @@ class DockedWindowStateController(
                         }
                         break
                     }
-                    kotlinx.coroutines.delay(50)
+                    delay(50)
                 }
-            } catch (e: Throwable) {}
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
+    /**
+     * Validates that the card content still intersects its own display's work area;
+     * restores the default dock when the window ended up fully stranded off-screen.
+     */
     fun validateAndSnapToBounds() {
-        val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
-        val currentX = windowState.position.x.value.toInt()
-        val currentY = windowState.position.y.value.toInt()
-        
-        // If window is outside the boundaries of the active work area
-        val height = workArea.bottom - workArea.top
-        if (currentX < workArea.left || currentX > workArea.left + workArea.width ||
-            currentY < workArea.top || currentY > workArea.top + height) {
+        val workArea = anchoredWorkAreaInDp()
+        val winX = windowState.position.x.value.toInt()
+        val winY = windowState.position.y.value.toInt()
+        val (contentLeft, contentTop) = windowToContent(winX, winY)
+        val cardW = currentContentWidth()
+        val cardH = currentContentHeight()
+
+        val intersects = contentLeft < workArea.right && contentLeft + cardW > workArea.left &&
+            contentTop < workArea.bottom && contentTop + cardH > workArea.top
+        if (!intersects) {
             recalculateDefaultDockPosition()
         }
     }
@@ -191,49 +272,47 @@ class DockedWindowStateController(
 
     /**
      * Expands the card leftward/downward to reveal the specified drawer panel.
-     * Executes dynamic Nudge-ForExpand if near display boundaries.
+     * Executes dynamic Nudge-ForExpand if near display boundaries. Deltas are computed
+     * against the CURRENT content size so direct drawer-to-drawer switches stay correct.
      */
     fun expandPanel(panel: ExpandedPanel) {
-        val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
-        val currentX = windowState.position.x.value.toInt()
-        val currentY = windowState.position.y.value.toInt()
+        cancelPositionAnimation()
+        val currentW = currentContentWidth()
+        val currentH = currentContentHeight()
 
-        if (preExpandX == null) preExpandX = currentX
-        if (preExpandY == null) preExpandY = currentY
+        if (preExpandX == null) preExpandX = windowState.position.x.value.toInt()
+        if (preExpandY == null) preExpandY = windowState.position.y.value.toInt()
 
-        val deltaW = when (panel) {
-            ExpandedPanel.Settings -> 375 // 675 - 300
-            ExpandedPanel.Pairing -> 100  // 400 - 300
-            ExpandedPanel.FileExplorer -> 754 // 1054 - 300
-        }
-        val deltaH = 195 // 625 - 430
+        val deltaW = panel.expandedWidth - currentW
+        val deltaH = DockCardMetrics.CARD_HEIGHT_EXPANDED - currentH
 
+        val workArea = anchoredWorkAreaInDp()
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(
-            currentWindowX = currentX,
-            currentWindowY = currentY,
-            cardWidth = contractedCardWidth,
-            cardHeight = contractedCardHeight,
+            currentWindowX = windowState.position.x.value.toInt(),
+            currentWindowY = windowState.position.y.value.toInt(),
+            cardWidth = currentW,
+            cardHeight = currentH,
             expandDeltaWidth = deltaW,
             expandDeltaHeight = deltaH,
             workArea = workArea,
             canvasWidth = canvasWidth,
-            margin = cardMargin
+            canvasHeight = canvasHeight,
+            margin = cardMargin,
+            isMacOS = isMacOS
         )
 
         expandedPanel = panel
 
-        if (targetX != currentX || targetY != currentY) {
-            scope.launch {
-                animateWindowTo(targetX, targetY)
-            }
-        }
+        animateWindowTo(targetX, targetY)
     }
 
     /**
      * Collapses the drawer panel back to the compact card.
-     * Restores pre-expansion position or performs contraction clamping (void prevention).
+     * Restores pre-expansion position (re-clamped against the current work area), or
+     * performs contraction clamping (void prevention) when no restore point exists.
      */
     fun collapsePanel() {
+        cancelPositionAnimation()
         expandedPanel = null
 
         val restoreX = preExpandX
@@ -241,13 +320,29 @@ class DockedWindowStateController(
         preExpandX = null
         preExpandY = null
 
-        if (restoreX != null && restoreY != null) {
-            scope.launch {
-                animateWindowTo(restoreX, restoreY)
-            }
+        val workArea = anchoredWorkAreaInDp()
+
+        val target: IntOffset = if (restoreX != null && restoreY != null) {
+            // Restore must re-clamp only: magnetic snapping here would corrupt exact
+            // restoration whenever the pre-expand spot sits within 20px of an edge.
+            val (clampedLeft, clampedTop) = DockCardPhysics.applySanityClamp(
+                contentLeft = restoreX + canvasWidth - cardMargin - contractedCardWidth,
+                contentTop = if (isMacOS) {
+                    restoreY + cardMargin
+                } else {
+                    restoreY + canvasHeight - cardMargin - contractedCardHeight
+                },
+                cardWidth = contractedCardWidth,
+                cardHeight = contractedCardHeight,
+                workArea = workArea
+            )
+            DockCardPhysics.contentToWindow(
+                clampedLeft, clampedTop,
+                contractedCardWidth, contractedCardHeight,
+                canvasWidth, canvasHeight, cardMargin, isMacOS
+            )
         } else {
             // Contraction Clamping (Void Prevention)
-            val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
             val currentWinX = windowState.position.x.value.toInt()
             val safeWinX = DockCardPhysics.calculateContractionOrigin(
                 currentWindowX = currentWinX,
@@ -256,12 +351,10 @@ class DockedWindowStateController(
                 canvasWidth = canvasWidth,
                 margin = cardMargin
             )
-            if (safeWinX != currentWinX) {
-                scope.launch {
-                    animateWindowTo(safeWinX, windowState.position.y.value.toInt())
-                }
-            }
+            IntOffset(safeWinX, windowState.position.y.value.toInt())
         }
+
+        animateWindowTo(target.x, target.y)
     }
 
     fun contractPanel() = collapsePanel()
@@ -276,30 +369,37 @@ class DockedWindowStateController(
 
     /**
      * Phase 1: Initiates pending drag state from mouse coordinates.
+     * Cancels any in-flight window animation so the user's grab always wins.
      */
     fun onDragStart(cursorScreenX: Int, cursorScreenY: Int) {
+        cancelPositionAnimation()
         dragPending = true
         isDragging = false
         dragStartCursorX = cursorScreenX
         dragStartCursorY = cursorScreenY
         dragStartWindowX = windowState.position.x.value.toInt()
         dragStartWindowY = windowState.position.y.value.toInt()
+        dragGestureWorkArea = resolveWindowWorkArea()
     }
 
     fun onDragStart(screenX: Float, screenY: Float) {
-        onDragStart(screenX.toInt(), screenY.toInt())
+        onDragStart(screenX.roundToInt(), screenY.roundToInt())
     }
 
     /**
-     * Phase 2: Active drag tracking with 5px deadzone filter, high-DPI scaling, and 20px magnetic snapping.
+     * Phase 2: Active drag tracking with a density-aware 5dp Manhattan deadzone filter,
+     * high-DPI cursor scaling, and 20px magnetic snapping against the gesture-stable
+     * work area captured at drag start.
      */
     fun onDragMove(cursorScreenX: Int, cursorScreenY: Int, currentDensity: Float = density) {
         val dxPhysical = cursorScreenX - dragStartCursorX
         val dyPhysical = cursorScreenY - dragStartCursorY
 
-        // Phase 1 check: 5px Manhattan deadzone threshold
+        // Phase 1 check: 5dp Manhattan deadzone threshold (scaled to physical px)
         if (dragPending && !isDragging) {
-            if (abs(dxPhysical) + abs(dyPhysical) < DockCardPhysics.MANHATTAN_DEADZONE_PX) return
+            val scale = DisplayCoordinateSpace.scaleFactor(currentDensity)
+            val logicalDistance = abs(dxPhysical / scale) + abs(dyPhysical / scale)
+            if (logicalDistance < DockCardPhysics.MANHATTAN_DEADZONE_PX) return
             dragPending = false
             isDragging = true
             hasBeenDragged = true
@@ -307,105 +407,106 @@ class DockedWindowStateController(
             preExpandY = null
         }
 
-        if (isDragging) {
-            // High-DPI scaling: convert physical mouse deltas to Dp units
-            val dpScale = if (currentDensity > 0f) currentDensity else 1.0f
-            val dpDx = (dxPhysical / dpScale).toInt()
-            val dpDy = (dyPhysical / dpScale).toInt()
+        if (!isDragging) return
 
-            val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
-            val candidateX = dragStartWindowX + dpDx
-            val candidateY = dragStartWindowY + dpDy
+        // High-DPI scaling: convert physical mouse deltas to dp units
+        val dpScale = DisplayCoordinateSpace.scaleFactor(currentDensity)
+        val dpDx = (dxPhysical / dpScale).roundToInt()
+        val dpDy = (dyPhysical / dpScale).roundToInt()
 
-            val currentCardW = when (expandedPanel) {
-                ExpandedPanel.Settings -> 675
-                ExpandedPanel.Pairing -> 400
-                ExpandedPanel.FileExplorer -> 1054
-                null -> contractedCardWidth
-            }
-            val currentCardH = if (isExpanded) 625 else contractedCardHeight
+        val candidateX = dragStartWindowX + dpDx
+        val candidateY = dragStartWindowY + dpDy
 
-            val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
-            val contentLeft = candidateX + canvasWidth - cardMargin - currentCardW
-            val contentTop = if (isMacOS) {
-                candidateY + cardMargin
-            } else {
-                candidateY + canvasHeight - cardMargin - currentCardH
-            }
+        val cardW = currentContentWidth()
+        val cardH = currentContentHeight()
+        val (candidateContentLeft, candidateContentTop) = DockCardPhysics.windowToContent(
+            candidateX, candidateY, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+        )
 
-            // 20px Magnetic Edge Snapping
-            val (snappedLeft, snappedTop) = DockCardPhysics.evaluateMagneticSnap(
-                candidateContentLeft = contentLeft,
-                candidateContentTop = contentTop,
-                cardWidth = currentCardW,
-                cardHeight = currentCardH,
-                workArea = workArea
-            )
+        // 20px Magnetic Edge Snapping (inward-only, stable per-gesture work area)
+        val (snappedLeft, snappedTop) = DockCardPhysics.evaluateMagneticSnap(
+            candidateContentLeft = candidateContentLeft,
+            candidateContentTop = candidateContentTop,
+            cardWidth = cardW,
+            cardHeight = cardH,
+            workArea = anchoredWorkAreaInDp(currentDensity)
+        )
 
-            val finalWinX = snappedLeft - canvasWidth + cardMargin + currentCardW
-            val finalWinY = if (isMacOS) {
-                snappedTop - cardMargin
-            } else {
-                snappedTop - canvasHeight + cardMargin + currentCardH
-            }
-
-            windowState.position = WindowPosition(finalWinX.dp, finalWinY.dp)
-        }
+        val finalWin = DockCardPhysics.contentToWindow(
+            snappedLeft, snappedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+        )
+        windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
     }
 
     /**
-     * Direct delta drag helper.
+     * Direct delta drag helper (fallback when absolute cursor tracking is unavailable).
+     * Applies off-screen sanity clamping without magnetic snapping to preserve exact deltas.
      */
     fun onDragDelta(deltaX: Float, deltaY: Float) {
-        val currentPos = windowState.position
-        val newX = currentPos.x.value + deltaX
-        val newY = currentPos.y.value + deltaY
-        windowState.position = WindowPosition(newX.dp, newY.dp)
         hasBeenDragged = true
+        val workArea = anchoredWorkAreaInDp()
+        val winX = windowState.position.x.value
+        val winY = windowState.position.y.value
+        val candidateX = winX + deltaX
+        val candidateY = winY + deltaY
+
+        val cardW = currentContentWidth()
+        val cardH = currentContentHeight()
+        val (candidateLeft, candidateTop) = DockCardPhysics.windowToContent(
+            candidateX.toInt(), candidateY.toInt(), cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+        )
+        val (clampedLeft, clampedTop) = DockCardPhysics.applySanityClamp(
+            contentLeft = candidateLeft,
+            contentTop = candidateTop,
+            cardWidth = cardW,
+            cardHeight = cardH,
+            workArea = workArea
+        )
+        val finalWin = DockCardPhysics.contentToWindow(
+            clampedLeft, clampedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+        )
+        windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
     }
 
     /**
-     * Phase 3: Drag release, off-screen sanity clamping.
+     * Phase 3: Drag release, off-screen sanity clamping against the gesture-stable work
+     * area. When the card was dragged fully onto another display, the clamp re-targets
+     * the display owning the released content instead of yanking it back.
      */
     fun onDragEnd() {
         if (isDragging) {
-            val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
             val winX = windowState.position.x.value.toInt()
             val winY = windowState.position.y.value.toInt()
+            val cardW = currentContentWidth()
+            val cardH = currentContentHeight()
 
-            val currentCardW = when (expandedPanel) {
-                ExpandedPanel.Settings -> 675
-                ExpandedPanel.Pairing -> 400
-                ExpandedPanel.FileExplorer -> 1054
-                null -> contractedCardWidth
-            }
-            val currentCardH = if (isExpanded) 625 else contractedCardHeight
-
-            val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
-            val cLeft = winX + canvasWidth - cardMargin - currentCardW
-            val cTop = if (isMacOS) {
-                winY + cardMargin
-            } else {
-                winY + canvasHeight - cardMargin - currentCardH
+            var gestureArea = anchoredWorkAreaInDp()
+            val (cLeft, cTop) = DockCardPhysics.windowToContent(
+                winX, winY, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            )
+            val sb = gestureArea.screenBounds
+            val fullyOutsideGestureDisplay =
+                cLeft >= sb.x + sb.width || cLeft + cardW <= sb.x ||
+                    cTop >= sb.y + sb.height || cTop + cardH <= sb.y
+            if (fullyOutsideGestureDisplay) {
+                dragGestureWorkArea = resolveWindowWorkArea()
+                gestureArea = dragGestureWorkArea!!.toDpSpace(density)
             }
 
             val (clampedLeft, clampedTop) = DockCardPhysics.applySanityClamp(
                 contentLeft = cLeft,
                 contentTop = cTop,
-                cardWidth = currentCardW,
-                cardHeight = currentCardH,
-                workArea = workArea
+                cardWidth = cardW,
+                cardHeight = cardH,
+                workArea = gestureArea
             )
 
-            val finalWinX = clampedLeft - canvasWidth + cardMargin + currentCardW
-            val finalWinY = if (isMacOS) {
-                clampedTop - cardMargin
-            } else {
-                clampedTop - canvasHeight + cardMargin + currentCardH
-            }
-
-            windowState.position = WindowPosition(finalWinX.dp, finalWinY.dp)
+            val finalWin = DockCardPhysics.contentToWindow(
+                clampedLeft, clampedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            )
+            windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
         }
+        dragGestureWorkArea = null
         dragPending = false
         isDragging = false
     }
@@ -423,14 +524,13 @@ class DockedWindowStateController(
             return
         }
         if (hasBeenDragged) {
-            val workArea = TaskbarWorkAreaProvider.getActiveScreenWorkArea()
+            cancelPositionAnimation()
+            val workArea = anchoredWorkAreaInDp()
             val targetX = TaskbarWorkAreaProvider.calculateRestingX(workArea, canvasWidth)
             val targetY = TaskbarWorkAreaProvider.calculateRestingY(workArea, contractedCardHeight)
 
-            scope.launch {
-                animateWindowTo(targetX, targetY)
-                hasBeenDragged = false
-            }
+            animateWindowTo(targetX, targetY)
+            positionAnimationJob?.invokeOnCompletion { cause -> if (cause == null) hasBeenDragged = false }
         }
     }
 
@@ -438,6 +538,7 @@ class DockedWindowStateController(
      * 3-cycle shake animation (±5px over 50ms per cycle) when double-clicking while pinned.
      */
     fun triggerPinShake() {
+        cancelPositionAnimation()
         scope.launch {
             isShaking = true
             val baseX = windowState.position.x.value
@@ -452,24 +553,39 @@ class DockedWindowStateController(
         }
     }
 
-    private suspend fun animateWindowTo(targetX: Int, targetY: Int) {
-        if (coroutineContext[MonotonicFrameClock] != null) {
-            val startX = windowState.position.x.value
-            val startY = windowState.position.y.value
-            val anim = Animatable(0f)
+    private fun cancelPositionAnimation() {
+        positionAnimationJob?.cancel()
+        positionAnimationJob = null
+    }
 
-            // Single atomic 2D animation loop: eliminates concurrent coroutine race conditions and diagonal tearing
-            anim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            ) {
-                val curX = startX + (targetX - startX) * value
-                val curY = startY + (targetY - startY) * value
-                windowState.position = WindowPosition(curX.dp, curY.dp)
+    /**
+     * Launches the single atomic 2D window-position animation toward the target.
+     * Any previously running animation is cancelled first, guaranteeing exactly one
+     * coroutine ever writes [windowState.position] at a time.
+     */
+    private fun animateWindowTo(targetX: Int, targetY: Int) {
+        val currentX = windowState.position.x.value.toInt()
+        val currentY = windowState.position.y.value.toInt()
+        if (currentX == targetX && currentY == targetY) return
+        cancelPositionAnimation()
+        positionAnimationJob = scope.launch {
+            if (coroutineContext[MonotonicFrameClock] != null) {
+                val startX = windowState.position.x.value
+                val startY = windowState.position.y.value
+                val anim = Animatable(0f)
+
+                anim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
+                ) {
+                    val curX = startX + (targetX - startX) * value
+                    val curY = startY + (targetY - startY) * value
+                    windowState.position = WindowPosition(curX.dp, curY.dp)
+                }
+            } else {
+                // Headless / Unit-test coroutine scope fallback when no MonotonicFrameClock is attached
+                windowState.position = WindowPosition(targetX.dp, targetY.dp)
             }
-        } else {
-            // Headless / Unit-test coroutine scope fallback when no MonotonicFrameClock is attached
-            windowState.position = WindowPosition(targetX.dp, targetY.dp)
         }
     }
 }

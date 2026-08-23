@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.auth.AuthState
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
@@ -98,7 +99,7 @@ class ClientEngine(
         if (!mySub.isNullOrEmpty() && targetGoogleSub == mySub) return mySub
         val myIdentity = deviceConfig?.identityHash
         if (!myIdentity.isNullOrEmpty() && targetIdentityHash == myIdentity) return myIdentity
-        return targetFingerprint?.let { AuthState.pairedTokens[it] }
+        return targetFingerprint?.let { AuthState.pairedTokens.value[it] }
     }
 
     fun finishUpload(successCount: Int, totalFiles: Int) {

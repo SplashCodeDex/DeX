@@ -1,4 +1,5 @@
 package com.dexstudios.dex.window.components
+import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
@@ -33,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import io.ktor.client.request.get
+import io.ktor.client.plugins.timeout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -238,12 +240,19 @@ fun SettingsPanel(
             SettingsSectionHeader("Connection")
             SettingsCard {
                 SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_do_not_disturb),
                     title = "Do Not Disturb",
                     subtitle = "Auto-reject all pairing/transfer requests",
                     badge = if (isDndActive) "ON" else "OFF",
                     isBadgeDanger = isDndActive,
-                    onClick = { isDndActive = !isDndActive }
+                    onClick = { isDndActive = !isDndActive },
+                    iconContent = { tint ->
+                        AnimatedDndBell(
+                            isDndActive = isDndActive,
+                            size = 20.dp,
+                            tint = tint,
+                            contentDescription = "Do Not Disturb"
+                        )
+                    }
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_wifi),
@@ -282,8 +291,11 @@ fun SettingsPanel(
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
-                                val client = io.ktor.client.HttpClient(io.ktor.client.engine.cio.CIO)
-                                client.get("http://127.0.0.1:28425/local/settings/google-signin")
+                                io.ktor.client.HttpClient(io.ktor.client.engine.cio.CIO).use { client ->
+                                    client.get("http://127.0.0.1:28425/local/settings/google-signin") {
+                                        timeout { requestTimeoutMillis = 5_000 }
+                                    }
+                                }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -410,6 +422,36 @@ private fun SettingsItem(
     isDanger: Boolean = false,
     onClick: () -> Unit = {}
 ) {
+    SettingsItem(
+        title = title,
+        subtitle = subtitle,
+        badge = badge,
+        isBadgeDanger = isBadgeDanger,
+        isDanger = isDanger,
+        onClick = onClick,
+        iconContent = { tint ->
+            Icon(
+                painter = icon,
+                contentDescription = title,
+                tint = tint,
+                modifier = Modifier.padding(end = 12.dp).size(20.dp)
+            )
+        }
+    )
+}
+
+@Composable
+private fun SettingsItem(
+    title: String,
+    subtitle: String,
+    badge: String? = null,
+    isBadgeDanger: Boolean = false,
+    isDanger: Boolean = false,
+    onClick: () -> Unit = {},
+    iconContent: @Composable (tint: Color) -> Unit
+) {
+    val iconTint = if (isDanger) MaterialTheme.colorScheme.error else if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -418,12 +460,9 @@ private fun SettingsItem(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = icon,
-            contentDescription = title,
-            tint = if (isDanger) MaterialTheme.colorScheme.error else if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(end = 12.dp).size(20.dp)
-        )
+        Box(modifier = Modifier.padding(end = 12.dp).size(20.dp), contentAlignment = Alignment.Center) {
+            iconContent(iconTint)
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(

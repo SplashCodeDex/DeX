@@ -1,5 +1,6 @@
 package com.dexstudios.dex.window.components
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
@@ -82,12 +83,19 @@ fun QuickActionBar(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. Do Not Disturb Pill (56x44dp)
+        // 1. Do Not Disturb Pill (56x44dp) with Animated Lottie Bell
         DeXQuickActionButton(
-            icon = painterResource(Res.drawable.ic_fluent_notifications),
             tooltip = "Do Not Disturb",
             isChecked = isDndActive,
-            onClick = onToggleDnd
+            onClick = onToggleDnd,
+            iconContent = { tint ->
+                AnimatedDndBell(
+                    isDndActive = isDndActive,
+                    size = 20.dp,
+                    tint = tint,
+                    contentDescription = "Do Not Disturb"
+                )
+            }
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -150,6 +158,34 @@ fun DeXQuickActionButton(
     modifier: Modifier = Modifier,
     isDanger: Boolean = false,
     badgeCount: Int = 0
+) {
+    DeXQuickActionButton(
+        tooltip = tooltip,
+        isChecked = isChecked,
+        onClick = onClick,
+        modifier = modifier,
+        isDanger = isDanger,
+        badgeCount = badgeCount,
+        iconContent = { tint ->
+            Icon(
+                painter = icon,
+                contentDescription = tooltip,
+                tint = tint,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    )
+}
+
+@Composable
+fun DeXQuickActionButton(
+    tooltip: String,
+    isChecked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDanger: Boolean = false,
+    badgeCount: Int = 0,
+    iconContent: @Composable (tint: Color) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -215,12 +251,7 @@ fun DeXQuickActionButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = icon,
-            contentDescription = tooltip,
-            tint = iconColor,
-            modifier = Modifier.size(20.dp)
-        )
+        iconContent(iconColor)
 
         if (badgeCount > 0) {
             // Contrast Inversion for Badge Counter

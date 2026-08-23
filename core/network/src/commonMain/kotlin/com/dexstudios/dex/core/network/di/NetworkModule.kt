@@ -11,6 +11,7 @@ import com.dexstudios.dex.auth.PairingEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.*
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.*
 import io.ktor.serialization.kotlinx.json.json
@@ -36,6 +37,12 @@ val commonNetworkModule = module {
 
     single {
         HttpClient(get<HttpClientEngine>()) {
+            // Bound only at the connect stage: no global request timeout, because this
+            // client also streams multi-GB file uploads (ClientEngine.uploadFile).
+            // Short-lived calls (e.g. the manual discovery probe) override per-request.
+            install(HttpTimeout) {
+                connectTimeoutMillis = 10.seconds.inWholeMilliseconds
+            }
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true

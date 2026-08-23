@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.engine.IPlatformEngine
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.CompletableDeferred
@@ -99,12 +100,12 @@ class MessageHandler(
             deferred = CompletableDeferred(),
             deadlineElapsedMs = getTimeMillis() + PAIR_PROMPT_TIMEOUT_MS
         )
-        AuthState.incomingPairRequest.value = info
+        AuthState.updateIncomingPairRequest(info)
         engine.showPairingRequestNotification(pairReq.alias)
 
         CoroutineScope(Dispatchers.Main).launch {
             val enteredPin = withTimeoutOrNull(PAIR_PROMPT_TIMEOUT_MS.milliseconds) { info.deferred.await() }
-            AuthState.incomingPairRequest.value = null
+            AuthState.updateIncomingPairRequest(null)
             // The dialog resolved by any path (PIN entered, ✕, or countdown timeout) — clear
             // the pairing notification so it never lingers in the shade.
             engine.cancelPairingNotification()
@@ -128,7 +129,7 @@ class MessageHandler(
      */
     private fun handlePairCancelled() {
         val pending = AuthState.incomingPairRequest.value ?: return
-        AuthState.incomingPairRequest.value = null
+        AuthState.updateIncomingPairRequest(null)
         engine.cancelPairingNotification()
         pending.deferred.complete("")
     }

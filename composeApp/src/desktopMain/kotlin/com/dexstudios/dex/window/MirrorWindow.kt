@@ -1,6 +1,6 @@
 package com.dexstudios.dex.window
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_rotate
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
@@ -60,6 +60,16 @@ fun MirrorWindow(
     val frameBytes by mirrorEngine.latestFrame.collectAsState()
     val latestFrame = remember(frameBytes) {
         frameBytes?.let { org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap() }
+    }
+
+    // Live frame aspect ratio drives the landscape window size so the video fills
+    // without letterboxing regardless of the phone's orientation/resolution
+    val frameAspect = latestFrame?.let { it.width.toFloat() / it.height.toFloat() } ?: 0f
+    val landscapeWidth = 840f
+    val landscapeHeight = if (frameAspect > 0f) {
+        (landscapeWidth / frameAspect).coerceIn(320f, 1200f)
+    } else {
+        480f
     }
 
     LaunchedEffect(Unit) {
@@ -177,10 +187,10 @@ fun MirrorWindow(
                         IconButton(
                             onClick = {
                                 isLandscape = !isLandscape
-                                if (isLandscape) {
-                                    windowState.size = DpSize(840.dp, 480.dp)
+                                windowState.size = if (isLandscape) {
+                                    DpSize(landscapeWidth.dp, landscapeHeight.dp)
                                 } else {
-                                    windowState.size = DpSize(420.dp, 840.dp)
+                                    DpSize(420.dp, 840.dp)
                                 }
                             },
                             modifier = Modifier
@@ -189,7 +199,7 @@ fun MirrorWindow(
                                 .background(Color.Black.copy(alpha = 0.65f))
                         ) {
                             Icon(
-                                painter = painterResource(Res.drawable.ic_fluent_history),
+                                painter = painterResource(Res.drawable.ic_fluent_rotate),
                                 contentDescription = "Rotate",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)

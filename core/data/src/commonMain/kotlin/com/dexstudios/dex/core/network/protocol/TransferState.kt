@@ -18,12 +18,5 @@ data class PairRequestInfo(
     val deadlineElapsedMs: Long = 0L
 )
 
-object AuthState {
-    val pairedFingerprints = kotlinx.coroutines.flow.MutableStateFlow<Set<String>>(emptySet())
-    val pairedTokens = mutableMapOf<String, String>()
-    val pairedTimes = mutableMapOf<String, Long>()
-    val incomingPairRequest = kotlinx.coroutines.flow.MutableStateFlow<PairRequestInfo?>(null)
-}
-
 
 

@@ -31,14 +31,6 @@ data class WorkAreaBounds(
  */
 object TaskbarWorkAreaProvider {
 
-    const val DEFAULT_CANVAS_WIDTH = 1420
-    const val DEFAULT_CANVAS_HEIGHT = 760
-    const val DEFAULT_CARD_CONTRACTED_WIDTH = 300
-    const val DEFAULT_CARD_CONTRACTED_HEIGHT = 430
-    const val CARD_MARGIN = 25
-    const val RESTING_RIGHT_GAP = 13
-    const val RESTING_TASKBAR_GAP = 38
-
     /**
      * Resolves the active screen work area based on the cursor position,
      * falling back to the primary display if cursor tracking is unavailable.
@@ -68,6 +60,21 @@ object TaskbarWorkAreaProvider {
      * Resolves the work area for the display containing the cursor.
      */
     fun getWorkAreaForCursor(): WorkAreaBounds = getActiveScreenWorkArea()
+
+    /**
+     * Resolves the work area for the display containing the given native (AWT) point,
+     * falling back to the cursor-based active screen when the point lies on no device.
+     * Anchors spatial decisions to the window's own location instead of the cursor.
+     */
+    fun getWorkAreaForPoint(x: Int, y: Int): WorkAreaBounds {
+        val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
+        val device: GraphicsDevice? = try {
+            ge.screenDevices?.firstOrNull { it.defaultConfiguration.bounds.contains(x, y) }
+        } catch (_: Exception) {
+            null
+        }
+        return if (device != null) getWorkAreaForDevice(device) else getActiveScreenWorkArea()
+    }
 
     /**
      * Computes the taskbar-subtracted work area for a specific GraphicsDevice.
@@ -130,13 +137,18 @@ object TaskbarWorkAreaProvider {
      * Computes the exact initial/resting window origin (X, Y) on the specified work area.
      *
      * Exact Resting Formula:
-     *   X = workArea.right - canvasWidth + 12 (i.e. Right_work - 1420 + 12)
-     *   Y = workArea.bottom - cardCollapsedHeight - 38 (i.e. Bottom_work - 430 - 38)
+     *   X = workArea.right - canvasWidth + RESTING_CANVAS_OVERHANG
+     *   Y (Windows/Linux) = workArea.bottom - CANVAS_HEIGHT + RESTING_CANVAS_OVERHANG
+     *   Y (macOS) = workArea.top + 10
+     *
+     * The transparent 1420x760dp canvas intentionally overhangs the work-area edge by
+     * RESTING_CANVAS_OVERHANG dp so the card's visible right gap equals
+     * CARD_MARGIN - RESTING_CANVAS_OVERHANG.
      */
     fun calculateInitialWindowPosition(
         workArea: WorkAreaBounds = getActiveScreenWorkArea(),
-        canvasWidth: Int = DEFAULT_CANVAS_WIDTH,
-        cardCollapsedHeight: Int = DEFAULT_CARD_CONTRACTED_HEIGHT
+        canvasWidth: Int = DockCardMetrics.CANVAS_WIDTH,
+        cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED
     ): IntOffset {
         val x = calculateRestingX(workArea, canvasWidth)
         val y = calculateRestingY(workArea, cardCollapsedHeight)
@@ -152,27 +164,27 @@ object TaskbarWorkAreaProvider {
      */
     fun calculateRestingX(
         workArea: WorkAreaBounds = getActiveScreenWorkArea(),
-        canvasWidth: Int = DEFAULT_CANVAS_WIDTH
+        canvasWidth: Int = DockCardMetrics.CANVAS_WIDTH
     ): Int {
-        return workArea.right - canvasWidth + 12
+        return workArea.right - canvasWidth + DockCardMetrics.RESTING_CANVAS_OVERHANG
     }
 
     /**
      * Computes the resting Y origin coordinate.
-     * On Windows/Linux: Docks above the bottom taskbar (Bottom_work - 430 - 38).
-     * On macOS: Docks right below the top menu bar (Top_work + 10).
+     * On Windows/Linux: docks above the bottom taskbar via canvas-bottom overhang.
+     * On macOS: docks right below the top menu bar (Top_work + 10).
      */
     fun calculateRestingY(
         workArea: WorkAreaBounds = getActiveScreenWorkArea(),
-        cardCollapsedHeight: Int = DEFAULT_CARD_CONTRACTED_HEIGHT
+        cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED
     ): Int {
         return if (isMacOS) {
             workArea.top + 10
         } else {
-            // Anchor the Native OS Window so the UI perfectly rests exactly 38px above the taskbar
-            // Old math: Y = workArea.bottom - 430 - 38. Canvas top = Y.
-            // New math: Canvas top = workArea.bottom - 800 + 12.
-            workArea.bottom - DEFAULT_CANVAS_HEIGHT + 12
+            // Anchor the Native OS Window so the UI rests exactly
+            // CARD_MARGIN - RESTING_CANVAS_OVERHANG dp above the taskbar:
+            // Canvas top = workArea.bottom - CANVAS_HEIGHT + RESTING_CANVAS_OVERHANG.
+            workArea.bottom - DockCardMetrics.CANVAS_HEIGHT + DockCardMetrics.RESTING_CANVAS_OVERHANG
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.dexstudios.dex.auth
 
+import com.dexstudios.dex.core.network.PairRequestInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +15,9 @@ object AuthState {
     private val _pairedTimes = MutableStateFlow<Map<String, Long>>(emptyMap())
     val pairedTimes: StateFlow<Map<String, Long>> = _pairedTimes.asStateFlow()
 
+    private val _incomingPairRequest = MutableStateFlow<PairRequestInfo?>(null)
+    val incomingPairRequest: StateFlow<PairRequestInfo?> = _incomingPairRequest.asStateFlow()
+
     fun updateFingerprints(fingerprints: Set<String>) {
         _pairedFingerprints.value = fingerprints
     }
@@ -24,5 +28,9 @@ object AuthState {
 
     fun updateTimes(times: Map<String, Long>) {
         _pairedTimes.value = times
+    }
+
+    fun updateIncomingPairRequest(request: PairRequestInfo?) {
+        _incomingPairRequest.value = request
     }
 }

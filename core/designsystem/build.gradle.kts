@@ -21,6 +21,7 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             api(libs.backdrop)
+            api(libs.compottie)
             api(libs.coil.compose)
             implementation(project(":core:network"))
             implementation(project(":core:data"))

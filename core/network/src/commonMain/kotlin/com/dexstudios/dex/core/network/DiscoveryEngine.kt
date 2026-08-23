@@ -21,6 +21,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import io.ktor.client.*
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import java.net.DatagramPacket
@@ -160,9 +161,11 @@ class DiscoveryEngine(
                 }
             }
 
-            // 2. Direct HTTP REST Probe Fallback
+            // 2. Direct HTTP REST Probe Fallback (fail fast: LAN probe must never hang the caller)
             runCatching {
-                val response: HttpResponse = httpClient.get("http://$ip:$port/api/localsend/v2/info")
+                val response: HttpResponse = httpClient.get("http://$ip:$port/api/localsend/v2/info") {
+                    timeout { requestTimeoutMillis = 3_000 }
+                }
                 if (response.status.value == 200) {
                     val responseText = response.bodyAsText()
                     val json = lenientJson.parseToJsonElement(responseText).jsonObject

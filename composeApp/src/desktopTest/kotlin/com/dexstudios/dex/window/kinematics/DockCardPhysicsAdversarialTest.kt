@@ -1,5 +1,6 @@
 package com.dexstudios.dex.window.kinematics
 
+import com.dexstudios.dex.platform.DisplayCoordinateSpace
 import com.dexstudios.dex.platform.TaskbarWorkAreaProvider
 import com.dexstudios.dex.platform.WorkAreaBounds
 import com.dexstudios.dex.window.DockedWindowStateController
@@ -8,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import java.awt.Insets
 import java.awt.Rectangle
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -301,10 +303,10 @@ class DockCardPhysicsAdversarialTest {
             workArea = standard1080p,
             minGrab = 60
         )
-        // Grab is max(300*0.2, 60) = 60
-        // Max allowed contentLeft: workArea.right - grab = 1920 - 60 = 1860
-        assertEquals(1860, clampXHigh, "Extreme high X must clamp to right - grab")
-        assertEquals(1040 - 60, clampYHigh, "Extreme high Y must clamp to bottom - grab")
+        // Grab is per-axis: grabX = max(300*0.2, 60) = 60, grabY = max(430*0.2, 60) = 86
+        // Max allowed contentLeft: workArea.right - grabX = 1920 - 60 = 1860
+        assertEquals(1860, clampXHigh, "Extreme high X must clamp to right - grabX")
+        assertEquals(1040 - 86, clampYHigh, "Extreme high Y must clamp to bottom - grabY")
 
         // Extreme negative delta (-1,000,000 px)
         val (clampXLow, clampYLow) = DockCardPhysics.applySanityClamp(
@@ -315,9 +317,9 @@ class DockCardPhysicsAdversarialTest {
             workArea = standard1080p,
             minGrab = 60
         )
-        // Min allowed contentLeft: workArea.left + grab - cardWidth = 0 + 60 - 300 = -240
-        assertEquals(-240, clampXLow, "Extreme low X must clamp to left + grab - cardWidth")
-        assertEquals(0 + 60 - 430, clampYLow, "Extreme low Y must clamp to top + grab - cardHeight")
+        // Min allowed contentLeft: workArea.left + grabX - cardWidth = 0 + 60 - 300 = -240
+        assertEquals(-240, clampXLow, "Extreme low X must clamp to left + grabX - cardWidth")
+        assertEquals(0 + 86 - 430, clampYLow, "Extreme low Y must clamp to top + grabY - cardHeight")
     }
 
     // =========================================================================
@@ -331,12 +333,13 @@ class DockCardPhysicsAdversarialTest {
         val physicalDeltaY = 150
 
         for (density in testScales) {
-            val dpScale = if (density > 0f) density else 1.0f
-            val dpDx = (physicalDeltaX / dpScale).toInt()
-            val dpDy = (physicalDeltaY / dpScale).toInt()
+            val expectedScale = if (DisplayCoordinateSpace.awtUsesDevicePixels) density else 1.0f
+            assertEquals(expectedScale, DisplayCoordinateSpace.scaleFactor(density))
+            val dpDx = DisplayCoordinateSpace.nativeToDp(physicalDeltaX, density)
+            val dpDy = DisplayCoordinateSpace.nativeToDp(physicalDeltaY, density)
 
-            val expectedDpDx = (physicalDeltaX / density).toInt()
-            val expectedDpDy = (physicalDeltaY / density).toInt()
+            val expectedDpDx = (physicalDeltaX / expectedScale).roundToInt()
+            val expectedDpDy = (physicalDeltaY / expectedScale).roundToInt()
 
             assertEquals(expectedDpDx, dpDx, "DPI scale $density should compute exact integer DP dx")
             assertEquals(expectedDpDy, dpDy, "DPI scale $density should compute exact integer DP dy")
@@ -347,36 +350,43 @@ class DockCardPhysicsAdversarialTest {
     @Test
     fun testDegenerateDpiGuards() {
         // Verify 0f, negative, NaN, and Infinity fallbacks
-        val degenerateValues = listOf(0.0f, -1.5f, Float.NaN, Float.NEGATIVE_INFINITY)
+        val degenerateValues = listOf(0.0f, -1.5f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY)
         val physicalDelta = 100
 
         for (badDensity in degenerateValues) {
-            val dpScale = if (badDensity > 0f) badDensity else 1.0f
-            val dpDx = (physicalDelta / dpScale).toInt()
-            assertEquals(100, dpDx, "Degenerate DPI $badDensity must safely fall back to 1.0f scale")
-            assertFalse(dpScale.isNaN(), "dpScale must never be NaN")
-            assertFalse(dpScale.isInfinite(), "dpScale must never be Infinite")
+            assertEquals(1.0f, DisplayCoordinateSpace.scaleFactor(badDensity), "Degenerate DPI $badDensity must safely fall back to 1.0f scale")
+            val dpDx = DisplayCoordinateSpace.nativeToDp(physicalDelta, badDensity)
+            assertEquals(physicalDelta, dpDx, "Degenerate DPI $badDensity must pass pixels through unscaled")
+            assertFalse(DisplayCoordinateSpace.scaleFactor(badDensity).isNaN(), "scale factor must never be NaN")
+            assertFalse(DisplayCoordinateSpace.scaleFactor(badDensity).isInfinite(), "scale factor must never be Infinite")
         }
+    }
+
+    /** Deterministic provider so guard/drag paths never depend on real mouse state. */
+    private object DeterministicMouseProvider : com.dexstudios.dex.platform.MouseInputProvider {
+        override fun isLeftMouseButtonDown(): Boolean = false
+        override fun getCursorPosition(): Pair<Int, Int> = Pair(0, 0)
     }
 
     @Test
     fun testDeadZoneAccumulatorThresholds() {
         val controller = DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
-            density = 1.5f
+            density = 1.0f,
+            mouseInputProvider = DeterministicMouseProvider
         )
 
         controller.onDragStart(100, 100)
         assertTrue(controller.dragPending, "Drag should be pending")
         assertFalse(controller.isDragging, "Should not be dragging yet")
 
-        // Delta = 4px (|2| + |2| = 4 < 5px threshold)
-        controller.onDragMove(102, 102, 1.5f)
+        // Delta = 4px (|2| + |2| = 4 < 5dp threshold)
+        controller.onDragMove(102, 102, 1.0f)
         assertTrue(controller.dragPending, "Delta 4px must remain pending")
         assertFalse(controller.isDragging, "Delta 4px must not trigger drag")
 
-        // Delta = 5px (|3| + |2| = 5 >= 5px threshold)
-        controller.onDragMove(103, 102, 1.5f)
+        // Delta = 5px (|3| + |2| = 5 >= 5dp threshold)
+        controller.onDragMove(103, 102, 1.0f)
         assertFalse(controller.dragPending, "Delta 5px must exit pending")
         assertTrue(controller.isDragging, "Delta 5px must initiate active drag")
         assertTrue(controller.hasBeenDragged, "hasBeenDragged must be set true")
@@ -384,6 +394,33 @@ class DockCardPhysicsAdversarialTest {
         controller.onDragEnd()
         assertFalse(controller.isDragging, "DragEnd must clear isDragging")
         assertFalse(controller.dragPending, "DragEnd must clear dragPending")
+    }
+
+    @Test
+    fun testDeadZoneScalesWithDisplayDensity() {
+        val controller = DockedWindowStateController(
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            density = 2.0f,
+            mouseInputProvider = DeterministicMouseProvider
+        )
+        val scale = DisplayCoordinateSpace.scaleFactor(2.0f)
+
+        controller.onDragStart(100, 100)
+
+        // Single-axis logical distance below the 5dp threshold must remain pending at any density
+        val pendingPhysical = (3 * scale).roundToInt()
+        controller.onDragMove(100 + pendingPhysical, 100, 2.0f)
+        assertTrue(controller.dragPending, "Logical ${pendingPhysical / scale}dp movement must remain pending")
+        assertFalse(controller.isDragging)
+
+        // Single-axis logical distance past the 5dp threshold must initiate the drag
+        val dragPhysical = (7 * scale).roundToInt()
+        controller.onDragMove(100 + dragPhysical, 100, 2.0f)
+        assertFalse(controller.dragPending, "Logical past-threshold movement must exit pending")
+        assertTrue(controller.isDragging, "Logical past-threshold movement must initiate drag")
+
+        controller.onDragEnd()
+        assertFalse(controller.isDragging)
     }
 
     // =========================================================================
@@ -431,7 +468,8 @@ class DockCardPhysicsAdversarialTest {
     fun testFocusLossGuardParity() {
         val controller = DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
-            density = 1.0f
+            density = 1.0f,
+            mouseInputProvider = DeterministicMouseProvider
         )
 
         // Default state: should dismiss

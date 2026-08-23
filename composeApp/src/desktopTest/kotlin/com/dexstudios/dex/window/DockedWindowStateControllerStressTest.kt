@@ -30,6 +30,12 @@ class DockedWindowStateControllerStressTest {
         screenBounds = Rectangle(0, 0, 1920, 1080)
     )
 
+    /** Deterministic provider so the guard truth-table never depends on real mouse state. */
+    private class MouseUpProvider : com.dexstudios.dex.platform.MouseInputProvider {
+        override fun isLeftMouseButtonDown(): Boolean = false
+        override fun getCursorPosition(): Pair<Int, Int> = Pair(0, 0)
+    }
+
     private fun createController(): DockedWindowStateController {
         val windowState = WindowState(
             size = DpSize(1420.dp, 760.dp),
@@ -38,7 +44,8 @@ class DockedWindowStateControllerStressTest {
         return DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             windowState = windowState,
-            density = 1.0f
+            density = 1.0f,
+            mouseInputProvider = MouseUpProvider()
         )
     }
 

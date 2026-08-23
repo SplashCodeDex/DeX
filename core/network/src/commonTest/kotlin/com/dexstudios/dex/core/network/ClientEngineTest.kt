@@ -4,18 +4,24 @@ import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import com.dexstudios.dex.core.network.AuthState
+import com.dexstudios.dex.auth.AuthState
 
 class ClientEngineTest {
+
+    @AfterTest
+    fun resetAuthState() {
+        AuthState.updateTokens(emptyMap())
+    }
 
     @Test
     fun `authToken falls back to pairing token when config is null`() {
         val engine = ClientEngine(client = HttpClient(MockEngine { respondOk() }), deviceConfig = null)
-        AuthState.pairedTokens["some_fp"] = "pairtok"
+        AuthState.updateTokens(mapOf("some_fp" to "pairtok"))
 
         assertEquals("pairtok", engine.authToken("some_fp", "other_hash"))
         assertEquals("pairtok", engine.authToken("some_fp", null))
