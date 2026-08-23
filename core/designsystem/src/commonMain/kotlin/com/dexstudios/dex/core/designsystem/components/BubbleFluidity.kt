@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
  */
 fun Modifier.bubbleFluidity(
     targetScale: Float = 0.85f,
-    pullFactor: Float = 0.2f,
+    pullFactor: Float = 0.1f,
     onPhysicsUpdated: ((scale: Float, tx: Float, ty: Float) -> Unit)? = null
 ): Modifier = this then BubbleFluidityElement(targetScale, pullFactor, onPhysicsUpdated)
 

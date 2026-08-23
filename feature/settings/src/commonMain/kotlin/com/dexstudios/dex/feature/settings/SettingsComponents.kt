@@ -53,7 +53,7 @@ fun SettingsClickableRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.05f)
+            .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

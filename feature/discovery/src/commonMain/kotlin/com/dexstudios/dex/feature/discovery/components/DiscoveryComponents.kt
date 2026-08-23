@@ -49,7 +49,7 @@ fun ScanToAddDeviceCard(
         modifier = Modifier
             .width(300.dp)
             .height(340.dp)
-            .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.05f)
+            .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.1f)
     ) {
         AnimatedContent(
             targetState = showHelpContent,

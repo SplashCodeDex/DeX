@@ -109,7 +109,7 @@ fun BottomDockPanel(
     )
 
     val exitExpandAmount by animateDpAsState(
-        targetValue = if (isConfirming) 54.dp else 0.dp,
+        targetValue = if (isConfirming) 58.dp else 0.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
         label = "exitExpandAmount"
     )
@@ -166,7 +166,7 @@ fun BottomDockPanel(
             // 34x34dp Profile Avatar Button
             Box(
                 modifier = Modifier
-                    .padding(start = 16.dp, end = 4.dp)
+                    .padding(start = 16.dp, end = 8.dp)
                     .size(34.dp)
                     .graphicsLayer {
                         scaleX = avatarScale * avatarHoverScale

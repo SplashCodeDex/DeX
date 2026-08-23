@@ -149,16 +149,18 @@ fun DeviceListPanel(
             }
         }
 
-        // Your Devices Section (Always rendered)
-        item(key = "hdr_your_devices") {
-            Text(
-                text = "Your Devices",
-                fontSize = 13.sp,
-                lineHeight = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp)
-            )
+        // Your Devices Section
+        if (pairedDevices.isNotEmpty()) {
+            item(key = "hdr_your_devices") {
+                Text(
+                    text = "Your Devices",
+                    fontSize = 13.sp,
+                    lineHeight = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp)
+                )
+            }
         }
 
 
