@@ -54,14 +54,14 @@ import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 
 /**
- * Centered row of 4 primary 56x44dp pill buttons + 1 dynamic Danger Close pill.
+ * Centered row of 4 primary 62x48dp pill buttons + 1 dynamic Danger Close pill.
  *
  * Micro-interactions:
  * - Hover scale 1.08x / translateY -3dp (300ms HoverEase)
  * - Press scale 0.85x / translateY +3dp (100ms FastOutSlowInEasing)
  * - Emerald state morphing (#0AE66D active background with #000000 icon)
  * - Contrast-inverted badge counter for notifications/sync items
- * - Collapsible Danger Close button (0 to 56dp when expanded)
+ * - Collapsible Danger Close button (0 to 62dp when expanded)
  */
 @Composable
 fun QuickActionBar(
@@ -83,7 +83,7 @@ fun QuickActionBar(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. Do Not Disturb Pill (56x44dp) with Animated Lottie Bell
+        // 1. Do Not Disturb Pill (62x48dp) with Animated Lottie Bell
         DeXQuickActionButton(
             tooltip = "Do Not Disturb",
             isChecked = isDndActive,
@@ -91,7 +91,7 @@ fun QuickActionBar(
             iconContent = { tint ->
                 AnimatedDndBell(
                     isDndActive = isDndActive,
-                    size = 20.dp,
+                    size = 22.dp,
                     tint = tint,
                     contentDescription = "Do Not Disturb"
                 )
@@ -100,7 +100,7 @@ fun QuickActionBar(
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
 
-        // 2. Screen Mirror Pill (56x44dp)
+        // 2. Screen Mirror Pill (62x48dp)
         DeXQuickActionButton(
             icon = painterResource(Res.drawable.ic_fluent_smartphone),
             tooltip = "Mirror Phone",
@@ -120,7 +120,7 @@ fun QuickActionBar(
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
 
-        // 4. Clipboard Sync Pill (56x44dp)
+        // 4. Clipboard Sync Pill (62x48dp)
         DeXQuickActionButton(
             icon = painterResource(Res.drawable.ic_fluent_clipboard),
             tooltip = "Clipboard",
@@ -129,7 +129,7 @@ fun QuickActionBar(
             onClick = onToggleClipboard
         )
 
-        // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 56dp)
+        // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 62dp)
         AnimatedVisibility(
             visible = isPanelExpanded,
             enter = expandHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeIn(),
@@ -171,7 +171,7 @@ fun DeXQuickActionButton(
                 painter = icon,
                 contentDescription = tooltip,
                 tint = tint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
     )
@@ -234,16 +234,16 @@ fun DeXQuickActionButton(
 
     Box(
         modifier = modifier
-            .size(width = 56.dp, height = 44.dp)
+            .size(width = 62.dp, height = 48.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
                 this.translationY = translateY.toPx()
             }
             .bubbleFluidity()
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor, RoundedCornerShape(20.dp))
-            .background(hoverOverlayColor, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
+            .background(backgroundColor, RoundedCornerShape(22.dp))
+            .background(hoverOverlayColor, RoundedCornerShape(22.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

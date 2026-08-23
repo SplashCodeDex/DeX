@@ -37,6 +37,7 @@ kotlin {
         val jvmTest = getByName("jvmTest") {
             dependencies {
                 implementation(libs.mockk)
+                implementation(libs.ktor.server.test.host)
             }
         }
 

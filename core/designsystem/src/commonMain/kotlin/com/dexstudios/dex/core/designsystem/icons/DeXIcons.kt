@@ -51,6 +51,8 @@ object DeXIcons {
 
     // System & Devices
     val AccountCircle: DrawableResource = Res.drawable.ic_fluent_account_circle
+    val AlertFilled: DrawableResource = Res.drawable.ic_fluent_alert_filled
+    val AlertOnFilled: DrawableResource = Res.drawable.ic_fluent_alert_on_filled
     val Computer: DrawableResource = Res.drawable.ic_fluent_computer
     val Devices: DrawableResource = Res.drawable.ic_fluent_devices
     val DoNotDisturb: DrawableResource = Res.drawable.ic_fluent_do_not_disturb

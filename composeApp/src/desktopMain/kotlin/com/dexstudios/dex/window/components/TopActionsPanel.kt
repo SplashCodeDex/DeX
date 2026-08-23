@@ -44,7 +44,7 @@ import java.awt.datatransfer.StringSelection
 /**
  * TopActionsPanel:
  * 1. Top row: DragPillHandle (draggable handle, pin button, double-click reset)
- * 2. Middle row: Tactile QuickActionBar (56x44dp pills + collapsible danger close)
+ * 2. Middle row: Tactile QuickActionBar (62x48dp pills + collapsible danger close)
  * 3. Bottom row: 39dp Collapsible Status Bar Telemetry (IP:port + Copy IP button with feedback)
  */
 @Composable
