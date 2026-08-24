@@ -16,10 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.network.TransferStateMonitor
-import com.kyant.backdrop.Backdrop
 
 @Composable
-fun ActiveTransferDashboard(backdrop: Backdrop?, modifier: Modifier = Modifier) {
+fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
     val transfersMap by TransferStateMonitor.activeTransfers.collectAsState()
     val activeTransfers = transfersMap.values.toList()
 

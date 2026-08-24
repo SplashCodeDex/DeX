@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.sync.withLock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -107,6 +108,7 @@ data class DeviceItemUiModel(
 fun DeviceListPanel(
     discoveredDevices: List<DeviceItemUiModel>,
     pairedDevices: List<DeviceItemUiModel>,
+    isPanelVisible: Boolean = true,
     onPairDevice: (DeviceItemUiModel) -> Unit,
     onSendFile: (DeviceItemUiModel) -> Unit = {},
     onSendClipboard: (DeviceItemUiModel) -> Unit = {},
@@ -121,7 +123,7 @@ fun DeviceListPanel(
     LazyColumn(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (discoveredDevices.isEmpty() && pairedDevices.isEmpty()) {
             item(key = "empty_state") {
-                DeviceEmptyState()
+                DeviceEmptyState(isVisible = isPanelVisible)
             }
         }
 
@@ -388,16 +390,34 @@ private const val HOLD_ON_DEX_MS = 4_000L // hold on DeX before the transition
 private const val FADE_OUT_MS = 600 // DeX fades out completely (to blank)
 private const val FADE_IN_MS = 600 // monitor (start frame) fades in
 
-@Composable
-private fun DeviceEmptyState() {
-    var jsonString by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+/**
+ * Process-wide cache for the DevicesMorph Lottie source. Res.readBytes is suspend IO;
+ * re-reading it on every empty-state appearance stalled the placeholder on each list
+ * drain. First caller performs the load (mutex-guarded), everyone after reuses.
+ */
+private object LottieAssets {
+    private val cache = java.util.concurrent.atomic.AtomicReference<String?>(null)
+    private val loadMutex = kotlinx.coroutines.sync.Mutex()
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        try {
-            jsonString = com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes("files/DevicesMorph.json").decodeToString()
-        } catch (e: Exception) {
-            Logger.i("Failed to load DevicesMorph.json: ${e.message}")
+    suspend fun devicesMorphJson(): String? {
+        cache.get()?.let { return it }
+        return loadMutex.withLock {
+            cache.get() ?: runCatching {
+                com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes("files/DevicesMorph.json").decodeToString()
+            }.onSuccess { loaded -> cache.set(loaded) }
+                .onFailure { e -> Logger.i("Failed to load DevicesMorph.json: ${e.message}") }
+                .getOrNull()
         }
+    }
+}
+
+@Composable
+private fun DeviceEmptyState(isVisible: Boolean) {
+    // Asset load is deferred until the dock card is actually visible; while hidden the
+    // empty state stays composed behind contentAlpha = 0f and must not do work. The
+    // process-wide LottieAssets cache makes repeat appearances free after the first.
+    val jsonString by androidx.compose.runtime.produceState<String?>(initialValue = null, key1 = isVisible) {
+        if (isVisible) value = LottieAssets.devicesMorphJson()
     }
 
     androidx.compose.foundation.layout.Box(

@@ -34,6 +34,24 @@ import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+
+/** Single-flight guard: a second Quit click must never spawn a rival teardown thread whose
+ *  exitProcess(0) could kill the first thread's half-finished shutdown. */
+private val quitStarted = AtomicBoolean(false)
+
+/**
+ * User-initiated quit path. The blocking teardown runs on a side thread so the EDT never
+ * freezes for up to ~7s with live connections; the process then hard-exits from that
+ * thread. The JVM shutdown hook remains the synchronous safety net for crash paths.
+ */
+fun quitDesktopApp() {
+    if (!quitStarted.compareAndSet(false, true)) return
+    Thread({
+        DesktopShutdownCoordinator.stopAllServices()
+        kotlin.system.exitProcess(0)
+    }, "dex-quit").start()
+}
 
 val desktopAppModule = module {
     single<kotlinx.coroutines.CoroutineScope> { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()) }
@@ -155,9 +173,9 @@ fun main() {
                 Item(
                     label = "Quit",
                     onClick = {
-                        DesktopShutdownCoordinator.stopAllServices()
-                        exitApplication()
-                        kotlin.system.exitProcess(0)
+                        // Immediate visual feedback while services wind down off-EDT
+                        controller.hide()
+                        quitDesktopApp()
                     },
                 )
             },
@@ -194,13 +212,17 @@ fun main() {
             val fileSender = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.desktop.transfer.DesktopFileSendService>() }
             val uploadState by clientEngine.uploadState.collectAsState()
 
-            LaunchedEffect(window, uploadState.isUploading, uploadState.progress, uploadState.error) {
+            // Coalesce to integer percent: the raw float progress ticks far more often than
+            // the native taskbar API cares about, and each tick re-fired this effect.
+            val taskbarProgressPercent = (uploadState.progress * 100).toInt()
+
+            LaunchedEffect(window, uploadState.isUploading, taskbarProgressPercent, uploadState.error != null) {
                 try {
                     if (Taskbar.isTaskbarSupported() && Taskbar.getTaskbar().isSupported(Taskbar.Feature.PROGRESS_VALUE_WINDOW)) {
                         val tb = Taskbar.getTaskbar()
                         if (uploadState.isUploading) {
                             tb.setWindowProgressState(window, Taskbar.State.NORMAL)
-                            tb.setWindowProgressValue(window, (uploadState.progress * 100).toInt())
+                            tb.setWindowProgressValue(window, taskbarProgressPercent)
                         } else if (uploadState.error != null) {
                             tb.setWindowProgressState(window, Taskbar.State.ERROR)
                             tb.setWindowProgressValue(window, 100)
@@ -281,9 +303,9 @@ fun main() {
                     controller = controller,
                     onDismiss = { controller.hide() },
                     onExitEngine = {
-                        DesktopShutdownCoordinator.stopAllServices()
-                        exitApplication()
-                        kotlin.system.exitProcess(0)
+                        // Immediate visual feedback while services wind down off-EDT
+                        controller.hide()
+                        quitDesktopApp()
                     },
                 )
             }

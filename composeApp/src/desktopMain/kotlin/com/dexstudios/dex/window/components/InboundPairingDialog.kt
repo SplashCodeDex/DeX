@@ -26,10 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
-import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
-import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
-import com.dexstudios.dex.window.styling.skiaDropShadow
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 
@@ -95,18 +91,10 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
     }
 
     val cardShape = RoundedCornerShape(24.dp)
-    val glassPreset = DeXGlassPresets.DockCardDark
 
     Box(
         modifier = Modifier
             .width(360.dp)
-            .skiaDropShadow(
-                color = glassPreset.shadowColor,
-                blurRadius = glassPreset.shadowRadius,
-                borderRadius = 24.dp,
-                offsetX = 0.dp,
-                offsetY = 8.dp,
-            )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -114,11 +102,11 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
             )
             .clip(cardShape),
     ) {
-        LiquidGlassPanel(
-            backdrop = LocalBackdrop.current,
-            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = cardShape,
-            config = glassPreset,
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .background(MaterialTheme.colorScheme.surface),
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),

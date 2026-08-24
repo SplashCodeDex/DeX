@@ -150,7 +150,7 @@ fun MainMenuColumn(
         Pair(discovered, paired)
     }
 
-    val devices = devicesMap.values.toList()
+    val devices = remember(devicesMap) { devicesMap.values.toList() }
 
     // Mock DeXStudios fallback removed for Phase 4.2 Parity
 
@@ -216,7 +216,6 @@ fun MainMenuColumn(
         }
 
         com.dexstudios.dex.window.components.ActiveTransferDashboard(
-            backdrop = com.dexstudios.dex.core.designsystem.theme.LocalBackdrop.current,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -233,6 +232,7 @@ fun MainMenuColumn(
             DeviceListPanel(
                 discoveredDevices = discoveredList,
                 pairedDevices = pairedList,
+                isPanelVisible = controller.isVisible,
                 onPairDevice = { item ->
                     val selectedDevice = item.rawDevice ?: devices.find { it.info.fingerprint == item.fingerprint }
                     selectedDevice?.let { onPairDevice(it) }
@@ -277,7 +277,7 @@ fun MainMenuColumn(
                             val device = item.rawDevice
                             val ok = clientEngine.sendClipboard(
                                 ip = item.ip,
-                                port = device?.info?.port ?: 53317,
+                                port = device?.info?.port ?: DeXPorts.LOCALSEND_DEFAULT,
                                 text = text,
                                 targetFingerprint = device?.info?.fingerprint ?: item.fingerprint,
                                 targetIdentityHash = device?.info?.identityHash,

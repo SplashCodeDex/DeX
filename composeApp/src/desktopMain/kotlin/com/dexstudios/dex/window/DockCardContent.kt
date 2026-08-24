@@ -29,22 +29,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
-import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
-import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
 import com.dexstudios.dex.window.components.PinPairingPanel
 import com.dexstudios.dex.window.components.SettingsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
-import com.dexstudios.dex.window.styling.skiaDropShadow
-import com.kyant.backdrop.Backdrop
 
 /**
  * Main Content Surface for the DeX Floating Dock Card.
@@ -52,20 +46,12 @@ import com.kyant.backdrop.Backdrop
  * Responsibilities:
  * - Animates width (320dp contracted <-> 1054dp expanded / 675dp settings / 400dp pairing)
  * - Animates height (430dp contracted <-> 625dp expanded) with spring(0.65f, 300f)
- * - Container with RoundedCornerShape(34.dp), LiquidGlassPanel styling, and Row layout
- * - GPU Gaussian Drop Shadow via Skia + Subpixel Border Glow
+ * - Container with RoundedCornerShape(34.dp), themed surface background, and Row layout
  * - Left animated drawer (FileExplorer, Settings, Pairing)
  * - Right 310dp MainMenuColumn
  */
 @Composable
-fun DockCardContent(
-    controller: DockedWindowStateController,
-    modifier: Modifier = Modifier,
-    backdrop: Backdrop? = LocalBackdrop.current,
-    onDismiss: () -> Unit,
-    onExitEngine: () -> Unit,
-    pairingEngine: PairingEngine,
-) {
+fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier = Modifier, onDismiss: () -> Unit, onExitEngine: () -> Unit, pairingEngine: PairingEngine) {
     val pairingState by pairingEngine.state.collectAsState()
 
     LaunchedEffect(pairingState) {
@@ -95,7 +81,6 @@ fun DockCardContent(
     )
 
     val cardShape = RoundedCornerShape(34.dp)
-    val glassPreset = DeXGlassPresets.DockCardDark
 
     val cardAlpha by animateFloatAsState(
         targetValue = if (controller.isVisible) 1f else 0f,
@@ -135,13 +120,6 @@ fun DockCardContent(
                 scaleX = cardScale
                 scaleY = cardScale
             }
-            .skiaDropShadow(
-                color = glassPreset.shadowColor,
-                blurRadius = glassPreset.shadowRadius,
-                borderRadius = 34.dp,
-                offsetX = 0.dp,
-                offsetY = 8.dp,
-            )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.surfaceVariant,

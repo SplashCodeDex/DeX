@@ -1,5 +1,16 @@
 # Changelog
 
+## [10.1.13.0] - 2026-08-24
+### Changed
+- **[minor] P0 performance batch + Liquid Glass fully removed from the desktop shell** (user directive: no liquid glass in Compose Desktop; a replacement will be implemented later at the appropriate time):
+  - **`window.shape` churn eliminated** (`FloatingDockCard`): `onGloballyPositioned` fires on every layout pass — every frame of the 320↔1054dp spring — and each call assigned a fresh AWT `RoundRectangle2D`, forcing a native Win32 window-region recomputation per frame. Bounds are now cached and the native shape updates only when the card rect moves/resizes beyond 0.5px.
+  - **Layer-backdrop pipeline deleted**: `rememberLayerBackdrop` + `LocalBackdrop` provider in `FloatingDockCard` existed solely to feed the inbound-pairing dialog's glass shader; the extra content layer was captured even though the dock card itself never consumed it. `InboundPairingDialog` now renders on plain `MaterialTheme.colorScheme.surface` — same visual family as the dock card, zero SkSL cost.
+  - **No-op `skiaDropShadow` blocks removed** (`DockCardContent`, `InboundPairingDialog`): both fed `DeXGlassPresets.DockCardDark.shadowColor/shadowRadius`, which are `Transparent/0.dp` since the plan-011 glow removal — invisible shadows that still ran the modifier chain. Dock card keeps its themed border; visuals unchanged.
+  - **Empty-state Lottie gated on visibility** (`DeviceListPanel`): the DevicesMorph asset load and its infinite playback loop now run only while the dock card is visible (`controller.isVisible` passed down); previously they kept burning frames behind `contentAlpha = 0f`.
+  - **`devicesMap.values.toList()` memoized** (`MainMenuColumn`) with `remember(devicesMap)` instead of reallocating per recomposition; **taskbar progress coalesced to integer percent** (`main.kt`) so the native API is hit once per percent instead of per float tick.
+  - Designsystem glass components/presets are untouched (tests pin them); wired desktop UI no longer references any of them. Full gate suite verified green against HEAD + this diff in an isolated worktree.
+
+
 ## [10.1.12.0] - 2026-08-24
 ### Fixed
 - **[fix] Unwired-controls audit batch — every decorative toggle now does what it claims**:
@@ -30,6 +41,7 @@
 - **[minor] ADB fallback centralized**: clipboard sync's ADB broadcast goes through a bounded `AdbManager.broadcast()` (bundled platform-tools resolution, 5s watchdog with `destroyForcibly`, exit-code check) instead of a bare PATH `adb` exec that could hang an IO thread forever and leak one Process per copy; `AdbManager.getAdbExecutable()` resolves once per process instead of probing/downloading per connect.
 - **[minor] Quit latency capped**: `DeXServer.stop()` stops all listeners concurrently under one 2s deadline (was sequential 1s grace + 2s timeout ×3 ≈ up to ~9s hang); `DiscoveryEngine.stopDiscovery()` cancels its owning scope.
 - **[minor] Dead code swept**: unused `coroutineScope`/imports in `BottomDockPanel`, never-called `PostThreadMessageW`/`WM_QUIT` declarations in `GlobalMouseButtonHook`, stale LocalSend-default `53317` display fallback in `MainMenuColumn` (now `DeXPorts.HTTPS`).
+- **[minor] Edge-case hardening follow-ups**: explicit quits now hop to a single-flight side thread (`quitDesktopApp`) so the blocking teardown never freezes the EDT (~7s worst case with live connections), with instant dock-hide feedback; the coordinator's DataStore flush moved to the END of the sequence so settings persisted BY teardown itself (e.g. disconnect-time pairing saves) are captured too; the Exit button's force-exit decision re-checks live transfer state at click time instead of trusting paint-time props (an upload settling between render and click can no longer turn a cancel into an exit); a malformed mirror frame keeps the last good bitmap instead of crashing composition.
 
 ## [10.1.12.0] - 2026-08-24
 ### Fixed
