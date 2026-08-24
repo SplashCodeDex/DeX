@@ -21,11 +21,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Formatting gate
+        run: ./gradlew.bat spotlessCheck --console=plain
+
       - name: Build desktop app
         run: ./gradlew.bat :composeApp:desktopJar --console=plain
 
       - name: Run desktop tests
         run: ./gradlew.bat :composeApp:desktopTest --console=plain
+
+      - name: Library module tests
+        run: ./gradlew.bat :core:data:desktopTest :core:designsystem:desktopTest :core:network:desktopTest :feature:discovery:desktopTest :feature:settings:desktopTest --console=plain
 
   validate-android:
     runs-on: ubuntu-latest
