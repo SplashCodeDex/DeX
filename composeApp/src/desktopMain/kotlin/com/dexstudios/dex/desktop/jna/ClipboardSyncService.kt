@@ -1,7 +1,6 @@
 package com.dexstudios.dex.desktop.jna
 
 import com.dexstudios.dex.core.network.DiscoveryEngine
-import com.dexstudios.dex.core.network.WebSocketEngine
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

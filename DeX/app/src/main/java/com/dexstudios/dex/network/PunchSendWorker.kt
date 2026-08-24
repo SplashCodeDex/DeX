@@ -13,18 +13,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
-import java.util.UUID
 
 /**
  * Sends files to another same-email device over a NAT-punched direct connection.
@@ -107,7 +106,10 @@ class PunchSendWorker(
         val googleSub = deviceConfig.googleSub
         if (identityHash.isBlank() && googleSub.isBlank()) return@withContext "Sign in with your email to send over the internet"
 
-        val fileData = uris.map { uri ->
+        // FileDto ids MUST equal the map keys: the PC answers prepare-upload keyed by the
+        // request map keys, so a diverging id field made every lookup miss.
+        val fileData = uris.mapIndexed { index, uri -> index.toString() to uri }
+        val metaById = fileData.associate { (key, uri) ->
             var name = "shared_file"
             var size = 0L
             applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -118,7 +120,7 @@ class PunchSendWorker(
                     if (sizeIdx >= 0) size = cursor.getLong(sizeIdx)
                 }
             }
-            Triple(uri, name, size)
+            key to Triple(uri, name, size)
         }
 
         val prepareRequest = PrepareUploadRequestDto(
@@ -128,46 +130,68 @@ class PunchSendWorker(
                 fingerprint = deviceConfig.fingerprint, port = DeXPorts.HTTPS, protocol = "https",
                 download = false, identityHash = identityHash
             ),
-            files = fileData.mapIndexed { index, d ->
-                UUID.randomUUID().toString() to FileDto(
-                    id = "relay-$index", fileName = d.second, size = d.third,
+            files = metaById.mapValues { (key, d) ->
+                FileDto(
+                    id = key,
+                    fileName = d.second,
+                    size = d.third,
                     fileType = applicationContext.contentResolver.getType(d.first) ?: "application/octet-stream",
-                    relativePath = relativePaths?.getOrNull(index)
+                    relativePath = relativePaths?.getOrNull(key.toInt())
                 )
-            }.toMap()
+            }
         )
 
         val prepared = client.prepareUpload(pcIp, wsService.connectedPort, prepareRequest, token = googleSub.ifBlank { identityHash })
         val response = prepared.response ?: return@withContext "The PC rejected the upload (HTTP ${prepared.httpStatus})"
 
-        var sent = 0L
-        val total = fileData.sumOf { it.third }
-        for ((index, d) in fileData.withIndex()) {
-            if (isStopped) return@withContext "Transfer cancelled"
-            val fileId = prepareRequest.files.keys.elementAt(index)
-            val token = response.files[fileId] ?: return@withContext "The PC session expired"
-            if (token == "[SKIP]") continue
+        val total = metaById.values.sumOf { it.third }.coerceAtLeast(1)
+        val sent = java.util.concurrent.atomic.AtomicLong(0L)
+        val failures = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-            val stream = applicationContext.contentResolver.openInputStream(d.first)
-                ?: return@withContext "Cannot read ${d.second}"
-            stream.use { input ->
-                val perFile = java.util.concurrent.atomic.AtomicLong(0L)
-                val outcome = if (client.quicAvailable()) {
-                    client.uploadFileQuic(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
-                        val delta = bytes - perFile.getAndSet(bytes)
-                        sent += delta
-                        reportProgress(sent.toFloat() / total, d.second, client.lastUploadProtocol().ifEmpty { "quic" }, fileData.size)
-                    }
-                } else {
-                    client.uploadFile(pcIp, wsService.connectedPort, response.sessionId, fileId, d.second, token, input, d.third) { bytes ->
-                        val delta = bytes - perFile.getAndSet(bytes)
-                        sent += delta
-                        reportProgress(sent.toFloat() / total, d.second, "http/1.1", fileData.size)
+        // Parallel streams (cap 3) — parity with the other transfer workers
+        kotlinx.coroutines.coroutineScope {
+            val semaphore = kotlinx.coroutines.sync.Semaphore(3)
+            metaById.map { (key, d) ->
+                launch {
+                    semaphore.acquire()
+                    try {
+                        if (isStopped) return@launch
+                        val token_ = response.files[key] ?: run {
+                            failures[d.second] = "session expired"
+                            return@launch
+                        }
+                        if (token_ == "[SKIP]") return@launch
+
+                        val stream = applicationContext.contentResolver.openInputStream(d.first)
+                            ?: run { failures[d.second] = "cannot read ${d.second}"; return@launch }
+                        stream.use { input ->
+                            val perFile = java.util.concurrent.atomic.AtomicLong(0L)
+                            val outcome = if (client.quicAvailable()) {
+                                client.uploadFileQuic(pcIp, wsService.connectedPort, response.sessionId, key, d.second, token_, input, d.third) { bytes ->
+                                    val delta = bytes - perFile.getAndSet(bytes)
+                                    sent.addAndGet(delta)
+                                    reportProgress(sent.get().toFloat() / total, d.second, client.lastUploadProtocol().ifEmpty { "quic" }, metaById.size)
+                                }
+                            } else {
+                                client.uploadFile(pcIp, wsService.connectedPort, response.sessionId, key, d.second, token_, input, d.third) { bytes ->
+                                    val delta = bytes - perFile.getAndSet(bytes)
+                                    sent.addAndGet(delta)
+                                    reportProgress(sent.get().toFloat() / total, d.second, "http/1.1", metaById.size)
+                                }
+                            }
+                            if (!outcome.ok) failures[d.second] = "upload failed (HTTP ${outcome.httpStatus})"
+                            else TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                        }
+                    } finally {
+                        semaphore.release()
                     }
                 }
-                if (!outcome.ok) return@withContext "Upload to PC failed (HTTP ${outcome.httpStatus})"
-                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
-            }
+            }.joinAll()
+        }
+
+        if (isStopped) return@withContext "Transfer cancelled"
+        if (failures.isNotEmpty()) {
+            return@withContext failures.entries.first().value
         }
 
         // Ask the PC to push the received files to the target device

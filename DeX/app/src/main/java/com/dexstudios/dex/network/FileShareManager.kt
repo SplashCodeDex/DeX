@@ -203,8 +203,11 @@ class FileShareManager(
                 port = DeXPorts.HTTPS, protocol = "https", download = false,
                 identityHash = deviceConfig.identityHash
             ),
-            files = fileMeta.mapValues { (_, m) ->
-                FileDto(UUID.randomUUID().toString(), m.name, m.size, "application/octet-stream")
+            files = fileMeta.mapValues { (key, m) ->
+                // id MUST equal the map key: ShareRoutes answers prepare-upload keyed by the
+                // request map keys. A random id here made every token lookup miss and the
+                // pull silently "succeed" without uploading anything.
+                FileDto(key, m.name, m.size, "application/octet-stream")
             }
         )
         val response = client.prepareUpload(pcIp, port, prepareRequest, token).response

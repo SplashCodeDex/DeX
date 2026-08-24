@@ -68,32 +68,6 @@ object TcpDownloadService {
         }
     }
 
-    fun triggerDemo() {
-        resetJob?.cancel()
-        scope.launch {
-            _downloadState.value = DownloadState(
-                fileName = "Summer_Vacation_Video.mp4",
-                progress = 0f,
-                isDownloading = true,
-                speedBps = 15728640L, // 15 MB/s
-                protocol = "QUIC",
-                peerName = "Danny Lopez",
-                peerPicture = "https://lh3.googleusercontent.com/a/ACg8ocL_6F3B1u8w8Z3h9Z3h9Z3h9Z3h9Z3h9Z3h=s96-c",
-                totalFiles = 23
-            )
-
-            // Fast progress simulation
-            for (i in 1..100) {
-                delay(50)
-                _downloadState.update { it.copy(progress = i / 100f) }
-            }
-
-            _downloadState.update { it.copy(isDownloading = false, isSuccess = true) }
-            delay(6.seconds)
-            resetDownloadState()
-        }
-    }
-
     /**
      * Enqueues one work item for the whole transfer session. The worker downloads all
      * [files] concurrently (QUIC streams) and reports aggregate progress, so a cancel

@@ -69,6 +69,14 @@ fun main() {
         kotlin.system.exitProcess(1)
     }
 
+    // WAN reachability: open UPnP mappings and resolve our public address so same-account
+    // phones can reach this PC from cellular networks without manual port forwarding.
+    runCatching {
+        org.koin.java.KoinJavaComponent.getKoin()
+            .get<com.dexstudios.dex.core.network.services.DesktopUpnpService>()
+            .configureAsync()
+    }
+
     application {
         val coroutineScope = rememberCoroutineScope()
         val controller = remember(coroutineScope) {

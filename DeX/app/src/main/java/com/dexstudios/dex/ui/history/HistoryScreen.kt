@@ -68,7 +68,6 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState()
 ) {
-    val clientEngine: com.dexstudios.dex.network.ClientEngine = org.koin.compose.koinInject()
     val context = LocalContext.current
     val allItems by TransferHistory.items.collectAsStateWithLifecycle()
     val search = TopAppBarState.searchQuery
@@ -305,27 +304,6 @@ fun HistoryScreen(
                         Icon(DeXIcons.History, null, modifier = Modifier.size(80.dp).graphicsLayer { alpha = 0.2f }, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(text = if (search.isNotBlank()) "No matching records" else stringResource(R.string.history_empty), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-
-                        if (search.isBlank()) {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                com.dexstudios.dex.ui.components.DeXButton(
-                                    onClick = { seedDemoHistory(context) }
-                                ) {
-                                    Text("Seed Demo Data")
-                                }
-                                com.dexstudios.dex.ui.components.DeXButton(
-                                    onClick = { com.dexstudios.dex.network.TcpDownloadService.triggerDemo() }
-                                ) {
-                                    Text("Demo Down")
-                                }
-                                com.dexstudios.dex.ui.components.DeXButton(
-                                    onClick = { clientEngine.triggerDemo() }
-                                ) {
-                                    Text("Demo Up")
-                                }
-                            }
-                        }
                     }
                 }
             } else {
@@ -724,24 +702,6 @@ private fun HistoryGridItem(
             overflow = TextOverflow.Ellipsis
         )
     }
-}
-
-private fun seedDemoHistory(context: Context) {
-    val now = System.currentTimeMillis()
-    val day = 24 * 60 * 60 * 1000L
-    val pkg = context.packageName
-    fun resUri(resId: Int) = "android.resource://$pkg/$resId"
-
-    // USER PROVIDED FILES
-    TransferHistory.log(context, "Screenshot 2026-07-24 181156.png", 1250000L, "received", uri = resUri(R.drawable.wallpaper_gaming), peerDevice = "Nico's PC", timestamp = now)
-    TransferHistory.log(context, "IMG-20260521-WA4440001.jpg", 3450000L, "sent", uri = resUri(R.drawable.wallpaper_laptop), peerDevice = "Pixel 8 Pro", timestamp = now - 1000 * 60 * 5)
-    TransferHistory.log(context, "MoveCertificate-v1.5.7.zip", 870000L, "received", peerDevice = "Nico's PC", timestamp = now - 1000 * 60 * 15)
-    TransferHistory.log(context, "My Passport Doc.pdf", 2100000L, "sent", peerDevice = "Work Laptop", timestamp = now - 1000 * 60 * 45)
-
-    // OTHER DEMO DATA
-    TransferHistory.log(context, "vacation_photo.jpg", 2500000L, "received", uri = resUri(R.drawable.wallpaper_server), peerDevice = "Nico's iPhone", timestamp = now - day)
-    TransferHistory.log(context, "Dex_v1.2_alpha.apk", 85000000L, "sent", peerDevice = "Testing Tablet", timestamp = now - day - 1000 * 60 * 120)
-    TransferHistory.log(context, "archive_2025.zip", 520000000L, "sent", peerDevice = "Home Server", timestamp = now - 15 * day)
 }
 
 private fun formatSize(bytes: Long): String {

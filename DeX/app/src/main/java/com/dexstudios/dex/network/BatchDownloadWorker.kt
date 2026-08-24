@@ -20,9 +20,6 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
-import java.net.InetSocketAddress
-import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,6 +50,14 @@ class BatchDownloadWorker(
 
     // Transient transport failures are retried with exponential backoff, capped attempts
     private val maxRetryAttempts = 3
+
+    // Plain-HTTP fallback client for the PC's dedicated pull port (no TLS on 48426)
+    private val httpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
 
     init {
         val channel = android.app.NotificationChannel(
@@ -85,9 +90,12 @@ class BatchDownloadWorker(
     private val speedTime = AtomicLong(0L)
     private val smoothedSpeed = AtomicLong(0L)
 
-    // Negotiated protocol of the transfer ("h3", "tcp", ...) once any file has completed
+    // Negotiated protocol of the transfer ("h3", "http", ...) once any file has completed
     @Volatile
     private var transferProtocol: String = ""
+
+    @Volatile
+    private var lastForegroundPercent: Int = -1
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
@@ -230,10 +238,28 @@ class BatchDownloadWorker(
                     reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
                 }
 
-                val result = if (client.quicAvailable()) {
-                    quicDownload(ip, httpsPort, file, channel, onBytes)
-                } else {
-                    tcpDownload(ip, tcpPort, file, channel, onBytes)
+                // Transport alternation: QUIC first when available, then the plain-HTTP pull
+                // port. A truncated or failed stream falls through to the next transport.
+                val transports: List<suspend (java.nio.channels.WritableByteChannel) -> DownloadResult> = buildList {
+                    if (client.quicAvailable()) add { channel2 -> quicDownload(ip, httpsPort, file, channel2, onBytes) }
+                    add { channel2 -> httpDownload(ip, tcpPort, file, channel2, onBytes) }
+                }
+
+                var result: DownloadResult = DownloadResult(ok = false, error = "no transport available")
+                for ((index, transport) in transports.withIndex()) {
+                    channel.truncate(0)
+                    perFileReceived.set(0L)
+
+                    val attemptResult = transport(channel)
+                    result = if (attemptResult.ok && !sizeMatches(perFileReceived.get(), file.size)) {
+                        // Truncated stream: never present a partial file as success
+                        DownloadResult(ok = false, error = "Incomplete download", retryable = true)
+                    } else {
+                        attemptResult
+                    }
+
+                    if (result.ok || isStopped || !result.retryable) break
+                    Timber.w("Download attempt ${index + 1} failed (${result.error}); trying next transport")
                 }
 
                 if (result.ok) {
@@ -248,6 +274,8 @@ class BatchDownloadWorker(
             return FileOutcome(file.fileName, null, ok = false, error = "Cannot write to Downloads/DeX")
         }
     }
+
+    private fun sizeMatches(received: Long, expected: Long): Boolean = expected <= 0L || received == expected
 
     private suspend fun quicDownload(
         ip: String,
@@ -280,7 +308,13 @@ class BatchDownloadWorker(
         }
     }
 
-    private suspend fun tcpDownload(
+    /**
+     * Plain-HTTP fallback pull against the PC's dedicated download port. This replaces the
+     * legacy raw-TCP framing: the desktop's 48426 listener serves real HTTP, and speaking a
+     * bare fileId protocol to it used to save the HTTP error page as the "received" file.
+     * The response is streamed with OkHttp and length-verified by the caller.
+     */
+    private suspend fun httpDownload(
         ip: String,
         port: Int,
         file: PullFileDto,
@@ -289,40 +323,46 @@ class BatchDownloadWorker(
     ): DownloadResult = withContext(Dispatchers.IO) {
         var downloaded = 0L
         try {
-            val socketChannel = SocketChannel.open(InetSocketAddress(ip, port))
-            val fileIdBytes = file.fileId.toByteArray(Charsets.UTF_8)
-            val buffer = ByteBuffer.wrap(fileIdBytes)
-            while (buffer.hasRemaining()) {
-                if (isStopped) {
-                    withContext(Dispatchers.IO) { socketChannel.close() }
-                    return@withContext DownloadResult(ok = false, error = "Download cancelled")
+            val tokenPart = file.token?.let { "?token=${java.net.URLEncoder.encode(it, "UTF-8")}" } ?: ""
+            val url = "http://$ip:$port/download/${java.net.URLEncoder.encode(file.fileId, "UTF-8")}$tokenPart"
+
+            val request = okhttp3.Request.Builder().url(url).build()
+            val call = httpClient.newCall(request)
+            call.execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext DownloadResult(
+                        ok = false,
+                        error = "Download failed (HTTP ${response.code})",
+                        retryable = false
+                    )
                 }
-                socketChannel.write(buffer)
+
+                val body = response.body ?: return@withContext DownloadResult(ok = false, error = "Empty response body")
+                val input = body.byteStream()
+                val readBuffer = ByteArray(81920)
+                val ioBuffer = java.nio.ByteBuffer.wrap(readBuffer)
+
+                while (true) {
+                    if (isStopped) {
+                        return@withContext DownloadResult(ok = false, error = "Download cancelled", retryable = false)
+                    }
+                    val read = input.read(readBuffer, 0, readBuffer.size)
+                    if (read == -1) break
+                    ioBuffer.position(0)
+                    ioBuffer.limit(read)
+                    downloaded += read
+                    while (ioBuffer.hasRemaining()) {
+                        out.write(ioBuffer)
+                    }
+                    onBytes(downloaded)
+                }
             }
 
-            val ioBuffer = ByteBuffer.allocateDirect(81920)
-            while (socketChannel.read(ioBuffer) != -1) {
-                if (isStopped) {
-                    withContext(Dispatchers.IO) { socketChannel.close() }
-                    return@withContext DownloadResult(ok = false, error = "Download cancelled")
-                }
-
-                ioBuffer.flip()
-                downloaded += ioBuffer.remaining()
-
-                while (ioBuffer.hasRemaining()) {
-                    out.write(ioBuffer)
-                }
-                ioBuffer.clear()
-
-                onBytes(downloaded)
-            }
-
-            withContext(Dispatchers.IO) { socketChannel.close() }
-            transferProtocol = "tcp"
+            transferProtocol = "http"
             DownloadResult(ok = true, bytes = downloaded)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.w(e, "HTTP fallback download failed for ${file.fileName}")
+            // A partial stream is transport-level: another attempt/transport may still succeed
             DownloadResult(ok = false, error = e.message, retryable = true)
         }
     }
@@ -362,7 +402,13 @@ class BatchDownloadWorker(
                     sourceFingerprint = sourceFingerprint
                 )
             )
-            setForeground(createForegroundInfo((progress * 100).toInt(), "Downloading: $displayName"))
+            // Rebuilding a foreground notification on every throttled tick churns the shade;
+            // only push an update when the integer percentage actually moves.
+            val percent = (progress * 100).toInt()
+            if (percent != lastForegroundPercent) {
+                lastForegroundPercent = percent
+                setForeground(createForegroundInfo(percent, "Downloading: $displayName"))
+            }
         } catch (e: Exception) {
             // UI updates must never kill the transfer
         }

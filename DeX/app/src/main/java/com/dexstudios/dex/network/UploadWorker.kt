@@ -64,6 +64,9 @@ class UploadWorker(
     private val speedTime = AtomicLong(0L)
     private val smoothedSpeed = AtomicLong(0L)
 
+    @Volatile
+    private var lastForegroundPercent: Int = -1
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ip = inputData.getString("ip") ?: return@withContext Result.failure()
         val port = inputData.getInt("port", -1)
@@ -186,10 +189,20 @@ class UploadWorker(
                                     reportProgress(doneCount.get(), fileData.size, totalSent.addAndGet(delta), totalBatchSize, d.second, useQuic)
                                 }
 
-                                val outcome = if (useQuic) {
+                                // QUIC first when available; a TRANSPORT failure (-1) falls back
+                                // to the HTTP/1.1 path once before the file is declared failed.
+                                var outcome = if (useQuic) {
                                     client.uploadFileQuic(ip, port, response.sessionId, id, d.second, fileToken, input, d.third, onProgress = onBytes)
                                 } else {
                                     client.uploadFile(ip, port, response.sessionId, id, d.second, fileToken, input, d.third, onProgress = onBytes)
+                                }
+                                if (!outcome.ok && useQuic && outcome.httpStatus == -1) {
+                                    // The consumed stream's position is undefined after a failed
+                                    // request — reopen it fresh for the fallback instead of resetting
+                                    applicationContext.contentResolver.openInputStream(d.first)?.use { retryInput ->
+                                        perFile.set(0L)
+                                        outcome = client.uploadFile(ip, port, response.sessionId, id, d.second, fileToken, retryInput, d.third, onProgress = onBytes)
+                                    }
                                 }
 
                                 if (outcome.ok) {
@@ -277,7 +290,12 @@ class UploadWorker(
                     targetFingerprint = targetFingerprint
                 )
             )
-            setForeground(createForegroundInfo((aggregate * 100).toInt(), applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)))
+            // Only rebuild the foreground notification when the integer percentage moves
+            val percent = (aggregate * 100).toInt()
+            if (percent != lastForegroundPercent) {
+                lastForegroundPercent = percent
+                setForeground(createForegroundInfo(percent, applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)))
+            }
         } catch (e: Exception) {
             // UI updates must never kill the transfer
         }

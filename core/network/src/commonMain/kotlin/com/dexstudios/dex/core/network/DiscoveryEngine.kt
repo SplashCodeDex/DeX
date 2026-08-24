@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -53,7 +54,9 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
             fingerprint = deviceConfig.fingerprint,
             port = DeXPorts.HTTPS,
             protocol = "https",
-            download = false,
+            // The desktop hosts the LocalSend v2 receiver (ShareRoutes) — senders may push
+            // directly to us. Phones advertise download=false and are served via pull instead.
+            download = true,
             identityHash = deviceConfig.identityHash,
             googleSub = deviceConfig.googleSub.ifBlank { null },
         )
@@ -179,7 +182,8 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
                             quicPort = json["quicPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.QUIC,
                             tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.PULL,
                             protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
-                            download = false,
+                            download = json["download"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                                ?: (json["download"]?.jsonPrimitive?.booleanOrNull ?: true),
                             identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
                             googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
                         )

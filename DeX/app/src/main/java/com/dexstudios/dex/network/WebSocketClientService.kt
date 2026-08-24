@@ -188,7 +188,8 @@ class WebSocketClientService(
                 quicPort = PcMemory.quicPort(context),
                 tcpFallbackPort = DeXPorts.PULL,
                 protocol = "https",
-                download = false,
+                // The advertised PC hosts the LocalSend v2 receiver
+                download = true,
                 identityHash = null
             ),
             viaWan = true

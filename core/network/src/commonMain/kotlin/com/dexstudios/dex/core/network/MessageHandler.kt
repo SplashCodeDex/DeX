@@ -130,7 +130,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             } else {
                 println("Pairing rejected or timed out with ${pairReq.alias}")
             }
-            sendPairResponse(accepted)
+            // The PIN is echoed so the PC can verify the proof server-side before persisting
+            // trust (parity with the Android MessageHandler contract).
+            sendPairResponse(accepted, enteredPin)
         }
     }
 
@@ -269,11 +271,19 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         PunchState.pendingRelay.value = null
     }
 
-    private fun sendPairResponse(accepted: Boolean) {
+    /**
+     * Replies to the PC's pair-prompt. When [enteredPin] is non-empty it is echoed so the peer
+     * can verify the PIN proof before persisting trust; a null/empty pin (timeout, cancel, or
+     * the already-paired auto-accept path) means the peer will require explicit user consent.
+     */
+    private fun sendPairResponse(accepted: Boolean, enteredPin: String? = null) {
         val payload = buildJsonObject {
             put("type", "pair-response")
             putJsonObject("data") {
                 put("accepted", accepted)
+                if (!enteredPin.isNullOrEmpty()) {
+                    put("pin", enteredPin)
+                }
             }
         }
         onSendMessage?.invoke(payload.toString())

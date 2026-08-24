@@ -58,36 +58,6 @@ class ClientEngine(
         _uploadState.value = UploadState()
     }
 
-    fun triggerDemo() {
-        resetJob?.cancel()
-        scope.launch {
-            _uploadState.value = UploadState(
-                fileName = "Nico_Photo_Collection.zip",
-                progress = 0f,
-                aggregateProgress = 0f,
-                isUploading = true,
-                speedBps = 8388608L, // 8 MB/s
-                protocol = "QUIC",
-                peerName = "Danny Lopez",
-                totalFiles = 5,
-            )
-
-            // Progress simulation
-            for (i in 1..100) {
-                delay(60)
-                val p = i / 100f
-                _uploadState.value = _uploadState.value.copy(
-                    progress = p,
-                    aggregateProgress = p,
-                )
-            }
-
-            _uploadState.value = _uploadState.value.copy(isUploading = false, isSuccess = true)
-            delay(6.seconds)
-            resetUploadState()
-        }
-    }
-
     /**
      * Picks the bearer token for a target device. Same-email devices are auto-trusted:
      * the Google account ID (unguessable) wins when both sides share it, then the identity
