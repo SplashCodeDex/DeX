@@ -1,5 +1,11 @@
 # Changelog
 
+
+## [10.1.27.6] - 2026-08-24
+### Changed
+- **[minor] Live Shift+Click affordance in the Shortcuts card**: the Instant Exit row's static text badge is replaced by a real-time glyph combo — code-drawn `KeyboardShiftGlyph` (outline Shift arrow that fills the moment Shift is held) plus `MouseGlyph` (the DeX reference mouse whose primary/left button blinks and emits a body-clipped ripple ring while Shift is down), driven by a new `ShiftKeyState` platform provider (Win32 `GetAsyncKeyState` VK_SHIFT / macOS CoreGraphics `CGEventSourceFlagsState`, focus-independent, polled at 64ms only while Settings is open). `SettingsItem` gained an optional trailing composable slot to host the combo.
+  - Verified: `:composeApp:spotlessCheck` + `:composeApp:desktopTest` green; `:core:designsystem` compiles (no test sources).
+
 ## [10.1.27.4] - 2026-08-24
 ### Changed
 - **[minor] Shortcut discovery: read-only Shortcuts card in Settings → Interaction**: the gestures with no visible affordance are now documented in-app — global Show/Hide dock toggle rendered from `DesktopEnvironment.globalToggleShortcutHint` (`Win+Shift+D`, hidden entirely on platforms without a registered shortcut), Shift+Click instant exit bypass on Exit Engine, and force-exit-on-click while a transfer is live. Reference rows reuse the existing `SettingsItem` badge pill for the combos and stay non-clickable.

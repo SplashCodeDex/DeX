@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,13 +59,17 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warnin
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
+import com.dexstudios.dex.core.designsystem.icons.KeyboardShiftGlyph
+import com.dexstudios.dex.core.designsystem.icons.MouseGlyph
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.mirror.toImageBitmap
+import com.dexstudios.dex.platform.ShiftKeyState
 import com.dexstudios.dex.window.DockedWindowStateController
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
@@ -408,7 +413,7 @@ fun SettingsPanel(
                     icon = painterResource(Res.drawable.ic_fluent_bolt),
                     title = "Instant Exit",
                     subtitle = "Hold Shift and click Exit Engine to skip confirmation",
-                    badge = "Shift+Click",
+                    trailing = { ShiftClickCombo() },
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_info),
@@ -548,6 +553,43 @@ private fun AliasEditorDialog(current: String, onDismiss: () -> Unit, onSave: (S
     )
 }
 
+/**
+ * Live Shift+Click affordance for the Instant Exit row: polls the global Shift modifier
+ * while composed (the row only exists while Settings is open, so there is no idle cost)
+ * and reflects it in real time — the Shift arrow fills and the mouse's primary button
+ * blinks/ripples the moment Shift is held, previewing the exact gesture.
+ */
+@Composable
+private fun rememberShiftHeld(pollIntervalMs: Long = 64L): Boolean {
+    var shiftHeld by remember { mutableStateOf(false) }
+    LaunchedEffect(pollIntervalMs) {
+        while (true) {
+            shiftHeld = withContext(Dispatchers.IO) { ShiftKeyState.isShiftHeldNow() }
+            delay(pollIntervalMs)
+        }
+    }
+    return shiftHeld
+}
+
+@Composable
+private fun ShiftClickCombo(modifier: Modifier = Modifier) {
+    val shiftHeld = rememberShiftHeld()
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        KeyboardShiftGlyph(isFilled = shiftHeld, size = 15.dp)
+        Text(
+            text = "+",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        MouseGlyph(buttonActive = shiftHeld, size = 15.dp)
+    }
+}
+
 @Composable
 private fun SettingsSectionHeader(title: String) {
     Text(
@@ -573,13 +615,23 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun SettingsItem(icon: Painter, title: String, subtitle: String, badge: String? = null, isBadgeDanger: Boolean = false, isDanger: Boolean = false, onClick: () -> Unit = {}) {
+private fun SettingsItem(
+    icon: Painter,
+    title: String,
+    subtitle: String,
+    badge: String? = null,
+    isBadgeDanger: Boolean = false,
+    isDanger: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit = {},
+) {
     SettingsItem(
         title = title,
         subtitle = subtitle,
         badge = badge,
         isBadgeDanger = isBadgeDanger,
         isDanger = isDanger,
+        trailing = trailing,
         onClick = onClick,
         iconContent = { tint ->
             Icon(
@@ -599,6 +651,7 @@ private fun SettingsItem(
     badge: String? = null,
     isBadgeDanger: Boolean = false,
     isDanger: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
     onClick: () -> Unit = {},
     iconContent: @Composable (tint: Color) -> Unit,
 ) {
@@ -638,19 +691,23 @@ private fun SettingsItem(
             )
         }
 
-        if (badge != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = badge,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isBadgeDanger) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
-                )
+        when {
+            trailing != null -> trailing()
+
+            badge != null -> {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = badge,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isBadgeDanger) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
             }
         }
     }
