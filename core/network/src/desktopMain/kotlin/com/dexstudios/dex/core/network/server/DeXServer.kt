@@ -2,6 +2,7 @@ package com.dexstudios.dex.core.network.server
 
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.network.DeXPorts
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.security.CertificateGenerator
 import com.dexstudios.dex.core.network.server.routes.clipboardRoutes
@@ -9,6 +10,7 @@ import com.dexstudios.dex.core.network.server.routes.controlRoutes
 import com.dexstudios.dex.core.network.server.routes.deviceRoutes
 import com.dexstudios.dex.core.network.server.routes.fileExplorerRoutes
 import com.dexstudios.dex.core.network.server.routes.hostedDownloadRoutes
+import com.dexstudios.dex.core.network.server.routes.oauthCallbackRoutes
 import com.dexstudios.dex.core.network.server.routes.settingsRoutes
 import com.dexstudios.dex.core.network.server.routes.shareRoutes
 import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
@@ -33,6 +35,14 @@ object DeXServer {
     private var server1: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private var server2: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private var server3: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+
+    /**
+     * Loopback-only OAuth listener. The legacy WPF app served the Google sign-in redirect
+     * on http://127.0.0.1:48425/local/oauth/callback (Kestrel) and that URI is registered in
+     * the Google Cloud Console client — the migration kept the redirect but never bound the
+     * port, dead-ending every sign-in. This listener restores the legacy contract.
+     */
+    private var oauthServer: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
 
     fun start() {
         if (server1 != null) return
@@ -61,8 +71,11 @@ object DeXServer {
                 pairingEngine.outboundSender = { fp, json ->
                     WebSocketConnectionManager.sendRequest(fp, json)
                 }
+                pairingEngine.deviceFingerprintProvider = {
+                    getKoin().get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint
+                }
 
-                deviceRoutes(discoveryEngine = discoveryEngine, pairingEngine = pairingEngine)
+                deviceRoutes(discoveryEngine = discoveryEngine)
                 shareRoutes()
                 controlRoutes()
                 webSocketRoutes(
@@ -103,15 +116,37 @@ object DeXServer {
             }
         }).start(wait = false)
 
-        Logger.i("DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), and HTTP 48426 (pull fallback, downloads only)")
+        oauthServer = embeddedServer(Netty, host = "127.0.0.1", port = DeXPorts.OAUTH_CALLBACK, module = {
+            routing {
+                oauthCallbackRoutes()
+            }
+        }).start(wait = false)
+
+        Logger.i(
+            "DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), HTTP 48426 " +
+                "(pull fallback, downloads only), HTTP 48425 (loopback OAuth callback)",
+        )
     }
 
-    fun stop() {
-        server1?.stop(1000, 2000)
-        server2?.stop(1000, 2000)
-        server3?.stop(1000, 2000)
+    /**
+     * Stops every listener CONCURRENTLY under one deadline. The previous sequential
+     * `stop(1000, 2000)` per server blocked Quit for up to ~9s with live connections.
+     */
+    fun stop(gracePeriodMillis: Long = 500L, timeoutMillis: Long = 1_500L) {
+        val servers = listOfNotNull(server1, server2, server3, oauthServer)
         server1 = null
         server2 = null
         server3 = null
+        oauthServer = null
+        if (servers.isEmpty()) return
+
+        val deadline = gracePeriodMillis + timeoutMillis
+        val threads = servers.map { server ->
+            Thread({
+                runCatching { server.stop(gracePeriodMillis, timeoutMillis) }
+            }, "dex-server-stop").apply { isDaemon = true }
+        }
+        threads.forEach { it.start() }
+        threads.forEach { it.join(deadline) }
     }
 }

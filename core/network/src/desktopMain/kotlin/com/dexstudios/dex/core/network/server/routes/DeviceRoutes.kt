@@ -1,13 +1,9 @@
 package com.dexstudios.dex.core.network.server.routes
 
-import com.dexstudios.dex.auth.PairingEngine
-import com.dexstudios.dex.auth.PairingState
-import com.dexstudios.dex.core.network.DeviceManager
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.RegisterDto
-import com.dexstudios.dex.core.network.security.CertificateGenerator
-import io.ktor.http.ContentType
+import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.plugins.origin
@@ -33,13 +29,20 @@ fun getPunchEndpoint(fingerprint: String): PunchEntry? {
     return entry
 }
 
-fun Route.deviceRoutes(discoveryEngine: DiscoveryEngine?, pairingEngine: PairingEngine?) {
+fun Route.deviceRoutes(discoveryEngine: DiscoveryEngine?) {
     get("/punch/endpoint") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         val remoteIp = call.request.origin.remoteHost
         val remotePort = call.request.origin.remotePort
 
         if (!fingerprint.isNullOrEmpty() && remoteIp.isNotEmpty() && remotePort > 0) {
+            // Registration must come from the fingerprint's own PROVEN session, otherwise any
+            // LAN peer could poison the rendezvous table and redirect NAT-punch transfers.
+            if (!WebSocketConnectionManager.isTrusted(fingerprint)) {
+                call.respond(HttpStatusCode.Forbidden)
+                return@get
+            }
+
             punchEndpoints[fingerprint] = PunchEntry(remoteIp, remotePort, System.currentTimeMillis())
 
             val cutoff = System.currentTimeMillis() - (5 * 60 * 1000L)

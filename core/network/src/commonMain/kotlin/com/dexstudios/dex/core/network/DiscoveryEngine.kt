@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,8 +58,12 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
             // The desktop hosts the LocalSend v2 receiver (ShareRoutes) — senders may push
             // directly to us. Phones advertise download=false and are served via pull instead.
             download = true,
-            identityHash = deviceConfig.identityHash,
-            googleSub = deviceConfig.googleSub.ifBlank { null },
+            // SECURITY: identityHash / googleSub are bearer credentials for auto-trust and
+            // must NEVER be advertised. Discovery beacons and GET /info are readable by any
+            // LAN peer; leaking them here let an attacker claim same-account trust. Identity
+            // is now proven via the identity-challenge/identity-proof exchange on /ws.
+            identityHash = null,
+            googleSub = null,
         )
 
     fun startDiscovery() {
@@ -131,6 +136,8 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
         discoveryServices.forEach { it.stop() }
         cleanupJob?.cancel()
         identityWatchJob?.cancel()
+        // Kill the owning scope too (manual-probe launches included) — shutdown-only API.
+        scope.cancel()
     }
 
     fun sendManualDiscovery(ip: String, port: Int = DeXPorts.HTTPS) {

@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.engine.IPlatformEngine
 import io.ktor.util.date.getTimeMillis
@@ -26,9 +27,16 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
 
     var onSendMessage: ((String) -> Unit)? = null
 
+    /**
+     * Supplies the fingerprint of the PC the socket is currently connected to, so inbound
+     * pairing grants (pair-accepted) can be persisted against the right peer entry.
+     * Wired by WebSocketEngine when it opens a session.
+     */
+    var peerFingerprintProvider: (() -> String?)? = null
+
     fun handleMessage(text: String, senderIp: String, senderPort: Int) {
         try {
-            println("Received message from $senderIp:$senderPort")
+            Logger.i("Received message from $senderIp:$senderPort")
             val jsonObject = json.decodeFromString<JsonObject>(text)
             val type = jsonObject["type"]?.jsonPrimitive?.contentOrNull ?: return
             val dataElement = jsonObject["data"] ?: return
@@ -37,6 +45,10 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
                 "pair-prompt" -> handlePairPrompt(dataElement)
 
                 "pair-cancelled" -> handlePairCancelled()
+
+                "pair-accepted" -> handlePairAccepted(dataElement)
+
+                "identity-challenge" -> handleIdentityChallenge(dataElement)
 
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
 
@@ -68,11 +80,11 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
                     engine.handleFileExplorerRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
 
                 else -> {
-                    println("Unknown message type received: $type")
+                    Logger.i("Unknown message type received: $type")
                 }
             }
         } catch (e: Exception) {
-            println("ERROR: `Failed to parse WebSocket message")
+            Logger.i("ERROR: `Failed to parse WebSocket message")
         }
     }
 
@@ -81,7 +93,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
 
         // Task 5: Re-Pairing After Partial Forget (Auto-Accept)
         if (AuthState.pairedFingerprints.value.contains(pairReq.fingerprint)) {
-            println("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
+            Logger.i("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
             val responseMsg = buildJsonObject {
                 put("type", "pair-response")
                 putJsonObject("data") {
@@ -96,15 +108,15 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             // Task 2: Simultaneous Pairing Race Condition Tie-Breaker
             val localFp = deviceConfig.fingerprint
             if (pairReq.fingerprint > localFp) {
-                println("Race condition: ignoring inbound pair-prompt from ${pairReq.fingerprint} (Android is initiator)")
+                Logger.i("Race condition: ignoring inbound pair-prompt from ${pairReq.fingerprint} (Android is initiator)")
                 return
             } else {
-                println("Race condition: yielding to inbound pair-prompt from ${pairReq.fingerprint} (PC is initiator)")
+                Logger.i("Race condition: yielding to inbound pair-prompt from ${pairReq.fingerprint} (PC is initiator)")
                 handlePairCancelled()
             }
         }
 
-        println("Incoming pair-prompt via WebSocket from ${pairReq.alias}")
+        Logger.i("Incoming pair-prompt via WebSocket from ${pairReq.alias}")
         val info = PairRequestInfo(
             alias = pairReq.alias,
             fingerprint = pairReq.fingerprint,
@@ -126,9 +138,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             if (accepted) {
                 DeviceManager.savePairedFingerprint(pairReq.fingerprint)
                 pairReq.token?.let { DeviceManager.savePairedToken(pairReq.fingerprint, it) }
-                println("Pairing accepted with ${pairReq.alias}")
+                Logger.i("Pairing accepted with ${pairReq.alias}")
             } else {
-                println("Pairing rejected or timed out with ${pairReq.alias}")
+                Logger.i("Pairing rejected or timed out with ${pairReq.alias}")
             }
             // The PIN is echoed so the PC can verify the proof server-side before persisting
             // trust (parity with the Android MessageHandler contract).
@@ -148,9 +160,49 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         pending.deferred.complete("")
     }
 
+    /**
+     * PIN pairing was granted: the PC proved our PIN knowledge and minted a per-device
+     * pairing token. Persist BOTH sides of the pairing so reconnects authenticate with
+     * the token instead of restarting the whole pairing dance.
+     */
+    private fun handlePairAccepted(dataElement: JsonElement) {
+        val obj = dataElement as? JsonObject ?: return
+        val token = obj["token"]?.jsonPrimitive?.contentOrNull ?: return
+        val pcFingerprint = peerFingerprintProvider?.invoke()
+            ?: obj["fingerprint"]?.jsonPrimitive?.contentOrNull
+        if (pcFingerprint.isNullOrBlank()) return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            DeviceManager.savePairedFingerprint(pcFingerprint)
+            DeviceManager.savePairedToken(pcFingerprint, token)
+            Logger.i("Pairing token stored for PC $pcFingerprint")
+        }
+    }
+
+    /**
+     * Same-account proof-of-possession: the PC challenges with a random nonce; we answer
+     * HMAC(nonce, googleSub). Our googleSub never crosses the wire — a third party can
+     * only learn "same account or not" about this exact session.
+     */
+    private fun handleIdentityChallenge(dataElement: JsonElement) {
+        val nonce = (dataElement as? JsonObject)?.get("nonce")?.jsonPrimitive?.contentOrNull ?: return
+        val sub = deviceConfig.googleSub
+        if (sub.isBlank() || nonce.isBlank()) return
+
+        runCatching {
+            val mac = HashUtils.hmacSha256Base64(sub, java.util.Base64.getDecoder().decode(nonce))
+            onSendMessage?.invoke(
+                buildJsonObject {
+                    put("type", "identity-proof")
+                    putJsonObject("data") { put("mac", mac) }
+                }.toString(),
+            )
+        }.onFailure { Logger.i("Failed to answer identity challenge: ${it.message}") }
+    }
+
     private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
         val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
-        println("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
+        Logger.i("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
 
         val sessionId = generateNonceBlocking()
         val deferred = CompletableDeferred<Boolean>()
@@ -162,7 +214,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS.milliseconds) { deferred.await() } == true
             TransferState.pendingPrompts.remove(sessionId)
             if (!accepted) {
-                println("Incoming transfer rejected or timed out")
+                Logger.i("Incoming transfer rejected or timed out")
                 return@launch
             }
 
@@ -185,9 +237,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         val address = json.decodeFromJsonElement<PublicAddressDto>(dataElement).address.trim()
         if (address.isNotBlank() && deviceConfig.publicAddress.isBlank()) {
             deviceConfig.setPublicAddress(address)
-            println("Auto-configured public address from PC: $address")
+            Logger.i("Auto-configured public address from PC: $address")
         } else {
-            println("Ignoring auto public address (manual configuration exists or address empty)")
+            Logger.i("Ignoring auto public address (manual configuration exists or address empty)")
         }
     }
 
@@ -203,7 +255,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         val peer = json.decodeFromJsonElement<PeerEndpointDto>(dataElement)
         if (peer.ip.isNotBlank() && peer.port > 0) {
             PunchState.incomingPeerEndpoints.value += (peer.peerFingerprint to PunchEndpoint(peer.ip, peer.port))
-            println("Peer endpoint announced: ${peer.peerFingerprint} at ${peer.ip}:${peer.port}")
+            Logger.i("Peer endpoint announced: ${peer.peerFingerprint} at ${peer.ip}:${peer.port}")
         }
     }
 
@@ -227,7 +279,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
                 viaRoster = true,
             )
         }
-        println("Roster updated: ${roster.devices.size} same-email devices")
+        Logger.i("Roster updated: ${roster.devices.size} same-email devices")
     }
 
     /** The PC revoked its trust in us. We must forget it locally so we don't incorrectly show it as "Trusted". */
@@ -235,7 +287,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
         if (!fingerprint.isNullOrBlank()) {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { DeviceManager.removePairedFingerprint(fingerprint) }
-            println("PC $fingerprint requested unpair; removed from local trusted list")
+            Logger.i("PC $fingerprint requested unpair; removed from local trusted list")
         }
     }
 
@@ -244,9 +296,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
         if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
             if (AuthState.pairedFingerprints.value.contains(fingerprint)) {
-                println("PC $fingerprint reported we are not trusted. Downgrading local trust.")
+                Logger.i("PC $fingerprint reported we are not trusted. Downgrading local trust.")
                 CoroutineScope(Dispatchers.IO).launch {
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { DeviceManager.removePairedFingerprint(fingerprint) }
+                    DeviceManager.removePairedFingerprint(fingerprint)
                 }
             }
         }
@@ -256,13 +308,13 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
     private fun handleSetClipboard(dataElement: JsonElement) {
         val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.contentOrNull
         if (text.isNullOrBlank()) {
-            println("set-clipboard with empty text, ignoring")
+            Logger.i("set-clipboard with empty text, ignoring")
             return
         }
         engine.setClipboardText(text)
         // Remember it so the auto-sync listener does not push it back to the PC
         ClipboardSyncState.lastIncoming = text
-        println("Clipboard synced from PC")
+        Logger.i("Clipboard synced from PC")
     }
 
     /** The PC acknowledged (or failed) the relay-transfer fallback. */
@@ -303,6 +355,5 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
     private companion object {
         const val PAIR_PROMPT_TIMEOUT_MS = 60_000L
         const val PROMPT_TIMEOUT_MS = 60_000L
-        const val GRANT_WAIT_MS = 180_000L
     }
 }

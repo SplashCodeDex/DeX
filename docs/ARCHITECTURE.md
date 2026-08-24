@@ -39,16 +39,28 @@ A peer's bearer token is resolved in this order (see `ClientEngine.authToken`,
 `WebSocketEngine.connectToPC`):
 
 1. **googleSub** — Google account subject; same signed-in account on both sides = instant mutual trust.
-2. **identityHash** — SHA-256 of the verified email (only when logged in).
-3. **paired token** — persisted per-fingerprint token from a completed PIN pairing.
+2. **identityHash** — SHA-256 of the verified email (only when logged in). DEPRECATED tier:
+   retained for legacy-peer compatibility only; see the disclosure rule below.
+3. **paired token** — persisted per-fingerprint token minted by a completed PIN pairing
+   (`pair-accepted` / manual Accept).
 
-Same-account connections auto-persist trust on connect. Trust can be *downgraded* remotely:
-`trust-check` (peer reports we are not trusted) and `unpair` remove local entries via
-`DeviceManager.removePairedFingerprint`.
+**Disclosure rule:** identity material is NEVER advertised. Discovery beacons and
+`GET /api/localsend/v2/info` send `identityHash=null, googleSub=null`. Same-account trust for
+peers that cannot present a bearer is established by the `identity-challenge` /
+`identity-proof` exchange on `/ws`: the desktop sends a random nonce, the peer answers with
+HMAC-SHA256(nonce, googleSub); a constant-time match upgrades ONLY that live session.
+
+Trust can be *downgraded* remotely: `trust-check` (peer reports we are not trusted),
+`unpair` (peer revokes itself — session downgrade + local entry removal), and the UI's
+"Forget device" / "Reset Identity & Trust" actions all route through
+`DeviceManager.removePairedFingerprint`. Reset additionally rotates the identity hash
+(`DeviceConfig.resetIdentity`) so a previously known credential dies with it.
 
 Persistence: `DeviceManager` (DataStore) → `paired_fingerprints` (set), `paired_tokens`
 (`TokenCodec` map), `paired_times` (first-pair epoch, never overwritten). Mirrored into
-`com.dexstudios.dex.auth.AuthState` StateFlows.
+`com.dexstudios.dex.auth.AuthState` StateFlows. Desktop startup MUST hydrate via
+`DeviceManager.init(dataStore)` in `main.kt` BEFORE `DeXServer.start()` — pairing acceptance
+and cross-restart trust depend on it.
 
 ## Pairing
 
@@ -58,18 +70,22 @@ a superseded peer can never gain trust because PIN proof is fingerprint-bound an
 ```
 Idle ──initiatePairing()──────────────> QrPhase(expiresAt = now+60s)
 Idle ──handleInboundPairingRequest()──> PinPhase(pin, expiresAt = now+60s)
-PinPhase ──acceptInboundPairing(isOneTime)──> Success   (persists unless guest)
+PinPhase ──acceptInboundPairing(isOneTime)──> Success   (persists + mints token unless one-time)
 PinPhase ──rejectInboundPairing()───────────> Idle
 Qr/Pin ──handlePairResponse(true)───────────> Success  (ignored if already resolved)
-any PinPhase ──TTL elapsed──────────────────> Error("Pairing timed out")
+any Qr/PinPhase ──TTL elapsed───────────────> Error("Pairing timed out")
 ```
 
 Security invariants (do not weaken):
 - A `pair-response accepted=true` is honored ONLY when the responder echoes the displayed PIN
   (`verifyInboundPin`). Bare assertions are rejected; the desktop user may still accept manually.
-- PIN offers expire after 60 s (`PIN_TTL_MS`); expired PINs never verify.
+- PIN offers expire after 60 s (`PIN_TTL_MS`) in BOTH phases; expired PINs never verify.
+- A proven pairing mints a fresh per-device token, stores it server-side, and delivers it to
+  the peer via `pair-accepted{token, fingerprint}` so BOTH sides can re-authenticate later.
 - Already-paired auto-accept (re-pair after partial forget) intentionally stays pinless and
   therefore requires explicit desktop-side Accept.
+- Punch rendezvous registration (`GET /punch/endpoint`) is accepted only from the registered
+  fingerprint's own TRUSTED session; `resolve-endpoint` is answered only to trusted callers.
 
 Full wire contract: see [PROTOCOL.md](PROTOCOL.md).
 

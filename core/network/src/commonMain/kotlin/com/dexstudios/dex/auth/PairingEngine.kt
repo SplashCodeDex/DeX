@@ -2,6 +2,7 @@ package com.dexstudios.dex.auth
 
 import com.dexstudios.dex.core.network.DeviceManager
 import com.dexstudios.dex.core.network.DiscoveredDevice
+import com.dexstudios.dex.core.network.HashUtils
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +42,23 @@ class PairingEngine(
     val state: StateFlow<PairingState> = _state.asStateFlow()
 
     var outboundSender: suspend (fingerprint: String, json: String) -> Boolean = { _, _ -> false }
+
+    /**
+     * Supplies OUR fingerprint so pair-accepted payloads can tell the peer which local
+     * identity the minted pairing token belongs to. Wired by the server assembly.
+     */
+    var deviceFingerprintProvider: (() -> String)? = null
+
+    /**
+     * Persists a pairing and returns the credential stored for it. Default mints a fresh
+     * UUID token through [DeviceManager]; tests override to stay off real storage.
+     */
+    internal var persistentGrant: suspend (fingerprint: String) -> String = { fingerprint ->
+        val pairToken = HashUtils.generateUUID()
+        DeviceManager.savePairedFingerprint(fingerprint)
+        DeviceManager.savePairedToken(fingerprint, pairToken)
+        pairToken
+    }
 
     private var expiryJob: Job? = null
 
@@ -92,15 +110,27 @@ class PairingEngine(
             expiryJob?.cancel()
             scope.launch {
                 if (!isOneTime) {
-                    DeviceManager.savePairedFingerprint(current.fingerprint)
-                }
-                val payload = buildJsonObject {
-                    put("type", "pair-response")
-                    putJsonObject("data") {
-                        put("accepted", true)
+                    // Persisted pairing needs a shared credential: mint a per-device token,
+                    // store it here, and hand it back in the reply so the peer can persist
+                    // its side. Without this, PIN-paired devices could never re-authenticate.
+                    val pairToken = persistentGrant(current.fingerprint)
+                    val payload = buildJsonObject {
+                        put("type", "pair-accepted")
+                        putJsonObject("data") {
+                            put("token", pairToken)
+                            put("fingerprint", deviceFingerprintProvider?.invoke().orEmpty())
+                        }
                     }
+                    outboundSender(current.fingerprint, payload.toString())
+                } else {
+                    val payload = buildJsonObject {
+                        put("type", "pair-response")
+                        putJsonObject("data") {
+                            put("accepted", true)
+                        }
+                    }
+                    outboundSender(current.fingerprint, payload.toString())
                 }
-                outboundSender(current.fingerprint, payload.toString())
                 _state.value = PairingState.Success
             }
         }
@@ -164,13 +194,21 @@ class PairingEngine(
         _state.value = PairingState.Idle
     }
 
-    /** Auto-expires an unresolved pairing offer once its TTL elapses; a no-op if already resolved. */
+    /**
+     * Auto-expires an unresolved pairing offer once its TTL elapses. Covers BOTH phases:
+     * QrPhase (nobody scanned/typed yet) and PinPhase (digits typed, offer unresolved);
+     * a no-op if already resolved.
+     */
     private fun armExpiry(fingerprint: String) {
         expiryJob?.cancel()
         expiryJob = scope.launch {
             delay(PIN_TTL_MS)
             val current = _state.value
-            if (current is PairingState.PinPhase && !current.isError && current.fingerprint == fingerprint) {
+            val expiredPinOffer = current is PairingState.PinPhase &&
+                !current.isError &&
+                current.fingerprint == fingerprint
+            val expiredQrOffer = current is PairingState.QrPhase && current.fingerprint == fingerprint
+            if (expiredPinOffer || expiredQrOffer) {
                 _state.value = PairingState.Error("Pairing timed out")
             }
         }

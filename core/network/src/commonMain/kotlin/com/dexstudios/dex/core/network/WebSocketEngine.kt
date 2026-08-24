@@ -76,6 +76,7 @@ class WebSocketEngine(
         isRunning = true
 
         messageHandler.onSendMessage = { sendMessage(it) }
+        messageHandler.peerFingerprintProvider = { _connectedFingerprint }
         mirrorEngine.textSender = { sendMessage(it) }
         mirrorEngine.frameSender = { sendBinary(it) }
 
@@ -148,12 +149,32 @@ class WebSocketEngine(
         )
     }
 
+    /**
+     * Stops the engine and closes the active session with a proper WebSocket close frame.
+     *
+     * The frame is sent BEFORE [serviceScope] is cancelled — closing inside that scope raced
+     * cancellation and the peer was left waiting out its ping timeout after every Quit.
+     *
+     * Bounded-blocking (<=750ms): must NOT be called from a coroutine running inside
+     * [serviceScope] (shutdown coordinator / JVM shutdown hook only).
+     */
     fun stop() {
+        if (!isRunning && activeSession == null) return
         isRunning = false
-        serviceScope.launch {
-            activeSession?.close(CloseReason(CloseReason.Codes.NORMAL, "Service stopping"))
-            activeSession = null
+        val session = activeSession
+        activeSession = null
+        _connectedFingerprint = null
+        connectedViaWan = false
+        if (session != null) {
+            runBlocking {
+                withTimeoutOrNull(750L) {
+                    runCatching {
+                        session.close(CloseReason(CloseReason.Codes.NORMAL, "Service stopping"))
+                    }
+                }
+            }
         }
+        mirrorEngine.stop()
         serviceScope.cancel()
         serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     }
@@ -193,10 +214,11 @@ class WebSocketEngine(
                     activeSession = this
                     _connectedFingerprint = pcFingerprint
 
-                    if (token == googleSub || (token == identityHash && identityHash.isNotEmpty())) {
-                        DeviceManager.savePairedFingerprint(pcFingerprint)
-                        DeviceManager.savePairedToken(pcFingerprint, token)
-                    }
+                    // NOTE: same-account identity is proven via the PC's
+                    // identity-challenge/identity-proof exchange after connect; we deliberately
+                    // do NOT persist the googleSub as a pairing token here — that conflated the
+                    // identity tier with the pairing tier and survived sign-out as a stale
+                    // credential. Pairing tokens are only ever stored from explicit grants.
 
                     sendMessage("""{"type":"device-roster","data":{}}""")
 

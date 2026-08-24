@@ -160,8 +160,12 @@ object RelayService {
      * Returns true when the prompt was delivered to the target's trusted session.
      */
     suspend fun relayUploadedSession(sessionId: String, targetFingerprint: String): Boolean {
-        val expectedCount = com.dexstudios.dex.core.network.server.routes.activeUploadSessions[sessionId]
-            ?.request?.files?.size ?: return false
+        // Deduped files ([SKIP] at prepare time) are never re-uploaded, so the arrival wait
+        // must count only files that were actually minted an upload token.
+        val session = com.dexstudios.dex.core.network.server.routes.activeUploadSessions[sessionId]
+        val expectedCount = session?.issuedTokens?.size
+            ?: session?.request?.files?.size
+            ?: return false
         val alias = relaySessionAliases[sessionId] ?: "Phone"
 
         // Wait until every file of the upload session physically landed here
