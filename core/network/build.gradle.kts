@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
 
-    jvm()
+    jvm("desktop")
 
     sourceSets {
         commonMain.dependencies {
@@ -22,7 +22,7 @@ kotlin {
             implementation(project(":core:data"))
         }
 
-        jvmMain.dependencies {
+        getByName("desktopMain").dependencies {
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
             implementation(libs.ktor.server.core)
@@ -32,7 +32,7 @@ kotlin {
             implementation(libs.jmdns)
         }
 
-        val jvmTest = getByName("jvmTest") {
+        val jvmTest = getByName("desktopTest") {
             dependencies {
                 implementation(libs.mockk)
                 implementation(libs.ktor.server.test.host)

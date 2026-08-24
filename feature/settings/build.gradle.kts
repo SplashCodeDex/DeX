@@ -7,7 +7,7 @@ plugins {
 
 kotlin {
 
-    jvm()
+    jvm("desktop")
 
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
