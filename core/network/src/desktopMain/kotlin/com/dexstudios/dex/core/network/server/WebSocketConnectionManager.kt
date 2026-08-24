@@ -40,6 +40,13 @@ object WebSocketConnectionManager {
         }
     }
 
+    /** Downgrades a session to untrusted (peer-initiated revocation); prompts stop flowing. */
+    fun markUntrusted(fingerprint: String) {
+        sessions.computeIfPresent(fingerprint) { _, holder ->
+            if (!holder.trusted) holder else SessionHolder(holder.session, false, null, holder.mutex)
+        }
+    }
+
     fun unregister(fingerprint: String) {
         sessions.remove(fingerprint)
     }
@@ -66,21 +73,15 @@ object WebSocketConnectionManager {
         return trySend(holder, json)
     }
 
-    suspend fun broadcast(json: String): Boolean {
-        if (sessions.isEmpty()) return false
-        var sentAny = false
-        for (holder in sessions.values) {
-            if (trySend(holder, json)) sentAny = true
-        }
-        return sentAny
-    }
-
     suspend fun broadcastToPaired(json: String): Boolean {
         if (sessions.isEmpty()) return false
         var sentAny = false
-        val pairedFps = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value
+        // Session-level proof is mandatory: persistence alone (paired fingerprint on disk)
+        // must never qualify a live session whose handshake/identity-proof did not pass —
+        // otherwise a reconnecting stranger holding nothing receives clipboard/mirror pushes.
+        val trustedFps = sessions.filterValues { it.trusted }.keys
         for ((fp, holder) in sessions) {
-            if (pairedFps.contains(fp) || holder.trusted) {
+            if (fp in trustedFps && holder.trusted) {
                 if (trySend(holder, json)) sentAny = true
             }
         }
@@ -98,19 +99,36 @@ object WebSocketConnectionManager {
 }
 
 object DexRequestStore {
+    /** Unanswered requests older than this are cancelled so vanished peers cannot leak slots. */
+    private const val PENDING_TTL_MS = 5 * 60 * 1000L
+
     private val pendingRequests = ConcurrentHashMap<String, CompletableDeferred<JsonObject>>()
+    private val requestTimestamps = ConcurrentHashMap<String, Long>()
 
     fun createRequest(requestId: String): CompletableDeferred<JsonObject> {
+        sweepExpired()
         val deferred = CompletableDeferred<JsonObject>()
         pendingRequests[requestId] = deferred
+        requestTimestamps[requestId] = System.currentTimeMillis()
         return deferred
     }
 
     fun completeRequest(requestId: String, response: JsonObject) {
+        requestTimestamps.remove(requestId)
         pendingRequests.remove(requestId)?.complete(response)
     }
 
     fun cancelRequest(requestId: String) {
         pendingRequests.remove(requestId)?.cancel()
+        requestTimestamps.remove(requestId)
+    }
+
+    private fun sweepExpired() {
+        val now = System.currentTimeMillis()
+        for ((id, ts) in requestTimestamps) {
+            if (now - ts > PENDING_TTL_MS) {
+                cancelRequest(id)
+            }
+        }
     }
 }
