@@ -27,6 +27,7 @@ honor its STOP conditions, and update your row when done.
 | 017  | fix-unbounded-session-maps-dos | P1 | S | — | DONE |
 | 018  | unify-split-brain-identity-systems | P1 | M | — | DONE |
 | 019  | replace-hardcoded-windows-binaries | P1 | M | — | DONE |
+| 020  | remove-orphaned-ui-code | P1 | S | — | DONE |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Dependency notes

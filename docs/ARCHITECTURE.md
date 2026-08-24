@@ -7,18 +7,18 @@
 
 ```
 composeApp (desktop app entry; jvm("desktop") target)
-  ├─ feature/discovery    (device list UI)
-  ├─ feature/history      (currently UNHOOKED from settings.gradle.kts — see CHANGELOG 10.1.10.0)
-  ├─ feature/settings     (settings UI)
-  ├─ core/designsystem    (theme, glass components, icons)
+  ├─ core/designsystem    (theme, icons, shared UI primitives)
   ├─ core/network         (engines, Ktor server, protocol DTOs, auth)
   └─ core/data            (DataStore persistence, DeviceConfig, TransferHistory)
 ```
 
-- `core/*` and `feature/*` are Kotlin Multiplatform libraries with a single JVM target named
+- `core/*` are Kotlin Multiplatform libraries with a single JVM target named
   **`desktop`** (`jvm("desktop")`). Compiled source sets are therefore ONLY:
   `src/commonMain`, `src/desktopMain`, `src/desktopTest`.
   Never create `jvmMain` or any other source root in these modules — it will silently never compile.
+- The former `feature/discovery`, `feature/settings` modules and `feature/history`
+  were removed in 10.1.14.0 — they were compiled but never imported by any wired UI
+  (the live device list / settings surfaces live in `composeApp/.../window/components/`).
 - Test tasks: `:module:desktopTest`. Main jar: `:composeApp:desktopJar`.
 
 ## Network surface

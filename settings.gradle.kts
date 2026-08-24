@@ -42,5 +42,3 @@ include(":core:network", ":core:data")
 
 
 include(":core:designsystem")
-
-include(":feature:discovery", ":feature:settings")

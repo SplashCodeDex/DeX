@@ -1,5 +1,37 @@
 # Changelog
 
+## [10.1.14.0] - 2026-08-24
+### Removed
+- **[minor] Plan 020 — orphaned UI layer deleted in full** (user verdict after visual gallery review):
+  - **Unwired feature modules gone**: `feature/discovery` + `feature/settings` were compiled into every build yet imported by nothing — the live device list and settings surfaces live in `composeApp/.../window/components/`. Directories, `settings.gradle.kts` include, and composeApp dependencies all removed.
+  - **Glass family deleted from designsystem**: `components/glass/*` (`LiquidGlassConfig`, `LiquidGlassPanel`, `LiquidGlassIconButton`, `LiquidToastNotification`, `GlassScrollEdge`) — orphaned since 10.1.13.0 purged the last wired consumer. `LocalBackdrop` removed from `Theme.kt`; `api(libs.backdrop)` dropped from designsystem; `backdrop` entries removed from the version catalog.
+  - **Other zero-reference components**: `DeXButtons`, `DeXPanel`, `DeXScrollbar` (+jvm), `HoverState` (+jvm), `FloatingPillNavBar`, `state/UIState.kt`.
+  - **composeApp dead files**: empty `App.kt` stub, commonMain `mirror/MirrorScreen.kt` + `ImageUtils.kt` (+ jvm actual) superseded by `MirrorWindow`, backward-compat shims `window/PinPairingPanel.kt` / `DockCardAnimations.kt` / `ScreenBoundsHelper.kt`, dead `DownloadDockToast.kt`, now-unused `SkiaDropShadow.kt`.
+  - **Tests**: `Milestone4ThemeAndStylingTest` + `Milestone4AdversarialStressTest` deleted — they pinned the removed glass API. Color-token ground truth remains in the archived WPF source.
+  - **Explicitly kept**: `BubbleFluidity` (wired everywhere), `FilePicker` expect/actual (candidate home for future picker centralization), `DeXAnimatedIcons`, compottie/coil deps.
+  - `docs/ARCHITECTURE.md` module graph corrected to match reality; plan recorded as `advisor-plans/020-remove-orphaned-ui-code.md`.
+  - **Also lands `DeXPorts.kt`**: committed code (`MainMenuColumn`) already referenced `DeXPorts.LOCALSEND_DEFAULT`, but its defining file was still uncommitted — master could not build standalone without it. Included here so HEAD is whole again; the remaining port-constant migration continues in its own workstream.
+
+
+## [10.1.14.0] - 2026-08-24
+### Added
+- **[minor] Product landing page under `website/`** (Astro 7.2.5 static output + Tailwind v4.3.3 via `@tailwindcss/vite`, zero-JS page):
+  - Single page with hero, features grid, three-step how-it-works, security section, Free/Pro pricing, FAQ, and footer CTA. All copy grounded in shipped behavior from `docs/ARCHITECTURE.md` (LocalSend v2 compatibility, QUIC transfers, NAT punch + relay fallback, 60 s PIN TTL, per-fingerprint bearer tokens, HMAC-SHA256 constant-time identity challenge, `~/Downloads/DeX` receive path).
+  - Theme tokens mapped 1:1 from `core/designsystem/theme/Color.kt` (`#0AE66D` accent, `#16121A` base, `#2B2631` elevated surface, `#F2F2F7` mist); glass styling uses translucent fills + backdrop blur only — no gradients, no glow.
+  - Centralized content config at `website/src/data/site.ts` (name, repo/release URLs, pricing tiers); Inter Variable self-hosted via Fontsource.
+  - Verified: `npm run build` (static route generated), `npm run check` (0 errors/warnings), preview server smoke test returning HTTP 200 for page + stylesheet.
+
+## [10.1.12.1] - 2026-08-24
+### Changed
+- **[minor] Hardcoded-value audit tier eliminated — every magic number moved to its spec home**:
+  - **H1/H2 loopback control plane**: the ad-hoc `HttpClient(CIO)` constructed inside the SettingsPanel click handler (one leaked client per sign-in click) and its inline `http://127.0.0.1:28425/...` magic string are replaced by a centralized `LoopbackControlApi` (single lazy in-process client, 5 s timeout, URLs derived from ports) living next to the SettingsRoutes it mirrors.
+  - **Ports are constants now**: `DeXPorts` gained `LOOPBACK_CONTROL = 28425` and `LOCALSEND_DEFAULT = 53317`; DeXServer's three listeners (48424/28425/48426) stopped restating literals; MainMenuColumn's clipboard-push fallback uses the named LocalSend default.
+  - **H3/H4 glass fallback token**: `LiquidGlassConfig` gained `fallbackSurface` / `fallbackSurfaceAlpha` so the no-backdrop path reads config instead of an inline `Color(0xFF16121A)` literal.
+  - **H5 single-source version/repo URL**: composeApp now generates `AppBuildConfig.kt` from Gradle (`dexVersionName`, `dexRepoUrl`) via a `generateDexBuildConfig` task wired into the desktop source set; `packageVersion`, both About rows, and the GitHub link all derive from it — the "DeX v1.0.0" string can no longer drift from the build script.
+  - **H6 Lottie asset cached process-wide**: DevicesMorph.json loads once through a mutex-guarded cache (`LottieAssets`) instead of re-reading from resources on every empty-state appearance; visibility-gated loading preserved.
+  - **H7 geometry tiers completed in DockCardMetrics**: added `MAIN_MENU_WIDTH` and `AWT_HIT_SHAPE_CORNER_RADIUS`; FloatingDockCard paddings/AWT hit-shape corner and DockCardContent's 320dp wrapper + 310dp columns + slide offsets all reference metrics.
+  - **H8 animation specs consolidated**: `DockCardAnimations` grew the missing semantic families (HideEase/Dp 200, PanelSlideSpec/OffsetSpec 250 Float+IntOffset, ExpansionSettleSpec 450, SoftHover/SnapHover, LinearFade/Slide/MoveDp/Color(+Snap), QuickFade, CONTENT_REVEAL/COLLAPSE_MS); ~30 inline `tween(...)` sites across BottomDockPanel, DockCardContent, MainMenuColumn, DockedWindowStateController, ActiveTransferDashboard, DownloadDockToast, FileExplorerPanel, FileGridItemCard, DragPillHandle, PinPairingPanel and DeviceListPanel now reference them — durations/easings byte-for-byte identical, so visuals are unchanged.
+
 ## [10.1.13.0] - 2026-08-24
 ### Changed
 - **[minor] P0 performance batch + Liquid Glass fully removed from the desktop shell** (user directive: no liquid glass in Compose Desktop; a replacement will be implemented later at the appropriate time):

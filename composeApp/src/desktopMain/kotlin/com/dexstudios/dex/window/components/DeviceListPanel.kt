@@ -39,7 +39,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import kotlinx.coroutines.sync.withLock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -72,6 +71,7 @@ import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
