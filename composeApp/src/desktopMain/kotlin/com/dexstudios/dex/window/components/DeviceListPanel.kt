@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
@@ -395,7 +396,7 @@ private fun DeviceEmptyState() {
         try {
             jsonString = com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes("files/DevicesMorph.json").decodeToString()
         } catch (e: Exception) {
-            println("Failed to load DevicesMorph.json: ${e.message}")
+            Logger.i("Failed to load DevicesMorph.json: ${e.message}")
         }
     }
 

@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.engine
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DesktopPullService
 import com.dexstudios.dex.core.network.PullFileDto
 import kotlinx.serialization.json.JsonObject
@@ -15,21 +16,21 @@ class DesktopPlatformEngine : IPlatformEngine {
         if (trayIcons.isNotEmpty()) {
             trayIcons.first().displayMessage(title, message, type)
         } else {
-            println("[$title] $message")
+            Logger.i("[$title] $message")
         }
     }
 
     override fun showPairingRequestNotification(alias: String) {
-        println("[DesktopPlatformEngine] Pairing request from $alias")
+        Logger.i("[DesktopPlatformEngine] Pairing request from $alias")
         showSystemNotification("Pairing Request", "$alias wants to connect.", java.awt.TrayIcon.MessageType.INFO)
     }
 
     override fun cancelPairingNotification() {
-        println("[DesktopPlatformEngine] Cancel pairing notification")
+        Logger.i("[DesktopPlatformEngine] Cancel pairing notification")
     }
 
     override fun showIncomingFileNotification(sessionId: String, notificationId: Int, fileCount: Int) {
-        println("[DesktopPlatformEngine] Incoming file transfer: $fileCount files (session $sessionId)")
+        Logger.i("[DesktopPlatformEngine] Incoming file transfer: $fileCount files (session $sessionId)")
         showSystemNotification("Incoming Files", "Receiving $fileCount files.", java.awt.TrayIcon.MessageType.INFO)
     }
 
@@ -37,9 +38,9 @@ class DesktopPlatformEngine : IPlatformEngine {
         try {
             val selection = StringSelection(text)
             Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
-            println("[DesktopPlatformEngine] Clipboard set")
+            Logger.i("[DesktopPlatformEngine] Clipboard set")
         } catch (e: Exception) {
-            println("[DesktopPlatformEngine] Failed to set clipboard: ${e.message}")
+            Logger.i("[DesktopPlatformEngine] Failed to set clipboard: ${e.message}")
         }
     }
 
@@ -50,7 +51,7 @@ class DesktopPlatformEngine : IPlatformEngine {
             org.koin.core.context.GlobalContext.get().get<io.ktor.client.HttpClient>()
         }.getOrNull()
         if (httpClient == null) {
-            println("[DesktopPlatformEngine] Cannot receive pulled files: HttpClient unavailable")
+            Logger.i("[DesktopPlatformEngine] Cannot receive pulled files: HttpClient unavailable")
             return
         }
         DesktopPullService(httpClient).downloadBatch(senderIp, port, tcpFallbackPort, files, fingerprint, sourceAlias)
@@ -59,14 +60,14 @@ class DesktopPlatformEngine : IPlatformEngine {
     override fun handleFileExplorerRequest(type: String, data: JsonObject) {
         // Intentionally unsupported: this desktop is the EXPLORER CLIENT (it browses phones);
         // exposing local folders back to phone-initiated browse requests is not a product flow.
-        println("[DesktopPlatformEngine] Ignoring explorer request '$type' (desktop does not expose folders)")
+        Logger.i("[DesktopPlatformEngine] Ignoring explorer request '$type' (desktop does not expose folders)")
     }
 
     override fun handleMirrorStart() {
-        println("[DesktopPlatformEngine] handleMirrorStart")
+        Logger.i("[DesktopPlatformEngine] handleMirrorStart")
     }
 
     override fun handleMirrorStop() {
-        println("[DesktopPlatformEngine] handleMirrorStop")
+        Logger.i("[DesktopPlatformEngine] handleMirrorStop")
     }
 }

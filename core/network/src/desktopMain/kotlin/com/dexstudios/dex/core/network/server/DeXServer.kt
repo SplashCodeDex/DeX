@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.server
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.security.CertificateGenerator
@@ -102,7 +103,7 @@ object DeXServer {
             }
         }).start(wait = false)
 
-        println("DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), and HTTP 48426 (pull fallback, downloads only)")
+        Logger.i("DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), and HTTP 48426 (pull fallback, downloads only)")
     }
 
     fun stop() {

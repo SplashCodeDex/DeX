@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.services
 
+import co.touchlab.kermit.Logger
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -35,7 +36,7 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
         scope.launch {
             try {
                 val igd = discoverIgdAsync() ?: run {
-                    println("[UPNP] No UPnP Internet Gateway Device found.")
+                    Logger.i("[UPNP] No UPnP Internet Gateway Device found.")
                     return@launch
                 }
 
@@ -51,11 +52,11 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
 
                 val externalIp = getExternalIp(igd)
                 if (externalIp != null) {
-                    println("[UPNP] Public IP: $externalIp")
+                    Logger.i("[UPNP] Public IP: $externalIp")
                     _publicIp.value = externalIp
                 }
             } catch (e: Exception) {
-                println("[UPNP] Configure failed: ${e.message}")
+                Logger.i("[UPNP] Configure failed: ${e.message}")
             }
         }
     }
@@ -170,9 +171,9 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
                 header("SOAPACTION", "\"${igd.serviceType}#AddPortMapping\"")
                 setBody(body)
             }
-            println("[UPNP] Port mapping $protocol $port -> $localIp: ${if (response.status.isSuccess()) "OK" else "HTTP ${response.status.value}"}")
+            Logger.i("[UPNP] Port mapping $protocol $port -> $localIp: ${if (response.status.isSuccess()) "OK" else "HTTP ${response.status.value}"}")
         } catch (e: Exception) {
-            println("[UPNP] Port mapping $protocol $port failed: ${e.message}")
+            Logger.i("[UPNP] Port mapping $protocol $port failed: ${e.message}")
         }
     }
 

@@ -1,5 +1,6 @@
 package com.dexstudios.dex.desktop.jna
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.buildJsonObject
@@ -81,7 +82,7 @@ object ClipboardSyncService {
         } catch (e: java.lang.IllegalStateException) {
             // Clipboard is locked by another process (common on Windows).
             // We can safely ignore as the user hasn't successfully copied it yet.
-            println("ClipboardSyncService: Clipboard locked (${e.message})")
+            Logger.i("ClipboardSyncService: Clipboard locked (${e.message})")
         } catch (e: Exception) {
             e.printStackTrace()
         }

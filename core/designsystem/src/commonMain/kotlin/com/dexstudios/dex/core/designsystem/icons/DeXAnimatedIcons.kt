@@ -106,17 +106,17 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
                 restartOnPlay = true,
             )
 
-            // When notifications are active (DnD is OFF) and v4 finishes its ringing sway, transition to AlertOnFilled
-            val showFilledAlertOn = (!isDndActive) && (progress >= 0.95f)
+            // When notifications are active (DnD is OFF) and v4 finishes its ringing sway, transition to AlertFilled
+            val showFilledAlert = (!isDndActive) && (progress >= 0.95f)
 
             Crossfade(
-                targetState = showFilledAlertOn,
+                targetState = showFilledAlert,
                 animationSpec = tween(150),
-                label = "AlertOnFilledCrossfade",
+                label = "AlertFilledCrossfade",
             ) { isFilled ->
                 if (isFilled) {
                     Icon(
-                        painter = painterResource(DeXIcons.AlertOnFilled),
+                        painter = painterResource(DeXIcons.AlertFilled),
                         contentDescription = contentDescription,
                         tint = effectiveTint,
                         modifier = Modifier.size(size),

@@ -14,6 +14,7 @@ kotlin {
         val desktopMain = getByName("desktopMain")
 
         commonMain.dependencies {
+            implementation(libs.kermit)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

@@ -1,5 +1,6 @@
 package com.dexstudios.dex.desktop
 
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -41,7 +42,7 @@ object AdbManager {
         }
 
         // Download and extract
-        println("ADB not found in PATH. Downloading platform-tools...")
+        Logger.i("ADB not found in PATH. Downloading platform-tools...")
         try {
             if (!toolsDir.exists()) {
                 toolsDir.mkdirs()
@@ -54,7 +55,7 @@ object AdbManager {
                 }
             }
 
-            println("Extracting platform-tools...")
+            Logger.i("Extracting platform-tools...")
             ZipInputStream(zipFile.inputStream()).use { zis ->
                 val canonicalToolsDir = toolsDir.canonicalPath
                 var entry = zis.nextEntry
@@ -83,9 +84,9 @@ object AdbManager {
 
             // Cleanup zip
             zipFile.delete()
-            println("ADB downloaded and extracted successfully to ${adbExeFile.absolutePath}")
+            Logger.i("ADB downloaded and extracted successfully to ${adbExeFile.absolutePath}")
         } catch (e: Exception) {
-            println("Failed to download or extract platform-tools: ${e.message}")
+            Logger.i("Failed to download or extract platform-tools: ${e.message}")
             e.printStackTrace()
             // Fallback to naive 'adb' hoping it somehow works
             return@withContext "adb"
@@ -110,10 +111,10 @@ object AdbManager {
 
     suspend fun connect(ip: String) = withContext(Dispatchers.IO) {
         val targetIp = ip.ifBlank { "127.0.0.1" }
-        println("Attempting ADB connect to $targetIp...")
+        Logger.i("Attempting ADB connect to $targetIp...")
 
         if (!isAdbPortOpen(targetIp)) {
-            println("ADB connect failed: Port 5555 is not open or unreachable within 400ms on $targetIp")
+            Logger.i("ADB connect failed: Port 5555 is not open or unreachable within 400ms on $targetIp")
             return@withContext
         }
 
@@ -122,24 +123,24 @@ object AdbManager {
             val process = ProcessBuilder(adbCmd, "connect", "$targetIp:5555").start()
             val result = process.inputStream.bufferedReader().readText()
             process.waitFor()
-            println("ADB Connect Result: $result")
+            Logger.i("ADB Connect Result: $result")
         } catch (e: Exception) {
-            println("Error connecting ADB: ${e.message}")
+            Logger.i("Error connecting ADB: ${e.message}")
             e.printStackTrace()
         }
     }
 
     suspend fun disconnect(ip: String) = withContext(Dispatchers.IO) {
         val targetIp = ip.ifBlank { "127.0.0.1" }
-        println("Attempting ADB disconnect from $targetIp...")
+        Logger.i("Attempting ADB disconnect from $targetIp...")
         val adbCmd = getAdbExecutable()
         try {
             val process = ProcessBuilder(adbCmd, "disconnect", "$targetIp:5555").start()
             val result = process.inputStream.bufferedReader().readText()
             process.waitFor()
-            println("ADB Disconnect Result: $result")
+            Logger.i("ADB Disconnect Result: $result")
         } catch (e: Exception) {
-            println("Error disconnecting ADB: ${e.message}")
+            Logger.i("Error disconnecting ADB: ${e.message}")
             e.printStackTrace()
         }
     }

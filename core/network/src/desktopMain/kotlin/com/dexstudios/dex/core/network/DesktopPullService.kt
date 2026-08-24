@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.server.ReceiveStorage
 import io.ktor.client.*
 import io.ktor.client.plugins.timeout
@@ -52,7 +53,7 @@ class DesktopPullService(private val httpClient: HttpClient) {
         val totalBytes = files.sumOf { it.size }
         val downloadsFolder = ReceiveStorage.downloadsDir()
         if (downloadsFolder.freeSpace < totalBytes) {
-            println("[DesktopPull] Insufficient disk space for ${files.size} file(s) from $alias")
+            Logger.i("[DesktopPull] Insufficient disk space for ${files.size} file(s) from $alias")
             return
         }
 
@@ -96,7 +97,7 @@ class DesktopPullService(private val httpClient: HttpClient) {
                 }.awaitAll()
             }
         } catch (e: Exception) {
-            println("[DesktopPull] Session failed: ${e.message}")
+            Logger.i("[DesktopPull] Session failed: ${e.message}")
         } finally {
             scope.launch {
                 kotlinx.coroutines.delay(6000)

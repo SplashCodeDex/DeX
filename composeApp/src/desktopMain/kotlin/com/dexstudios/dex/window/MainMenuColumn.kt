@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.joe_avatar
@@ -266,7 +267,7 @@ fun MainMenuColumn(
                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                             val text = clipboard.getData(DataFlavor.stringFlavor) as? String
                             if (text.isNullOrBlank()) {
-                                println("Clipboard is empty or not text - nothing to push to ${item.alias}")
+                                Logger.i("Clipboard is empty or not text - nothing to push to ${item.alias}")
                                 return@launch
                             }
                             val device = item.rawDevice
@@ -278,7 +279,7 @@ fun MainMenuColumn(
                                 targetIdentityHash = device?.info?.identityHash,
                                 targetGoogleSub = device?.info?.googleSub,
                             )
-                            println(if (ok) "Pushed clipboard text to ${item.alias}" else "Failed to push clipboard to ${item.alias}")
+                            Logger.i(if (ok) "Pushed clipboard text to ${item.alias}" else "Failed to push clipboard to ${item.alias}")
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }

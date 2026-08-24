@@ -2,6 +2,7 @@ package com.dexstudios.dex.window.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_article
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
@@ -68,7 +69,7 @@ internal fun handleItemDoubleClick(item: ExplorerFileItem, onDrillDown: (String)
         val ext = item.name.substringAfterLast('.', "").lowercase()
         val dangerousExtensions = setOf("exe", "bat", "cmd", "msi", "ps1", "vbs", "jar")
         if (ext in dangerousExtensions) {
-            println("Security block: dangerous executable file prevented from direct double-click launch: ${item.name}")
+            Logger.i("Security block: dangerous executable file prevented from direct double-click launch: ${item.name}")
             return
         }
 

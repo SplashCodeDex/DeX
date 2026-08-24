@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.auth
 
+import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.post
@@ -172,7 +173,7 @@ object GoogleOAuth {
             val file = File(baseDirectory, "google_profile.json")
             file.writeText(json.encodeToString(profile))
         } catch (e: Exception) {
-            println("GoogleOAuth error: ${e.message}")
+            Logger.i("GoogleOAuth error: ${e.message}")
         }
     }
 
@@ -191,7 +192,7 @@ object GoogleOAuth {
             val file = File(baseDirectory, "google_profile.json")
             if (file.exists()) file.delete()
         } catch (e: Exception) {
-            println("GoogleOAuth error: ${e.message}")
+            Logger.i("GoogleOAuth error: ${e.message}")
         }
     }
 
@@ -204,7 +205,7 @@ object GoogleOAuth {
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)
             file.appendText("[$timestamp] $message\n")
         } catch (e: Exception) {
-            println("GoogleOAuth file I/O error: ${e.message}")
+            Logger.i("GoogleOAuth file I/O error: ${e.message}")
         }
     }
 
@@ -228,7 +229,7 @@ object GoogleOAuth {
                 cachedCredentials = Pair(id, secret)
             }
         } catch (e: Exception) {
-            println("GoogleOAuth file I/O error: ${e.message}")
+            Logger.i("GoogleOAuth file I/O error: ${e.message}")
         }
         return cachedCredentials
     }

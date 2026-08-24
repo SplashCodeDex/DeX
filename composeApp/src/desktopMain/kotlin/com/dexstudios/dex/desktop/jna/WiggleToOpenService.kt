@@ -1,5 +1,6 @@
 package com.dexstudios.dex.desktop.jna
 
+import co.touchlab.kermit.Logger
 import com.sun.jna.platform.win32.User32
 import com.sun.jna.platform.win32.WinDef.POINT
 import kotlinx.coroutines.*
@@ -12,7 +13,7 @@ object WiggleToOpenService {
 
     fun start(deviceConfig: com.dexstudios.dex.core.network.DeviceConfig, onWake: (() -> Unit)? = null, onTrigger: () -> Unit) {
         if (!com.dexstudios.dex.platform.DesktopEnvironment.isWindows) {
-            println("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
+            Logger.i("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
             return
         }
 

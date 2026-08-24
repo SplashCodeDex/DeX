@@ -41,6 +41,7 @@ jna = "5.14.0"
 qrcode = "3.3.0"
 compottie = "2.2.4"
 spotless = "8.10.0"
+kermit = "2.1.0"
 ktlint = "1.8.0"
 [libraries]
 compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
@@ -120,6 +121,7 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
 compottie = { module = "io.github.alexzhirkevich:compottie", version.ref = "compottie" }
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

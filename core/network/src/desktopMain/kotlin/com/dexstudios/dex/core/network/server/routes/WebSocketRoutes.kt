@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.DeviceManager
 import com.dexstudios.dex.core.network.EndpointInfoDto
@@ -72,7 +73,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                 return@webSocket
             }
 
-            println("WebSocket connection established: ${call.request.local.remoteHost} (FP: $fingerprint, trusted: $trusted)")
+            Logger.i("WebSocket connection established: ${call.request.local.remoteHost} (FP: $fingerprint, trusted: $trusted)")
 
             // Same-account phones need our WAN address to reach us without port-forwarding know-how
             if (trusted && publicAddressService != null) {
@@ -90,7 +91,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                 }
             }
         } else {
-            println("WebSocket connection established: ${call.request.local.remoteHost} (no fingerprint)")
+            Logger.i("WebSocket connection established: ${call.request.local.remoteHost} (no fingerprint)")
         }
 
         try {
@@ -152,7 +153,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                     // Trust assertion without PIN proof is never persisted; the desktop
                                     // user can still grant access manually via the pairing panel.
                                     accepted -> {
-                                        println("Rejected pair-response from $fingerprint: PIN not proven")
+                                        Logger.i("Rejected pair-response from $fingerprint: PIN not proven")
                                         pairingEngine.handlePairResponse(false)
                                     }
 
@@ -221,11 +222,11 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                             "relay-transfer" -> handleRelayTransfer(fingerprint, dataObj)
 
                             else -> {
-                                println("Unhandled WS message type: $type from FP: $fingerprint")
+                                Logger.i("Unhandled WS message type: $type from FP: $fingerprint")
                             }
                         }
                     } catch (e: Exception) {
-                        println("Failed to parse WebSocket message: ${e.message}")
+                        Logger.i("Failed to parse WebSocket message: ${e.message}")
                     }
                 } else if (frame is Frame.Binary) {
                     val bytes = frame.readBytes()
@@ -233,12 +234,12 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                 }
             }
         } catch (e: Exception) {
-            println("WebSocket error: ${e.message}")
+            Logger.i("WebSocket error: ${e.message}")
         } finally {
             if (fingerprint != null && registered) {
                 WebSocketConnectionManager.unregister(fingerprint)
             }
-            println("WebSocket connection closed: ${call.request.local.remoteHost} (FP: $fingerprint)")
+            Logger.i("WebSocket connection closed: ${call.request.local.remoteHost} (FP: $fingerprint)")
         }
     }
 }
