@@ -1,5 +1,14 @@
 # Changelog
 
+## [10.1.10.1] - 2026-08-24
+### Changed
+- **[minor] All library modules renamed their JVM target to `desktop` (`jvm("desktop")`)**: source roots are now uniformly `src/desktopMain` / `src/desktopTest` everywhere (previously only composeApp used that name; library modules used plain `jvm()`, which silently ignored any `desktopMain` content — the root cause of a broken file surviving unnoticed). Module tasks follow: `:module:desktopTest`, `:module:desktopJar`.
+- **[minor] Removed all unwired sources surfaced by the lint baseline**: orphan Android-style resources under `core/network/src/main`, duplicate platform actuals in feature history/settings, four empty protocol placeholder files, the dead `TransferDialog`, and the fully unhooked `feature/history` module tree.
+- **[fix] PERF-01 resolved at the root**: drag-release detection is event-driven on Windows via a process-global `WH_MOUSE_LL` hook (`platform/GlobalMouseButtonHook`, dedicated daemon pump thread) instead of polling `GetAsyncKeyState`; Explorer-originated drags are caught instantly with zero busy-waiting. macOS and test stubs retain the polling fallback; subscribe/timeout/re-check closes the missed-event race.
+### Added
+- **[minor] Formatting is now enforced locally**: `.githooks/pre-commit` runs `spotlessCheck` before tests and blocks the commit on drift (auto-fix via `gradlew spotlessApply`).
+- **[docs] `docs/ARCHITECTURE.md` + `docs/PROTOCOL.md`**: verified system references (ports, trust priority, pairing state machine, transfer paths; full WS message contract with canonical field names). `AGENTS.md` gained cross-assistant operational rules (no faked success, no simplify-to-fix, investigate-before-delete, 2-strike research breaker) and a documentation map.
+
 ## [10.1.10.0] - 2026-08-24
 ### Added
 - **[minor] Received transfers are finally recorded in history**: the `/upload` receiver route logs every successfully persisted file to `TransferHistory` (`direction="received"`, saved absolute path, sender alias as peer). The desktop previously only ever wrote `"sent"` rows, so any direction filter/grouping could never show inbound traffic.

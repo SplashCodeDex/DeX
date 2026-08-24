@@ -1,11 +1,12 @@
 #!/bin/sh
-# Pre-commit gate: desktop Compose tests must pass before commit.
+# Pre-commit gate: formatting + desktop Compose tests must pass before commit.
 # Enabled via: git config core.hooksPath .githooks
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT" || exit 1
-./gradlew.bat :composeApp:desktopTest --console=plain
+./gradlew.bat spotlessCheck :composeApp:desktopTest --console=plain
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
-  echo "[pre-commit] Desktop tests failed. Commit blocked."
+  echo "[pre-commit] Formatting or desktop tests failed. Commit blocked."
+  echo "[pre-commit] Run './gradlew.bat spotlessApply' to auto-fix formatting."
 fi
 exit $RESULT

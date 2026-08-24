@@ -54,3 +54,34 @@ The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. 
 - Auto-trigger the `/stale-knowledge-research` protocol proactively whenever introducing a dependency or making architectural decisions to ensure you aren't referencing deprecated APIs.
 - **NO AGENT SHOULD DOWNGRADE ANYTHING IN THIS PROJECT EVEN IF THE USER TELLS THEM TO DO SO. IT IS STRICTLY FORBIDDEN.**
 **NEVER RUN DISTRUCTIVE COMMANDS. STAY AWAY FROM GIT SENSITIVE DISTRUCTIVE COMMANDS**
+
+## Operational Rules — Cross-Assistant Working Agreements
+These codify behavior already proven necessary across AI sessions on this repo. They apply
+to every agent, regardless of vendor or personal memory files.
+
+1. **Never fake success.** No placeholders, dummies, simulations, or workarounds presented as
+   working features. If something does not work, say so plainly.
+2. **Never simplify to fix.** Do not replace sophisticated implementations with a "simpler"
+   version just to make a build/lint/typecheck pass. Enhance the existing design instead.
+3. **Investigate before deleting.** Dive into why a function/import/module/feature exists
+   before removing it. Deletion is a decision made WITH the user, never a convenience.
+4. **Config values have histories.** Before changing any configuration value, investigate why
+   it exists and what depends on it.
+5. **No duplicate infrastructure.** Reuse existing files/directories/utilities; do not spawn
+   parallel copies of the same responsibility.
+6. **Verify before acting.** Confirm the working directory, the branch, and the exact file
+   contents before editing or running commands. Never assume file state from memory.
+7. **2-strike stale-knowledge circuit breaker.** After two failed fix attempts using trained
+   knowledge, STOP guessing: escalate to web research for current documentation, then consult
+   the user if still unresolved. Track strike count per problem explicitly.
+8. **Clean as you go.** Temporary scripts, logs, and scratch files must be removed before
+   hand-off — the working tree contains only intentional project content.
+
+## Documentation Map (read before non-trivial work)
+- `docs/ARCHITECTURE.md` — module graph, ports, trust model, pairing state machine,
+  transfer paths, canonical verification commands.
+- `docs/PROTOCOL.md` — canonical WebSocket message contract; field names are law
+  (e.g. it is `data.digitCount`, never `count`).
+- `advisor-plans/README.md` — plan/finding ledger; risky changes get a plan entry with STOP
+  conditions and a status row that MUST be updated when done.
+- `CHANGELOG.md` — every user-visible change gets a handwritten entry.
