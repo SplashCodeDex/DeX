@@ -14,6 +14,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import com.dexstudios.dex.platform.DisplayCoordinateSpace
 import com.dexstudios.dex.platform.DockCardMetrics
+import com.dexstudios.dex.platform.GlobalMouseButtonHook
 import com.dexstudios.dex.platform.MouseInputProvider
 import com.dexstudios.dex.platform.TaskbarWorkAreaProvider
 import com.dexstudios.dex.platform.WorkAreaBounds
@@ -24,8 +25,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -190,11 +193,12 @@ class DockedWindowStateController(
         if (dragDropDeferJob?.isActive == true) return
         dragDropDeferJob = scope.launch(Dispatchers.IO) {
             try {
-                // Adaptive backoff instead of a fixed 50ms busy-wait: drags typically last
-                // seconds, so the poll interval relaxes to 250ms after the first second.
-                // Release detection latency stays imperceptible while idle CPU cost drops ~4x.
-                var delayMs = 50L
-                var elapsedMs = 0L
+                // PERF-01: release detection is event-driven on Windows via the global
+                // WH_MOUSE_LL hook (no busy-waiting at all). The 2s timeout + authoritative
+                // re-check closes the subscribe/release race; macOS and test stubs keep the
+                // lightweight 50ms poll as their fallback.
+                val useHook = mouseInputProvider is com.dexstudios.dex.platform.DesktopMouseInputProvider &&
+                    GlobalMouseButtonHook.ensureInstalled()
                 while (isActive) {
                     if (!mouseInputProvider.isLeftMouseButtonDown()) {
                         // Mouse released!
@@ -219,10 +223,10 @@ class DockedWindowStateController(
                         }
                         break
                     }
-                    delay(delayMs)
-                    elapsedMs += delayMs
-                    if (elapsedMs >= 1000L && delayMs < 250L) {
-                        delayMs = minOf(delayMs * 2, 250L)
+                    if (useHook) {
+                        withTimeoutOrNull(2_000) { GlobalMouseButtonHook.leftButtonUpEvents.first() }
+                    } else {
+                        delay(50)
                     }
                 }
             } catch (e: CancellationException) {
