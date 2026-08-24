@@ -1,5 +1,6 @@
 package com.dexstudios.dex
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,6 +24,7 @@ import com.dexstudios.dex.core.network.server.DeXServer
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.FloatingDockCard
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toPath
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -53,8 +55,30 @@ fun main() {
         }
     }
 
+    // Safety net for every exit path that bypasses the explicit Quit handlers: uncaught
+    // exceptions, OS logoff/shutdown and taskkill. Idempotent — see DesktopShutdownCoordinator.
+    Runtime.getRuntime().addShutdownHook(
+        Thread({ DesktopShutdownCoordinator.stopAllServices() }, "dex-shutdown"),
+    )
+
     val discoveryEngine = org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.core.network.DiscoveryEngine>()
     discoveryEngine.startDiscovery()
+
+    // Hydrate persisted pairing trust (fingerprints + tokens) BEFORE the server accepts any
+    // connection; without this AuthState starts empty and savePaired* hits an uninitialized
+    // DataStore, silently breaking PIN-pair acceptance and cross-restart trust. A corrupt
+    // store must degrade to empty trust, never block the app from starting.
+    runBlocking {
+        runCatching {
+            com.dexstudios.dex.core.network.DeviceManager.init(
+                org.koin.java.KoinJavaComponent.getKoin().get<DataStore<Preferences>>(),
+            )
+        }.onFailure { e ->
+            java.util.logging.Logger.getLogger("DeX").warning(
+                "Pairing trust store failed to load; starting with empty trust. ${e::class.simpleName}: ${e.message}",
+            )
+        }
+    }
 
     try {
         DeXServer.start()
@@ -62,7 +86,7 @@ fun main() {
         e.printStackTrace()
         javax.swing.JOptionPane.showMessageDialog(
             null,
-            "Failed to start DeX internal server.\nEnsure port 48425 is not in use by another instance.\nError: ${e.message}",
+            "Failed to start DeX internal server.\nEnsure ports 48424 (HTTPS), 48425 (sign-in) and 48426 (pull fallback) are not already in use by another instance.\nError: ${e.message}",
             "DeX Startup Error",
             javax.swing.JOptionPane.ERROR_MESSAGE,
         )
@@ -96,6 +120,11 @@ fun main() {
                 controller.toggleVisibility()
             }
             com.dexstudios.dex.desktop.jna.ClipboardSyncService.start(deviceConfig)
+            com.dexstudios.dex.desktop.AutoAdbHotspotService.start(
+                deviceConfig = deviceConfig,
+                devicesFlow = org.koin.java.KoinJavaComponent.getKoin()
+                    .get<com.dexstudios.dex.core.network.DiscoveryEngine>().devices,
+            )
         }
 
         // 300ms Click Debounce Filter for Tray Action
@@ -184,7 +213,18 @@ fun main() {
                 }
             }
 
-            DeXTheme {
+            // Theme override from Settings > Appearance: System / Dark / Light. The
+            // persisted choice wins over the OS setting; System defers to isSystemInDarkTheme.
+            val deviceConfigForTheme = remember { org.koin.java.KoinJavaComponent.getKoin().get<DeviceConfig>() }
+            val themeOverride by deviceConfigForTheme.themeOverrideFlow.collectAsState()
+
+            DeXTheme(
+                darkTheme = when (themeOverride) {
+                    DeviceConfig.THEME_DARK -> true
+                    DeviceConfig.THEME_LIGHT -> false
+                    else -> isSystemInDarkTheme()
+                },
+            ) {
                 LaunchedEffect(window) {
                     // Taskbar icon suppression via AWT UTILITY window type (if not already displayable)
                     try {

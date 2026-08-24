@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +61,6 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Toolkit
 import java.awt.event.InputEvent
@@ -76,11 +74,10 @@ enum class ExitConfirmationStage {
  * BottomDockPanel:
  * - 34x34dp circular profile avatar button (opens Settings, scales to 0.6x during confirmation)
  * - 1dp horizontal accent divider
- * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer detection, -62dp expansion, 3s auto-revert timer)
+ * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer force-exit, -62dp expansion, 3s auto-revert timer)
  */
 @Composable
 fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasActiveTransfers: Boolean = false, isMirroringActive: Boolean = false, modifier: Modifier = Modifier) {
-    val coroutineScope = rememberCoroutineScope()
     var confirmationStage by remember { mutableStateOf(ExitConfirmationStage.Idle) }
     var isShiftHeld by remember { mutableStateOf(false) }
 
@@ -239,13 +236,21 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
                             // Instant Exit Bypass (matches WPF: Shift+Click falls through to Invoke-ExitEngine)
                             onExitEngine()
                         } else {
-                            if (confirmationStage == ExitConfirmationStage.Idle) {
-                                // First click: enter confirmation stage ("Cancel / Shift+Click Exit")
-                                confirmationStage = ExitConfirmationStage.Confirming
-                            } else {
-                                // Second click: CANCEL the exit state, revert to idle.
-                                // WPF parity: a regular click never exits — only Shift+Click does.
-                                confirmationStage = ExitConfirmationStage.Idle
+                            when (confirmationStage) {
+                                ExitConfirmationStage.Idle ->
+                                    // First click: enter confirmation stage ("Cancel / Shift+Click Exit")
+                                    confirmationStage = ExitConfirmationStage.Confirming
+
+                                ExitConfirmationStage.Confirming -> {
+                                    if (hasActiveTransfers || isMirroringActive) {
+                                        // The label promised "Click to Force Exit" — honor it.
+                                        // A plain click while a transfer/mirror is live force-exits;
+                                        // without active work a plain click only cancels (WPF parity).
+                                        onExitEngine()
+                                    } else {
+                                        confirmationStage = ExitConfirmationStage.Idle
+                                    }
+                                }
                             }
                         }
                     }
@@ -301,18 +306,23 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
                         }
                     }
 
-                    // Right spacer pushes ⌘Q to the right, and balances the left spacer when expanded
+                    // Right spacer balances the left spacer when expanded
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Shortcut Text (⌘Q) pinned to the right permanently
-                    Text(
-                        text = "⌘Q",
-                        fontSize = 14.sp,
-                        lineHeight = 14.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    // Shortcut hint pinned to the right — shows ONLY the shortcut actually
+                    // registered by GlobalShortcutService (Win+Shift+D on Windows). Hidden
+                    // entirely on platforms without a global shortcut instead of advertising
+                    // a fake one (the old hardcoded "⌘Q" was wrong on every platform).
+                    if (com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint.isNotEmpty()) {
+                        Text(
+                            text = com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint,
+                            fontSize = 14.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }

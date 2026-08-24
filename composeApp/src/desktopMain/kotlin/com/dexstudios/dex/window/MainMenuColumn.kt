@@ -28,6 +28,7 @@ import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.joe_avatar
 import com.dexstudios.dex.core.network.ClientEngine
+import com.dexstudios.dex.core.network.DeXPorts
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.DiscoveryEngine
@@ -42,6 +43,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import org.koin.compose.koinInject
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
@@ -71,11 +75,11 @@ fun MainMenuColumn(
             .distinctUntilChanged()
     }.collectAsState(initial = false)
     val isClipboardSyncEnabled by deviceConfig.clipboardSyncEnabledFlow.collectAsState()
+    val isDndActive by deviceConfig.dndEnabledFlow.collectAsState()
 
     // Pinned default send destination (surfaced in telemetry once telemetry is enabled)
     val preferredTargetFp by fileSender.preferredTargetFlow.collectAsState()
 
-    var isDndActive by remember { mutableStateOf(false) }
     var isMirroringActive by remember { mutableStateOf(false) }
 
     var isContentVisible by remember { mutableStateOf(false) }
@@ -151,7 +155,7 @@ fun MainMenuColumn(
     // Mock DeXStudios fallback removed for Phase 4.2 Parity
 
     val serverIp = devices.firstOrNull()?.ip ?: "127.0.0.1"
-    val serverPort = devices.firstOrNull()?.info?.port ?: 53317
+    val serverPort = devices.firstOrNull()?.info?.port ?: DeXPorts.HTTPS
     val serverIpPortText = "$serverIp:$serverPort"
 
     // Dedicated Live Screen Mirroring Window
@@ -181,7 +185,7 @@ fun MainMenuColumn(
             TopActionsPanel(
                 controller = controller,
                 isDndActive = isDndActive,
-                onToggleDnd = { isDndActive = !isDndActive },
+                onToggleDnd = { deviceConfig.dndEnabled = !isDndActive },
                 isMirroringActive = isMirroringActive,
                 onToggleMirror = { isMirroringActive = !isMirroringActive },
                 isTransfersActive = controller.expandedPanel == ExpandedPanel.FileExplorer,
@@ -310,7 +314,22 @@ fun MainMenuColumn(
                 },
                 onRenameDevice = {},
                 onForgetDevice = { item ->
-                    AuthState.updateFingerprints(pairedFingerprints - item.fingerprint)
+                    // Real revocation: drop the persisted pairing (fingerprint AND token),
+                    // downgrade any live session, and tell the peer so it downgrades too.
+                    coroutineScope.launch(Dispatchers.IO) {
+                        runCatching {
+                            com.dexstudios.dex.core.network.server.WebSocketConnectionManager.sendRequest(
+                                item.fingerprint,
+                                buildJsonObject {
+                                    put("type", "unpair")
+                                    putJsonObject("data") { put("fingerprint", deviceConfig.fingerprint) }
+                                }.toString(),
+                            )
+                        }
+                        com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(item.fingerprint)
+                        com.dexstudios.dex.core.network.server.WebSocketConnectionManager.markUntrusted(item.fingerprint)
+                        Logger.i("Forgot device ${item.fingerprint}; trust revoked")
+                    }
                 },
             )
         }

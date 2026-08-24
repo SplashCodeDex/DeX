@@ -37,17 +37,24 @@ import kotlinx.serialization.json.putJsonObject
  * Handshake trust decision for a `/ws` connection.
  *
  * A connection is TRUSTED when its bearer token equals our googleSub / identityHash
- * (same-account auto-trust) or the fingerprint's stored pairing token. Untrusted
- * connections may only run the pairing handshake until the PIN is proven — they never
- * receive transfer prompts or hosted pull tokens.
+ * (same-account auto-trust) or the fingerprint's stored pairing token. These values are
+ * NEVER advertised (see DiscoveryEngine.localInfo) so only legitimate holders can present
+ * them. Untrusted connections may run the pairing handshake, prove same-account identity
+ * via identity-challenge/identity-proof, until the PIN is proven — they never receive
+ * transfer prompts or hosted pull tokens.
  */
 private fun resolveHandshakeTrust(fingerprint: String, token: String?): Pair<Boolean, String?> {
     if (token.isNullOrEmpty()) return false to null
     val koin = org.koin.core.context.GlobalContext.get()
     val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
 
-    if (deviceConfig.googleSub.isNotEmpty() && token == deviceConfig.googleSub) return true to deviceConfig.googleSub
-    if (deviceConfig.identityHash.isNotEmpty() && token == deviceConfig.identityHash) return true to deviceConfig.identityHash
+    // Length pre-check keeps MessageDigest.isEqual effective; isEqual alone short-circuits
+    // nothing harmful, but equal lengths avoid trivially-timed rejections.
+    fun matches(secret: String): Boolean = secret.isNotEmpty() && secret.length == token.length &&
+        java.security.MessageDigest.isEqual(token.toByteArray(), secret.toByteArray())
+
+    if (matches(deviceConfig.googleSub)) return true to deviceConfig.googleSub
+    if (matches(deviceConfig.identityHash)) return true to deviceConfig.identityHash
 
     val pairedToken = AuthState.pairedTokens.value[fingerprint]
     if (!pairedToken.isNullOrEmpty() && pairedToken.length == token.length &&
@@ -58,12 +65,36 @@ private fun resolveHandshakeTrust(fingerprint: String, token: String?): Pair<Boo
     return false to null
 }
 
+/** HMAC-SHA256 over [data] keyed by [secret] — proof-of-possession without disclosure. */
+private fun hmacSha256(secret: String, data: ByteArray): ByteArray {
+    val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+    mac.init(javax.crypto.spec.SecretKeySpec(secret.toByteArray(), "HmacSHA256"))
+    return mac.doFinal(data)
+}
+
+/**
+ * Mints a per-device pairing token, persists the pairing, upgrades the live session to
+ * trusted, and returns the token for delivery to the peer so IT can persist the pairing
+ * too — without this, PIN-paired devices had no shared credential and could never
+ * re-authenticate after reconnecting.
+ */
+private suspend fun grantPairing(fingerprint: String): String {
+    val pairToken = java.util.UUID.randomUUID().toString()
+    DeviceManager.savePairedFingerprint(fingerprint)
+    DeviceManager.savePairedToken(fingerprint, pairToken)
+    WebSocketConnectionManager.markTrusted(fingerprint)
+    return pairToken
+}
+
 fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, mirrorEngine: IMirrorEngine, publicAddressService: PublicAddressService? = null) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         val token = call.request.queryParameters["token"]
 
         var registered = false
+        // Per-connection nonce for the same-account proof-of-possession exchange. Handler
+        // scoped: no shared map, nothing for another peer to read or replay.
+        var identityNonce: ByteArray? = null
         if (!fingerprint.isNullOrBlank()) {
             val (trusted, identityToken) = resolveHandshakeTrust(fingerprint, token)
             // Hijack guard: an active session for this fingerprint is never silently replaced
@@ -88,6 +119,26 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                             }.toString(),
                         )
                     }
+                }
+            }
+
+            // Untrusted sessions get one chance to prove they share our Google account:
+            // we challenge; they answer HMAC(nonce, googleSub). The sub itself never
+            // travels — a third party learns only "same account or not" about the PAIR.
+            if (!trusted) {
+                val mySub = org.koin.core.context.GlobalContext.get()
+                    .get<com.dexstudios.dex.core.network.DeviceConfig>()
+                    .googleSub
+                if (mySub.isNotEmpty()) {
+                    val nonce = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+                    identityNonce = nonce
+                    WebSocketConnectionManager.sendRequest(
+                        fingerprint,
+                        buildJsonObject {
+                            put("type", "identity-challenge")
+                            putJsonObject("data") { put("nonce", java.util.Base64.getEncoder().encodeToString(nonce)) }
+                        }.toString(),
+                    )
                 }
             }
         } else {
@@ -121,18 +172,24 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
 
                             "pair-request" -> {
                                 if (fingerprint != null) {
-                                    val ip = call.request.local.remoteHost
-                                    val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
                                     val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
-                                    val promptJson = buildJsonObject {
-                                        put("type", "pair-prompt")
-                                        putJsonObject("data") {
-                                            put("pin", pin)
-                                            put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
-                                            put("fingerprint", deviceConfig.fingerprint)
-                                        }
-                                    }.toString()
-                                    WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
+                                    if (deviceConfig.dndEnabled) {
+                                        // Do Not Disturb: never surface the pairing prompt and never
+                                        // mint a PIN. The requester's offer times out on its side.
+                                        Logger.i("DND: ignored inbound pairing request from $fingerprint")
+                                    } else {
+                                        val ip = call.request.local.remoteHost
+                                        val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
+                                        val promptJson = buildJsonObject {
+                                            put("type", "pair-prompt")
+                                            putJsonObject("data") {
+                                                put("pin", pin)
+                                                put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
+                                                put("fingerprint", deviceConfig.fingerprint)
+                                            }
+                                        }.toString()
+                                        WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
+                                    }
                                 }
                             }
 
@@ -142,11 +199,26 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                 val verifiedByPin = accepted && fingerprint != null &&
                                     pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
                                 when {
-                                    // Peer proved knowledge of the displayed PIN: grant, persist trust,
-                                    // and upgrade its session so prompts can flow immediately.
+                                    // Peer proved knowledge of the displayed PIN: grant trust,
+                                    // persist BOTH sides (we store a freshly minted pairing
+                                    // token and hand it back so the peer can store it too),
+                                    // and upgrade the session so prompts flow immediately.
                                     verifiedByPin -> {
-                                        DeviceManager.savePairedFingerprint(fingerprint!!)
-                                        WebSocketConnectionManager.markTrusted(fingerprint)
+                                        val pairToken = grantPairing(fingerprint!!)
+                                        WebSocketConnectionManager.sendRequest(
+                                            fingerprint,
+                                            buildJsonObject {
+                                                put("type", "pair-accepted")
+                                                putJsonObject("data") {
+                                                    put("token", pairToken)
+                                                    put(
+                                                        "fingerprint",
+                                                        org.koin.core.context.GlobalContext.get()
+                                                            .get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint,
+                                                    )
+                                                }
+                                            }.toString(),
+                                        )
                                         pairingEngine.handlePairResponse(true)
                                     }
 
@@ -158,6 +230,46 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                     }
 
                                     else -> pairingEngine.handlePairResponse(false)
+                                }
+                            }
+
+                            /*
+                             * Answer to our identity-challenge: HMAC(nonce, googleSub) proves the
+                             * peer holds our Google account ID without it ever crossing the wire.
+                             * Session-scoped auto-trust; pairing persistence stays explicit.
+                             */
+                            "identity-proof" -> {
+                                val mac = dataObj?.get("mac")?.jsonPrimitive?.contentOrNull
+                                val nonce = identityNonce
+                                if (fingerprint != null && mac != null && nonce != null &&
+                                    !WebSocketConnectionManager.isTrusted(fingerprint)
+                                ) {
+                                    val deviceConfig = org.koin.core.context.GlobalContext.get()
+                                        .get<com.dexstudios.dex.core.network.DeviceConfig>()
+                                    val expected = hmacSha256(deviceConfig.googleSub, nonce)
+                                    val presented = runCatching {
+                                        java.util.Base64.getDecoder().decode(mac)
+                                    }.getOrNull()
+                                    if (presented != null && presented.size == expected.size &&
+                                        java.security.MessageDigest.isEqual(presented, expected)
+                                    ) {
+                                        WebSocketConnectionManager.markTrusted(fingerprint, deviceConfig.googleSub)
+                                        Logger.i("Same-account identity proven for FP: $fingerprint")
+                                    }
+                                }
+                            }
+
+                            /*
+                             * Peer-initiated revocation: the connected device asks us to forget
+                             * ITSELF. Only the owner of the live session may revoke its own
+                             * entry — never an arbitrary third fingerprint.
+                             */
+                            "unpair" -> {
+                                if (fingerprint != null) {
+                                    DeviceManager.removePairedFingerprint(fingerprint)
+                                    WebSocketConnectionManager.markUntrusted(fingerprint)
+                                    pairingEngine.reset()
+                                    Logger.i("Peer $fingerprint revoked its pairing; local trust removed")
                                 }
                             }
 
@@ -226,7 +338,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                             }
                         }
                     } catch (e: Exception) {
-                        Logger.i("Failed to parse WebSocket message: ${e.message}")
+                        Logger.i("WebSocket handler error (${e::class.simpleName}): ${e.message}")
                     }
                 } else if (frame is Frame.Binary) {
                     val bytes = frame.readBytes()
@@ -252,13 +364,14 @@ private suspend fun handleDeviceRosterRequest(requesterFingerprint: String?) {
     val discovery = koin.getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
 
     val mySub = deviceConfig.googleSub.takeIf { it.isNotBlank() }
-    val myIdentity = deviceConfig.identityHash.takeIf { it.isNotBlank() }
 
     val devices = WebSocketConnectionManager.trustedFingerprints()
         .filterNot { it == requesterFingerprint }
         .mapNotNull { fp ->
+            // Roster membership requires the peer to have PROVEN our googleSub at
+            // handshake or via identity-proof — never a client claim.
             val identity = WebSocketConnectionManager.holderOf(fp)?.identityToken
-            val sameAccount = (mySub != null && identity == mySub) || (myIdentity != null && identity == myIdentity)
+            val sameAccount = mySub != null && identity == mySub
             if (!sameAccount) return@mapNotNull null
             val discovered = discovery?.devices?.value?.get(fp)?.info
             RosterDeviceDto(
@@ -280,6 +393,8 @@ private suspend fun handleDeviceRosterRequest(requesterFingerprint: String?) {
 /** Answers `resolve-endpoint` with `endpoint-info` carrying the target's registered punch endpoint. */
 private suspend fun handleResolveEndpoint(callerFingerprint: String?, dataObj: JsonObject?) {
     if (callerFingerprint == null) return
+    // Punch rendezvous data (other devices' ip:port) is only for proven sessions.
+    if (!WebSocketConnectionManager.isTrusted(callerFingerprint)) return
     val targetFingerprint = dataObj?.get("targetFingerprint")?.jsonPrimitive?.contentOrNull ?: return
 
     val entry = getPunchEndpoint(targetFingerprint)
@@ -327,7 +442,7 @@ private suspend fun handleTrustCheck(callerFingerprint: String?, dataObj: JsonOb
     val koin = org.koin.core.context.GlobalContext.get()
     val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
     val identity = WebSocketConnectionManager.holderOf(callerFingerprint)?.identityToken
-    val autoTrusted = (identity != null && (identity == deviceConfig.googleSub || identity == deviceConfig.identityHash))
+    val autoTrusted = identity != null && identity == deviceConfig.googleSub
     val actuallyTrusted = autoTrusted || AuthState.pairedFingerprints.value.contains(subjectFingerprint)
 
     WebSocketConnectionManager.sendRequest(

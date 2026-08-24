@@ -5,8 +5,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +17,34 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
 
 /** Combined profile snapshot — prevents triple-recomposition on Google sign-in. */
 data class GoogleProfile(val name: String = "", val picture: String = "", val email: String = "")
 
 class DeviceConfig(private val dataStore: DataStore<Preferences>, private val scope: CoroutineScope) : KoinComponent {
+
+    // Tracked persistence writes so shutdown can await them instead of dropping the
+    // user's latest change mid-flush (a hard exitProcess kills in-flight DataStore edits).
+    private val pendingWrites = mutableListOf<Job>()
+    private val writeLock = Any()
+
+    private fun persist(block: suspend () -> Unit) {
+        val job = scope.launch { block() }
+        synchronized(writeLock) { pendingWrites.add(job) }
+        job.invokeOnCompletion { synchronized(writeLock) { pendingWrites.remove(job) } }
+    }
+
+    /**
+     * Awaits (bounded) every in-flight persisted write. Invoked by the shutdown
+     * coordinator before teardown so quitting can never lose a settings change.
+     */
+    suspend fun flushPersistedWrites(timeoutMillis: Long = 2_000L) {
+        val jobs = synchronized(writeLock) { pendingWrites.toList() }
+        if (jobs.isEmpty()) return
+        withTimeoutOrNull(timeoutMillis) { jobs.forEach { it.join() } }
+    }
 
     companion object {
         val EMAIL_KEY = stringPreferencesKey("email")
@@ -35,6 +58,14 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         val CLIPBOARD_SYNC_ENABLED_KEY = booleanPreferencesKey("clipboard_sync_enabled")
         val WIGGLE_ENABLED_KEY = booleanPreferencesKey("wiggle_enabled")
         val UPNP_ENABLED_KEY = booleanPreferencesKey("upnp_enabled")
+        val DND_ENABLED_KEY = booleanPreferencesKey("dnd_enabled")
+        val AUTO_ADB_HOTSPOT_ENABLED_KEY = booleanPreferencesKey("auto_adb_hotspot_enabled")
+        val THEME_OVERRIDE_KEY = stringPreferencesKey("theme_override")
+
+        // Legal values for [THEME_OVERRIDE_KEY]; absent key means follow the OS setting.
+        const val THEME_SYSTEM = "system"
+        const val THEME_DARK = "dark"
+        const val THEME_LIGHT = "light"
     }
 
     private val _emailFlow = MutableStateFlow("")
@@ -51,6 +82,15 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
 
     private val _upnpEnabledFlow = MutableStateFlow(false)
     val upnpEnabledFlow: StateFlow<Boolean> = _upnpEnabledFlow.asStateFlow()
+
+    private val _dndEnabledFlow = MutableStateFlow(false)
+    val dndEnabledFlow: StateFlow<Boolean> = _dndEnabledFlow.asStateFlow()
+
+    private val _autoAdbHotspotEnabledFlow = MutableStateFlow(false)
+    val autoAdbHotspotEnabledFlow: StateFlow<Boolean> = _autoAdbHotspotEnabledFlow.asStateFlow()
+
+    private val _themeOverrideFlow = MutableStateFlow(THEME_SYSTEM)
+    val themeOverrideFlow: StateFlow<String> = _themeOverrideFlow.asStateFlow()
 
     private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
@@ -75,7 +115,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
 
     fun setPublicAddress(value: String) {
         _publicAddressFlow.value = value.trim()
-        scope.launch {
+        persist {
             dataStore.edit { prefs ->
                 prefs[PUBLIC_ADDRESS_KEY] = value.trim()
             }
@@ -87,8 +127,8 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         set(value) {
             _emailFlow.value = value
             updateIdentityHash(value)
-            scope.launch {
-                println("Saving new email to DataStore: $value")
+            persist {
+                Logger.i("Saving new email to DataStore: $value")
                 dataStore.edit { prefs ->
                     prefs[EMAIL_KEY] = value
                 }
@@ -100,7 +140,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         set(value) {
             val trimmed = value.trim().take(32)
             _aliasFlow.value = trimmed
-            scope.launch {
+            persist {
                 dataStore.edit { prefs ->
                     prefs[ALIAS_KEY] = trimmed
                 }
@@ -111,7 +151,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         get() = _clipboardSyncEnabledFlow.value
         set(value) {
             _clipboardSyncEnabledFlow.value = value
-            scope.launch {
+            persist {
                 dataStore.edit { prefs ->
                     prefs[CLIPBOARD_SYNC_ENABLED_KEY] = value
                 }
@@ -122,7 +162,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         get() = _wiggleEnabledFlow.value
         set(value) {
             _wiggleEnabledFlow.value = value
-            scope.launch {
+            persist {
                 dataStore.edit { prefs ->
                     prefs[WIGGLE_ENABLED_KEY] = value
                 }
@@ -133,9 +173,56 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         get() = _upnpEnabledFlow.value
         set(value) {
             _upnpEnabledFlow.value = value
-            scope.launch {
+            persist {
                 dataStore.edit { prefs ->
                     prefs[UPNP_ENABLED_KEY] = value
+                }
+            }
+        }
+
+    /**
+     * Do Not Disturb: when true, inbound pairing requests are never surfaced (and never
+     * mint a PIN) and inbound transfer sessions are refused with Forbidden. Enforced in
+     * `WebSocketRoutes` (pair-request) and `ShareRoutes` (prepare-upload).
+     */
+    var dndEnabled: Boolean
+        get() = _dndEnabledFlow.value
+        set(value) {
+            _dndEnabledFlow.value = value
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[DND_ENABLED_KEY] = value
+                }
+            }
+        }
+
+    /** Auto-connect ADB transport for discovered devices; enforced by AutoAdbHotspotService (composeApp). */
+    var autoAdbHotspotEnabled: Boolean
+        get() = _autoAdbHotspotEnabledFlow.value
+        set(value) {
+            _autoAdbHotspotEnabledFlow.value = value
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[AUTO_ADB_HOTSPOT_ENABLED_KEY] = value
+                }
+            }
+        }
+
+    /**
+     * Theme override: one of [THEME_SYSTEM] (follow the OS), [THEME_DARK] or [THEME_LIGHT].
+     * Resolved into an actual dark flag by the app shell when composing DeXTheme.
+     */
+    var themeOverride: String
+        get() = _themeOverrideFlow.value
+        set(value) {
+            val normalized = when (value) {
+                THEME_DARK, THEME_LIGHT -> value
+                else -> THEME_SYSTEM
+            }
+            _themeOverrideFlow.value = normalized
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[THEME_OVERRIDE_KEY] = normalized
                 }
             }
         }
@@ -152,7 +239,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
     fun setGoogleProfile(name: String, picture: String) {
         _profileNameFlow.value = name
         _profilePictureFlow.value = picture
-        scope.launch {
+        persist {
             dataStore.edit { prefs ->
                 prefs[GOOGLE_NAME_KEY] = name
                 prefs[GOOGLE_PICTURE_KEY] = picture
@@ -162,7 +249,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
 
     fun setGoogleSub(sub: String) {
         _googleSubFlow.value = sub
-        scope.launch {
+        persist {
             dataStore.edit { prefs ->
                 prefs[GOOGLE_SUB_KEY] = sub
             }
@@ -175,9 +262,33 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         setGoogleSub("")
     }
 
+    /**
+     * Full "Reset Identity & Trust" semantics: sign out AND rotate the identity hash so a
+     * previously leaked/known auto-trust credential dies with the reset. Pairing revocation
+     * itself lives in [com.dexstudios.dex.core.network.DeviceManager] (network module).
+     *
+     * Deliberately bypasses the [email] setter: it re-derives/restores a stored hash, which
+     * would race this rotation and resurrect the old credential.
+     */
+    fun resetIdentity(onRotation: suspend () -> Unit = {}) {
+        scope.launch {
+            onRotation()
+            _emailFlow.value = ""
+            setGoogleProfile("", "")
+            setGoogleSub("")
+            val freshHash = com.dexstudios.dex.core.network.HashUtils.generateUUID()
+            _identityHashFlow.value = freshHash
+            dataStore.edit { prefs ->
+                prefs[EMAIL_KEY] = ""
+                prefs[IDENTITY_HASH_KEY] = freshHash
+            }
+            Logger.i("Identity reset: rotated identity hash")
+        }
+    }
+
     init {
         scope.launch {
-            println("Initializing DeviceConfig from DataStore...")
+            Logger.i("Initializing DeviceConfig from DataStore...")
             val prefs = dataStore.data.first()
 
             val savedEmail = prefs[EMAIL_KEY] ?: ""
@@ -187,7 +298,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             if (savedFingerprint == null) {
                 savedFingerprint = com.dexstudios.dex.core.network.HashUtils.generateUUID()
                 dataStore.edit { it[FINGERPRINT_KEY] = savedFingerprint }
-                println("Generated new device fingerprint: $savedFingerprint")
+                Logger.i("Generated new device fingerprint: $savedFingerprint")
             }
             _fingerprintFlow.value = savedFingerprint
 
@@ -200,7 +311,13 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
             _wiggleEnabledFlow.value = prefs[WIGGLE_ENABLED_KEY] ?: true
             _upnpEnabledFlow.value = prefs[UPNP_ENABLED_KEY] ?: false
-            println("DeviceConfig fully initialized.")
+            _dndEnabledFlow.value = prefs[DND_ENABLED_KEY] ?: false
+            _autoAdbHotspotEnabledFlow.value = prefs[AUTO_ADB_HOTSPOT_ENABLED_KEY] ?: false
+            _themeOverrideFlow.value = when (val savedTheme = prefs[THEME_OVERRIDE_KEY]) {
+                THEME_DARK, THEME_LIGHT -> savedTheme
+                else -> THEME_SYSTEM
+            }
+            Logger.i("DeviceConfig fully initialized.")
         }
     }
 
@@ -217,11 +334,11 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             }
             _identityHashFlow.value = newHash
         }
-        println("Identity hash updated: ${_identityHashFlow.value}")
+        Logger.i("Identity hash updated: ${_identityHashFlow.value}")
     }
 
     private fun updateIdentityHash(emailStr: String) {
-        scope.launch {
+        persist {
             val prefs = dataStore.data.first()
             updateIdentityHashInternal(emailStr, prefs[IDENTITY_HASH_KEY])
         }

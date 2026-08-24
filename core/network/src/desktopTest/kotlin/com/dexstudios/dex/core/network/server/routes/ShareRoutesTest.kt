@@ -57,6 +57,7 @@ class ShareRoutesTest {
             every { this@mockk.identityHash } returns IDENTITY_HASH
             every { this@mockk.googleSub } returns GOOGLE_SUB
             every { this@mockk.fingerprint } returns "pc-fingerprint"
+            every { this@mockk.dndEnabled } returns false
         }
         startKoin { modules(module { single { deviceConfig } }) }
     }

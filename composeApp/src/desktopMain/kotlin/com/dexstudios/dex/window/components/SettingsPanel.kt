@@ -74,19 +74,24 @@ import javax.swing.JFileChooser
  *   1. Connection (DND switch)
  *   2. Dev Tools (ADB Connect & Auto-Connect Hotspot)
  *   3. Identity (Google OAuth loopback)
- *   4. Appearance (Dark/Light Theme)
+ *   4. Appearance (Theme: System / Dark / Light)
  *   5. Interaction (Wiggle-to-Open Menu)
- *   6. Storage (Download Location folder chooser setting controller.isModalDialogOpen = true during pick)
- *   7. About DeX (Version 1.0.0 & GitHub link) & Reset Identity
+ *   5. Storage (Download Location folder chooser setting controller.isModalDialogOpen = true during pick)
+ *   6. About DeX (Version 1.0.0 & GitHub link) & Reset Identity
  */
 @Composable
-fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateController? = null, modifier: Modifier = Modifier, deviceConfig: DeviceConfig = koinInject()) {
+fun SettingsPanel(
+    onClose: () -> Unit = {},
+    controller: DockedWindowStateController? = null,
+    modifier: Modifier = Modifier,
+    deviceConfig: DeviceConfig = koinInject(),
+    discoveryEngine: com.dexstudios.dex.core.network.DiscoveryEngine = koinInject(),
+) {
     val coroutineScope = rememberCoroutineScope()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
-
-    var isDndActive by remember { mutableStateOf(false) }
-    var isAutoAdbHotspotActive by remember { mutableStateOf(true) }
-    var isDarkTheme by remember { mutableStateOf(true) }
+    val isDndActive by deviceConfig.dndEnabledFlow.collectAsState()
+    val isAutoAdbHotspotActive by deviceConfig.autoAdbHotspotEnabledFlow.collectAsState()
+    val themeOverride by deviceConfig.themeOverrideFlow.collectAsState()
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
     var downloadPath by remember {
@@ -237,7 +242,7 @@ fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateControl
                     subtitle = "Auto-reject all pairing/transfer requests",
                     badge = if (isDndActive) "ON" else "OFF",
                     isBadgeDanger = isDndActive,
-                    onClick = { isDndActive = !isDndActive },
+                    onClick = { deviceConfig.dndEnabled = !isDndActive },
                     iconContent = { tint ->
                         AnimatedDndBell(
                             isDndActive = isDndActive,
@@ -262,15 +267,28 @@ fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateControl
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_tune),
                     title = "Connect ADB",
-                    subtitle = "Enable ADB terminal debugging for power users",
-                    onClick = { /* Launch ADB connection */ },
+                    subtitle = "Run adb connect against every discovered device",
+                    onClick = {
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val devices = discoveryEngine.devices.value.values.toList()
+                            if (devices.isEmpty()) {
+                                co.touchlab.kermit.Logger.i("Connect ADB: no devices discovered yet")
+                            }
+                            devices.forEach { device ->
+                                // Self-gating: AdbManager probes port 5555 with a bounded TCP
+                                // ping before invoking the adb binary, so offline devices cost
+                                // ~400ms each instead of hanging the session.
+                                com.dexstudios.dex.desktop.AdbManager.connect(device.ip)
+                            }
+                        }
+                    },
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_bolt),
                     title = "Auto-Connect ADB Hotspot",
-                    subtitle = "Auto-connect ADB daemon when joining phone hotspot",
+                    subtitle = "Run adb connect for discovered devices as soon as they appear",
                     badge = if (isAutoAdbHotspotActive) "ON" else "OFF",
-                    onClick = { isAutoAdbHotspotActive = !isAutoAdbHotspotActive },
+                    onClick = { deviceConfig.autoAdbHotspotEnabled = !isAutoAdbHotspotActive },
                 )
             }
 
@@ -303,8 +321,20 @@ fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateControl
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_palette),
                     title = "Theme",
-                    subtitle = if (isDarkTheme) "Dark" else "Light",
-                    onClick = { isDarkTheme = !isDarkTheme },
+                    subtitle = when (themeOverride) {
+                        DeviceConfig.THEME_DARK -> "Dark"
+                        DeviceConfig.THEME_LIGHT -> "Light"
+                        else -> "System"
+                    },
+                    onClick = {
+                        // Cycle System -> Dark -> Light; persisted and honored app-wide
+                        // by the DeXTheme composition in main.kt.
+                        deviceConfig.themeOverride = when (themeOverride) {
+                            DeviceConfig.THEME_SYSTEM -> DeviceConfig.THEME_DARK
+                            DeviceConfig.THEME_DARK -> DeviceConfig.THEME_LIGHT
+                            else -> DeviceConfig.THEME_SYSTEM
+                        }
+                    },
                 )
             }
 
@@ -373,7 +403,17 @@ fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateControl
                     subtitle = "Revokes all paired devices and restarts identity",
                     isDanger = true,
                     onClick = {
-                        deviceConfig.signOut()
+                        // Revoke every persisted pairing, then rotate the identity hash so a
+                        // previously known auto-trust credential dies with the reset.
+                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
+                            paired.forEach { fp ->
+                                runCatching {
+                                    com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(fp)
+                                }
+                            }
+                            deviceConfig.resetIdentity()
+                        }
                     },
                 )
             }

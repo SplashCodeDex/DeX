@@ -83,6 +83,13 @@ data class SessionEntry(
 val activeUploadSessions = ConcurrentHashMap<String, SessionEntry>()
 val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
 
+/** Constant-time string equality for bearer/pull-token checks (length pre-checked). */
+private fun tokenEquals(presented: String?, expected: String?): Boolean {
+    if (presented.isNullOrEmpty() || expected.isNullOrEmpty()) return false
+    return presented.length == expected.length &&
+        MessageDigest.isEqual(presented.toByteArray(), expected.toByteArray())
+}
+
 private val shareRoutesFileLock = Any()
 
 /** Removes every trace of an incoming session: session store, progress counters, dashboard entry. */
@@ -92,16 +99,32 @@ fun failIncomingSession(sessionId: String) {
     com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
 }
 
-val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO).apply {
-    launch {
-        while (true) {
-            delay(60_000) // 1 minute
-            val now = System.currentTimeMillis()
-            val expired = activeUploadSessions.entries
-                .filter { now - it.value.createdAt > 10 * 60_000 }
-                .map { it.key }
-            // TTL sweeper must also clear progress + dashboard state, not just the session map
-            for (id in expired) failIncomingSession(id)
+/** Shared IO scope for fire-and-forget route work (toasts, cleanup delays, janitor). */
+val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+/**
+ * Self-parking TTL sweeper for incoming upload sessions — same lifecycle pattern as
+ * RelayService.ensureMaintenanceLoop: started on demand when a session is registered,
+ * exits when nothing is left to watch instead of burning a timer forever.
+ */
+private val janitorRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
+internal fun ensureSessionJanitor() {
+    if (janitorRunning.compareAndSet(false, true)) {
+        shareRouteScope.launch {
+            while (true) {
+                delay(60_000) // 1 minute
+                val now = System.currentTimeMillis()
+                val expired = activeUploadSessions.entries
+                    .filter { now - it.value.createdAt > 10 * 60_000 }
+                    .map { it.key }
+                // TTL sweeper must also clear progress + dashboard state, not just the session map
+                for (id in expired) failIncomingSession(id)
+                if (activeUploadSessions.isEmpty()) break
+            }
+            janitorRunning.set(false)
+            // Re-check under race: a session may have arrived between the check and the reset
+            if (activeUploadSessions.isNotEmpty()) ensureSessionJanitor()
         }
     }
 }
@@ -111,6 +134,15 @@ fun Route.shareRoutes() {
 
     route("/local") {
         post("/share-target") {
+            // OS share-target integration is a LOCAL automation surface; it must never be
+            // reachable from the network listeners. The TLS listener serves 0.0.0.0, the
+            // maintenance listener 127.0.0.1 — gate on the local bind address.
+            if (call.request.local.serverHost != "127.0.0.1" && call.request.local.serverHost != "::1" &&
+                call.request.local.serverHost != "0:0:0:0:0:0:0:1"
+            ) {
+                call.respond(HttpStatusCode.Forbidden)
+                return@post
+            }
             try {
                 val payload = call.receive<ShareTargetPayload>()
 
@@ -145,12 +177,22 @@ fun Route.shareRoutes() {
                 val koin = org.koin.core.context.GlobalContext.get()
                 val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
 
-                val isAutoTrusted = !token.isNullOrEmpty() && (token == deviceConfig.identityHash || (deviceConfig.googleSub.isNotEmpty() && token == deviceConfig.googleSub))
+                val isAutoTrusted = tokenEquals(token, deviceConfig.identityHash) ||
+                    (deviceConfig.googleSub.isNotEmpty() && tokenEquals(token, deviceConfig.googleSub))
 
                 val pairedTokens = com.dexstudios.dex.auth.AuthState.pairedTokens.value
-                val isPaired = !token.isNullOrEmpty() && pairedTokens[req.info.fingerprint] == token
+                val isPaired = tokenEquals(token, pairedTokens[req.info.fingerprint])
 
                 if (!isAutoTrusted && !isPaired) {
+                    call.respond(HttpStatusCode.Forbidden)
+                    return@post
+                }
+
+                // Do Not Disturb: refuse new inbound transfer sessions even from trusted peers.
+                // The sender receives the same Forbidden an untrusted peer would get, so its
+                // normal "Not authorized" error path surfaces instead of a silent stall.
+                if (deviceConfig.dndEnabled) {
+                    co.touchlab.kermit.Logger.i("DND: rejected inbound transfer session from ${req.info.alias}")
                     call.respond(HttpStatusCode.Forbidden)
                     return@post
                 }
@@ -186,6 +228,7 @@ fun Route.shareRoutes() {
                     issuedTokens = issuedTokens,
                     ownerToken = token?.takeIf { it.isNotEmpty() },
                 )
+                ensureSessionJanitor()
 
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
                     sessionId,
@@ -262,9 +305,7 @@ fun Route.shareRoutes() {
             if (issued != null) {
                 val expected = issued[fileId]
                 val presented = call.request.queryParameters["token"]
-                if (expected == null || presented == null ||
-                    !MessageDigest.isEqual(presented.toByteArray(), expected.toByteArray())
-                ) {
+                if (expected == null || !tokenEquals(presented, expected)) {
                     call.respond(HttpStatusCode.Forbidden)
                     return@post
                 }
@@ -412,8 +453,7 @@ private suspend fun respondHostedFile(call: ApplicationCall, legacyTokenSemantic
     val expectedToken = RelayService.hostedFileTokens[fileId]
     val filePath = RelayService.hostedFiles[fileId]
 
-    val tokenOk = expectedToken != null && token.length == expectedToken.length &&
-        MessageDigest.isEqual(token.toByteArray(), expectedToken.toByteArray())
+    val tokenOk = tokenEquals(token, expectedToken)
     if (!tokenOk || filePath == null) {
         call.respond(if (legacyTokenSemantics) HttpStatusCode.NotFound else HttpStatusCode.Forbidden)
         return
