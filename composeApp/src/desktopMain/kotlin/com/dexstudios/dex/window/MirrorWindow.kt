@@ -30,6 +30,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 
 private val mirrorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -44,8 +45,19 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
     var isLandscape by remember { mutableStateOf(false) }
 
     val frameBytes by mirrorEngine.latestFrame.collectAsState()
-    val latestFrame = remember(frameBytes) {
-        frameBytes?.let { org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap() }
+
+    // Decode off the UI thread: Image.makeFromEncoded on every incoming frame during
+    // composition stalled composition at phone frame rates.
+    val latestFrame by produceState<ImageBitmap?>(initialValue = null, key1 = frameBytes) {
+        // Local capture: delegated properties cannot be smart-cast inside the producer.
+        val bytes = frameBytes
+        value = if (bytes != null) {
+            withContext(Dispatchers.Default) {
+                org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
+            }
+        } else {
+            null
+        }
     }
 
     // Live frame aspect ratio drives the landscape window size so the video fills
@@ -82,9 +94,11 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
                     .fillMaxSize()
                     .background(Color(0xFF0F0C13)),
             ) {
-                if (latestFrame != null) {
+                // Local capture: delegated property cannot be smart-cast to non-null.
+                val currentFrame = latestFrame
+                if (currentFrame != null) {
                     Image(
-                        bitmap = latestFrame,
+                        bitmap = currentFrame,
                         contentDescription = "Screen Mirror",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit,

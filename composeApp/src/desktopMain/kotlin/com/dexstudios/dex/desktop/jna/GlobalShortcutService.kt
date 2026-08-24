@@ -13,6 +13,7 @@ object GlobalShortcutService {
 
     fun start(onToggle: () -> Unit) {
         if (!com.dexstudios.dex.platform.DesktopEnvironment.isWindows) return
+        if (job?.isActive == true) return // Already installed — never stack a second keyboard hook
 
         job = CoroutineScope(Dispatchers.IO).launch {
             val module = Kernel32.INSTANCE.GetModuleHandle(null)

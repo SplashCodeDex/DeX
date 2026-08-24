@@ -30,7 +30,6 @@ object GlobalMouseButtonHook {
 
     private const val WH_MOUSE_LL = 14
     private const val WM_LBUTTONUP = 0x0202
-    private const val WM_QUIT = 0x0012
 
     private interface HookProc : Callback {
         fun callback(nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
@@ -43,7 +42,6 @@ object GlobalMouseButtonHook {
         fun UnhookWindowsHookEx(hhk: Pointer): Boolean
         fun CallNextHookEx(hhk: Pointer?, nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
         fun GetMessageW(lpMsg: WinUser.MSG?, hWnd: Pointer?, wMsgFilterMin: Int, wMsgFilterMax: Int): Int
-        fun PostThreadMessageW(idThread: Int, msg: Int, wParam: Pointer?, lParam: Pointer?): Boolean
         fun GetCurrentThreadId(): Int
     }
 

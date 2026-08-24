@@ -20,11 +20,22 @@ object AdbManager {
     private val downloadOsSuffix = if (isWindows) "windows" else "darwin"
     private val ADB_DOWNLOAD_URL = "https://dl.google.com/android/repository/platform-tools-latest-$downloadOsSuffix.zip"
 
+    /** Resolved once per process; re-probing PATH and re-downloading on every call was pure churn. */
+    @Volatile
+    private var cachedAdbPath: String? = null
+
     /**
      * Tries to find ADB in the system PATH. If not found, uses the bundled version.
-     * If bundled version doesn't exist, downloads and extracts it.
+     * If bundled version doesn't exist, downloads and extracts it. The resolved path is
+     * cached for the process lifetime — re-probing PATH and re-downloading on every call
+     * was pure churn.
      */
-    suspend fun getAdbExecutable(): String = withContext(Dispatchers.IO) {
+    suspend fun getAdbExecutable(): String {
+        cachedAdbPath?.let { return it }
+        return resolveAdbExecutable().also { cachedAdbPath = it }
+    }
+
+    private suspend fun resolveAdbExecutable(): String = withContext(Dispatchers.IO) {
         // Check if adb is in PATH
         try {
             val process = ProcessBuilder("adb", "version").start()
@@ -93,6 +104,41 @@ object AdbManager {
         }
 
         return@withContext if (adbExeFile.exists()) adbExeFile.absolutePath else "adb"
+    }
+
+    /**
+     * Fires a broadcast at a connected device over ADB with the SAME executable resolution
+     * as [connect]/[disconnect] (bundled platform-tools, not a bare PATH hope).
+     * Bounded: a hung adb process is destroyed after [timeoutMillis] instead of leaking.
+     * Returns true only when adb itself reported success — callers must treat this as
+     * best-effort transport, never as delivery proof.
+     */
+    suspend fun broadcast(action: String, extras: Map<String, String>, timeoutMillis: Long = 5_000L): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val args = buildList {
+                add(getAdbExecutable())
+                addAll(arrayOf("shell", "am", "broadcast", "-a", action))
+                extras.forEach { (key, value) ->
+                    addAll(arrayOf("-e", key, value))
+                }
+            }
+            val process = ProcessBuilder(args).start()
+            val finished = runCatching { process.waitFor(timeoutMillis, java.util.concurrent.TimeUnit.MILLISECONDS) }
+                .getOrDefault(false)
+            if (!finished) {
+                process.destroyForcibly()
+                Logger.i("ADB broadcast '$action' timed out after ${timeoutMillis}ms and was destroyed")
+                return@withContext false
+            }
+            val exitCode = process.exitValue()
+            if (exitCode != 0) {
+                Logger.i("ADB broadcast '$action' failed (exit $exitCode)")
+            }
+            exitCode == 0
+        } catch (e: Exception) {
+            Logger.i("ADB broadcast '$action' error: ${e.message}")
+            false
+        }
     }
 
     /**

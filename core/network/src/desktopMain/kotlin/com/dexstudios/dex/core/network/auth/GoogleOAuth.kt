@@ -1,6 +1,7 @@
 package com.dexstudios.dex.core.network.auth
 
 import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.network.DeXPorts
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.post
@@ -31,7 +32,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 object GoogleOAuth {
 
-    private const val REDIRECT_URI = "http://127.0.0.1:48425/local/oauth/callback"
+    // Served by DeXServer's dedicated loopback listener (legacy WPF Kestrel parity — this
+    // exact URI is registered in the Google Cloud Console client, never change it casually).
+    private const val REDIRECT_URI = "http://127.0.0.1:${DeXPorts.OAUTH_CALLBACK}/local/oauth/callback"
     private const val AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     private const val TOKEN_URL = "https://oauth2.googleapis.com/token"
 

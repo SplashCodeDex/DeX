@@ -16,6 +16,7 @@ object WiggleToOpenService {
             Logger.i("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
             return
         }
+        if (job?.isActive == true) return // Already running — never stack a second 66Hz poller
 
         job = CoroutineScope(Dispatchers.IO).launch {
             val bufferSize = 60 // 60 samples @ 15ms = 900ms of history
@@ -109,7 +110,9 @@ object WiggleToOpenService {
                     }
                 }
 
-                delay(15) // ~66Hz Polling rate
+                // Full-rate sampling only while enabled; a disabled wiggle still wakes for
+                // the sleep/wake detector below but has no reason to spin at 66Hz.
+                delay(if (deviceConfig.wiggleEnabled) 15 else 250)
 
                 // Wake up detector (if thread hung for 5000ms+ due to sleep/suspend)
                 if (System.currentTimeMillis() - loopStartTime > 5000L) {

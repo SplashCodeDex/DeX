@@ -19,6 +19,9 @@ import javax.imageio.ImageIO
 object ClipboardSyncService {
     private var processJob: Job? = null
 
+    @Volatile
+    private var started = false
+
     @Volatile private var lastHash: String = ""
 
     private val flavorListener = FlavorListener {
@@ -33,6 +36,8 @@ object ClipboardSyncService {
     private var deviceConfig: com.dexstudios.dex.core.network.DeviceConfig? = null
 
     fun start(config: com.dexstudios.dex.core.network.DeviceConfig) {
+        if (started) return // Already listening — never stack a second FlavorListener
+        started = true
         this.deviceConfig = config
         com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = { text ->
             updateHashFromRemote(text)
@@ -45,7 +50,9 @@ object ClipboardSyncService {
     }
 
     fun stop() {
+        started = false
         processJob?.cancel()
+        com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = null
         try {
             Toolkit.getDefaultToolkit().systemClipboard.removeFlavorListener(flavorListener)
         } catch (e: Exception) { }
@@ -109,13 +116,14 @@ object ClipboardSyncService {
                 val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)
 
                 if (!success) {
-                    // ADB Fallback
+                    // ADB Fallback — routed through AdbManager so it uses the bundled
+                    // platform-tools and a bounded, destroyed process (never a bare PATH
+                    // `adb` exec that can hang forever).
                     val b64 = Base64.getEncoder().encodeToString(data.toByteArray(Charsets.UTF_8))
-                    try {
-                        Runtime.getRuntime().exec(
-                            arrayOf("adb", "shell", "am", "broadcast", "-a", "com.dexstudios.dex.SET_CLIPBOARD", "-e", "text_b64", b64),
-                        ).waitFor()
-                    } catch (e: Exception) { }
+                    com.dexstudios.dex.desktop.AdbManager.broadcast(
+                        action = "com.dexstudios.dex.SET_CLIPBOARD",
+                        extras = mapOf("text_b64" to b64),
+                    )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -1,6 +1,7 @@
 package com.dexstudios.dex.core.network.services
 
 import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.network.DeXPorts
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -10,7 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.DatagramPacket
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -32,6 +35,10 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
 
     private data class IgdInfo(val controlUrl: String, val serviceType: String, val routerIp: String)
 
+    /** Gateway seen at the last successful [configureAsync]; drives shutdown-time cleanup. */
+    @Volatile
+    private var lastKnownIgd: IgdInfo? = null
+
     fun configureAsync() {
         scope.launch {
             try {
@@ -39,16 +46,17 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
                     Logger.i("[UPNP] No UPnP Internet Gateway Device found.")
                     return@launch
                 }
+                lastKnownIgd = igd
 
-                // Delete stale mappings first
-                deletePortMapping(igd, 48424, "TCP")
-                deletePortMapping(igd, 48423, "UDP")
-                deletePortMapping(igd, 48425, "TCP")
+                // Delete stale mappings first (also sweeps leaks from older sessions)
+                deletePortMapping(igd, DeXPorts.HTTPS, "TCP")
+                deletePortMapping(igd, DeXPorts.QUIC, "UDP")
+                deletePortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
 
                 // Add active mappings
-                addPortMapping(igd, 48424, "TCP")
-                addPortMapping(igd, 48423, "UDP")
-                addPortMapping(igd, 48425, "TCP")
+                addPortMapping(igd, DeXPorts.HTTPS, "TCP")
+                addPortMapping(igd, DeXPorts.QUIC, "UDP")
+                addPortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
 
                 val externalIp = getExternalIp(igd)
                 if (externalIp != null) {
@@ -59,6 +67,27 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
                 Logger.i("[UPNP] Configure failed: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Best-effort removal of the mappings added by [configureAsync] so exiting the app does
+     * not leave ports 48424/TCP, 48423/UDP and 48425/TCP open on the router forever.
+     *
+     * Uses the IGD cached at configuration time; silently skips when no gateway was seen
+     * this session (leaked mappings from older sessions are swept by the next
+     * configureAsync's delete-before-add). Bounded-blocking — safe for the shutdown
+     * coordinator, which runs it on a side thread with a join deadline.
+     */
+    fun releaseMappedPorts(timeoutMillis: Long = 1_500L) {
+        val igd = lastKnownIgd ?: return
+        runBlocking {
+            withTimeoutOrNull(timeoutMillis) {
+                deletePortMapping(igd, DeXPorts.HTTPS, "TCP")
+                deletePortMapping(igd, DeXPorts.QUIC, "UDP")
+                deletePortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
+            }
+        }
+        lastKnownIgd = null
     }
 
     private suspend fun discoverIgdAsync(): IgdInfo? = withContext(Dispatchers.IO) {
