@@ -1,0 +1,88 @@
+---
+import { site } from '../../data/site';
+
+const { desktop, mobile } = site;
+---
+
+<section id="download" class="relative px-4 pb-24 pt-10 md:pb-32">
+  <div class="mx-auto max-w-5xl">
+    <div class="landing-reveal mb-14 text-center">
+      <h1 class="text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        Get DeX free
+      </h1>
+      <p class="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
+        One install on your computer, one app on your phone. Sending takes one scan.
+      </p>
+    </div>
+
+    <h2 class="landing-reveal mb-6 font-brand text-2xl text-primary-600 dark:text-primary-400">
+      Phone
+    </h2>
+    <div class="grid gap-6 sm:grid-cols-2">
+      {mobile.map((platform, i) => (
+        <div
+          class="landing-reveal flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          style={`transition-delay: ${i * 0.1}s`}
+        >
+          <img src={platform.icon} alt="" aria-hidden="true" width="56" height="56" loading="lazy" class="size-14 object-contain" />
+          <h3 class="mt-4 text-lg font-bold text-foreground">{platform.name}</h3>
+          <p class="mt-1 text-sm text-muted-foreground">{platform.requirement}</p>
+          {platform.available ? (
+            <a
+              href={site.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-6 inline-flex h-12 w-full items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-black transition-colors hover:bg-black/85 cursor-pointer"
+            >
+              <img src={platform.badge} alt={platform.badgeAlt} width="135" height="45" loading="lazy" class="h-10 w-auto" />
+            </a>
+          ) : (
+            <span
+              class="mt-6 inline-flex h-12 w-full cursor-default items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-black opacity-80"
+              title="At launch"
+            >
+              <img src={platform.badge} alt={`${platform.badgeAlt} — at launch`} width="135" height="45" loading="lazy" class="h-10 w-auto" />
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <h2 class="landing-reveal mb-6 mt-16 font-brand text-2xl text-primary-600 dark:text-primary-400">
+      Computer
+    </h2>
+    <div class="grid gap-6 sm:grid-cols-3">
+      {desktop.map((platform, i) => (
+        <div
+          class="landing-reveal flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          style={`transition-delay: ${i * 0.1}s`}
+        >
+          <img src={platform.icon} alt="" aria-hidden="true" width="56" height="56" loading="lazy" class="size-14 object-contain" />
+          <h3 class="mt-4 text-lg font-bold text-foreground">{platform.name}</h3>
+          <p class="mt-1 text-sm text-muted-foreground">{platform.requirement}</p>
+          {platform.available ? (
+            <a
+              href={site.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group relative mt-6 inline-flex h-11 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-lg text-sm font-medium text-white shadow-lg shadow-primary-500/20 transition-all duration-200 hover:shadow-primary-500/30 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-md bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 dark:from-primary-500 dark:to-primary-400 dark:hover:from-primary-600 dark:hover:to-primary-500 cursor-pointer"
+            >
+              <span class="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></span>
+              Download
+            </a>
+          ) : (
+            <span class="mt-6 inline-flex h-11 w-full cursor-default items-center justify-center rounded-lg border border-input bg-background/50 text-sm font-medium text-muted-foreground backdrop-blur-md">
+              At launch
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <p class="landing-reveal mt-16 text-center text-sm text-muted-foreground">
+      Free forever for everyday transfers &middot; No account &middot; Files never touch a server
+      &middot; Pro adds internet-range sending on the{' '}
+      <a href={site.pricingPage} class="font-medium text-primary-500 underline-offset-4 hover:underline">pricing page</a>
+    </p>
+  </div>
+</section>

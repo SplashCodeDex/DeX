@@ -1,0 +1,35 @@
+---
+import { site } from '../data/site';
+import LandingLayout from '../layouts/LandingLayout.astro';
+import Hero from '../components/landing/Hero.astro';
+import HowItWorks from '../components/landing/HowItWorks.astro';
+import BentoFeatures from '../components/landing/BentoFeatures.astro';
+import Compare from '../components/landing/Compare.astro';
+import Security from '../components/landing/Security.astro';
+import Faq from '../components/landing/Faq.astro';
+import FinalCta from '../components/landing/FinalCta.astro';
+import StickyCta from '../components/landing/StickyCta.astro';
+import SiteFooter from '../components/landing/SiteFooter.astro';
+---
+
+<LandingLayout title={`${site.name} — Phone to PC transfers that feel instant`} description={site.description}>
+  <div id="main-content" class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <Hero />
+    <HowItWorks />
+    <BentoFeatures />
+    <Compare />
+    <Security />
+    <Faq />
+    <FinalCta />
+    <StickyCta />
+    <SiteFooter />
+  </div>
+</LandingLayout>
+
+<script>
+  import { enhancePage } from '../scripts/pageEnhance';
+  import { initLogoMorph } from '../scripts/logoMorph';
+
+  enhancePage();
+  initLogoMorph();
+</script>

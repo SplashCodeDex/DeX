@@ -1,0 +1,67 @@
+---
+import { site } from '../data/site';
+const { free, pro } = site.pricing;
+---
+
+<section id="pricing" class="scroll-mt-28 py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="mx-auto max-w-2xl text-center">
+      <h2 class="text-balance text-3xl font-bold tracking-tight sm:text-4xl">Free where it matters</h2>
+      <p class="mt-4 text-mist/60">
+        Local transfers, pairing, and clipboard sync cost nothing. Pro adds the long-range paths
+        for people who live across networks.
+      </p>
+    </div>
+
+    <div class="mx-auto mt-12 grid max-w-4xl gap-4 md:grid-cols-2">
+      <article class="rounded-3xl glass p-8">
+        <h3 class="text-sm font-semibold tracking-wide text-mist/60 uppercase">Free</h3>
+        <p class="mt-4 flex items-baseline gap-2">
+          <span class="text-5xl font-black tracking-tight">{free.price}</span>
+          <span class="text-sm text-mist/50">{free.period}</span>
+        </p>
+        <a
+          href={free.href}
+          class="mt-8 block rounded-xl glass px-5 py-3 text-center text-sm font-semibold transition-colors hover:bg-mist/10"
+        >
+          {free.cta}
+        </a>
+        <ul class="mt-8 space-y-3">
+          {free.features.map((feature) => (
+            <li class="flex items-start gap-3 text-sm text-mist/75">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 size-4 shrink-0 text-accent">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </article>
+
+      <article class="relative rounded-3xl border border-accent/40 bg-elevated p-8">
+        <span class="absolute -top-3 right-6 rounded-full bg-accent px-3 py-1 text-xs font-bold text-base">{pro.badge}</span>
+        <h3 class="text-sm font-semibold tracking-wide text-accent uppercase">DeX {pro.name}</h3>
+        <p class="mt-4 flex items-baseline gap-2">
+          <span class="text-5xl font-black tracking-tight">{pro.price}</span>
+          <span class="text-sm text-mist/50">{pro.period}</span>
+        </p>
+        <a
+          href={pro.href}
+          class="mt-8 block rounded-xl bg-accent px-5 py-3 text-center text-sm font-semibold text-base transition-opacity hover:opacity-85"
+        >
+          {pro.cta}
+        </a>
+        <ul class="mt-8 space-y-3">
+          {pro.features.map((feature) => (
+            <li class="flex items-start gap-3 text-sm text-mist/85">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 size-4 shrink-0 text-accent">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>

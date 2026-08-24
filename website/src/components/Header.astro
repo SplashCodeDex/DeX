@@ -1,0 +1,30 @@
+---
+import { site } from '../data/site';
+const links = [
+  { label: 'Features', href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Security', href: '#security' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'FAQ', href: '#faq' },
+];
+---
+
+<header class="fixed inset-x-0 top-0 z-50">
+  <div class="mx-auto mt-4 flex max-w-6xl items-center justify-between rounded-2xl glass px-5 py-3">
+    <a href="#top" class="flex items-center gap-2.5" aria-label={`${site.name} home`}>
+      <span class="grid size-8 place-items-center rounded-lg bg-accent text-base font-black">D</span>
+      <span class="text-lg font-bold tracking-tight">{site.name}</span>
+    </a>
+    <nav class="hidden items-center gap-7 md:flex" aria-label="Primary">
+      {links.map((link) => (
+        <a href={link.href} class="text-sm text-mist/70 transition-colors hover:text-mist">{link.label}</a>
+      ))}
+    </nav>
+    <a
+      href={site.download}
+      class="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-base transition-opacity hover:opacity-85"
+    >
+      Download
+    </a>
+  </div>
+</header>

@@ -1,0 +1,63 @@
+---
+import { site } from '../../data/site';
+
+const faqs = [
+  {
+    q: 'Do my files get uploaded anywhere?',
+    a: 'No. On the same Wi-Fi, files go straight from one device to the other. There is no cloud storage holding copies of your stuff.',
+  },
+  {
+    q: 'Can I send files when devices are far apart?',
+    a: 'Yes — Pro sends across the internet. Where networks allow, your devices connect directly; strict ones like hotel Wi-Fi use a helper route instead.',
+  },
+  {
+    q: 'What do I need to get started?',
+    a: 'DeX on your computer (Windows or macOS) and on your Android phone. Scan the code shown on screen once, and your devices stay connected.',
+  },
+  {
+    q: 'Is there a file size limit?',
+    a: 'If your devices can store it, DeX can send it — photos, videos, whole folders. Nothing gets compressed on the way.',
+  },
+  {
+    q: 'Does it work with LocalSend apps?',
+    a: 'Yes. DeX speaks the same protocol, so it fits right in next to LocalSend on other devices.',
+  },
+  {
+    q: 'How much does it cost?',
+    a: `Everyday sending between devices on the same Wi-Fi is free, forever. Pro is ${site.pricing.pro.price} once and adds internet-range sending plus lifetime updates.`,
+  },
+];
+---
+
+<section id="faq" class="relative scroll-mt-24 px-4 py-24 md:py-32">
+  <div class="mx-auto max-w-3xl">
+    <div class="landing-reveal mb-12 text-center">
+      <h2 class="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        People often ask
+      </h2>
+    </div>
+
+    <div class="space-y-3">
+      {faqs.map((item) => (
+        <details class="landing-reveal group rounded-2xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20">
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 text-left text-base font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+            {item.q}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="size-4 shrink-0 text-muted-foreground transition-transform duration-300 group-open:rotate-180"
+            >
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </summary>
+          <p class="px-5 pb-5 leading-relaxed text-muted-foreground">{item.a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

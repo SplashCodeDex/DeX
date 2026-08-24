@@ -1,0 +1,25 @@
+---
+import { site } from '../data/site';
+import LandingLayout from '../layouts/LandingLayout.astro';
+import PageHeader from '../components/landing/PageHeader.astro';
+import DownloadSection from '../components/landing/DownloadSection.astro';
+import SiteFooter from '../components/landing/SiteFooter.astro';
+---
+
+<LandingLayout title={`Download — ${site.name}`} description="Get DeX free for Windows and macOS, with Android and iOS companion apps at launch. Scan once and send files straight between devices.">
+  <div id="main-content" class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <PageHeader />
+    <main class="flex-1">
+      <DownloadSection />
+    </main>
+    <SiteFooter />
+  </div>
+</LandingLayout>
+
+<script>
+  import { enhancePage } from '../scripts/pageEnhance';
+  import { initLogoMorph } from '../scripts/logoMorph';
+
+  enhancePage();
+  initLogoMorph();
+</script>

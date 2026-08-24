@@ -1,0 +1,59 @@
+---
+const features = [
+  {
+    title: 'Pair in seconds',
+    body: 'Scan a QR or type a PIN. Offers expire after 60 seconds, so a pairing window never lingers on your network.',
+    icon: 'M12 3v3m0 12v3M3 12h3m12 0h3M8.5 8.5l-2-2m9 9 2 2m0-11-2 2m-9 9 2-2',
+  },
+  {
+    title: 'QUIC-speed transfers',
+    body: 'Files stream over QUIC with parallel streams while an HTTP fallback keeps older networks moving.',
+    icon: 'M13 2 4 14h6l-1 8 9-12h-6l1-8z',
+  },
+  {
+    title: 'Works across the internet',
+    body: 'NAT punching connects your devices directly when no LAN is shared. A relay path catches the networks that refuse to cooperate.',
+    icon: 'M12 21c5-3.5 7-7.5 7-11a7 7 0 1 0-14 0c0 3.5 2 7.5 7 11zM12 10v.01',
+  },
+  {
+    title: 'LocalSend compatible',
+    body: 'DeX speaks the LocalSend v2 protocol, so it exchanges files with the ecosystem you may already run.',
+    icon: 'M4 7h13m0 0-3-3m3 3-3 3M20 17H7m0 0 3 3m-3-3 3-3',
+  },
+  {
+    title: 'Clipboard sync',
+    body: 'Copy a link or a snippet on your phone and paste it straight into your desktop workflow.',
+    icon: 'M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1zm-2 3H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1',
+  },
+  {
+    title: 'Browse before you send',
+    body: 'A built-in file explorer lets you walk either device folder tree and pick exactly what moves.',
+    icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z',
+  },
+];
+---
+
+<section id="features" class="scroll-mt-28 py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="max-w-2xl">
+      <h2 class="text-balance text-3xl font-bold tracking-tight sm:text-4xl">Everything the cable used to do</h2>
+      <p class="mt-4 text-mist/60">
+        DeX runs one shared Kotlin Multiplatform codebase on Windows and macOS, talking to your phone
+        over a hardened local-first protocol.
+      </p>
+    </div>
+    <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map((feature) => (
+        <article class="rounded-2xl glass p-6 transition-colors hover:bg-mist/10">
+          <span class="grid size-11 place-items-center rounded-xl bg-accent/12 text-accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="size-5.5">
+              <path d={feature.icon}></path>
+            </svg>
+          </span>
+          <h3 class="mt-4 text-lg font-semibold">{feature.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-mist/60">{feature.body}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

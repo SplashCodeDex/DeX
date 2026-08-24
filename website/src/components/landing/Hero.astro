@@ -1,0 +1,147 @@
+---
+import { site } from '../../data/site';
+---
+
+<section class="relative flex h-screen w-full items-center justify-center px-4">
+  <div
+    class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-64 bg-gradient-to-t from-background via-background/80 to-transparent backdrop-blur-[2px] sm:h-30"
+  >
+  </div>
+
+  <div class="relative z-20 mx-auto max-w-3xl text-center">
+    <div class="mx-auto h-32 w-32 sm:h-40 sm:w-40" data-logo-morph>
+      <img
+        src="/assets/logos/dex-dark.png"
+        alt="DeX"
+        width="240"
+        height="240"
+        loading="eager"
+        class="morph-fallback h-full w-auto dark:hidden"
+      />
+      <img
+        src="/assets/logos/dex-light.png"
+        alt=""
+        aria-hidden="true"
+        width="240"
+        height="240"
+        loading="eager"
+        class="morph-fallback hidden h-full w-auto dark:block"
+      />
+    </div>
+    <p class="mb-6 mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-md dark:border-white/5 dark:bg-black/20">
+      <span class="size-1.5 rounded-full bg-primary-500"></span>
+      LocalSend v2 compatible
+    </p>
+    <h1 class="text-balance text-4xl font-black tracking-tight text-foreground sm:text-5xl md:text-6xl">
+      Phone to PC transfers that feel <span class="font-brand text-[1.12em] font-normal text-primary-500">instant</span>.
+    </h1>
+    <p class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+      Scan once and send anything — photos, videos, whole folders. No cables, no cloud,
+      no accounts.
+    </p>
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <a
+        href={site.downloadPage}
+        class="group relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-lg px-6 text-base font-medium text-white shadow-lg shadow-primary-500/20 transition-all duration-200 hover:shadow-primary-500/30 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-md bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 dark:from-primary-500 dark:to-primary-400 dark:hover:from-primary-600 dark:hover:to-primary-500 cursor-pointer"
+      >
+        <span class="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></span>
+        Download free
+      </a>
+      <a
+        href="#how"
+        class="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-input bg-background/50 px-6 text-base font-medium text-foreground backdrop-blur-md transition-all duration-200 hover:bg-muted hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] active:bg-muted/80 cursor-pointer"
+      >
+        See how it works
+      </a>
+    </div>
+    <ul class="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground">
+      <li>Windows 10+</li>
+      <li>macOS</li>
+      <li>Android companion</li>
+      <li>No cloud middleman</li>
+      <li>v{site.latestVersion}</li>
+    </ul>
+  </div>
+
+  <nav class="absolute inset-x-0 top-0 z-50 p-6 md:py-8">
+    <div class="pointer-events-none mx-auto flex max-w-5xl items-center justify-between">
+      <a href="/" class="group pointer-events-auto flex items-center gap-3" data-logo-trigger aria-label="DeX home">
+        <img
+          src="/assets/logos/dex-dark.png"
+          alt="DeX"
+          width="1000"
+          height="1000"
+          loading="eager"
+          class="h-20 w-auto drop-shadow-md transition-transform group-hover:scale-110 dark:hidden"
+        />
+        <img
+          src="/assets/logos/dex-light.png"
+          alt="DeX"
+          width="1000"
+          height="1000"
+          loading="eager"
+          class="hidden h-20 w-auto drop-shadow-md transition-transform group-hover:scale-110 dark:block"
+        />
+      </a>
+
+      <div class="pointer-events-auto flex items-center gap-4 md:gap-6">
+        <a
+          href="#how"
+          class="hidden text-sm font-medium text-foreground/80 transition-colors hover:text-primary-400 md:block drop-shadow-sm"
+        >
+          How it works
+        </a>
+        <a
+          href="#features"
+          class="hidden text-sm font-medium text-foreground/80 transition-colors hover:text-primary-400 md:block drop-shadow-sm"
+        >
+          Features
+        </a>
+        <a
+          href="#faq"
+          class="hidden text-sm font-medium text-foreground/80 transition-colors hover:text-primary-400 md:block drop-shadow-sm"
+        >
+          FAQ
+        </a>
+        <a
+          href={site.pricingPage}
+          class="hidden text-sm font-medium text-foreground/80 transition-colors hover:text-primary-400 md:block drop-shadow-sm"
+        >
+          Pricing
+        </a>
+        <button
+          type="button"
+          aria-label="Toggle theme"
+          data-theme-toggle
+          class="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-xl text-muted-foreground transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-white/5 hover:text-foreground active:bg-white/10 shadow-none hover:shadow-none border-none bg-transparent"
+        >
+          <span class="theme-icon theme-icon-sun grid place-items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="!size-5 text-amber-500 fill-amber-500/20">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="m4.93 4.93 1.41 1.41"></path>
+              <path d="m17.66 17.66 1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="m6.34 17.66-1.41 1.41"></path>
+              <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+          </span>
+          <span class="theme-icon theme-icon-moon grid place-items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="!size-5 text-blue-400 fill-blue-400/20">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </span>
+        </button>
+        <a
+          href={site.downloadPage}
+          class="group relative inline-flex h-10 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium text-white shadow-lg shadow-primary-500/20 transition-all duration-200 hover:shadow-primary-500/25 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-md bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 dark:from-primary-500 dark:to-primary-400 dark:hover:from-primary-600 dark:hover:to-primary-500 cursor-pointer"
+        >
+          <span class="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></span>
+          Download
+        </a>
+      </div>
+    </div>
+  </nav>
+</section>

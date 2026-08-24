@@ -1,0 +1,37 @@
+---
+import { site } from '../data/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="pt-10 pb-12">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="rounded-3xl glass p-10 text-center sm:p-14">
+      <h2 class="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+        Retire the cable today
+      </h2>
+      <p class="mx-auto mt-4 max-w-xl text-mist/60">
+        Download DeX for Windows or macOS, pair your phone once, and never dig through a drawer again.
+      </p>
+      <a
+        href={site.download}
+        class="mt-8 inline-block rounded-xl bg-accent px-8 py-3.5 text-sm font-semibold text-base transition-opacity hover:opacity-85"
+      >
+        Download DeX
+      </a>
+    </div>
+
+    <div class="mt-12 flex flex-col items-center justify-between gap-6 border-t border-mist/10 pt-8 sm:flex-row">
+      <a href="#top" class="flex items-center gap-2" aria-label={`${site.name} home`}>
+        <span class="grid size-7 place-items-center rounded-lg bg-accent text-base text-xs font-black">D</span>
+        <span class="font-bold">{site.name}</span>
+      </a>
+      <nav class="flex gap-6 text-sm text-mist/50" aria-label="Footer">
+        <a href="#features" class="transition-colors hover:text-mist">Features</a>
+        <a href="#security" class="transition-colors hover:text-mist">Security</a>
+        <a href="#pricing" class="transition-colors hover:text-mist">Pricing</a>
+        <a href={site.repo} rel="noopener noreferrer" target="_blank" class="transition-colors hover:text-mist">GitHub</a>
+      </nav>
+      <p class="text-sm text-mist/40">© {year} {site.studio}</p>
+    </div>
+  </div>
+</footer>

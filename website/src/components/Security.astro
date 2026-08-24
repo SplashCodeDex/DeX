@@ -1,0 +1,58 @@
+---
+const points = [
+  {
+    title: 'Your identity is never broadcast',
+    body: 'Discovery beacons carry zero identity material. Nothing about who you are leaves the device until you choose to pair.',
+  },
+  {
+    title: 'Proof, not promises',
+    body: 'A pairing response is honored only when the phone echoes the PIN shown on screen. Bare claims of trust are rejected outright.',
+  },
+  {
+    title: 'Time-boxed pairing',
+    body: 'Every QR and PIN offer dies after 60 seconds. Expired codes can never verify, no matter who replays them.',
+  },
+  {
+    title: 'Per-device bearer tokens',
+    body: 'Each completed pairing mints a fresh token bound to the device fingerprint and stored on both ends, never in a cloud.',
+  },
+  {
+    title: 'Constant-time verification',
+    body: 'Same-account trust is proven with an HMAC-SHA256 nonce challenge compared in constant time, session by session.',
+  },
+  {
+    title: 'Revoke on your terms',
+    body: 'Forget Device or Reset Identity immediately downgrades the session and rotates the identity material it knew.',
+  },
+];
+---
+
+<section id="security" class="scroll-mt-28 bg-elevated/40 py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+      <div class="lg:sticky lg:top-32 lg:self-start">
+        <h2 class="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+          Built like security software, because it is
+        </h2>
+        <p class="mt-4 text-mist/60">
+          DeX moves files between machines on your network. That job demands a trust model with
+          strict priorities, cryptographic proof, and zero leaked identity, so that is exactly what ships.
+        </p>
+        <p class="mt-4 text-mist/60">
+          Pairing state lives on your devices only. There is no account database to breach.
+        </p>
+      </div>
+      <ul class="grid gap-4 sm:grid-cols-2">
+        {points.map((point) => (
+          <li class="rounded-2xl glass p-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5 text-accent">
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+            <h3 class="mt-3 text-sm font-semibold">{point.title}</h3>
+            <p class="mt-1.5 text-sm leading-relaxed text-mist/60">{point.body}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</section>

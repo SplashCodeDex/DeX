@@ -1,0 +1,62 @@
+---
+const points = [
+  {
+    title: 'One tap to approve',
+    body: 'Nothing connects until you confirm the matching code on both screens.',
+  },
+  {
+    title: 'Codes expire in 60 seconds',
+    body: 'After a minute they stop working — for everyone.',
+  },
+  {
+    title: 'Invisible until invited',
+    body: 'Strangers on the network see nothing to connect to.',
+  },
+  {
+    title: 'Remembered only on your hardware',
+    body: 'Your approved-devices list lives on your devices alone.',
+  },
+  {
+    title: 'Verified every single time',
+    body: 'Both devices prove who they are before each transfer starts.',
+  },
+  {
+    title: 'Leave whenever you want',
+    body: 'Remove a device and its access ends instantly.',
+  },
+];
+
+const check = '<path d="M20 6 9 17l-5-5"></path>';
+---
+
+<section id="security" class="relative scroll-mt-24 overflow-hidden py-24 md:py-32">
+  <div class="absolute -z-10 right-0 top-1/4 h-64 w-64 rounded-full bg-primary-500/10 blur-[100px]"></div>
+  <div class="absolute -z-10 bottom-1/4 left-0 h-96 w-96 rounded-full bg-purple-500/10 blur-[120px]"></div>
+
+  <div class="mx-auto grid max-w-6xl gap-12 px-4 lg:grid-cols-[0.9fr_1.1fr]">
+    <div class="landing-reveal lg:sticky lg:top-32 lg:self-start">
+      <h2 class="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        Your files never touch our servers
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        Transfers go directly between your devices — no cloud storage, no copies sitting online.
+        We don&rsquo;t even have servers to breach.
+      </p>
+      <p class="mt-4 text-lg text-muted-foreground">
+        Connecting stays just as tight: you approve every new device yourself, once.
+      </p>
+    </div>
+
+    <ul class="grid gap-4 sm:grid-cols-2">
+      {points.map((point) => (
+        <li class="landing-reveal rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5 text-primary-500">
+            <Fragment set:html={check} />
+          </svg>
+          <h3 class="mt-3 text-sm font-semibold text-foreground">{point.title}</h3>
+          <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">{point.body}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>

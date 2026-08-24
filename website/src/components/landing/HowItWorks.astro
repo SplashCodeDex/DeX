@@ -1,0 +1,47 @@
+---
+const steps = [
+  {
+    n: '1',
+    title: 'Scan',
+    body: 'Open DeX on your computer and scan the code with your phone camera. That pairs them once.',
+  },
+  {
+    n: '2',
+    title: 'Pick',
+    body: 'Browse folders on either device and choose exactly what to send.',
+  },
+  {
+    n: '3',
+    title: 'Done',
+    body: 'Files land in your Downloads folder or gallery, ready to use. No upload, no link, no waiting.',
+  },
+];
+---
+
+<section id="how" class="relative scroll-mt-24 px-4 py-24 md:py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="landing-reveal mb-14 text-center">
+      <h2 class="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        Three steps. That&rsquo;s the whole app.
+      </h2>
+      <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
+        No setup wizards, no settings to figure out. If you can scan a code, you already know DeX.
+      </p>
+    </div>
+
+    <ol class="grid gap-6 md:grid-cols-3">
+      {steps.map((step, i) => (
+        <li
+          class="landing-reveal rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          style={`transition-delay: ${i * 0.12}s`}
+        >
+          <span class="text-5xl font-black tracking-tight text-primary-500/40 dark:text-primary-500/50">
+            {step.n}
+          </span>
+          <h3 class="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
+          <p class="mt-2 leading-relaxed text-muted-foreground">{step.body}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

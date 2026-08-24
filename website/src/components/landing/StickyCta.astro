@@ -1,0 +1,80 @@
+---
+import { site } from '../../data/site';
+
+const arrowRight =
+  '<path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>';
+---
+
+<div id="sticky-cta" class="sticky-cta">
+  <div class="pointer-events-auto flex items-center justify-between rounded-full border border-white/10 bg-background/80 px-6 py-3 shadow-2xl backdrop-blur-xl dark:bg-black/60">
+    <a href="/" class="flex items-center gap-3">
+      <img
+        src="/assets/logos/dex-dark.png"
+        alt="DeX"
+        width="1000"
+        height="1000"
+        loading="lazy"
+        class="h-10 w-auto dark:hidden"
+      />
+      <img
+        src="/assets/logos/dex-light.png"
+        alt="DeX"
+        width="1000"
+        height="1000"
+        loading="lazy"
+        class="hidden h-10 w-auto dark:block"
+      />
+    </a>
+
+    <div class="flex items-center gap-4">
+      <a href="#how" class="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block">
+        How it works
+      </a>
+      <a href="#features" class="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block">
+        Features
+      </a>
+      <a href="#faq" class="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block">
+        FAQ
+      </a>
+      <a href={site.pricingPage} class="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block">
+        Pricing
+      </a>
+      <div class="hidden h-4 w-px bg-border md:block"></div>
+      <button
+        type="button"
+        aria-label="Toggle theme"
+        data-theme-toggle
+        class="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-xl text-muted-foreground transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-white/5 hover:text-foreground active:bg-white/10 shadow-none hover:shadow-none border-none bg-transparent"
+      >
+        <span class="theme-icon theme-icon-sun grid place-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="!size-5 text-amber-500 fill-amber-500/20">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+        </span>
+        <span class="theme-icon theme-icon-moon grid place-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="!size-5 text-blue-400 fill-blue-400/20">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </span>
+      </button>
+      <a
+        href={site.downloadPage}
+        class="group relative inline-flex h-10 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg shadow-primary-500/20 transition-all duration-200 hover:shadow-primary-500/30 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-md bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 dark:from-primary-500 dark:to-primary-400 dark:hover:from-primary-600 dark:hover:to-primary-500 cursor-pointer"
+      >
+        <span class="pointer-events-none absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></span>
+        Download
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-1 !h-4 !w-4 transition-transform group-hover:translate-x-1">
+          <Fragment set:html={arrowRight} />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

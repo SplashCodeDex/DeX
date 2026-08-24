@@ -1,0 +1,92 @@
+---
+import { site } from '../data/site';
+---
+
+<section id="top" class="relative overflow-hidden pt-40 pb-24 md:pt-48">
+  <div class="mx-auto grid max-w-6xl items-center gap-16 px-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div>
+      <p class="mb-4 inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs font-medium text-mist/80">
+        <span class="size-1.5 rounded-full bg-accent"></span>
+        LocalSend v2 compatible
+      </p>
+      <h1 class="text-balance text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+        Phone to PC transfers that feel <span class="text-accent">instant</span>.
+      </h1>
+      <p class="mt-6 max-w-xl text-lg leading-relaxed text-mist/70">
+        {site.name} pairs your Android phone with Windows or macOS over Wi-Fi. Files stream over QUIC,
+        pairing takes one QR scan, and NAT punching keeps devices connected even when they are miles apart.
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-4">
+        <a
+          href={site.download}
+          class="rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-base transition-opacity hover:opacity-85"
+        >
+          Download for Windows and macOS
+        </a>
+        <a href="#how-it-works" class="rounded-xl glass px-6 py-3 text-sm font-semibold transition-colors hover:bg-mist/10">
+          See how it works
+        </a>
+      </div>
+      <p class="mt-5 text-xs text-mist/50">
+        Free core, no account required. Android companion app pairs in seconds.
+      </p>
+    </div>
+
+    <div class="relative mx-auto w-full max-w-md" aria-hidden="true">
+      <div class="rounded-3xl glass p-5">
+        <div class="flex items-center justify-between px-2 pb-4">
+          <span class="text-sm font-bold">DeX</span>
+          <span class="flex gap-1.5">
+            <span class="size-2 rounded-full bg-mist/20"></span>
+            <span class="size-2 rounded-full bg-mist/20"></span>
+            <span class="size-2 rounded-full bg-accent"></span>
+          </span>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3 rounded-xl bg-elevated/70 p-3.5">
+            <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-accent/15">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-5 text-accent">
+                <rect x="7" y="2" width="10" height="20" rx="2"></rect>
+                <path d="M11 18h2"></path>
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold">Pixel 8</p>
+              <p class="text-xs text-mist/50">Paired over LAN · 192.168.1.24</p>
+            </div>
+            <span class="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent">Trusted</span>
+          </div>
+          <div class="rounded-xl bg-elevated/70 p-3.5">
+            <div class="mb-2 flex items-center justify-between text-xs">
+              <span class="font-semibold">holiday-photos.zip</span>
+              <span class="text-mist/50">84 MB / 96 MB</span>
+            </div>
+            <div class="h-1.5 overflow-hidden rounded-full bg-mist/10">
+              <div class="h-full w-[87%] rounded-full bg-accent"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between rounded-xl bg-elevated/70 p-3.5 text-xs">
+            <span class="text-mist/60">Clipboard synced</span>
+            <span class="rounded-md bg-mist/10 px-2 py-1 font-mono">meeting-notes.md</span>
+          </div>
+        </div>
+      </div>
+      <div class="absolute -right-4 -bottom-6 hidden rounded-2xl glass px-4 py-3 sm:block">
+        <p class="text-xs font-medium text-mist/80">Received files</p>
+        <p class="mt-0.5 font-mono text-xs text-accent">{site.receivedFolder}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mx-auto mt-20 max-w-6xl px-6">
+    <ul class="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm font-medium text-mist/40">
+      <li>Windows 10+</li>
+      <li aria-hidden="true" class="hidden size-1 rounded-full bg-mist/25 sm:list-item"></li>
+      <li>macOS</li>
+      <li aria-hidden="true" class="hidden size-1 rounded-full bg-mist/25 sm:list-item"></li>
+      <li>Android companion</li>
+      <li aria-hidden="true" class="hidden size-1 rounded-full bg-mist/25 sm:list-item"></li>
+      <li>No cloud middleman on your LAN</li>
+    </ul>
+  </div>
+</section>

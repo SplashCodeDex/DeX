@@ -1,0 +1,20 @@
+---
+import { site } from '../../data/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="relative z-10 border-t border-border bg-background px-4 py-10">
+  <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
+    <div class="flex items-center gap-3">
+      <img src="/assets/logos/dex-gray.png" alt="DeX" width="240" height="240" loading="lazy" class="h-9 w-auto opacity-80" />
+      <p class="text-sm text-muted-foreground">© {year} {site.studio}. All rights reserved.</p>
+    </div>
+    <div class="flex flex-wrap justify-center gap-4">
+      <a href="/#how" class="text-sm text-muted-foreground transition-colors hover:text-foreground">How it works</a>
+      <a href="/#features" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Features</a>
+      <a href="/#faq" class="text-sm text-muted-foreground transition-colors hover:text-foreground">FAQ</a>
+      <a href={site.pricingPage} class="text-sm text-muted-foreground transition-colors hover:text-foreground">Pricing</a>
+      <a href={site.downloadPage} class="text-sm text-muted-foreground transition-colors hover:text-foreground">Download</a>
+    </div>
+  </div>
+</footer>

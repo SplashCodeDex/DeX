@@ -1,0 +1,27 @@
+---
+import { site } from '../data/site';
+import LandingLayout from '../layouts/LandingLayout.astro';
+import PageHeader from '../components/landing/PageHeader.astro';
+import Pricing from '../components/landing/Pricing.astro';
+import FinalCta from '../components/landing/FinalCta.astro';
+import SiteFooter from '../components/landing/SiteFooter.astro';
+---
+
+<LandingLayout title={`Pricing — ${site.name}`} description="Everyday transfers between your devices are free, forever. DeX Pro adds sending across the internet — $29 once, lifetime updates.">
+  <div id="main-content" class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <PageHeader />
+    <main class="flex-1">
+      <Pricing />
+      <FinalCta />
+    </main>
+    <SiteFooter />
+  </div>
+</LandingLayout>
+
+<script>
+  import { enhancePage } from '../scripts/pageEnhance';
+  import { initLogoMorph } from '../scripts/logoMorph';
+
+  enhancePage();
+  initLogoMorph();
+</script>

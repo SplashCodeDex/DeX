@@ -1,0 +1,53 @@
+---
+import { site } from '../../data/site';
+
+const oldWays = [
+  {
+    title: 'Cloud drive',
+    pain: 'Everything uploads first and waits on your internet — then the other side waits again.',
+  },
+  {
+    title: 'Cable',
+    pain: 'Find it, plug it, approve three prompts. Every single time.',
+  },
+  {
+    title: 'Email or chat apps',
+    pain: 'Size caps, blurry compressed photos, links that expire before they are opened.',
+  },
+];
+---
+
+<section id="compare" class="relative scroll-mt-24 px-4 py-24 md:py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="landing-reveal mb-14 text-center">
+      <h2 class="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        The old ways are the hard way
+      </h2>
+      <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
+        Every habit you have around moving files exists because nothing better was installed.
+      </p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-3">
+      {oldWays.map((way, i) => (
+        <div
+          class="landing-reveal rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          style={`transition-delay: ${i * 0.12}s`}
+        >
+          <h3 class="text-lg font-bold text-foreground">{way.title}</h3>
+          <p class="mt-2 leading-relaxed text-muted-foreground">{way.pain}</p>
+        </div>
+      ))}
+    </div>
+
+    <p class="landing-reveal mt-10 text-center text-lg text-muted-foreground">
+      DeX skips all of it — scan once, tap send, the file is already there.{' '}
+      <a
+        href={site.downloadPage}
+        class="font-medium text-primary-500 underline-offset-4 hover:underline"
+      >
+        Get it free
+      </a>
+    </p>
+  </div>
+</section>

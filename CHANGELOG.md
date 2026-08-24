@@ -1,4 +1,114 @@
 # Changelog
+## [10.1.25.0] - 2026-08-24
+### Changed
+- **[minor] Desktop shell: animation-spec centralization, port constants, loopback API, shutdown flush reorder**:
+  - `DockCardAnimations` extended into the single source for motion specs: panel slide/fade (`PanelSlideSpec`, `PanelSlideOffsetSpec`), exit/hide (`HideEase`), expansion settle, soft/snap hover tiers, linear family (`LinearFade/Slide/MoveDp/Color/ColorSnap`, `QuickFade`) and reveal/collapse duration constants; dock panels (BottomDockPanel, PinPairingPanel, DeviceListPanel, ActiveTransferDashboard, FileGridItemCard, DragPillHandle, FileExplorerPanel, SettingsPanel, MainMenuColumn, DockCardContent, FloatingDockCard, MirrorWindow) now consume these instead of ad-hoc tween/dp literals.
+  - `DockCardMetrics.MAIN_MENU_WIDTH` added; hardcoded `310.dp` menu/pairing column widths replaced with the metric so Compose geometry stays tied to window-placement math.
+  - `DeXServer` listeners moved off magic numbers onto `DeXPorts.HTTPS` / `DeXPorts.LOOPBACK_CONTROL` / `DeXPorts.PULL`.
+  - New `LoopbackControlApi` (core/network): one lazy in-process HTTP client for Google sign-in / email / sign-out calls to the app's own loopback control plane, replacing an `HttpClient(CIO)` constructed inside a Compose click handler on every click.
+  - `DesktopShutdownCoordinator`: pending DataStore flush moved from step 0 to after full teardown (bounded 2.5 s), so settings written BY the teardown itself (e.g. disconnect handlers persisting pairing state) are captured too; stale doc comment updated to match.
+  - Fixed: seven dock component files referenced `DockCardAnimations` via a stale `com.dexstudios.dex.window` import (object lives in `window.kinematics`), which broke `compileKotlinDesktop` outright; imports corrected.
+  - Verified: `compileKotlinDesktop`, `desktopTest` suites and `spotlessCheck` all green.
+
+
+
+## [10.1.25.0] - 2026-08-24
+### Fixed
+- **[fix] Store badges invisible in light mode + inline-link whitespace collapse**:
+  - The App Store / Google Play badge SVGs are white-content with transparent backgrounds, so they vanished on light-theme cards. Badge buttons now sit on the official always-black badge treatment (`bg-black`, `border-white/15`) in both themes, matching store brand guidelines; at-launch dimming kept.
+  - Astro whitespace collapse glued inline links to the preceding word ("on thepricing page", "already there.Get it free"); explicit `{' '}` spacers added in DownloadSection and Compare.
+  - Verified: `astro check` 0/0/0 across 22 files; build clean; built HTML shows black badge containers and restored link spacing.
+
+## [10.1.24.0] - 2026-08-24
+### Changed
+- **[minor] Download page phone-first store cards + brand typography system**:
+  - Download page reordered per request: a new "Phone" group now leads with two store cards matching the desktop card chrome — Apple (apple.png icon, App Store badge) and Android (robot icon, Google Play badge) — with the official store badges acting as the card buttons in honest at-launch states (dimmed, tooltip, no dead links); the old combined phone row is gone. "Computer" group (Windows/macOS active, Linux at-launch) follows. `site.ts` mobile config restructured into per-device entries (icon + badge + badgeAlt + available).
+  - Typography system replaced Inter: body is now Manrope Variable, headings h1-h3 are Space Grotesk Variable (both self-hosted via @fontsource-variable@5.3.0, Inter uninstalled); `--font-sans`/`--font-display`/`--font-brand` defined in the Tailwind @theme with a base-layer heading rule.
+  - Brand accent font wired subtly: Creepy Notes (the DeX wordmark face; FontFreebies by IanMikraz, free for commercial use, pay-what-you-like) self-hosted at `assets/fonts/CreepyNotes.ttf` via @font-face; applied to the hero H1 accent word "instant" (normal weight, 1.12em, primary tint) and the download page's Phone/Computer group labels.
+  - Apple logo asset resized 2000×2200 → 240 px (69→6 KB) into `assets/platform/apple.png`.
+  - Verified: `astro check` 0 errors/warnings/hints across 22 files; build clean (3 routes); built CSS carries Manrope/Space Grotesk/Creepy Notes with zero Inter references; smoke HTTP 200 for /download, CreepyNotes.ttf, apple.png; temp download artifacts removed.
+
+## [10.1.23.0] - 2026-08-24
+### Changed
+- **[minor] Animated brand morph, dedicated Pricing/Download pages, GitHub de-branding, share card**:
+  - Logo animation: chose the Lottie export (`animation.json` → `public/assets/brand/dex-morph.json`, monitor→DeX wordmark with decelerating settle at frame 455) over DevicesMorph GIF (440 KB, uncontrolled infinite loop) and MP4s (no park-on-final-frame); added `lottie-web@5.13.0` as a lazy chunk (306 KB JS, separate from page scripts). Hero plays the morph once on load and parks on the settled mark; clicking the nav logo scrolls home and replays; `prefers-reduced-motion` keeps the static fallback logos and normal anchor behavior (`src/scripts/logoMorph.ts` + `[data-logo-morph]` CSS in global.css).
+  - Page split per request: `/pricing` and `/download` are now standalone pages sharing a new compact `PageHeader.astro` (brand trigger, theme toggle, Download pill); index no longer mounts Pricing.
+  - New `/download` "Free Download" screen (`DownloadSection.astro`): desktop cards for Windows 10+/macOS 12+ (active download buttons) and Linux ("At launch"), mobile group led by the Android icon with official App Store + Google Play badges shown as at-launch states; reassurance footer links to pricing.
+  - New `Compare.astro` section on index: cloud drive / cable / email-or-chat pain cards closing into the free-download CTA.
+  - GitHub removed from every visible surface: nav (already gone), footer link, FAQ support sentence, and all CTA labels — zero `GitHub` strings in any built HTML. Download hrefs resolve to the release backend URL without showing the host in the UI (`site.releaseUrl`, swap point documented in site.ts for a future CDN/store move).
+  - `site.ts` restructured: `downloadPage`/`pricingPage` routes, `releaseUrl`, `latestVersion` chip (shown in hero platform strip), typed `desktop[]`/`mobile.stores[]` download config replacing bare release URLs and `repo`.
+  - Share metadata: generated 1200×630 navy OG card (`public/og.png`) composited from the light wordmark + tagline via System.Drawing; wired `og:image(+dims)` and `twitter:image`; added `public/robots.txt`.
+  - Housekeeping: shared page behavior extracted to `src/scripts/pageEnhance.ts` (theme/sticky/reveal/parallax) used by all three pages; android store icon resized 1000→240 px (470→40 KB); orphaned pre-DeXMart components excluded from `astro check` scope via tsconfig (files untouched on disk pending user deletion decision).
+  - Verified: `astro check` 0 errors/warnings/hints across 22 files; build emits 3 routes; smoke test HTTP 200 for /, /pricing, /download, og.png, dex-morph.json, appstore.svg, robots.txt; lottie confirmed as an isolated lazy chunk.
+
+## [10.1.22.0] - 2026-08-24
+### Changed
+- **[minor] Landing page persuasion structure: How-it-works, FAQ, closing CTA + hero merge**:
+  - New `landing/HowItWorks.astro` (#how): three-step Scan / Pick / Done strip with staggered reveal, placed directly under the hero to answer "is it hard?" before features.
+  - New `landing/Faq.astro` (#faq): six objection-handling Q&As (uploads, long-range sending, setup, size limits, LocalSend interop, price) as a zero-JS `<details>` accordion; support routed to GitHub issues.
+  - New `landing/FinalCta.astro`: closing band ("Ready when your phone is") repeating the download CTA with "No account. No card. Your files never touch a server."
+  - Hero merge after the concurrent 10.1.21 typographic-hero landing left two stacked hero blocks in `Hero.astro`: kept the 10.1.21 badge/accent/platform-strip skeleton, adopted the punchier subhead ("Scan once and send anything — photos, videos, whole folders. No cables, no cloud, no accounts."), primary CTA relabeled "Download free", secondary CTA retargeted from #features to #how ("See how it works").
+  - Top nav simplified to How it works / Features / FAQ / Pricing / Download (GitHub stays footer-only); sticky pill nav gained How-it-works and FAQ anchors; footer links updated to match.
+  - Security section lightened without losing facts: intro cut to two sentences, all six points compressed to one-liners, card shadow reduced.
+  - Page order now Hero → HowItWorks → BentoFeatures → Security → Pricing → Faq → FinalCta → StickyCta → SiteFooter (mounted in `index.astro`, compatible with 10.1.21's inlined script).
+  - Verified: `astro check` 0 errors/warnings/hints across 23 files; build clean; smoke test shows one hero H1 and live `#how/#features/#security/#pricing/#faq` anchors in `dist/index.html`.
+
+## [10.1.21.0] - 2026-08-24
+### Removed
+- **[minor] Spline 3D scene removed from the landing page entirely**:
+  - Viewer component, fixed stage layer, scene choreography (scroll keyframes/lerp loop), board-hiding scene-API code, loader spinner, stage mask CSS, and the `@splinetool/viewer` dependency all deleted; the page now ships zero external JS chunks (behavior script inlines into the HTML; the ~2.4 MB Spline bundle is gone).
+  - Hero replaced with a typographic first screen on the same design system: "LocalSend v2 compatible" glass badge, "Phone to PC transfers that feel instant" headline with navy accent, Download CTA (Releases) + "See what it does" anchor, and a Windows/macOS/Android/no-cloud platform strip; floating nav and hero fade preserved.
+  - Verified: build + `astro check` 0/0/0, no `spline` references in source or built HTML, smoke test HTTP 200, theme/sticky-CTA/reveal/parallax scripts confirmed inlined.
+
+## [10.1.20.0] - 2026-08-24
+### Fixed
+- **[fix] Spline board (DeXMart billboard) hidden at runtime + canvas edge blending**:
+  - On scene `load-complete`, the page reaches the viewer's scene API (`findObjectByName`) and hides the `Board` billboard group, with defensive name matches (DeXMart/Logo/Billboard/Sign) and one retry at 1.5 s; failures surface via `console.warn` rather than silently.
+  - The fixed stage gained a radial alpha mask, so the scene's own background no longer shows as a hard rectangular band against the page in either theme.
+  - Verified: build + `astro check` clean; board-removal code and mask present in the shipped bundle. The runtime hide effect needs a browser refresh to confirm (viewer `scene` access is version-sensitive); fallback if it persists is a clean scene re-export.
+
+## [10.1.19.0] - 2026-08-24
+### Changed
+- **[minor] Landing page consumer copy pass (Blip-style plain language)**:
+  - All engineering jargon translated to outcome/scenario copy modeled on Blip's landing: "Parallel QUIC streams... LocalSend v2 protocol" → "Full Wi-Fi speed — videos, whole camera rolls, giant folders"; "NAT punching... relay path" → "Works anywhere — files still go straight across, device to device"; pairing tile now leads with the AirDrop analogy and drops token/TTL mechanics ("Your devices remember each other after that").
+  - Security section reframed from crypto spec sheet to reassurance stories: new headline "Your files never touch our servers"; points now read as consumer promises ("One tap to approve", "Codes expire in 60 seconds", "Invisible until invited", "Verified every single time") with HMAC-SHA256/beacon/bearer-token terminology removed.
+  - Pricing plan features de-jargoned in `site.ts` ("LAN transfers to paired devices" → "Phone-to-computer transfers on the same Wi-Fi"; "Remote transfers via NAT punch" → "Send anywhere, even across the internet"; etc.), header subline rewritten, mono-path `~/Downloads/DeX` footer note replaced with a plain sentence.
+  - Meta description rewritten consumer-first ("No cables, no cloud, no accounts — scan once and send"); features section subline simplified. Structure, components, and styling untouched — copy only.
+  - Verified: `astro check` 0 errors/warnings/hints across 20 files; production build clean.
+
+## [10.1.18.0] - 2026-08-24
+### Changed
+- **[minor] Spline robot integrated across the entire landing page**:
+  - The 3D stage moved out of the hero into a page-level layer that becomes `position: fixed` behind all content (pointer-events-none, so clicks/scroll pass through; `events-target="global"` keeps cursor tracking working page-wide).
+  - Scroll choreography with lerp smoothing: the robot holds the hero at full presence, then drifts right and shrinks beside the features grid (opacity 0.55), swings left through Security (0.4), settles small behind Pricing (0.22), and rests faint at the footer (0.12); X offsets halved on narrow viewports; keyframes re-measured on resize/load.
+  - Progressive enhancement: without JS or with `prefers-reduced-motion`, the stage stays absolutely scoped to the hero (previous behavior); glass cards in Features/Security/Pricing now backdrop-blur the robot behind them for extra depth.
+  - Verified: build + `astro check` clean (0/0/0), smoke test HTTP 200, choreography code present in the shipped bundle.
+
+## [10.1.17.0] - 2026-08-24
+### Changed
+- **[minor] Landing page DeX content pass**:
+  - "Trusted by" marquee section removed (component + CSS deleted); floating header content centered via `max-w-5xl` inset and now links Features / Security / Pricing anchors plus GitHub; both "Get Started" CTAs renamed to "Download" and pointed at the GitHub Releases page.
+  - Bento tiles rewritten with DeX product copy (pairing QR/PIN with 60 s TTL, clipboard sync, QUIC + LocalSend v2, NAT punch + relay, file explorer, private-by-design); DeXMart's fabricated testimonials replaced by a Security section carrying the real trust-model facts; Pricing section added (Free $0 vs Pro $29 one-time from `site.ts`, Pro CTA honestly marked "at launch" until checkout exists).
+  - Footer rebranded: `dex-gray.png` logo + "Dex Studios", anchor links + GitHub; page metadata (title/description/OG) switched to DeX; theme storage key renamed `DeXMart-theme` → `DeX-theme` in both the no-FOUC init script and toggle handler; smooth scrolling enabled for anchors.
+  - Verified: build + `astro check` 0 errors/warnings/hints (hint pass caught a dropped `<StickyCta />` mount — restored); smoke test HTTP 200 page + CSS; zero DeXMart strings remain in the bundle.
+
+## [10.1.16.0] - 2026-08-24
+### Changed
+- **[minor] Landing page rebrand pass (DeX identity + navy accent + Spline zoom)**:
+  - DeX wordmark logos (`DeX-Dark/Light/Gray.png` from user assets) copied to `website/public/assets/logos/`; hero nav and sticky CTA now show the DeX logo with light/dark theme variants (`dex-dark` on light, `dex-light` on dark); favicons switched to theme-matched DeX PNGs (media-query based), DeXMart logo references and `favicon.ico` removed.
+  - Primary accent scale converted from WhatsApp green to brand navy `#20355B` (`oklch(33.2% 0.073 261.4)`): full 50-950 OKLCH scale regenerated on hue 261.4, with step 600 pinned to the exact brand color (light-mode primary) and 500 as its dark-mode lift — buttons, links, rings, glows, and spinner all follow.
+  - Spline hero zoomed in: viewer stage now renders at 140% with -20% offsets (native-resolution zoom, no upscaling blur), clipped by the existing overflow-hidden hero.
+  - `dex-gray.png` staged in assets but not yet referenced (available for footer/neutral contexts).
+  - Verified: build + `astro check` clean, smoke test HTTP 200 for page and all three logo assets; no hue-155 green remains in the bundle.
+
+## [10.1.15.0] - 2026-08-24
+### Changed
+- **[minor] `website/` landing page replaced with the DeXMart expressive landing, re-implemented on the Astro stack** (no Next.js/React/framer-motion/next-themes):
+  - Pixel-faithful port of `DeXMart/frontend` landing: Spline 3D hero (`spline-viewer` web component via pinned `@splinetool/viewer@1.12.69`, `events-target="global"`, lazy loading, spinner dismissed on `load-complete` with a 12 s fallback), floating nav, scroll-triggered sticky CTA pill (600 px threshold), trust marquee (CSS keyframe loop, edge fade masks), bento feature grid with layered parallax (three speed tiers, lerp smoothing ≈ spring config), testimonial cards with staggered reveal + hover lift, theme toggle (light/dark, `DeXMart-theme` storage key, system default, no-FOUC inline init), footer.
+  - Design tokens ported verbatim from DeXMart `globals.css`: OKLCH primary green/violet accent scales, light/dark shadcn variable mapping via Tailwind v4 `@theme`, custom radii/shadow scales (e.g. `rounded-2xl` = 1.5 rem, lighter `shadow-2xl`), skip-link and glass-distortion SVG filter.
+  - Logo assets copied to `website/public/assets/logos/`; favicon now the DeXMart `.ico`.
+  - Previous DeX-branded sections (`components/Header|Features|Security|Pricing|Faq|Footer.astro`, `data/site.ts`) remain on disk unused pending user decision — not deleted.
+  - Verified: build passes, `astro check` 0 errors/warnings across 20 files, preview smoke test HTTP 200 for page/logos/favicon/spline bundle.
 
 ## [10.1.14.0] - 2026-08-24
 ### Removed
