@@ -114,7 +114,7 @@ object DeXServer {
         server2 = embeddedServer(Netty, port = DeXPorts.LOOPBACK_CONTROL, host = "127.0.0.1", module = {
             baseModule()
             routing {
-                settingsRoutes()
+                settingsRoutes(deviceConfig = getKoin().get())
             }
         }).start(wait = false)
 

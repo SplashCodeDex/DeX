@@ -14,6 +14,8 @@ import io.ktor.client.request.setBody
  * Centralizes what used to be an ad-hoc `HttpClient(CIO)` constructed inside a Compose
  * click handler per sign-in click: one lazily-created engine for the whole app lifetime,
  * URLs derived from [DeXPorts], short timeouts because the peer is in-process.
+ * The sign-in trigger responds immediately (the browser round-trip completes the flow
+ * server-side), so no long timeout is needed for it.
  */
 object LoopbackControlApi {
     private const val BASE_URL = "http://127.0.0.1:${DeXPorts.LOOPBACK_CONTROL}"

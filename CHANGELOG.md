@@ -1,4 +1,15 @@
 # Changelog
+## [10.1.27.0] - 2026-08-24
+### Changed
+- **[minor] Settings audit follow-ups (plan 022): honest profile data, non-blocking sign-in, destructive-action guard, alias editor**:
+  - Google sign-in trigger no longer times out: `/local/settings/google-signin` responds immediately ("Continue in your browser…") and a supervisor scope awaits the browser round-trip; on completion it now persists email AND name AND picture AND sub — previously desktop never persisted name/picture/sub at all (only Android did), so the Settings header could never show real profile data.
+  - Profile header de-faked: fabricated "DeXStudios"/"dexify@dex.net" fallbacks and the unconditional "Premium User" badge removed; honest signed-out state ("DeX Desktop" / "Not signed in" / hint line); avatar now renders the real Google picture (fetched + decoded off the UI thread via the shared skia `toImageBitmap` helper) with the bundled placeholder as fallback.
+  - "Reset Identity & Trust" moved behind a confirmation dialog — it is a destructive one-click action (sign-out + revoke all pairings + identity-hash rotation).
+  - New Device Name item under Identity with an editor dialog: persists `DeviceConfig.alias` (trim, 32-char cap, same key as Android), feeding discovery advertisement.
+  - SettingsRoutes switched to constructor injection (`deviceConfig` parameter resolved at the DeXServer call site), matching sibling routes; panel doc comment rewritten to match reality.
+  - Verified: gradlew build + spotlessCheck green, zero compiler warnings; runtime smoke boot clean.
+
+
 ## [10.1.26.0] - 2026-08-24
 ### Fixed
 - **[fix] Settings surface audit remediation (plan 021): LAN-exposed account routes, dead-end download location, dead UPnP toggle**:

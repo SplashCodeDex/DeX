@@ -1,14 +1,28 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.auth.GoogleOAuth
 import io.ktor.server.application.*
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ProfileDto(val email: String, val name: String, val picture: String)
+
+/**
+ * Owns the fire-and-forget Google sign-in flow. The HTTP trigger responds immediately;
+ * this scope keeps awaiting the browser round-trip and persists the verified profile
+ * afterwards (email drives the auto-trust identity hash; name/picture/sub feed the
+ * Settings header and identity-proof verification).
+ */
+private val googleSignInScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /**
  * Google sign-in browser redirect target. Served ONLY by the dedicated loopback 48425
@@ -59,10 +73,9 @@ fun Route.oauthCallbackRoutes() {
  * security-relevant state (identity email drives the auto-trust identity hash) and must
  * never be reachable from the LAN-facing HTTPS listener.
  */
-fun Route.settingsRoutes() {
+fun Route.settingsRoutes(deviceConfig: DeviceConfig) {
     post("/local/settings/email") {
         val email = call.receiveText()
-        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
         deviceConfig.email = email
         call.respond(io.ktor.http.HttpStatusCode.OK)
     }
@@ -75,25 +88,25 @@ fun Route.settingsRoutes() {
             )
             return@get
         }
-        val profile = GoogleOAuth.signInAsync()
-        if (profile != null) {
-            val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
-            deviceConfig.email = profile.email
-            val name = if (profile.name.isEmpty()) profile.email else profile.name
-            call.respondText(
-                "<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Signed in as $name &mdash; DeX devices with this email are now auto-trusted.</h3></body></html>",
-                io.ktor.http.ContentType.Text.Html,
-            )
-        } else {
-            call.respondText(
-                "<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Sign-in failed or was cancelled.</h3></body></html>",
-                io.ktor.http.ContentType.Text.Html,
-            )
+        // Fire-and-forget: respond immediately so the UI trigger cannot time out waiting
+        // for the human browser round-trip. The /local/oauth/callback redirect completes
+        // the deferred; this coroutine persists the verified profile when it lands.
+        googleSignInScope.launch {
+            runCatching {
+                val profile = GoogleOAuth.signInAsync() ?: return@launch
+                deviceConfig.email = profile.email
+                deviceConfig.setGoogleProfile(profile.name, profile.picture)
+                deviceConfig.setGoogleSub(profile.sub)
+                Logger.i("Google sign-in completed for ${profile.email}")
+            }.onFailure { Logger.e("Google sign-in failed: ${it.message}") }
         }
+        call.respondText(
+            "<html><body style=\"font-family:sans-serif;text-align:center;margin-top:3em\"><h3>Continue in your browser&hellip;</h3><p>Complete the Google sign-in in the window that just opened.</p></body></html>",
+            io.ktor.http.ContentType.Text.Html,
+        )
     }
 
     post("/local/settings/signout") {
-        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
         deviceConfig.signOut()
         GoogleOAuth.signOut()
         call.respond(io.ktor.http.HttpStatusCode.OK)

@@ -18,13 +18,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +59,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
+import com.dexstudios.dex.mirror.toImageBitmap
 import com.dexstudios.dex.window.DockedWindowStateController
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
@@ -69,15 +75,18 @@ import javax.swing.JFileChooser
 
 /**
  * SettingsPanel:
- * - Profile & Account header (56x56dp avatar, name, email, "Premium User" badge, Sign Out)
+ * - Profile & Account header (avatar — Google picture when signed in, display name, email,
+ *   Sign Out; neutral placeholders when signed out, never fabricated account data)
  * - Categorized preferences:
- *   1. Connection (DND switch)
+ *   1. Connection (Do Not Disturb switch, UPnP Port Forwarding toggle)
  *   2. Dev Tools (ADB Connect & Auto-Connect Hotspot)
- *   3. Identity (Google OAuth loopback)
+ *   3. Identity (Device Name editor, Google OAuth loopback sign-in)
  *   4. Appearance (Theme: System / Dark / Light)
  *   5. Interaction (Wiggle-to-Open Menu)
- *   5. Storage (Download Location folder chooser setting controller.isModalDialogOpen = true during pick)
- *   6. About DeX (Version 1.0.0 & GitHub link) & Reset Identity
+ *   6. Storage (Download Location folder chooser — persisted via DeviceConfig.downloadDir;
+ *      the modal-dialog guard is raised during pick)
+ *   7. About & Maintenance (version from AppBuildConfig, GitHub link, Reset Identity & Trust
+ *      behind a confirmation dialog)
  */
 @Composable
 fun SettingsPanel(
@@ -95,6 +104,23 @@ fun SettingsPanel(
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
     val downloadDirPref by deviceConfig.downloadDirFlow.collectAsState()
+    val deviceAlias by deviceConfig.aliasFlow.collectAsState()
+    var showAliasEditor by remember { mutableStateOf(false) }
+    var showResetConfirm by remember { mutableStateOf(false) }
+
+    // Real Google avatar when signed in; fetched and decoded off the UI thread via the
+    // shared skia helper. Falls back to the bundled placeholder when signed out or on
+    // any fetch/decode failure.
+    val avatarBitmap by produceState<ImageBitmap?>(initialValue = null, googleProfile.picture) {
+        val url = googleProfile.picture
+        if (url.isBlank()) return@produceState
+        value =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    java.net.URI(url).toURL().readBytes().toImageBitmap()
+                }.getOrNull()
+            }
+    }
 
     Column(
         modifier = modifier
@@ -182,31 +208,46 @@ fun SettingsPanel(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(Res.drawable.profile_avatar),
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape),
-                        )
+                        val avatar = avatarBitmap
+                        if (avatar != null) {
+                            Image(
+                                bitmap = avatar,
+                                contentDescription = "Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape),
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(Res.drawable.profile_avatar),
+                                contentDescription = "Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape),
+                            )
+                        }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text(
-                                text = googleProfile.name.ifBlank { "DeXStudios" },
+                                text = googleProfile.name.ifBlank { "DeX Desktop" },
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = googleProfile.email.ifBlank { "dexify@dex.net" },
+                                text = googleProfile.email.ifBlank { "Not signed in" },
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "Premium User",
+                                text = if (googleProfile.email.isNotBlank()) {
+                                    "Same-account devices auto-trusted"
+                                } else {
+                                    "Sign in below to auto-trust your devices"
+                                },
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
@@ -293,6 +334,12 @@ fun SettingsPanel(
             // Identity
             SettingsSectionHeader("Identity")
             SettingsCard {
+                SettingsItem(
+                    icon = painterResource(Res.drawable.ic_fluent_settings),
+                    title = "Device Name",
+                    subtitle = deviceAlias.ifBlank { "Not set — phones see this name while pairing" },
+                    onClick = { showAliasEditor = true },
+                )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_account_circle),
                     title = "Sign in with Google",
@@ -397,25 +444,81 @@ fun SettingsPanel(
                     title = "Reset Identity & Trust",
                     subtitle = "Revokes all paired devices and restarts identity",
                     isDanger = true,
-                    onClick = {
-                        // Revoke every persisted pairing, then rotate the identity hash so a
-                        // previously known auto-trust credential dies with the reset.
-                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
-                            paired.forEach { fp ->
-                                runCatching {
-                                    com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(fp)
-                                }
-                            }
-                            deviceConfig.resetIdentity()
-                        }
-                    },
+                    onClick = { showResetConfirm = true },
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+
+    if (showAliasEditor) {
+        AliasEditorDialog(
+            current = deviceAlias,
+            onDismiss = { showAliasEditor = false },
+            onSave = { value ->
+                deviceConfig.alias = value
+                showAliasEditor = false
+            },
+        )
+    }
+
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text("Reset Identity & Trust?") },
+            text = {
+                Text(
+                    "This signs you out, revokes every paired device and rotates your identity hash. " +
+                        "Phones will have to pair again from scratch.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetConfirm = false
+                    // Revoke every persisted pairing, then rotate the identity hash so a
+                    // previously known auto-trust credential dies with the reset.
+                    coroutineScope.launch(Dispatchers.IO) {
+                        val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
+                        paired.forEach { fp ->
+                            runCatching {
+                                com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(fp)
+                            }
+                        }
+                        deviceConfig.resetIdentity()
+                    }
+                }) {
+                    Text("Reset", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AliasEditorDialog(current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var draft by remember(current) { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Device Name") },
+        text = {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it.take(32) },
+                singleLine = true,
+                label = { Text("Shown to your phone while pairing") },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(draft.trim()) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
