@@ -25,8 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
@@ -38,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
@@ -47,12 +46,14 @@ import com.dexstudios.dex.core.designsystem.icons.AnimatedSearchToXIcon
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.services.FileExplorerService
+import com.dexstudios.dex.desktop.transfer.DesktopFileSendService
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
+import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
 import javax.swing.JFileChooser
@@ -75,6 +76,7 @@ fun FileExplorerPanel(
     clientEngine: ClientEngine = koinInject(),
     fileExplorerService: FileExplorerService = koinInject(),
     discoveryEngine: DiscoveryEngine = koinInject(),
+    fileSender: DesktopFileSendService = koinInject(),
 ) {
     val viewModel: FileExplorerViewModel = viewModel {
         FileExplorerViewModel(clientEngine, fileExplorerService, discoveryEngine)
@@ -96,6 +98,7 @@ fun FileExplorerPanel(
     val activePhone by viewModel.activePhone.collectAsState()
     val activeFingerprint by viewModel.activeFingerprint.collectAsState()
     val isTransferring by viewModel.isTransferring.collectAsState()
+    val explorerError by viewModel.explorerError.collectAsState()
 
     Column(
         modifier = modifier
@@ -209,6 +212,39 @@ fun FileExplorerPanel(
             }
         }
 
+        // Inline error banner (connection / load failures)
+        AnimatedVisibility(visible = explorerError != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = explorerError.orEmpty(),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    painter = painterResource(Res.drawable.ic_fluent_close),
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clickable { viewModel.clearError() },
+                )
+            }
+        }
+        if (explorerError != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         // === Row 1: Middle Grid Area ===
         Box(
             modifier = Modifier
@@ -280,6 +316,8 @@ fun FileExplorerPanel(
 
                                 val now = System.currentTimeMillis()
                                 if (lastClickedItemId == item.id && now - lastClickTime < 400L) {
+                                    lastClickedItemId = null
+                                    lastClickTime = 0L
                                     // Double-click Action with 400ms delta filter guard
                                     if (mode == ExplorerMode.History) {
                                         handleItemDoubleClick(item, onDrillDown = { viewModel.drillDown(it, item.name, item.uri) })
@@ -302,22 +340,6 @@ fun FileExplorerPanel(
                 }
             }
 
-            // Fading gradient edge for individual items to scroll into
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.surface,
-                            ),
-                        ),
-                    ),
-            )
-
             // Floating PullProgressDock Toast
             Column(
                 modifier = Modifier
@@ -331,6 +353,7 @@ fun FileExplorerPanel(
                 ) {
                     PullProgressDock(
                         clientEngine = clientEngine,
+                        fileExplorerService = fileExplorerService,
                         onCancel = viewModel::cancelPull,
                     )
                 }
@@ -370,12 +393,9 @@ fun FileExplorerPanel(
                             onSendFiles()
                             coroutineScope.launch(Dispatchers.IO) {
                                 try {
-                                    val dialog = FileDialog(null as Frame?, "Select Files to Send", FileDialog.LOAD)
-                                    dialog.isMultipleMode = true
-                                    dialog.isVisible = true
-                                    val files = dialog.files
-                                    if (files != null && files.isNotEmpty()) {
-                                        println("Selected ${files.size} files to send")
+                                    val picked = pickFilesForSend("Select Files to Send")
+                                    if (picked.isNotEmpty()) {
+                                        fileSender.sendFiles(picked)
                                     }
                                 } finally {
                                     controller?.isModalDialogOpen = false
@@ -425,13 +445,9 @@ fun FileExplorerPanel(
                             onSendFolders()
                             coroutineScope.launch(Dispatchers.IO) {
                                 try {
-                                    val chooser = JFileChooser()
-                                    chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                                    chooser.dialogTitle = "Select Folder to Send"
-                                    val res = chooser.showOpenDialog(null)
-                                    if (res == JFileChooser.APPROVE_OPTION) {
-                                        val folder = chooser.selectedFile
-                                        println("Selected folder to send: ${folder.absolutePath}")
+                                    val folder = pickFolderForSend("Select Folder to Send")
+                                    if (folder != null) {
+                                        fileSender.sendFolders(listOf(folder))
                                     }
                                 } finally {
                                     controller?.isModalDialogOpen = false
@@ -456,5 +472,37 @@ fun FileExplorerPanel(
                 }
             }
         }
+    }
+}
+
+private suspend fun pickFilesForSend(title: String): List<java.io.File> = kotlinx.coroutines.withContext(Dispatchers.IO) {
+    try {
+        val holder = arrayOfNulls<Array<java.io.File>>(1)
+        EventQueue.invokeAndWait {
+            val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
+            dialog.isMultipleMode = true
+            dialog.isVisible = true
+            holder[0] = dialog.files
+        }
+        holder[0]?.toList() ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+private suspend fun pickFolderForSend(title: String): java.io.File? = kotlinx.coroutines.withContext(Dispatchers.IO) {
+    try {
+        val holder = arrayOfNulls<java.io.File>(1)
+        EventQueue.invokeAndWait {
+            val chooser = JFileChooser()
+            chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+            chooser.dialogTitle = title
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                holder[0] = chooser.selectedFile
+            }
+        }
+        holder[0]
+    } catch (_: Exception) {
+        null
     }
 }

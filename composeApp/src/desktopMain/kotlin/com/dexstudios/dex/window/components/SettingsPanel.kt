@@ -90,8 +90,7 @@ fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateControl
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
     var downloadPath by remember {
-        val userHome = System.getProperty("user.home") ?: ""
-        mutableStateOf(File(userHome, "Downloads" + File.separator + "DeX").absolutePath)
+        mutableStateOf(getDeXDownloadDirectory())
     }
 
     Column(

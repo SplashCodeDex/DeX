@@ -11,6 +11,7 @@ import com.dexstudios.dex.core.network.PrepareUploadResponseDto
 import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.UploadOutcome
 import com.dexstudios.dex.core.network.UploadState
+import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,14 +33,18 @@ import kotlin.math.min
 
 /**
  * Desktop counterpart of the Android UploadWorker:
- * sends a batch of files to a trusted phone via the LocalSend v2 prepare-upload
- * protocol, preferring HTTP/3 (QUIC) streams with an HTTP/1.1 fallback.
+ * sends a batch of files to a trusted device via the LocalSend v2 prepare-upload protocol.
  *
- * Progress, success and failure states are published through
- * [ClientEngine.updateUploadState] so existing consumers (taskbar window progress,
- * telemetry text) render without any new UI plumbing. A whole-session transport
- * failure retries with capped backoff — a retried session never leaves duplicate
- * files on the phone because the receiver dedupes via hashes and answers "[SKIP]".
+ * Transport selection follows the receiver's own advertisement: devices that host a
+ * receiver (`download = true`, i.e. other desktops) receive direct HTTP/1.1 pushes on the
+ * LAN; phones advertise `download = false` and are served through the WebSocket pull model
+ * ([RelayService.hostAndPushAsync] prompt -> phone pulls over HTTP/3), on LAN and WAN alike.
+ *
+ * Progress, success and failure states are published through [ClientEngine.updateUploadState]
+ * so existing consumers (taskbar window progress, telemetry text) render without any new UI
+ * plumbing. A whole-session transport failure retries with capped backoff, then escalates to
+ * the relay path before giving up — a retried session never duplicates files because the
+ * receiver dedupes via content hashes and answers "[SKIP]".
  */
 class DesktopFileSendService(private val clientEngine: ClientEngine, private val discoveryEngine: DiscoveryEngine, private val deviceConfig: DeviceConfig) {
     companion object {
@@ -53,6 +58,9 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionJob: Job? = null
 
+    @Volatile
+    private var sessionCancelled: Boolean = false
+
     /** User-pinned default send destination; honored for drops and as first relay candidate. */
     private val _preferredTargetFingerprint = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val preferredTargetFlow = _preferredTargetFingerprint.asStateFlow()
@@ -65,11 +73,9 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     fun isSessionActive(): Boolean = sessionJob?.isActive == true
 
     /**
-     * Sends [files] to the resolved target device. LAN delivery is attempted first
-     * (explicit [targetFingerprint] -> preferred pin -> paired online LAN device ->
-     * same-account device). When no LAN device exists, delivery falls back to the
-     * WebSocket relay ([RelayService.hostAndPushAsync]), where the phone pulls the
-     * hosted files over its persistent connection.
+     * Sends [files] to the resolved target device. LAN direct delivery runs first when the
+     * target hosts a receiver; otherwise (or after direct failure) delivery goes through the
+     * WebSocket pull relay, where the phone/PC pulls hosted files over its persistent session.
      */
     fun sendFiles(files: List<File>, targetFingerprint: String? = null) {
         val regularFiles = files.filter { it.isFile }
@@ -83,16 +89,104 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         }
 
         sessionJob = scope.launch {
-            val lanTarget = resolveLanTarget(targetFingerprint)
+            sessionCancelled = false
+            val lanTarget = resolveDirectTarget(targetFingerprint)
             if (lanTarget != null) {
-                runSession(regularFiles, lanTarget)
+                val delivered = runSession(regularFiles.map { it to null as String? }, lanTarget)
+                // Direct push failed at transport level (device vanished mid-flight): escalate to
+                // the pull path instead of dead-ending the user — but never after user cancel
+                if (!delivered && !sessionCancelled) {
+                    sendViaRelay(regularFiles.map { it.absolutePath to null }, targetFingerprint ?: lanTarget.info.fingerprint, lanTargetName(lanTarget))
+                }
             } else {
-                sendViaRelay(regularFiles, targetFingerprint)
+                sendViaRelay(regularFiles.map { it.absolutePath to null }, targetFingerprint, null)
             }
         }
     }
 
+    /**
+     * Sends every file contained in [folders] (recursively), preserving directory structure:
+     * relative paths are computed against the nearest common ancestor so receivers recreate
+     * the tree instead of flattening it.
+     */
+    fun sendFolders(folders: List<File>, targetFingerprint: String? = null) {
+        val dirRoots = folders.filter { it.isDirectory }
+        if (dirRoots.isEmpty()) {
+            sendFiles(folders.filter { it.isFile }, targetFingerprint)
+            return
+        }
+
+        val ancestor = if (dirRoots.size == 1) {
+            dirRoots.first().parentFile ?: dirRoots.first()
+        } else {
+            commonAncestor(dirRoots) ?: dirRoots.first().parentFile
+        }
+
+        val entries = mutableListOf<Pair<File, String?>>()
+        for (root in dirRoots) {
+            root.walkTopDown().filter { it.isFile }.forEach { file ->
+                val rel = ancestor?.let { file.relativeToOrNull(it)?.invariantSeparatorsPath } ?: file.name
+                entries.add(file to rel)
+            }
+        }
+
+        if (entries.isEmpty()) {
+            clientEngine.updateUploadState(
+                UploadState(error = "The selected folder contains no files", isUploading = false),
+            )
+            return
+        }
+        sendEntries(entries, targetFingerprint)
+    }
+
+    /** Entry-point wrapper used by drag-drop / dialogs (no relative paths). */
+    private fun sendEntries(entries: List<Pair<File, String?>>, targetFingerprint: String?) {
+        if (entries.isEmpty()) return
+
+        if (isSessionActive()) {
+            clientEngine.updateUploadState(
+                UploadState(fileName = entries.first().first.name, error = "A transfer is already in progress", isUploading = false),
+            )
+            return
+        }
+
+        sessionJob = scope.launch {
+            sessionCancelled = false
+            val lanTarget = resolveDirectTarget(targetFingerprint)
+            if (lanTarget != null) {
+                val delivered = runSession(entries, lanTarget)
+                if (!delivered && !sessionCancelled) {
+                    sendViaRelay(
+                        entries.map { it.first.absolutePath to it.second },
+                        targetFingerprint ?: lanTarget.info.fingerprint,
+                        lanTargetName(lanTarget),
+                    )
+                }
+            } else {
+                sendViaRelay(entries.map { it.first.absolutePath to it.second }, targetFingerprint, null)
+            }
+        }
+    }
+
+    private fun lanTargetName(target: DiscoveredDevice): String = target.info.alias.ifBlank { target.info.deviceModel.ifBlank { "device" } }
+
+    private fun commonAncestor(dirs: List<File>): File? {
+        var candidate: File? = dirs.first().absoluteFile.parentFile
+        outer@ while (candidate != null) {
+            val current = candidate
+            for (dir in dirs) {
+                if (dir.relativeToOrNull(current) == null) {
+                    candidate = current.parentFile
+                    continue@outer
+                }
+            }
+            return current
+        }
+        return null
+    }
+
     fun cancelActiveSession() {
+        sessionCancelled = true
         sessionJob?.cancel()
         sessionJob = null
         clientEngine.updateUploadState(
@@ -100,29 +194,32 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         )
     }
 
-    private suspend fun runSession(files: List<File>, target: DiscoveredDevice) {
-        val peerName = target.info.alias.ifBlank { target.info.deviceModel.ifBlank { "device" } }
+    /** Runs one direct-push session with capped transport retries. Returns true when delivered. */
+    private suspend fun runSession(entries: List<Pair<File, String?>>, target: DiscoveredDevice): Boolean {
+        val peerName = lanTargetName(target)
 
         var attempt = 0
         while (true) {
-            val outcome = executeSessionAttempt(files, target, peerName, suppressFailurePaint = attempt > 0)
+            val outcome = executeSessionAttempt(entries, target, peerName, suppressFailurePaint = attempt > 0)
             val shouldRetry = outcome.transportAllFailed && !outcome.wasCancelled && attempt < MAX_RETRY_ATTEMPTS
-            if (!shouldRetry) return
+            if (!shouldRetry) {
+                return !outcome.transportAllFailed || outcome.deliveredAny
+            }
             delay(1000L * (attempt + 1))
             attempt++
         }
     }
 
     /** One full prepare-upload -> parallel upload -> finish pass. */
-    private suspend fun executeSessionAttempt(files: List<File>, target: DiscoveredDevice, peerName: String, suppressFailurePaint: Boolean): SessionOutcome {
-        val fileData = LinkedHashMap<String, File>()
-        files.forEach { file -> fileData[UUID.randomUUID().toString()] = file }
-        val totalBatchSize = fileData.values.sumOf { it.length() }
+    private suspend fun executeSessionAttempt(entries: List<Pair<File, String?>>, target: DiscoveredDevice, peerName: String, suppressFailurePaint: Boolean): SessionOutcome {
+        val fileData = LinkedHashMap<String, Pair<File, String?>>()
+        entries.forEach { (file, rel) -> fileData[UUID.randomUUID().toString()] = file to rel }
+        val totalBatchSize = fileData.values.sumOf { it.first.length() }
 
         clientEngine.resetUploadState()
         clientEngine.updateUploadState(
             UploadState(
-                fileName = if (fileData.size == 1) fileData.values.first().name else "Preparing ${fileData.size} files",
+                fileName = if (fileData.size == 1) fileData.values.first().first.name else "Preparing ${fileData.size} files",
                 totalFiles = fileData.size,
                 isUploading = true,
                 peerName = peerName,
@@ -140,13 +237,15 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
             port = target.info.port,
             request = PrepareUploadRequestDto(
                 info = discoveryEngine.localInfo,
-                files = fileData.mapValues { (id, file) ->
+                files = fileData.mapValues { (id, pair) ->
+                    val file = pair.first
                     FileDto(
                         id = id,
                         fileName = file.name,
                         size = file.length(),
                         fileType = mimeOf(file),
                         partialHash = computePartialHash(file),
+                        relativePath = pair.second?.takeIf { it.isNotBlank() },
                     )
                 },
             ),
@@ -161,7 +260,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                     401, 403 -> "Not authorized to send to $peerName"
                     else -> "$peerName rejected the transfer (HTTP ${prepared.httpStatus})"
                 }
-                logAll(fileData.values, peerName, status = "failed")
+                logAll(fileData.values.map { it.first }, peerName, status = "failed")
                 clientEngine.updateUploadState(UploadState(error = message, isUploading = false))
             }
             return SessionOutcome(transportAllFailed = prepared.httpStatus == -1)
@@ -174,10 +273,11 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
 
         try {
             coroutineScope {
-                fileData.forEach { (id, file) ->
+                fileData.forEach { (id, pair) ->
                     launch(Dispatchers.IO) {
                         semaphore.acquire()
                         try {
+                            val file = pair.first
                             val fileToken = response.files[id] ?: run {
                                 outcomes.add(id to UploadOutcome(false, 403))
                                 return@launch
@@ -198,7 +298,6 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                             }
 
                             stream.use { input ->
-                                val useQuic = clientEngine.quicAvailable()
                                 val perFile = AtomicLong(0L)
                                 val onBytes: (Long) -> Unit = { bytes ->
                                     val delta = bytes - perFile.getAndSet(bytes)
@@ -208,17 +307,17 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                                         totalSent.addAndGet(delta),
                                         totalBatchSize,
                                         file.name,
-                                        useQuic,
                                         peerName,
                                         target.info.fingerprint,
                                     )
                                 }
 
-                                val outcome = if (useQuic) {
-                                    clientEngine.uploadFileQuic(target.ip, target.info.port, response.sessionId, id, file.name, fileToken, input, file.length(), onProgress = onBytes)
-                                } else {
-                                    clientEngine.uploadFile(target.ip, target.info.port, response.sessionId, id, file.name, fileToken, input, file.length(), onProgress = onBytes)
-                                }
+                                // The desktop build has no QUIC engine; uploads ride the CIO
+                                // HTTP/1.1 stack. (Phones prefer Cronet HTTP/3.)
+                                val outcome = clientEngine.uploadFile(
+                                    target.ip, target.info.port, response.sessionId, id, file.name, fileToken,
+                                    input, file.length(), onProgress = onBytes,
+                                )
 
                                 if (outcome.ok) {
                                     doneCount.incrementAndGet()
@@ -241,6 +340,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         val failed = outcomes.filter { !it.second.ok }
         val anyHttpError = failed.any { it.second.httpStatus > 0 }
         val transportAllFailed = failed.isNotEmpty() && failed.size == outcomes.size && !anyHttpError
+        val deliveredAny = outcomes.any { it.second.ok }
 
         if (transportAllFailed && suppressFailurePaint) {
             // A retry pass re-runs everything — don't paint a failure state in between
@@ -255,18 +355,18 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                 clientEngine.uploadState.value.copy(error = "Cannot read one or more files", isUploading = false),
             )
         }
-        return SessionOutcome(transportAllFailed = false)
+        return SessionOutcome(transportAllFailed = false, deliveredAny = deliveredAny)
     }
 
-    private data class SessionOutcome(val transportAllFailed: Boolean, val wasCancelled: Boolean = false)
+    private data class SessionOutcome(val transportAllFailed: Boolean, val wasCancelled: Boolean = false, val deliveredAny: Boolean = false)
 
     /**
-     * Resolves the LAN drop target among live discoveries. WAN/roster entries carry
-     * synthetic IPs and are excluded here because direct uploads require a reachable
-     * LAN address; they are handled by [sendViaRelay] instead.
+     * Resolves the DIRECT push target among live discoveries: only LAN devices that host a
+     * receiver qualify (`download = true`). Phones advertise `download = false` and are
+     * handled by [sendViaRelay]; WAN/roster entries carry synthetic IPs and never route here.
      */
-    private fun resolveLanTarget(targetFingerprint: String?): DiscoveredDevice? {
-        val lanDevices = discoveryEngine.devices.value.values.filter { !it.viaWan && it.info.port > 0 }
+    private fun resolveDirectTarget(targetFingerprint: String?): DiscoveredDevice? {
+        val lanDevices = discoveryEngine.devices.value.values.filter { !it.viaWan && !it.viaRoster && it.info.download && it.info.port > 0 }
         if (lanDevices.isEmpty()) return null
 
         targetFingerprint?.let { fp ->
@@ -284,18 +384,30 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     }
 
     /**
-     * Relay delivery when no LAN path exists: the PC hosts the files (ShareRoutes pull
-     * endpoints) and pushes a prepare-upload prompt over the phone's persistent
-     * WebSocket session. Candidate order: explicit fingerprint -> preferred pin ->
-     * the first paired remotely-known device. Exactly ONE candidate receives the
-     * prompt — spraying every connected phone would trigger duplicate pulls.
+     * Pull-model delivery: host files locally, push a prepare-upload prompt over the peer's
+     * persistent WebSocket session, and let it download. Candidate order: explicit
+     * fingerprint -> preferred pin -> trusted WS-connected peers (paired or same-account).
+     * Exactly ONE candidate receives the prompt — spraying every connected phone would
+     * trigger duplicate pulls.
+     *
+     * Success here means ONLY "the peer was prompted"; real completion arrives via the
+     * relay callbacks once every byte has been pulled (or the offer expires untouched).
      */
-    private suspend fun sendViaRelay(files: List<File>, explicitFingerprint: String?): Boolean {
+    private suspend fun sendViaRelay(files: List<Pair<String, String?>>, explicitFingerprint: String?, knownPeerName: String?): Boolean {
+        val pairedSet = AuthState.pairedFingerprints.value
+        val mySub = deviceConfig.googleSub.takeIf { it.isNotBlank() }
         val remoteDevices = discoveryEngine.devices.value.values.filter { it.viaWan || it.viaRoster }
+
+        fun isTrustedCandidate(fp: String): Boolean = fp in pairedSet || remoteDevices.any { it.info.fingerprint == fp && mySub != null && it.info.googleSub == mySub }
+
         val candidates = buildList {
-            explicitFingerprint?.let(::add)
-            preferredTargetFingerprint?.let { fp -> if (fp !in this) add(fp) }
-            remoteDevices.map { it.info.fingerprint }.filter { it !in this && it in AuthState.pairedFingerprints.value }.forEach(::add)
+            explicitFingerprint?.takeIf { it.isNotBlank() }?.let(::add)
+            preferredTargetFingerprint?.let { fp -> if (fp !in this && isTrustedCandidate(fp)) add(fp) }
+            // Live control-channel sessions first — these peers can actually be prompted now
+            WebSocketConnectionManager.trustedFingerprints()
+                .filter { it !in this && isTrustedCandidate(it) }
+                .forEach(::add)
+            remoteDevices.map { it.info.fingerprint }.filter { it !in this && isTrustedCandidate(it) }.forEach(::add)
         }
 
         val chosenFingerprint = candidates.firstOrNull()
@@ -306,15 +418,16 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                 return false
             }
         val peerName = remoteDevices.firstOrNull { it.info.fingerprint == chosenFingerprint }
-            ?.info?.alias?.ifBlank { null } ?: "relay"
+            ?.info?.alias?.ifBlank { null }
+            ?: knownPeerName?.takeIf { chosenFingerprint == explicitFingerprint }
+            ?: "device"
 
         val alias = deviceConfig.alias.ifBlank { "PC" }
-        val payload = files.map { it.absolutePath to (null as String?) }
 
         clientEngine.resetUploadState()
         clientEngine.updateUploadState(
             UploadState(
-                fileName = if (files.size == 1) files.first().name else "Preparing ${files.size} files",
+                fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "Preparing ${files.size} files",
                 totalFiles = files.size,
                 isUploading = true,
                 peerName = peerName,
@@ -324,17 +437,38 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
 
         val delivered = com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
             targetFingerprint = chosenFingerprint,
-            files = payload,
+            files = files,
             senderAlias = alias,
+            onCompleted = {
+                files.forEach { logSent(File(it.first), peerName) }
+                clientEngine.finishUpload(files.size, files.size)
+            },
+            onExpired = {
+                clientEngine.updateUploadState(
+                    UploadState(
+                        fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "${files.size} files",
+                        error = "$peerName did not pick up the files - the offer expired",
+                        isUploading = false,
+                    ),
+                )
+            },
         )
 
         if (delivered) {
-            files.forEach { logSent(it, peerName) }
-            clientEngine.finishUpload(files.size, files.size)
+            // Prompt reached the device; completion is reported by the callbacks above
+            clientEngine.updateUploadState(
+                UploadState(
+                    fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "Waiting for $peerName",
+                    totalFiles = files.size,
+                    isUploading = true,
+                    peerName = peerName,
+                    targetFingerprint = chosenFingerprint,
+                ),
+            )
         } else {
             clientEngine.updateUploadState(
                 UploadState(
-                    fileName = if (files.size == 1) files.first().name else "${files.size} files",
+                    fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "${files.size} files",
                     error = "$peerName is not connected - open DeX on the phone and try again",
                     isUploading = false,
                 ),
@@ -357,7 +491,8 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
 
     /**
      * SHA-256 over the first and last 32KB of the file — mirrors the Android sender so
-     * both sides agree on the dedupe/diff fingerprint contract.
+     * both sides agree on the dedupe/diff fingerprint contract. The receiver uses this to
+     * answer "[SKIP]" for identical content instead of duplicating files.
      */
     private fun computePartialHash(file: File): String? {
         val fileSize = file.length()
@@ -402,7 +537,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     }
 
     /** Throttled aggregate progress publisher with smoothed speed (worker parity). */
-    private fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String, useQuic: Boolean, peerName: String, targetFingerprint: String?) {
+    private fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String, peerName: String, targetFingerprint: String?) {
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < PROGRESS_THROTTLE_MS) return
 
@@ -427,7 +562,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                     progress = aggregate,
                     aggregateProgress = aggregate,
                     isUploading = true,
-                    protocol = if (useQuic) clientEngine.lastUploadProtocol() else "http/1.1",
+                    protocol = "http/1.1",
                     speedBps = smoothedSpeed.get(),
                     targetFingerprint = targetFingerprint,
                     peerName = peerName,

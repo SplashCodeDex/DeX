@@ -22,10 +22,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.mirror.toImageBitmap
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Base64
+
+private val CardSelectedHoverColor = Color(0xFF3D3647)
+private val CardSelectedColor = Color(0xFF332D3B)
 
 /**
  * 100x115dp File & Folder Grid Card with hover lift, press sink, and micro-thumbnail decoding.
@@ -51,23 +59,22 @@ internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onCli
         label = "itemScale",
     )
 
-    // Decode Base64 micro-thumbnail if present
-    val thumbnailBitmap = remember(item.thumbBase64) {
-        if (!item.thumbBase64.isNullOrBlank()) {
-            try {
-                val bytes = Base64.getDecoder().decode(item.thumbBase64)
-                bytes.toImageBitmap()
-            } catch (_: Exception) {
-                null
-            }
+    // Decode Base64 micro-thumbnail off the UI thread
+    val thumbnailBitmap by produceState<ImageBitmap?>(initialValue = null, key1 = item.thumbBase64) {
+        val raw = item.thumbBase64
+        if (raw.isNullOrBlank()) {
+            value = null
         } else {
-            null
+            value = withContext(Dispatchers.IO) {
+                runCatching { Base64.getDecoder().decode(raw).toImageBitmap() }.getOrNull()
+            }
         }
     }
 
     Box(
         modifier = Modifier
-            .size(width = 100.dp, height = 115.dp)
+            .fillMaxWidth()
+            .height(115.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -75,10 +82,10 @@ internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onCli
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when {
-                    isSelected && isHovered -> androidx.compose.ui.graphics.Color(0xFF3D3647)
-                    isSelected -> androidx.compose.ui.graphics.Color(0xFF332D3B)
+                    isSelected && isHovered -> CardSelectedHoverColor
+                    isSelected -> CardSelectedColor
                     isHovered -> MaterialTheme.colorScheme.surfaceVariant
-                    else -> androidx.compose.ui.graphics.Color.Transparent
+                    else -> Color.Transparent
                 },
             )
             .clickable(
@@ -103,18 +110,18 @@ internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onCli
                 contentAlignment = Alignment.Center,
             ) {
                 val isMedia = item.name.endsWith(".jpg", true) || item.name.endsWith(".png", true) || item.name.endsWith(".jpeg", true)
-                if (thumbnailBitmap != null) {
+                val bitmap = thumbnailBitmap
+                if (bitmap != null) {
                     Image(
-                        bitmap = thumbnailBitmap,
+                        bitmap = bitmap,
                         contentDescription = item.name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else if (isMedia && !item.isDirectory) {
-                    val coilUri = if (item.path.startsWith("C:", ignoreCase = true) || item.path.startsWith("W:", ignoreCase = true) || item.path.contains(":\\")) {
-                        "file:///" + item.path.replace('\\', '/')
-                    } else {
-                        item.path
+                    val coilUri = remember(item.path) {
+                        val file = java.io.File(item.path)
+                        if (file.isAbsolute) file.toURI().toString() else item.path
                     }
                     coil3.compose.SubcomposeAsyncImage(
                         model = coilUri,

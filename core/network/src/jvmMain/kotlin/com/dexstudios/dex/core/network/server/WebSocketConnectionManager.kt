@@ -5,46 +5,72 @@ import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import java.util.concurrent.ConcurrentHashMap
 
-private data class SessionHolder(val session: WebSocketSession, val mutex: Mutex = Mutex())
+/**
+ * A connected control-plane session.
+ *
+ * [trusted] means the handshake presented proof of trust: the bearer token equaled our
+ * googleSub / identityHash (same-account auto-trust) or the fingerprint's paired token.
+ * Only trusted sessions receive transfer prompts, hosted-file pushes and roster data;
+ * untrusted sessions may only run the pairing handshake until the PIN is proven.
+ *
+ * [identityToken] records WHICH of our identity tokens the peer presented (when any) so
+ * same-email roster membership can be derived without trusting client claims.
+ */
+class SessionHolder(val session: WebSocketSession, val trusted: Boolean, val identityToken: String?, val mutex: Mutex = Mutex())
 
 object WebSocketConnectionManager {
     private val sessions = ConcurrentHashMap<String, SessionHolder>()
 
-    fun register(fingerprint: String, session: WebSocketSession) {
-        sessions[fingerprint] = SessionHolder(session)
+    /**
+     * Registers a session for [fingerprint]. Returns false when an active session for the
+     * same fingerprint already exists — the caller must refuse the new connection instead
+     * of silently replacing the slot, otherwise any LAN peer that knows a victim's
+     * (publicly broadcast) fingerprint could hijack its prompts and pull tokens.
+     */
+    fun register(fingerprint: String, session: WebSocketSession, trusted: Boolean, identityToken: String? = null): Boolean =
+        sessions.putIfAbsent(fingerprint, SessionHolder(session, trusted, identityToken)) == null
+
+    /** Upgrades a session to trusted after the pairing PIN has been proven. */
+    fun markTrusted(fingerprint: String, identityToken: String? = null) {
+        sessions.computeIfPresent(fingerprint) { _, holder ->
+            SessionHolder(holder.session, true, identityToken ?: holder.identityToken, holder.mutex)
+        }
     }
 
     fun unregister(fingerprint: String) {
         sessions.remove(fingerprint)
     }
 
+    fun isConnected(fingerprint: String): Boolean = sessions.containsKey(fingerprint)
+
+    fun isTrusted(fingerprint: String): Boolean = sessions[fingerprint]?.trusted == true
+
+    fun holderOf(fingerprint: String): SessionHolder? = sessions[fingerprint]
+
+    fun connectedFingerprints(): Set<String> = sessions.keys.toSet()
+
+    fun trustedFingerprints(): Set<String> = sessions.filterValues { it.trusted }.keys.toSet()
+
     suspend fun sendRequest(fingerprint: String, json: String): Boolean {
         val holder = sessions[fingerprint] ?: return false
-        return try {
-            holder.mutex.withLock {
-                holder.session.send(Frame.Text(json))
-            }
-            true
-        } catch (e: Exception) {
-            false
-        }
+        return trySend(holder, json)
+    }
+
+    /** Sends only to sessions that completed the trust handshake. */
+    suspend fun sendToTrusted(fingerprint: String, json: String): Boolean {
+        val holder = sessions[fingerprint] ?: return false
+        if (!holder.trusted) return false
+        return trySend(holder, json)
     }
 
     suspend fun broadcast(json: String): Boolean {
         if (sessions.isEmpty()) return false
         var sentAny = false
         for (holder in sessions.values) {
-            try {
-                holder.mutex.withLock {
-                    holder.session.send(Frame.Text(json))
-                }
-                sentAny = true
-            } catch (e: Exception) { }
+            if (trySend(holder, json)) sentAny = true
         }
         return sentAny
     }
@@ -54,16 +80,20 @@ object WebSocketConnectionManager {
         var sentAny = false
         val pairedFps = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value
         for ((fp, holder) in sessions) {
-            if (pairedFps.contains(fp)) {
-                try {
-                    holder.mutex.withLock {
-                        holder.session.send(Frame.Text(json))
-                    }
-                    sentAny = true
-                } catch (e: Exception) { }
+            if (pairedFps.contains(fp) || holder.trusted) {
+                if (trySend(holder, json)) sentAny = true
             }
         }
         return sentAny
+    }
+
+    private suspend fun trySend(holder: SessionHolder, json: String): Boolean = try {
+        holder.mutex.withLock {
+            holder.session.send(Frame.Text(json))
+        }
+        true
+    } catch (_: Exception) {
+        false
     }
 }
 

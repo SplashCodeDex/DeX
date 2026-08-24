@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.dexstudios.dex.core.network.HashUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -38,31 +39,39 @@ object TransferHistory : KoinComponent {
 
     private val dataStore: DataStore<Preferences> by inject()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val mutationMutex = Mutex()
 
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
 
     fun init() {
-        scope.launch {
-            _items.value = read()
-        }
+        scope.launch { reloadIfEmpty() }
     }
 
     fun refresh() {
-        scope.launch {
-            _items.value = read()
-        }
+        scope.launch { reloadIfEmpty() }
     }
 
     fun delete(id: String) {
-        val updated = _items.value.filter { it.id != id }
-        _items.value = updated
-        scope.launch { write(updated) }
+        deleteAll(listOf(id))
+    }
+
+    fun deleteAll(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        scope.launch {
+            mutationMutex.withLock {
+                val idSet = ids.toHashSet()
+                mutateLocked { current -> current.filterNot { it.id in idSet } }
+            }
+        }
     }
 
     fun clear() {
-        _items.value = emptyList()
-        scope.launch { write(emptyList()) }
+        scope.launch {
+            mutationMutex.withLock {
+                mutateLocked { emptyList() }
+            }
+        }
     }
 
     fun log(name: String, size: Long, direction: String, uri: String? = null, peerDevice: String? = null, status: String = "success", timestamp: Long = HashUtils.currentTimeMillis()) {
@@ -76,9 +85,25 @@ object TransferHistory : KoinComponent {
             peerDevice = peerDevice,
             status = status,
         )
-        val updated = (listOf(record) + _items.value).take(MAX_ENTRIES)
+        scope.launch {
+            mutationMutex.withLock {
+                mutateLocked { current -> (listOf(record) + current).take(MAX_ENTRIES) }
+            }
+        }
+    }
+
+    private suspend fun reloadIfEmpty() {
+        mutationMutex.withLock {
+            if (_items.value.isEmpty()) {
+                _items.value = read()
+            }
+        }
+    }
+
+    private suspend fun mutateLocked(transform: (List<TransferRecord>) -> List<TransferRecord>) {
+        val updated = transform(_items.value)
         _items.value = updated
-        scope.launch { write(updated) }
+        write(updated)
     }
 
     private suspend fun read(): List<TransferRecord> {

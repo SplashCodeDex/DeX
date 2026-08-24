@@ -33,14 +33,36 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.network.ClientEngine
+import com.dexstudios.dex.core.network.services.FileExplorerService
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Floating PullProgressDock Toast with a 4dp Emerald Progress Bar.
+ * Floating transfer toast with a 4dp Emerald Progress Bar.
+ * Renders the active pull from the phone when one is running, otherwise the upload state.
  */
 @Composable
-fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier: Modifier = Modifier, fileExplorerService: FileExplorerService? = null) {
     val uploadState by clientEngine.uploadState.collectAsState()
+    val pullState = fileExplorerService?.pullProgress?.collectAsState()?.value
+
+    val showPull = pullState?.isPulling == true
+    val title = if (showPull) {
+        pullState!!.activeFileName.ifBlank {
+            if (pullState.totalFiles > 1) "Receiving ${pullState.totalFiles} files from phone" else "Receiving from phone"
+        }
+    } else {
+        uploadState.fileName.ifBlank { "Transferring files..." }
+    }
+    val progress = if (showPull) {
+        pullState!!.progress.coerceIn(0f, 1f)
+    } else {
+        uploadState.progress.coerceIn(0f, 1f)
+    }
+    val detail = if (showPull) {
+        "${(pullState!!.progress * 100).toInt()}% • ${pullState.completedFiles}/${pullState.totalFiles} files • ${formatFileSize(pullState.bytesTransferred)}"
+    } else {
+        "${(uploadState.progress * 100).toInt()}% • ${formatSpeed(uploadState.speedBps)}"
+    }
 
     Box(
         modifier = modifier
@@ -58,7 +80,7 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = uploadState.fileName.ifBlank { "Transferring files..." },
+                        text = title,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -66,7 +88,7 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "${(uploadState.progress * 100).toInt()}% • ${formatSpeed(uploadState.speedBps)}",
+                        text = detail,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -89,7 +111,7 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
 
             // 4dp Emerald Progress Indicator
             LinearProgressIndicator(
-                progress = { uploadState.progress.coerceIn(0f, 1f) },
+                progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)

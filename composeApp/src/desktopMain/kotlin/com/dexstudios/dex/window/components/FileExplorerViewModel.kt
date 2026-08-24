@@ -6,21 +6,25 @@ import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.TransferHistory
+import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import com.dexstudios.dex.core.network.services.ExplorerFileEntry
 import com.dexstudios.dex.core.network.services.ExplorerFolderItem
 import com.dexstudios.dex.core.network.services.FileExplorerService
 import com.dexstudios.dex.core.network.services.PullFileItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
 
-class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerService: FileExplorerService, val discoveryEngine: DiscoveryEngine) : ViewModel() {
+class FileExplorerViewModel(private val clientEngine: ClientEngine, private val fileExplorerService: FileExplorerService, private val discoveryEngine: DiscoveryEngine) : ViewModel() {
+
+    private val rootDirectory: String = getDeXDownloadDirectory()
 
     private val _mode = MutableStateFlow(ExplorerMode.History)
     val mode = _mode.asStateFlow()
 
-    private val _currentLocalPath = MutableStateFlow(getDeXDownloadDirectory())
+    private val _currentLocalPath = MutableStateFlow(rootDirectory)
     val currentLocalPath = _currentLocalPath.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
@@ -44,6 +48,13 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
     private val _isLoadingSaf = MutableStateFlow(false)
     val isLoadingSaf = _isLoadingSaf.asStateFlow()
 
+    private val _explorerError = MutableStateFlow<String?>(null)
+    val explorerError = _explorerError.asStateFlow()
+
+    fun clearError() {
+        _explorerError.value = null
+    }
+
     val pairedFingerprints = AuthState.pairedFingerprints
     val devicesMap = discoveryEngine.devices
 
@@ -51,8 +62,14 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
         map.values.firstOrNull { paired.contains(it.info.fingerprint) } ?: map.values.firstOrNull()
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    val activeFingerprint = activePhone.map { it?.info?.fingerprint ?: pairedFingerprints.value.firstOrNull() ?: "" }
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+    val activeFingerprint = combine(devicesMap, pairedFingerprints) { map, paired ->
+        val connected = WebSocketConnectionManager.connectedFingerprints()
+        paired.firstOrNull { it in connected }
+            ?: map.values.firstOrNull { !it.viaWan && it.info.fingerprint in paired }?.info?.fingerprint
+            ?: map.values.firstOrNull()?.info?.fingerprint
+            ?: paired.firstOrNull()
+            ?: ""
+    }.stateIn(viewModelScope, SharingStarted.Lazily, "")
 
     val transferHistoryItems = TransferHistory.items
 
@@ -68,9 +85,17 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
             combine(_mode, activeFingerprint) { m, fp -> Pair(m, fp) }.collectLatest { (m, fp) ->
                 if (m == ExplorerMode.Saf && fp.isNotBlank()) {
                     _isLoadingSaf.value = true
-                    _safBreadcrumb.value = emptyList()
-                    _safFolders.value = fileExplorerService.listFolders(fp)
-                    _isLoadingSaf.value = false
+                    try {
+                        _safBreadcrumb.value = emptyList()
+                        if (!WebSocketConnectionManager.isConnected(fp)) {
+                            _safFolders.value = emptyList()
+                            _explorerError.value = "No phone connected"
+                        } else {
+                            _safFolders.value = fileExplorerService.listFolders(fp)
+                        }
+                    } finally {
+                        _isLoadingSaf.value = false
+                    }
                 }
             }
         }
@@ -80,9 +105,17 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
             combine(_safBreadcrumb, activeFingerprint) { breadcrumb, fp -> Pair(breadcrumb, fp) }.collectLatest { (breadcrumb, fp) ->
                 if (_mode.value == ExplorerMode.Saf && breadcrumb.isNotEmpty() && fp.isNotBlank()) {
                     _isLoadingSaf.value = true
-                    val currentFolderUri = breadcrumb.last().second
-                    _safEntries.value = fileExplorerService.browseFolder(fp, currentFolderUri)
-                    _isLoadingSaf.value = false
+                    try {
+                        if (!WebSocketConnectionManager.isConnected(fp)) {
+                            _safEntries.value = emptyList()
+                            _explorerError.value = "No phone connected"
+                        } else {
+                            val currentFolderUri = breadcrumb.last().second
+                            _safEntries.value = fileExplorerService.browseFolder(fp, currentFolderUri)
+                        }
+                    } finally {
+                        _isLoadingSaf.value = false
+                    }
                 }
             }
         }
@@ -176,17 +209,18 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
         }
 
         if (query.isBlank()) rawItems else rawItems.filter { it.name.contains(query, ignoreCase = true) }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val isAtRoot = combine(_mode, _currentLocalPath, _safBreadcrumb) { m, path, breadcrumb ->
         if (m == ExplorerMode.History) {
-            path == getDeXDownloadDirectory() || File(path).parent == null
+            path == rootDirectory || File(path).parent == null
         } else {
             breadcrumb.isEmpty()
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
     fun toggleMode() {
+        _selectedItemId.value = null
         _mode.value = if (_mode.value == ExplorerMode.History) ExplorerMode.Saf else ExplorerMode.History
     }
 
@@ -214,12 +248,17 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
     fun grantNewFolder() {
         viewModelScope.launch {
             val fp = activeFingerprint.value
-            if (fp.isNotBlank()) {
-                _isLoadingSaf.value = true
+            if (fp.isBlank() || !WebSocketConnectionManager.isConnected(fp)) {
+                _explorerError.value = "No phone connected"
+                return@launch
+            }
+            _isLoadingSaf.value = true
+            try {
                 val newFolder = fileExplorerService.grantFolder(fp)
                 if (newFolder != null) {
                     _safFolders.value = fileExplorerService.listFolders(fp)
                 }
+            } finally {
                 _isLoadingSaf.value = false
             }
         }
@@ -236,9 +275,11 @@ class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerServ
     fun pullSafFile(uri: String, name: String, size: Long) {
         viewModelScope.launch {
             val fp = activeFingerprint.value
-            if (fp.isNotBlank()) {
-                fileExplorerService.pullFiles(fp, listOf(PullFileItem(uri = uri, name = name, size = size)))
+            if (fp.isBlank() || !WebSocketConnectionManager.isConnected(fp)) {
+                _explorerError.value = "No phone connected"
+                return@launch
             }
+            fileExplorerService.pullFiles(fp, listOf(PullFileItem(uri = uri, name = name, size = size)))
         }
     }
 

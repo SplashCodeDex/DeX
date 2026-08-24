@@ -83,11 +83,4 @@ internal fun handleItemDoubleClick(item: ExplorerFileItem, onDrillDown: (String)
     }
 }
 
-fun getDeXDownloadDirectory(): String {
-    val userHome = System.getProperty("user.home") ?: ""
-    val dir = File(userHome, "Downloads/DeX")
-    if (!dir.exists()) {
-        dir.mkdirs()
-    }
-    return dir.absolutePath
-}
+fun getDeXDownloadDirectory(): String = com.dexstudios.dex.core.network.server.ReceiveStorage.downloadsDir().absolutePath

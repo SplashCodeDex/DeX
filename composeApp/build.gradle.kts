@@ -29,7 +29,6 @@ kotlin {
             implementation(project(":core:data"))
             implementation(project(":core:designsystem"))
             implementation(project(":feature:discovery"))
-            implementation(project(":feature:history"))
             implementation(project(":feature:settings"))
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)

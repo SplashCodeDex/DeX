@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -265,7 +266,7 @@ fun AnimatedSearchToXIcon(
                     progress = { progress },
                 ),
                 contentDescription = contentDescription,
-                modifier = Modifier.size(size),
+                modifier = Modifier.requiredSize(size * 2.13f),
                 contentScale = ContentScale.Fit,
                 colorFilter = colorFilter,
             )

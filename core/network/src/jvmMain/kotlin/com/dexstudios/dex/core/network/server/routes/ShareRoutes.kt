@@ -4,14 +4,15 @@ import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.PrepareUploadResponseDto
 import com.dexstudios.dex.core.network.RegisterDto
-import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.network.TransferHistory
+import com.dexstudios.dex.core.network.server.ReceiveStorage
+import com.dexstudios.dex.core.network.services.RelayService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
-import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,91 +20,121 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.put
 import java.io.File
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
-data class ShareTargetPayload(val files: List<String>)
+data class ShareTargetPayload(val files: List<String>, val targetFingerprint: String? = null)
 
-data class SessionEntry(val request: PrepareUploadRequestDto, val createdAt: Long = System.currentTimeMillis())
+/**
+ * Receiver-side dedupe index: content key -> absolute path of the already-received file.
+ * Keyed by (size, partialHash) exactly as senders fingerprint their files; files without a
+ * partialHash are never indexed, so empty/unknown-content payloads always get fresh names.
+ */
+object ReceivedFileIndex {
+    private val byKey = ConcurrentHashMap<String, String>()
 
-// Match the C# implementation state variables
+    private fun key(size: Long, partialHash: String?): String? {
+        if (partialHash.isNullOrEmpty()) return null
+        return "$size:$partialHash"
+    }
+
+    /** Returns the stored path when identical content was already received, else null. */
+    fun find(size: Long, partialHash: String?): String? = key(size, partialHash)?.let { byKey[it] }
+
+    fun record(file: File, size: Long, partialHash: String?) {
+        val k = key(size, partialHash) ?: return
+        byKey[k] = file.absolutePath
+    }
+
+    /** A previously-indexed file may have been deleted by the user; drop dead entries lazily. */
+    private fun live(path: String): Boolean = File(path).exists()
+
+    fun findLive(size: Long, partialHash: String?): String? {
+        val path = find(size, partialHash) ?: return null
+        if (!live(path)) {
+            byKey.remove(key(size, partialHash)!!)
+            return null
+        }
+        return path
+    }
+
+    fun clear() = byKey.clear()
+}
+
+data class SessionEntry(
+    val request: PrepareUploadRequestDto,
+    val createdAt: Long = System.currentTimeMillis(),
+    /**
+     * fileId -> issued per-file pull/upload token for THIS session. Null only for sessions
+     * constructed outside the real prepare flow (tests/legacy); token enforcement is skipped
+     * when null so hand-built sessions keep working.
+     */
+    val issuedTokens: Map<String, String>? = null,
+    /** Bearer token the sender authenticated with; gates /cancel ownership. */
+    val ownerToken: String? = null,
+) {
+    /** Files the sender will actually upload ([SKIP]-deduped ones excluded); -1 when unknown. */
+    val expectedUploads: Int get() = issuedTokens?.size ?: -1
+}
+
 val activeUploadSessions = ConcurrentHashMap<String, SessionEntry>()
 val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
+
 private val shareRoutesFileLock = Any()
-private val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO).apply {
+
+/** Removes every trace of an incoming session: session store, progress counters, dashboard entry. */
+fun failIncomingSession(sessionId: String) {
+    activeUploadSessions.remove(sessionId)
+    activeUploadSessionsProgress.remove(sessionId)
+    com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
+}
+
+val shareRouteScope = CoroutineScope(SupervisorJob() + Dispatchers.IO).apply {
     launch {
         while (true) {
             delay(60_000) // 1 minute
             val now = System.currentTimeMillis()
-            val iterator = activeUploadSessions.entries.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
-                if (now - entry.value.createdAt > 10 * 60_000) { // 10 mins
-                    iterator.remove()
-                    activeUploadSessionsProgress.remove(entry.key)
-                }
-            }
+            val expired = activeUploadSessions.entries
+                .filter { now - it.value.createdAt > 10 * 60_000 }
+                .map { it.key }
+            // TTL sweeper must also clear progress + dashboard state, not just the session map
+            for (id in expired) failIncomingSession(id)
         }
     }
 }
 
 fun Route.shareRoutes() {
+    hostedDownloadRoutes()
+
     route("/local") {
         post("/share-target") {
             try {
                 val payload = call.receive<ShareTargetPayload>()
 
-                val fileList = payload.files.map { Pair(it, null) }
-                com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
-                    targetFingerprint = "", // Target device should be sent in payload if specific
+                // The route cannot guess a destination: without a target the relay no-ops.
+                val target = payload.targetFingerprint
+                if (target.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.UnprocessableEntity, "targetFingerprint is required")
+                    return@post
+                }
+
+                val fileList = payload.files.map { Pair(it, null as String?) }
+                RelayService.hostAndPushAsync(
+                    targetFingerprint = target,
                     files = fileList,
                     senderAlias = System.getProperty("user.name") ?: "PC",
                 )
                 call.respond(HttpStatusCode.OK)
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
                 call.respond(HttpStatusCode.BadRequest)
             }
         }
     }
 
     route("/api/localsend/v2") {
-        get("/download") {
-            val sessionId = call.request.queryParameters["sessionId"]
-            val fileId = call.request.queryParameters["fileId"]
-            val token = call.request.queryParameters["token"]
-
-            if (fileId == null || token == null) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@get
-            }
-
-            val expectedToken = com.dexstudios.dex.core.network.services.RelayService.hostedFileTokens[fileId]
-            val filePath = com.dexstudios.dex.core.network.services.RelayService.hostedFiles[fileId]
-
-            if (expectedToken == null || expectedToken != token || filePath == null) {
-                call.respond(HttpStatusCode.Forbidden)
-                return@get
-            }
-
-            com.dexstudios.dex.core.network.services.RelayService.hostedFileLastAccess[fileId] = System.currentTimeMillis()
-            val file = File(filePath)
-            if (!file.exists()) {
-                call.respond(HttpStatusCode.NotFound)
-                return@get
-            }
-
-            call.respondFile(file)
-        }
-
         post("/prepare-upload") {
             try {
                 val req = call.receive<PrepareUploadRequestDto>()
@@ -124,32 +155,56 @@ fun Route.shareRoutes() {
                     return@post
                 }
 
-                val sessionId = UUID.randomUUID().toString()
-                activeUploadSessions[sessionId] = SessionEntry(req)
+                val downloadsFolder = ReceiveStorage.downloadsDir()
 
-                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
-                    sessionId,
-                    req.info.alias.ifEmpty { "Device" },
-                    req.files.size,
-                    0,
-                )
-
-                val resFiles = mutableMapOf<String, String>()
-                val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
-                downloadsFolder.mkdirs()
-
+                // Validate capacity BEFORE registering anything, otherwise rejected requests
+                // leak dashboard entries until the TTL sweep
                 val totalSize = req.files.values.sumOf { it.size }
                 if (downloadsFolder.freeSpace < totalSize) {
                     call.respond(HttpStatusCode.InsufficientStorage)
                     return@post
                 }
 
-                req.files.forEach { (key, _) ->
-                    resFiles[key] = UUID.randomUUID().toString()
+                val sessionId = UUID.randomUUID().toString()
+                val issuedTokens = mutableMapOf<String, String>()
+                val resFiles = mutableMapOf<String, String>()
+                req.files.forEach { (key, meta) ->
+                    // Content-addressed dedupe: tell the sender "[SKIP]" when this exact
+                    // content already arrived, instead of duplicating "name (1)" copies.
+                    val existing = ReceivedFileIndex.findLive(meta.size, meta.partialHash)
+                    if (existing != null) {
+                        resFiles[key] = "[SKIP]"
+                    } else {
+                        val fresh = UUID.randomUUID().toString()
+                        resFiles[key] = fresh
+                        issuedTokens[key] = fresh
+                    }
+                }
+
+                activeUploadSessions[sessionId] = SessionEntry(
+                    request = req,
+                    issuedTokens = issuedTokens,
+                    ownerToken = token?.takeIf { it.isNotEmpty() },
+                )
+
+                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+                    sessionId,
+                    req.info.alias.ifEmpty { "Device" },
+                    issuedTokens.size,
+                    0,
+                )
+                if (issuedTokens.isEmpty()) {
+                    // Everything deduped away: nothing will ever be uploaded; close cleanly
+                    // without the completion toast.
+                    shareRouteScope.launch {
+                        delay(6000)
+                        com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
+                        activeUploadSessions.remove(sessionId)
+                    }
                 }
 
                 call.respond(PrepareUploadResponseDto(sessionId = sessionId, files = resFiles))
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 call.respond(HttpStatusCode.BadRequest)
             }
         }
@@ -163,7 +218,8 @@ fun Route.shareRoutes() {
                 return@post
             }
 
-            val sessionReq = activeUploadSessions[sessionId]?.request
+            val session = activeUploadSessions[sessionId]
+            val sessionReq = session?.request
             if (sessionReq == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
@@ -178,8 +234,7 @@ fun Route.shareRoutes() {
             val rawFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
             val safeFileName = rawFileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
 
-            val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
-            downloadsFolder.mkdirs()
+            val downloadsFolder = ReceiveStorage.downloadsDir()
 
             var destFile = if (fileMeta.relativePath.isNullOrEmpty()) {
                 File(downloadsFolder, safeFileName)
@@ -200,6 +255,21 @@ fun Route.shareRoutes() {
                 file
             }
 
+            // Per-file token proof: the presented query token must equal the one minted at
+            // prepare time, so another authenticated peer cannot inject into this session.
+            // Sessions created outside prepare (issuedTokens == null) stay unenforced.
+            val issued = session.issuedTokens
+            if (issued != null) {
+                val expected = issued[fileId]
+                val presented = call.request.queryParameters["token"]
+                if (expected == null || presented == null ||
+                    !MessageDigest.isEqual(presented.toByteArray(), expected.toByteArray())
+                ) {
+                    call.respond(HttpStatusCode.Forbidden)
+                    return@post
+                }
+            }
+
             synchronized(shareRoutesFileLock) {
                 var counter = 1
                 val originalName = destFile.nameWithoutExtension
@@ -218,83 +288,143 @@ fun Route.shareRoutes() {
                 val channel: ByteReadChannel = call.receiveChannel()
                 withContext(Dispatchers.IO) {
                     destFile.outputStream().use { output ->
-                        channel.copyTo(output)
+                        // Large staged pump: bounded readRemaining packets keep syscall
+                        // counts low on multi-GB uploads
+                        val buffer = ByteArray(256 * 1024)
+                        var received = 0L
+                        while (!channel.isClosedForRead) {
+                            channel.awaitContent()
+                            val packet = channel.readRemaining(buffer.size.toLong())
+                            if (packet.exhausted()) break
+                            while (!packet.exhausted()) {
+                                val n = packet.readAtMostTo(buffer, 0, buffer.size)
+                                output.write(buffer, 0, n)
+                                received += n
+                            }
+                        }
                     }
                 }
 
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
-                com.dexstudios.dex.core.network.services.RelayService.trackRelayFile(sessionId, safeFileName, destFile.absolutePath, senderAlias)
+                RelayService.trackRelayFile(
+                    sessionId = sessionId,
+                    fileName = safeFileName,
+                    absolutePath = destFile.absolutePath,
+                    senderAlias = senderAlias,
+                    relativePath = fileMeta.relativePath,
+                )
+                ReceivedFileIndex.record(destFile, fileMeta.size, fileMeta.partialHash)
+                TransferHistory.log(
+                    name = destFile.name,
+                    size = destFile.length(),
+                    direction = "received",
+                    uri = destFile.absolutePath,
+                    peerDevice = senderAlias,
+                )
 
                 val count = activeUploadSessionsProgress.merge(sessionId, 1) { a, b -> a + b } ?: 1
-                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(sessionId, senderAlias, sessionReq.files.size, count, count == sessionReq.files.size)
+                val expectedTotal = session.expectedUploads.takeIf { it >= 0 } ?: sessionReq.files.size
+                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+                    sessionId,
+                    senderAlias,
+                    expectedTotal,
+                    count,
+                    count >= expectedTotal,
+                )
 
-                if (count == sessionReq.files.size) {
-                    activeUploadSessions.remove(sessionId)
-                    activeUploadSessionsProgress.remove(sessionId)
-
-                    try {
-                        if (java.awt.SystemTray.isSupported()) {
-                            val tray = java.awt.SystemTray.getSystemTray()
-                            val image = java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-                            val trayIcon = java.awt.TrayIcon(image, "DeX")
-                            trayIcon.isImageAutoSize = true
-                            tray.add(trayIcon)
-                            trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
-
-                            shareRouteScope.launch {
-                                delay(5000)
-                                try {
-                                    tray.remove(trayIcon)
-                                } catch (ignored: Exception) {
-                                    println("Failed to remove SystemTray notification: ${ignored.message}")
-                                }
-                            }
-                        }
-                    } catch (ignored: Exception) {
-                        println("Failed to display SystemTray notification: ${ignored.message}")
-                    }
-
-                    shareRouteScope.launch {
-                        delay(6000) // Keep in UI for 6s
-                        com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
-                    }
+                if (count >= expectedTotal) {
+                    finishIncomingSession(sessionId, senderAlias, count)
                 }
 
                 call.respond(HttpStatusCode.OK)
-            } catch (e: Exception) {
-                try {
-                    if (destFile.exists()) destFile.delete()
-                } catch (ignored: Exception) {}
+            } catch (_: Exception) {
+                runCatching { if (destFile.exists()) destFile.delete() }
+                // A failed upload must not leave a phantom transfer on the dashboard forever
+                failIncomingSession(sessionId)
                 call.respond(HttpStatusCode.InternalServerError)
             }
+        }
+    }
+}
+
+/**
+ * Completion path for an incoming session: removes bookkeeping, shows the tray toast and
+ * lets the dashboard entry linger briefly before removal.
+ */
+private fun finishIncomingSession(sessionId: String, senderAlias: String, count: Int) {
+    activeUploadSessions.remove(sessionId)
+    activeUploadSessionsProgress.remove(sessionId)
+
+    try {
+        if (java.awt.SystemTray.isSupported()) {
+            val tray = java.awt.SystemTray.getSystemTray()
+            val image = java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val trayIcon = java.awt.TrayIcon(image, "DeX")
+            trayIcon.isImageAutoSize = true
+            tray.add(trayIcon)
+            trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
+
+            shareRouteScope.launch {
+                delay(5000)
+                runCatching { tray.remove(trayIcon) }
+            }
+        }
+    } catch (_: Exception) {
+    }
+
+    shareRouteScope.launch {
+        delay(6000) // Keep in UI for 6s
+        com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
+    }
+}
+
+/**
+ * GET endpoints serving PC-hosted files to pulling peers (phone HTTP/3 pulls, HTTP fallback
+ * and desktop pull-service). Both the v2 and legacy paths share one handler; each keeps its
+ * historical status-code semantics for missing/bad tokens.
+ *
+ * Every successful serve reports [RelayService.markPulled] so hosted-push completion can fire.
+ * Registered on the TLS listener AND as the ONLY routes on the plain-HTTP 48426 fallback.
+ */
+fun Route.hostedDownloadRoutes() {
+    route("/api/localsend/v2") {
+        get("/download") {
+            respondHostedFile(call, legacyTokenSemantics = false)
         }
     }
 
     // Legacy route preservation for older clients
     get("/download/{fileId}") {
-        val fileId = call.parameters["fileId"]
-        val token = call.request.queryParameters["token"]
-
-        if (fileId == null || token == null) {
-            call.respond(HttpStatusCode.BadRequest)
-            return@get
-        }
-
-        val expectedToken = com.dexstudios.dex.core.network.services.RelayService.hostedFileTokens[fileId]
-        val filePath = com.dexstudios.dex.core.network.services.RelayService.hostedFiles[fileId]
-
-        if (expectedToken == null || expectedToken != token || filePath == null) {
-            call.respond(HttpStatusCode.NotFound) // Original C# used NotFound for missing/invalid token
-            return@get
-        }
-
-        com.dexstudios.dex.core.network.services.RelayService.hostedFileLastAccess[fileId] = System.currentTimeMillis()
-        val file = File(filePath)
-        if (!file.exists()) {
-            call.respond(HttpStatusCode.NotFound)
-            return@get
-        }
-
-        call.respondFile(file)
+        respondHostedFile(call, legacyTokenSemantics = true)
     }
+}
+
+private suspend fun respondHostedFile(call: ApplicationCall, legacyTokenSemantics: Boolean) {
+    val sessionId = call.request.queryParameters["sessionId"]
+    val fileId = if (legacyTokenSemantics) call.parameters["fileId"] else call.request.queryParameters["fileId"]
+    val token = call.request.queryParameters["token"]
+
+    if (fileId == null || token == null) {
+        call.respond(HttpStatusCode.BadRequest)
+        return
+    }
+
+    val expectedToken = RelayService.hostedFileTokens[fileId]
+    val filePath = RelayService.hostedFiles[fileId]
+
+    val tokenOk = expectedToken != null && token.length == expectedToken.length &&
+        MessageDigest.isEqual(token.toByteArray(), expectedToken.toByteArray())
+    if (!tokenOk || filePath == null) {
+        call.respond(if (legacyTokenSemantics) HttpStatusCode.NotFound else HttpStatusCode.Forbidden)
+        return
+    }
+
+    RelayService.markPulled(fileId)
+    val file = File(filePath)
+    if (!file.exists()) {
+        call.respond(HttpStatusCode.NotFound)
+        return
+    }
+
+    call.respondFile(file)
 }
