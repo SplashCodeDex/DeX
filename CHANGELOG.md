@@ -1,4 +1,9 @@
 # Changelog
+## [10.1.27.2] - 2026-08-24
+### Fixed
+- **[fix] Exit row no longer advertises an unrelated shortcut**: the monospace hint pinned inside the Exit Engine row displayed the global window toggle (`Win+Shift+D`, registered by `GlobalShortcutService` to show/hide the whole dock), reading as if a Win+Shift combo exits the engine — it does not. The hint block was removed from `BottomDockPanel`; the exit row now carries only its own semantics ("Exit Engine" / "Cancel / Shift+Click Exit", Shift+Click instant-exit bypass unchanged, active-transfer force-exit unchanged). `DesktopEnvironment.globalToggleShortcutHint` remains the single source of truth for the registered global shortcut for future Settings/help surfaces.
+  - Verified: `:composeApp:spotlessCheck` + `:composeApp:desktopTest` green.
+
 ## [10.1.27.0] - 2026-08-24
 ### Changed
 - **[minor] Settings audit follow-ups (plan 022): honest profile data, non-blocking sign-in, destructive-action guard, alias editor**:

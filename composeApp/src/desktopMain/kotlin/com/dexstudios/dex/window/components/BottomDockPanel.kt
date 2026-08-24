@@ -49,7 +49,6 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -322,21 +321,6 @@ fun BottomDockPanel(
 
                     // Right spacer balances the left spacer when expanded
                     Spacer(modifier = Modifier.weight(1f))
-
-                    // Shortcut hint pinned to the right — shows ONLY the shortcut actually
-                    // registered by GlobalShortcutService (Win+Shift+D on Windows). Hidden
-                    // entirely on platforms without a global shortcut instead of advertising
-                    // a fake one (the old hardcoded "⌘Q" was wrong on every platform).
-                    if (com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint.isNotEmpty()) {
-                        Text(
-                            text = com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint,
-                            fontSize = 14.sp,
-                            lineHeight = 14.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
                 }
             }
         }
