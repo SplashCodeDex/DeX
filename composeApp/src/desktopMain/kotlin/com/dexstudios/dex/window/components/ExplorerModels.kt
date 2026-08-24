@@ -2,7 +2,7 @@ package com.dexstudios.dex.window.components
 
 enum class ExplorerMode {
     History,
-    Saf
+    Saf,
 }
 
 data class ExplorerFileItem(
@@ -14,5 +14,5 @@ data class ExplorerFileItem(
     val timestamp: Long,
     val uri: String? = null,
     val thumbBase64: String? = null,
-    val isAddFolderButton: Boolean = false
+    val isAddFolderButton: Boolean = false,
 )

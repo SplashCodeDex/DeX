@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import com.dexstudios.dex.core.network.ClipboardHook
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -7,7 +8,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
-import com.dexstudios.dex.core.network.ClipboardHook
 
 fun Route.clipboardRoutes() {
     route("/api/dex") {

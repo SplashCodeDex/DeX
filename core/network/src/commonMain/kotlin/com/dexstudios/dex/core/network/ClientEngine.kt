@@ -3,33 +3,32 @@ package com.dexstudios.dex.core.network
 import com.dexstudios.dex.auth.AuthState
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
 import kotlin.coroutines.resume
-
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import io.ktor.client.engine.*
-import io.ktor.client.plugins.onUpload
 import kotlin.time.Duration.Companion.seconds
 
 class ClientEngine(
     private val client: HttpClient,
     private val quicClient: IQuicClient? = null,
     private val deviceConfig: DeviceConfig? = null,
-    private val onCancelUpload: ((String) -> Unit)? = null
+    private val onCancelUpload: ((String) -> Unit)? = null,
 ) {
     private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
     private var resetJob: Job? = null
@@ -70,7 +69,7 @@ class ClientEngine(
                 speedBps = 8388608L, // 8 MB/s
                 protocol = "QUIC",
                 peerName = "Danny Lopez",
-                totalFiles = 5
+                totalFiles = 5,
             )
 
             // Progress simulation
@@ -79,7 +78,7 @@ class ClientEngine(
                 val p = i / 100f
                 _uploadState.value = _uploadState.value.copy(
                     progress = p,
-                    aggregateProgress = p
+                    aggregateProgress = p,
                 )
             }
 
@@ -107,7 +106,7 @@ class ClientEngine(
             _uploadState.value = _uploadState.value.copy(
                 isUploading = false,
                 isSuccess = true,
-                fileName = "$successCount of $totalFiles files"
+                fileName = "$successCount of $totalFiles files",
             )
             resetJob?.cancel()
             resetJob = scope.launch {
@@ -117,7 +116,7 @@ class ClientEngine(
         } else {
             _uploadState.value = _uploadState.value.copy(
                 isUploading = false,
-                error = "Upload failed for all files"
+                error = "Upload failed for all files",
             )
         }
     }
@@ -129,15 +128,12 @@ class ClientEngine(
         activeWorkId = null
         _uploadState.value = _uploadState.value.copy(
             isUploading = false,
-            error = "Upload cancelled"
+            error = "Upload cancelled",
         )
     }
 
     /** Result of [prepareUpload]: httpStatus is -1 when the transport failed, otherwise the HTTP status. */
-    data class PrepareResult(
-        val response: PrepareUploadResponseDto?,
-        val httpStatus: Int
-    )
+    data class PrepareResult(val response: PrepareUploadResponseDto?, val httpStatus: Int)
 
     suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareResult = withContext(Dispatchers.IO) {
         try {
@@ -160,9 +156,15 @@ class ClientEngine(
     }
 
     suspend fun uploadFile(
-        ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
-        token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: (Long) -> Unit = {}
+        ip: String,
+        port: Int,
+        sessionId: String,
+        fileId: String,
+        fileName: String,
+        token: String,
+        stream: java.io.InputStream,
+        fileSize: Long,
+        onProgress: (Long) -> Unit = {},
     ): UploadOutcome = withContext(Dispatchers.IO) {
         try {
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
@@ -174,7 +176,7 @@ class ClientEngine(
                 onUpload { bytesSentTotal, _ ->
                     onProgress(bytesSentTotal)
                 }
-setBody(object : OutgoingContent.WriteChannelContent() {
+                setBody(object : OutgoingContent.WriteChannelContent() {
                     override val contentType = ContentType.Application.OctetStream
                     override val contentLength = fileSize
                     override suspend fun writeTo(channel: ByteWriteChannel) {
@@ -207,9 +209,15 @@ setBody(object : OutgoingContent.WriteChannelContent() {
      * [uploadFile]. httpStatus of -1 means the transport failed.
      */
     suspend fun uploadFileQuic(
-        ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
-        token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: (Long) -> Unit = {}
+        ip: String,
+        port: Int,
+        sessionId: String,
+        fileId: String,
+        fileName: String,
+        token: String,
+        stream: java.io.InputStream,
+        fileSize: Long,
+        onProgress: (Long) -> Unit = {},
     ): UploadOutcome {
         val qc = quicClient ?: return UploadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
@@ -218,7 +226,7 @@ setBody(object : OutgoingContent.WriteChannelContent() {
                 onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status ->
                     if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status))
-                }
+                },
             )
             if (request == null) {
                 if (!cont.isCancelled) cont.resume(UploadOutcome(false, -1))
@@ -238,22 +246,19 @@ setBody(object : OutgoingContent.WriteChannelContent() {
      * means the transport failed (e.g. Cronet engine unavailable). protocol is the
      * negotiated ALPN ("h3", "http/1.1", ...) and is empty when unknown.
      */
-    suspend fun downloadFileQuic(
-        ip: String,
-        port: Int,
-        fileId: String,
-        token: String?,
-        output: java.nio.channels.WritableByteChannel,
-        onProgress: (Long) -> Unit = {}
-    ): DownloadOutcome {
+    suspend fun downloadFileQuic(ip: String, port: Int, fileId: String, token: String?, output: java.nio.channels.WritableByteChannel, onProgress: (Long) -> Unit = {}): DownloadOutcome {
         val qc = quicClient ?: return DownloadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.downloadFile(
-                ip, port, fileId, token, output,
+                ip,
+                port,
+                fileId,
+                token,
+                output,
                 onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status, protocol ->
                     if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol))
-                }
+                },
             )
             if (request == null) {
                 if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1))
@@ -266,20 +271,21 @@ setBody(object : OutgoingContent.WriteChannelContent() {
             }
         }
     }
-    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null, targetGoogleSub: String? = null): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
-            val response = client.post("https://$ip:$port/api/dex/clipboard") {
-                contentType(ContentType.Text.Plain)
-                if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
-                setBody(text)
+    suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null, targetGoogleSub: String? = null): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
+                val response = client.post("https://$ip:$port/api/dex/clipboard") {
+                    contentType(ContentType.Text.Plain)
+                    if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
+                    setBody(text)
+                }
+                response.status.isSuccess()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
             }
-            response.status.isSuccess()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
         }
-    }
 }
 
 data class UploadState(
@@ -295,16 +301,9 @@ data class UploadState(
     val speedBps: Long = 0L,
     val targetFingerprint: String? = null,
     val peerName: String? = null,
-    val peerPicture: String? = null
+    val peerPicture: String? = null,
 )
 
-data class DownloadOutcome(
-    val ok: Boolean,
-    val httpStatus: Int = 0,
-    val protocol: String = ""
-)
+data class DownloadOutcome(val ok: Boolean, val httpStatus: Int = 0, val protocol: String = "")
 
-data class UploadOutcome(
-    val ok: Boolean,
-    val httpStatus: Int = 0
-)
+data class UploadOutcome(val ok: Boolean, val httpStatus: Int = 0)

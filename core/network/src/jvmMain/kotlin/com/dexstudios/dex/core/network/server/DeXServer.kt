@@ -1,33 +1,31 @@
 package com.dexstudios.dex.core.network.server
 
+import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.core.network.security.CertificateGenerator
+import com.dexstudios.dex.core.network.server.routes.clipboardRoutes
+import com.dexstudios.dex.core.network.server.routes.controlRoutes
+import com.dexstudios.dex.core.network.server.routes.deviceRoutes
+import com.dexstudios.dex.core.network.server.routes.fileExplorerRoutes
+import com.dexstudios.dex.core.network.server.routes.settingsRoutes
+import com.dexstudios.dex.core.network.server.routes.shareRoutes
+import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.application.install
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.routing.*
-import io.ktor.server.websocket.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
-import com.dexstudios.dex.core.network.server.routes.deviceRoutes
-import com.dexstudios.dex.core.network.server.routes.shareRoutes
-import com.dexstudios.dex.core.network.server.routes.controlRoutes
-import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
-import com.dexstudios.dex.core.network.server.routes.fileExplorerRoutes
-import com.dexstudios.dex.core.network.server.routes.clipboardRoutes
-import com.dexstudios.dex.core.network.server.routes.settingsRoutes
-import com.dexstudios.dex.core.network.security.CertificateGenerator
-import org.koin.java.KoinJavaComponent.getKoin
-import com.dexstudios.dex.core.network.DiscoveryEngine
-import com.dexstudios.dex.auth.PairingEngine
-import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.origin
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
-import io.ktor.server.plugins.origin
-import io.ktor.server.application.install
+import io.ktor.server.routing.*
 import io.ktor.server.routing.routing
+import io.ktor.server.websocket.*
+import kotlinx.serialization.json.Json
+import org.koin.java.KoinJavaComponent.getKoin
 import kotlin.time.Duration.Companion.seconds
-
-
 
 object DeXServer {
     private var server1: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
@@ -39,10 +37,12 @@ object DeXServer {
 
         val appModule: Application.() -> Unit = {
             install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = true
-                })
+                json(
+                    Json {
+                        ignoreUnknownKeys = true
+                        encodeDefaults = true
+                    },
+                )
             }
             install(WebSockets) {
                 pingPeriod = 15.seconds
@@ -55,9 +55,9 @@ object DeXServer {
                 val discoveryEngine = getKoin().get<DiscoveryEngine>()
                 val pairingEngine = getKoin().get<PairingEngine>()
                 val mirrorEngine = getKoin().get<com.dexstudios.dex.core.network.IMirrorEngine>()
-                
-                pairingEngine.outboundSender = { fp, json -> 
-                    WebSocketConnectionManager.sendRequest(fp, json) 
+
+                pairingEngine.outboundSender = { fp, json ->
+                    WebSocketConnectionManager.sendRequest(fp, json)
                 }
 
                 deviceRoutes(discoveryEngine = discoveryEngine, pairingEngine = pairingEngine)
@@ -77,7 +77,7 @@ object DeXServer {
                 keyStore = keyStore,
                 keyAlias = "dex",
                 keyStorePassword = { CertificateGenerator.getPassword().toCharArray() },
-                privateKeyPassword = { CertificateGenerator.getPassword().toCharArray() }
+                privateKeyPassword = { CertificateGenerator.getPassword().toCharArray() },
             ) {
                 host = "0.0.0.0"
                 port = 48424
@@ -86,7 +86,7 @@ object DeXServer {
         }, module = appModule).start(wait = false)
         server2 = embeddedServer(Netty, port = 28425, host = "127.0.0.1", module = appModule).start(wait = false)
         server3 = embeddedServer(Netty, port = 48426, host = "0.0.0.0", module = appModule).start(wait = false)
-        
+
         println("DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), and HTTP 48426 (tcp fallback)")
     }
 
@@ -99,4 +99,3 @@ object DeXServer {
         server3 = null
     }
 }
-

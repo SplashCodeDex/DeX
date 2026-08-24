@@ -14,12 +14,12 @@ object CertificateGenerator {
         }
         return passwordFile.readText()
     }
-    
+
     fun getOrCreateKeyStore(): KeyStore {
         if (!keyStoreFile.exists()) {
             generateKeyStore(getPassword())
         }
-        
+
         return try {
             keyStoreFile.inputStream().use {
                 val ks = KeyStore.getInstance("JKS")
@@ -39,16 +39,16 @@ object CertificateGenerator {
             }
         }
     }
-    
+
     private fun generateKeyStore(password: String) {
         try {
             keyStoreFile.delete()
             val javaHome = System.getProperty("java.home")
-            
+
             // Handle keytool.exe on Windows
             val keytoolName = if (System.getProperty("os.name").lowercase().contains("windows")) "keytool.exe" else "keytool"
             val keytool = File(javaHome, "bin/$keytoolName").absolutePath
-            
+
             val process = ProcessBuilder(
                 keytool,
                 "-genkeypair",
@@ -59,9 +59,9 @@ object CertificateGenerator {
                 "-keystore", keyStoreFile.absolutePath,
                 "-storepass", password,
                 "-keypass", password,
-                "-dname", "CN=DeX, OU=DeXStudios, O=DeXStudios, L=Unknown, ST=Unknown, C=Unknown"
+                "-dname", "CN=DeX, OU=DeXStudios, O=DeXStudios, L=Unknown, ST=Unknown, C=Unknown",
             ).inheritIO().start()
-            
+
             process.waitFor()
         } catch (e: Exception) {
             e.printStackTrace()

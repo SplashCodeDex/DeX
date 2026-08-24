@@ -36,14 +36,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.icons.AnimatedSearchToXIcon
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_search
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_search
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.icons.AnimatedSearchToXIcon
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.services.FileExplorerService
@@ -74,7 +74,7 @@ fun FileExplorerPanel(
     modifier: Modifier = Modifier,
     clientEngine: ClientEngine = koinInject(),
     fileExplorerService: FileExplorerService = koinInject(),
-    discoveryEngine: DiscoveryEngine = koinInject()
+    discoveryEngine: DiscoveryEngine = koinInject(),
 ) {
     val viewModel: FileExplorerViewModel = viewModel {
         FileExplorerViewModel(clientEngine, fileExplorerService, discoveryEngine)
@@ -100,14 +100,14 @@ fun FileExplorerPanel(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(start = 24.dp, top = 28.dp, end = 16.dp, bottom = 16.dp)
+            .padding(start = 24.dp, top = 28.dp, end = 16.dp, bottom = 16.dp),
     ) {
         // === Row 0: Top Navigation Controls ===
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // 36dp Circular Up-Dir Button
             Box(
@@ -117,13 +117,13 @@ fun FileExplorerPanel(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .alpha(if (!isAtRoot) 1.0f else 0.4f)
                     .clickable(enabled = !isAtRoot) { viewModel.navigateUp() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_fluent_arrow_back),
                     contentDescription = "Up Directory",
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
 
@@ -137,20 +137,22 @@ fun FileExplorerPanel(
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterStart,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     AnimatedSearchToXIcon(
                         isSearching = searchQuery.isNotEmpty(),
                         onClick = if (searchQuery.isNotEmpty()) {
                             { viewModel.updateSearchQuery("") }
-                        } else null,
+                        } else {
+                            null
+                        },
                         size = 16.dp,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 8.dp),
                     )
 
                     BasicTextField(
@@ -159,7 +161,7 @@ fun FileExplorerPanel(
                         textStyle = TextStyle(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                         singleLine = true,
@@ -178,11 +180,11 @@ fun FileExplorerPanel(
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             innerTextField()
-                        }
+                        },
                     )
                 }
             }
@@ -196,13 +198,13 @@ fun FileExplorerPanel(
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { viewModel.toggleMode() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = if (mode == ExplorerMode.History) painterResource(Res.drawable.ic_fluent_history) else painterResource(Res.drawable.ic_fluent_smartphone),
                     contentDescription = "Toggle Explorer Mode",
                     tint = if (mode == ExplorerMode.Saf) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -211,36 +213,36 @@ fun FileExplorerPanel(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(1f),
         ) {
             if (isLoadingSaf) {
                 Column(
                     modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp),
-                        strokeWidth = 2.5.dp
+                        strokeWidth = 2.5.dp,
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "Loading phone storage...",
                         fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else if (displayedFiles.isEmpty()) {
                 // Empty State Overlay
                 Column(
                     modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_folder),
                         contentDescription = "Empty",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(48.dp),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -248,14 +250,14 @@ fun FileExplorerPanel(
                         fontSize = 14.sp,
                         lineHeight = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                     Text(
                         text = if (mode == ExplorerMode.History) "Received files appear here" else "Shared folders from phone appear here",
                         fontSize = 11.sp,
                         lineHeight = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             } else {
@@ -264,7 +266,7 @@ fun FileExplorerPanel(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     items(displayedFiles, key = { it.id }) { item ->
                         FileGridItemCard(
@@ -294,7 +296,7 @@ fun FileExplorerPanel(
                                     lastClickedItemId = item.id
                                     lastClickTime = now
                                 }
-                            }
+                            },
                         )
                     }
                 }
@@ -310,26 +312,26 @@ fun FileExplorerPanel(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    )
+                                MaterialTheme.colorScheme.surface,
+                            ),
+                        ),
+                    ),
             )
 
             // Floating PullProgressDock Toast
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 8.dp),
             ) {
                 AnimatedVisibility(
                     visible = isTransferring,
                     enter = slideInVertically(initialOffsetY = { 50 }, animationSpec = tween(300)) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { 50 }, animationSpec = tween(300)) + fadeOut()
+                    exit = slideOutVertically(targetOffsetY = { 50 }, animationSpec = tween(300)) + fadeOut(),
                 ) {
                     PullProgressDock(
                         clientEngine = clientEngine,
-                        onCancel = viewModel::cancelPull
+                        onCancel = viewModel::cancelPull,
                     )
                 }
             }
@@ -340,12 +342,11 @@ fun FileExplorerPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 val sendFilesInteraction = remember { MutableInteractionSource() }
                 val sendFilesHovered by sendFilesInteraction.collectIsHoveredAsState()
@@ -363,7 +364,7 @@ fun FileExplorerPanel(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable(
                             interactionSource = sendFilesInteraction,
-                            indication = null
+                            indication = null,
                         ) {
                             controller?.isModalDialogOpen = true
                             onSendFiles()
@@ -382,25 +383,29 @@ fun FileExplorerPanel(
                             }
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_file_upload),
                         contentDescription = "Send Files",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(end = 8.dp).size(18.dp)
+                        modifier = Modifier.padding(end = 8.dp).size(18.dp),
                     )
                     Text(
                         text = "Send Files",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 
                 val sendFoldersInteraction = remember { MutableInteractionSource() }
                 val sendFoldersHovered by sendFoldersInteraction.collectIsHoveredAsState()
-                val sendFoldersScale by animateFloatAsState(targetValue = if (sendFoldersHovered) 1.08f else 1.0f, animationSpec = tween(500, easing = DockCardPhysics.HoverEase), label = "sendFoldersScale")
+                val sendFoldersScale by animateFloatAsState(
+                    targetValue = if (sendFoldersHovered) 1.08f else 1.0f,
+                    animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
+                    label = "sendFoldersScale",
+                )
 
                 // Send Folders Action (Native Directory Picker)
                 Row(
@@ -414,7 +419,7 @@ fun FileExplorerPanel(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable(
                             interactionSource = sendFoldersInteraction,
-                            indication = null
+                            indication = null,
                         ) {
                             controller?.isModalDialogOpen = true
                             onSendFolders()
@@ -434,19 +439,19 @@ fun FileExplorerPanel(
                             }
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_folder),
                         contentDescription = "Send Folders",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(end = 8.dp).size(18.dp)
+                        modifier = Modifier.padding(end = 8.dp).size(18.dp),
                     )
                     Text(
                         text = "Send Folders",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

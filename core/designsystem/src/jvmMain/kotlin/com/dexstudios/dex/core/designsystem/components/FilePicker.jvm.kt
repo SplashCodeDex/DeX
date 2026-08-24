@@ -6,10 +6,7 @@ import java.awt.FileDialog
 import java.awt.Frame
 
 @Composable
-actual fun FilePickerDialog(
-    show: Boolean,
-    onFilesSelected: (List<String>?) -> Unit
-) {
+actual fun FilePickerDialog(show: Boolean, onFilesSelected: (List<String>?) -> Unit) {
     if (show) {
         LaunchedEffect(Unit) {
             val dialog = FileDialog(null as Frame?, "Select File to Send", FileDialog.LOAD)

@@ -30,12 +30,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import org.jetbrains.compose.resources.painterResource
 import io.github.alexzhirkevich.compottie.Compottie
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
 import io.github.alexzhirkevich.compottie.animateLottieCompositionAsState
 import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * In-memory cache for Lottie JSON strings to avoid repeated disk/resource reads on toggle.
@@ -43,12 +43,10 @@ import io.github.alexzhirkevich.compottie.rememberLottiePainter
 internal object LottieAssetCache {
     private val cache = mutableMapOf<String, String>()
 
-    suspend fun loadJson(path: String): String {
-        return cache[path] ?: run {
-            val loaded = Res.readBytes(path).decodeToString()
-            cache[path] = loaded
-            loaded
-        }
+    suspend fun loadJson(path: String): String = cache[path] ?: run {
+        val loaded = Res.readBytes(path).decodeToString()
+        cache[path] = loaded
+        loaded
     }
 }
 
@@ -66,13 +64,7 @@ internal object LottieAssetCache {
  * @param contentDescription Accessibility description for the bell icon.
  */
 @Composable
-fun AnimatedDndBell(
-    isDndActive: Boolean,
-    modifier: Modifier = Modifier,
-    size: Dp = 24.dp,
-    tint: Color = MaterialTheme.colorScheme.onSurface,
-    contentDescription: String? = "Do Not Disturb"
-) {
+fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp, tint: Color = MaterialTheme.colorScheme.onSurface, contentDescription: String? = "Do Not Disturb") {
     var dndOnJson by remember { mutableStateOf<String?>(null) }
     var dndOffJson by remember { mutableStateOf<String?>(null) }
 
@@ -99,7 +91,7 @@ fun AnimatedDndBell(
 
     Box(
         modifier = modifier.size(size),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         if (activeJson != null) {
             val composition by rememberLottieComposition(isDndActive) {
@@ -110,7 +102,7 @@ fun AnimatedDndBell(
                 composition = composition,
                 iterations = 1,
                 isPlaying = true,
-                restartOnPlay = true
+                restartOnPlay = true,
             )
 
             // When notifications are active (DnD is OFF) and v4 finishes its ringing sway, transition to AlertOnFilled
@@ -119,14 +111,14 @@ fun AnimatedDndBell(
             Crossfade(
                 targetState = showFilledAlertOn,
                 animationSpec = tween(150),
-                label = "AlertOnFilledCrossfade"
+                label = "AlertOnFilledCrossfade",
             ) { isFilled ->
                 if (isFilled) {
                     Icon(
                         painter = painterResource(DeXIcons.AlertOnFilled),
                         contentDescription = contentDescription,
                         tint = effectiveTint,
-                        modifier = Modifier.size(size)
+                        modifier = Modifier.size(size),
                     )
                 } else {
                     val colorFilter = if (effectiveTint.isSpecified) ColorFilter.tint(effectiveTint) else null
@@ -134,12 +126,12 @@ fun AnimatedDndBell(
                     Image(
                         painter = rememberLottiePainter(
                             composition = composition,
-                            progress = { progress }
+                            progress = { progress },
                         ),
                         contentDescription = contentDescription,
                         modifier = Modifier.size(size),
                         contentScale = ContentScale.Fit,
-                        colorFilter = colorFilter
+                        colorFilter = colorFilter,
                     )
                 }
             }
@@ -166,7 +158,7 @@ fun AnimatedClipboardIcon(
     modifier: Modifier = Modifier,
     size: Dp = 24.dp,
     tint: Color = MaterialTheme.colorScheme.onSurface,
-    contentDescription: String? = "Clipboard Sync"
+    contentDescription: String? = "Clipboard Sync",
 ) {
     val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
     val effectiveTint = if (isClipboardActive) {
@@ -181,17 +173,17 @@ fun AnimatedClipboardIcon(
         targetState = iconResource,
         animationSpec = tween(200),
         modifier = modifier.size(size),
-        label = "ClipboardStateCrossfade"
+        label = "ClipboardStateCrossfade",
     ) { res ->
         Box(
             modifier = Modifier.size(size),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(res),
                 contentDescription = contentDescription,
                 tint = effectiveTint,
-                modifier = Modifier.size(size)
+                modifier = Modifier.size(size),
             )
         }
     }
@@ -220,7 +212,7 @@ fun AnimatedSearchToXIcon(
     size: Dp = 16.dp,
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null,
-    contentDescription: String? = if (isSearching) "Clear search" else "Search"
+    contentDescription: String? = if (isSearching) "Clear search" else "Search",
 ) {
     var searchJson by remember { mutableStateOf<String?>(null) }
 
@@ -235,7 +227,7 @@ fun AnimatedSearchToXIcon(
     val progress by animateFloatAsState(
         targetValue = if (isSearching) 1f else 0f,
         animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
-        label = "SearchToXProgress"
+        label = "SearchToXProgress",
     )
 
     val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
@@ -247,15 +239,17 @@ fun AnimatedSearchToXIcon(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
             )
-    } else Modifier
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = modifier
             .size(size)
             .then(clickModifier),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         val json = searchJson
         if (json != null) {
@@ -268,22 +262,20 @@ fun AnimatedSearchToXIcon(
             Image(
                 painter = rememberLottiePainter(
                     composition = composition,
-                    progress = { progress }
+                    progress = { progress },
                 ),
                 contentDescription = contentDescription,
                 modifier = Modifier.size(size),
                 contentScale = ContentScale.Fit,
-                colorFilter = colorFilter
+                colorFilter = colorFilter,
             )
         } else {
             Icon(
                 painter = painterResource(if (isSearching) DeXIcons.Close else DeXIcons.Search),
                 contentDescription = contentDescription,
                 tint = effectiveTint,
-                modifier = Modifier.size(size)
+                modifier = Modifier.size(size),
             )
         }
     }
 }
-
-

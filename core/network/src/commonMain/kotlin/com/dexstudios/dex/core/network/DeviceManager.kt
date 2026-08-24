@@ -5,14 +5,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.dexstudios.dex.auth.AuthState
 import kotlinx.coroutines.flow.first
-
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import com.dexstudios.dex.auth.AuthState
 
 object DeviceManager {
     private val KEY_PAIRED_FINGERPRINTS = stringSetPreferencesKey("paired_fingerprints")

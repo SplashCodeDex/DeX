@@ -16,17 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.core.network.IMirrorEngine
 import org.koin.compose.koinInject
 
 @Composable
-fun MirrorScreen(
-    modifier: Modifier = Modifier,
-    mirrorEngine: IMirrorEngine = koinInject()
-) {
+fun MirrorScreen(modifier: Modifier = Modifier, mirrorEngine: IMirrorEngine = koinInject()) {
     var currentFrame by remember { mutableStateOf<ImageBitmap?>(null) }
     val backdrop = LocalBackdrop.current
 
@@ -45,12 +42,12 @@ fun MirrorScreen(
 
     Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         val panelModifier = Modifier.fillMaxSize()
-        
+
         if (backdrop != null) {
             LiquidGlassPanel(
                 backdrop = backdrop,
                 modifier = panelModifier,
-                config = LiquidGlassPresets.Frosted
+                config = LiquidGlassPresets.Frosted,
             ) {
                 FrameContent(currentFrame)
             }
@@ -69,7 +66,7 @@ private fun FrameContent(currentFrame: ImageBitmap?) {
             bitmap = currentFrame,
             contentDescription = "Screen Mirror",
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     } else {
         Text("Waiting for connection...", modifier = Modifier.padding(16.dp))

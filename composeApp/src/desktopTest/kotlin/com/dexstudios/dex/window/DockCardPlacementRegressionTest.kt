@@ -31,22 +31,26 @@ import kotlin.test.assertTrue
 class DockCardPlacementRegressionTest {
 
     private val standard1080p = WorkAreaBounds(
-        left = 0, top = 0, right = 1920, bottom = 1040,
-        width = 1920, height = 1040,
+        left = 0,
+        top = 0,
+        right = 1920,
+        bottom = 1040,
+        width = 1920,
+        height = 1040,
         insets = java.awt.Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     private fun createController(x: Int = 512, y: Int = 292): DockedWindowStateController {
         val windowState = WindowState(
             size = DpSize(DockCardMetrics.CANVAS_WIDTH.dp, DockCardMetrics.CANVAS_HEIGHT.dp),
-            position = WindowPosition(x.dp, y.dp)
+            position = WindowPosition(x.dp, y.dp),
         )
         return DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             windowState = windowState,
             density = 1.0f,
-            mouseInputProvider = DeterministicMouseProvider
+            mouseInputProvider = DeterministicMouseProvider,
         )
     }
 
@@ -69,11 +73,11 @@ class DockCardPlacementRegressionTest {
         assertEquals(
             DockCardAnimations.CARD_WIDTH_CONTRACTED.value.toInt(),
             DockCardMetrics.CARD_WIDTH_CONTRACTED,
-            "Rendered contracted width must equal the placement-math contracted width"
+            "Rendered contracted width must equal the placement-math contracted width",
         )
         assertEquals(
             DockCardAnimations.CARD_HEIGHT_CONTRACTED.value.toInt(),
-            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED,
         )
         for (panel in ExpandedPanel.entries) {
             when (panel) {
@@ -116,17 +120,23 @@ class DockCardPlacementRegressionTest {
 
         // dLeft=15 vs dRight=5 -> right edge is nearer
         val (rightWins, _) = DockCardPhysics.evaluateMagneticSnap(
-            candidateContentLeft = 15, candidateContentTop = 100,
-            cardWidth = wideCard, cardHeight = 430,
-            workArea = standard1080p, snapThreshold = 20
+            candidateContentLeft = 15,
+            candidateContentTop = 100,
+            cardWidth = wideCard,
+            cardHeight = 430,
+            workArea = standard1080p,
+            snapThreshold = 20,
         )
         assertEquals(20, rightWins, "Nearest edge (right, 5px) must win over left (15px)")
 
         // dLeft=8 vs dRight=12 -> left edge is nearer
         val (leftWins, _) = DockCardPhysics.evaluateMagneticSnap(
-            candidateContentLeft = 8, candidateContentTop = 100,
-            cardWidth = wideCard, cardHeight = 430,
-            workArea = standard1080p, snapThreshold = 20
+            candidateContentLeft = 8,
+            candidateContentTop = 100,
+            cardWidth = wideCard,
+            cardHeight = 430,
+            workArea = standard1080p,
+            snapThreshold = 20,
         )
         assertEquals(0, leftWins, "Nearest edge (left, 8px) must win over right (12px)")
     }
@@ -134,9 +144,12 @@ class DockCardPlacementRegressionTest {
     @Test
     fun testMagneticSnapSingleEdgeUnchanged() {
         val (snapped, _) = DockCardPhysics.evaluateMagneticSnap(
-            candidateContentLeft = 1590, candidateContentTop = 500,
-            cardWidth = 320, cardHeight = 430,
-            workArea = standard1080p, snapThreshold = 20
+            candidateContentLeft = 1590,
+            candidateContentTop = 500,
+            cardWidth = 320,
+            cardHeight = 430,
+            workArea = standard1080p,
+            snapThreshold = 20,
         )
         // 1590 + 320 = 1910 -> 10px INWARD of the right edge -> flush snap to 1920-320
         assertEquals(1600, snapped, "Right-edge snap with contracted 320dp card must align flush to 1920-320")
@@ -153,7 +166,7 @@ class DockCardPlacementRegressionTest {
         assertEquals(converted.width, converted.right - converted.left)
         assertEquals(
             (standard1080p.screenBounds.width / expectedScale).toInt(),
-            converted.screenBounds.width
+            converted.screenBounds.width,
         )
 
         // Identity conversion at density 1f regardless of platform
@@ -186,7 +199,7 @@ class DockCardPlacementRegressionTest {
             controller.windowState.position.x.value.toInt(),
             controller.windowState.position.y.value.toInt(),
             DockCardMetrics.CARD_WIDTH_CONTRACTED,
-            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED,
         )
         assertTrue(rect.intersects(Rectangle(wa.left, wa.top, wa.width, wa.height)), "Restored card must remain on its display")
     }
@@ -218,7 +231,7 @@ class DockCardPlacementRegressionTest {
             controller.windowState.position.x.value.toInt(),
             controller.windowState.position.y.value.toInt(),
             DockCardMetrics.CARD_WIDTH_CONTRACTED,
-            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED,
         )
         assertTrue(rect.intersects(Rectangle(wa.left, wa.top, wa.width, wa.height)))
     }
@@ -238,7 +251,7 @@ class DockCardPlacementRegressionTest {
             controller.windowState.position.x.value.toInt(),
             controller.windowState.position.y.value.toInt(),
             DockCardMetrics.CARD_WIDTH_CONTRACTED,
-            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED,
         )
         assertEquals(wa.right - grabX, rect.x, "Extreme positive X must clamp to right-edge grab margin")
         assertEquals(wa.bottom - grabY, rect.y, "Extreme positive Y must clamp to bottom grab margin")

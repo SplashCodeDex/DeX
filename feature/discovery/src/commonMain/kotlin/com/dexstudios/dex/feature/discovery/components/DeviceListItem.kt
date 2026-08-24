@@ -1,16 +1,4 @@
 package com.dexstudios.dex.feature.discovery.components
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_full
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery5
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery4
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery3
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery2
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_devices
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,6 +24,16 @@ import com.dexstudios.dex.core.designsystem.components.DeXButton
 import com.dexstudios.dex.core.designsystem.components.DeXPanel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.*
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery2
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery3
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery4
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery5
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_charging
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery_full
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_devices
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -49,7 +47,7 @@ fun DeviceListItem(
     onLongClick: () -> Unit = {},
     isTrusted: Boolean = AuthState.pairedFingerprints.value.contains(device.info.fingerprint),
     wallpaper: org.jetbrains.compose.resources.DrawableResource? = null,
-    onButtonClick: () -> Unit = onClick
+    onButtonClick: () -> Unit = onClick,
 ) {
     val realBattery = device.info.battery
     val isCharging = device.info.isCharging == true
@@ -79,10 +77,10 @@ fun DeviceListItem(
             .clip(cardShape)
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = onLongClick,
             ),
         shape = cardShape,
-        shadowRadius = 16.dp
+        shadowRadius = 16.dp,
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
             // 1. Wallpaper or Placeholder
@@ -93,14 +91,14 @@ fun DeviceListItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_devices),
@@ -109,7 +107,7 @@ fun DeviceListItem(
                             .size(120.dp)
                             .offset(y = (-32).dp)
                             .alpha(0.15f),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -123,9 +121,9 @@ fun DeviceListItem(
                             0f to Color.Transparent,
                             0.3f to MaterialTheme.colorScheme.surface.copy(alpha = 0.1f),
                             0.6f to MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            1f to MaterialTheme.colorScheme.surface
-                        )
-                    )
+                            1f to MaterialTheme.colorScheme.surface,
+                        ),
+                    ),
             )
 
             Column(
@@ -133,18 +131,18 @@ fun DeviceListItem(
                     .fillMaxSize()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp, top = 24.dp),
-                verticalArrangement = Arrangement.Bottom
+                verticalArrangement = Arrangement.Bottom,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = device.info.alias,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 
@@ -154,7 +152,7 @@ fun DeviceListItem(
                     text = device.info.deviceModel.ifBlank { stringResource(Res.string.device_unknown) },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 20.sp
+                    lineHeight = 20.sp,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -178,13 +176,13 @@ fun DeviceListItem(
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.onSurface,
-                        contentColor = MaterialTheme.colorScheme.surface
-                    )
+                        contentColor = MaterialTheme.colorScheme.surface,
+                    ),
                 ) {
                     Text(
                         text = if (isTrusted) "Send File" else "Connect",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
                     )
                 }
             }
@@ -197,12 +195,12 @@ private fun DeviceIconTag(icon: androidx.compose.ui.graphics.painter.Painter) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Icon(
             painter = icon,
             contentDescription = null,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).size(18.dp)
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).size(18.dp),
         )
     }
 }
@@ -212,13 +210,13 @@ private fun DeviceTag(text: String) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }

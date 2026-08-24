@@ -11,7 +11,7 @@ class IdentityHashTest {
     fun testHashConsistency() {
         val hash1 = IdentityHash.calculateHash("user@dex.net", "sub_123")
         val hash2 = IdentityHash.calculateHash("user@dex.net", "sub_123")
-        
+
         assertEquals("Hashes for identical inputs must match", hash1, hash2)
     }
 
@@ -19,7 +19,7 @@ class IdentityHashTest {
     fun testHashSaltVariation() {
         val hash1 = IdentityHash.calculateHash("user@dex.net", "sub_123", "salt_A")
         val hash2 = IdentityHash.calculateHash("user@dex.net", "sub_123", "salt_B")
-        
+
         assertNotEquals("Different salts should produce different hashes", hash1, hash2)
     }
 }

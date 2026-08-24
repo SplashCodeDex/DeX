@@ -30,17 +30,10 @@ import kotlinx.coroutines.launch
  * @param targetScale The scale to squish down to on press.
  * @param pullFactor How much the bubble pulls towards the finger (0.0 to 1.0).
  */
-fun Modifier.bubbleFluidity(
-    targetScale: Float = 0.85f,
-    pullFactor: Float = 0.1f,
-    onPhysicsUpdated: ((scale: Float, tx: Float, ty: Float) -> Unit)? = null
-): Modifier = this then BubbleFluidityElement(targetScale, pullFactor, onPhysicsUpdated)
+fun Modifier.bubbleFluidity(targetScale: Float = 0.85f, pullFactor: Float = 0.1f, onPhysicsUpdated: ((scale: Float, tx: Float, ty: Float) -> Unit)? = null): Modifier =
+    this then BubbleFluidityElement(targetScale, pullFactor, onPhysicsUpdated)
 
-private data class BubbleFluidityElement(
-    val targetScale: Float,
-    val pullFactor: Float,
-    val onPhysicsUpdated: ((Float, Float, Float) -> Unit)?
-) : ModifierNodeElement<BubbleFluidityNode>() {
+private data class BubbleFluidityElement(val targetScale: Float, val pullFactor: Float, val onPhysicsUpdated: ((Float, Float, Float) -> Unit)?) : ModifierNodeElement<BubbleFluidityNode>() {
     override fun create(): BubbleFluidityNode = BubbleFluidityNode(targetScale, pullFactor, onPhysicsUpdated)
 
     override fun update(node: BubbleFluidityNode) {
@@ -56,11 +49,10 @@ private data class BubbleFluidityElement(
     }
 }
 
-private class BubbleFluidityNode(
-    var targetScale: Float,
-    var pullFactor: Float,
-    var onPhysicsUpdated: ((Float, Float, Float) -> Unit)?
-) : DelegatingNode(), LayoutModifierNode, PointerInputModifierNode {
+private class BubbleFluidityNode(var targetScale: Float, var pullFactor: Float, var onPhysicsUpdated: ((Float, Float, Float) -> Unit)?) :
+    DelegatingNode(),
+    LayoutModifierNode,
+    PointerInputModifierNode {
 
     private val scale = Animatable(1f)
     private val translationX = Animatable(0f)
@@ -68,63 +60,62 @@ private class BubbleFluidityNode(
 
     private var size: IntSize = IntSize.Zero
 
-    private val pointerInputNode = delegate(SuspendingPointerInputModifierNode {
-        awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
+    private val pointerInputNode = delegate(
+        SuspendingPointerInputModifierNode {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
 
-            // On Press: Shrink and squish
-            coroutineScope.launch {
-                scale.animateTo(
-                    targetValue = targetScale,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-            }
-
-            var pointerEvent = awaitPointerEvent()
-            while (pointerEvent.changes.any { it.pressed }) {
-                val change = pointerEvent.changes.first()
-                val position = change.position
-
-                val offsetX = position.x - size.width / 2f
-                val offsetY = position.y - size.height / 2f
-
-                // Optimized pull effect: Animatable.animateTo will cancel previous animations automatically.
+                // On Press: Shrink and squish
                 coroutineScope.launch {
-                    translationX.animateTo(
-                        targetValue = offsetX * pullFactor,
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                    )
-                }
-                coroutineScope.launch {
-                    translationY.animateTo(
-                        targetValue = offsetY * pullFactor,
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                    scale.animateTo(
+                        targetValue = targetScale,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow,
+                        ),
                     )
                 }
 
-                pointerEvent = awaitPointerEvent()
-            }
+                var pointerEvent = awaitPointerEvent()
+                while (pointerEvent.changes.any { it.pressed }) {
+                    val change = pointerEvent.changes.first()
+                    val position = change.position
 
-            // On Release: Elastic bounce back
-            coroutineScope.launch {
-                val bounceSpec = spring<Float>(
-                    dampingRatio = Spring.DampingRatioHighBouncy,
-                    stiffness = 800f
-                )
-                launch { scale.animateTo(1f, bounceSpec) }
-                launch { translationX.animateTo(0f, bounceSpec) }
-                launch { translationY.animateTo(0f, bounceSpec) }
-            }
-        }
-    })
+                    val offsetX = position.x - size.width / 2f
+                    val offsetY = position.y - size.height / 2f
 
-    override fun MeasureScope.measure(
-        measurable: Measurable,
-        constraints: Constraints
-    ): MeasureResult {
+                    // Optimized pull effect: Animatable.animateTo will cancel previous animations automatically.
+                    coroutineScope.launch {
+                        translationX.animateTo(
+                            targetValue = offsetX * pullFactor,
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        )
+                    }
+                    coroutineScope.launch {
+                        translationY.animateTo(
+                            targetValue = offsetY * pullFactor,
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        )
+                    }
+
+                    pointerEvent = awaitPointerEvent()
+                }
+
+                // On Release: Elastic bounce back
+                coroutineScope.launch {
+                    val bounceSpec = spring<Float>(
+                        dampingRatio = Spring.DampingRatioHighBouncy,
+                        stiffness = 800f,
+                    )
+                    launch { scale.animateTo(1f, bounceSpec) }
+                    launch { translationX.animateTo(0f, bounceSpec) }
+                    launch { translationY.animateTo(0f, bounceSpec) }
+                }
+            }
+        },
+    )
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
         val placeable = measurable.measure(constraints)
         size = IntSize(placeable.width, placeable.height)
         return layout(placeable.width, placeable.height) {
@@ -138,11 +129,7 @@ private class BubbleFluidityNode(
         }
     }
 
-    override fun onPointerEvent(
-        pointerEvent: PointerEvent,
-        pass: PointerEventPass,
-        bounds: IntSize
-    ) {
+    override fun onPointerEvent(pointerEvent: PointerEvent, pass: PointerEventPass, bounds: IntSize) {
         pointerInputNode.onPointerEvent(pointerEvent, pass, bounds)
     }
 

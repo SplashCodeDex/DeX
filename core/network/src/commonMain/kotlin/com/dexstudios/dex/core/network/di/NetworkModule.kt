@@ -1,13 +1,13 @@
 package com.dexstudios.dex.core.network.di
 
+import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.core.network.HardwareTelemetry
 import com.dexstudios.dex.core.network.IDiscoveryService
+import com.dexstudios.dex.core.network.IMirrorEngine
 import com.dexstudios.dex.core.network.MessageHandler
 import com.dexstudios.dex.core.network.WebSocketEngine
-import com.dexstudios.dex.core.network.HardwareTelemetry
-import com.dexstudios.dex.core.network.IMirrorEngine
-import com.dexstudios.dex.auth.PairingEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.*
 import io.ktor.client.engine.cio.CIO
@@ -44,10 +44,12 @@ val commonNetworkModule = module {
                 connectTimeoutMillis = 10.seconds.inWholeMilliseconds
             }
             install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = true
-                })
+                json(
+                    Json {
+                        ignoreUnknownKeys = true
+                        encodeDefaults = true
+                    },
+                )
             }
             install(WebSockets) {
                 pingInterval = 30.seconds

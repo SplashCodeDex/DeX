@@ -38,7 +38,7 @@ class WebSocketEngine(
     private val discoveryEngine: DiscoveryEngine,
     private val messageHandler: MessageHandler,
     private val hardwareTelemetry: HardwareTelemetry,
-    private val mirrorEngine: IMirrorEngine
+    private val mirrorEngine: IMirrorEngine,
 ) {
     private var activeSession: DefaultClientWebSocketSession? = null
     private var _connectedFingerprint: String? = null
@@ -85,7 +85,8 @@ class WebSocketEngine(
                 if (pcDevice != null && activeSession == null) {
                     connectToPC(pcDevice)
                 } else if (pcDevice != null && connectedViaWan && !pcDevice.viaWan &&
-                    pcDevice.info.fingerprint == _connectedFingerprint) {
+                    pcDevice.info.fingerprint == _connectedFingerprint
+                ) {
                     activeSession?.close(CloseReason(CloseReason.Codes.NORMAL, "Switching to LAN"))
                     activeSession = null
                     connectedViaWan = false
@@ -140,9 +141,9 @@ class WebSocketEngine(
                 tcpFallbackPort = DeXPorts.PULL,
                 protocol = "https",
                 download = false,
-                identityHash = null
+                identityHash = null,
             ),
-            viaWan = true
+            viaWan = true,
         )
     }
 

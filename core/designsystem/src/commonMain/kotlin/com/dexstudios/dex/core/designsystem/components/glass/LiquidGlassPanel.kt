@@ -55,20 +55,22 @@ fun LiquidGlassPanel(
                 if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
                     drawRect(config.surfaceTint.copy(alpha = config.surfaceTintAlpha))
                 }
-            }
+            },
         )
     } else {
         modifier
             .clip(shape)
             .background(
-                if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f)
+                if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
                     config.surfaceTint.copy(alpha = config.surfaceTintAlpha)
-                else Color(0xFF16121A).copy(alpha = 0.82f)
+                } else {
+                    Color(0xFF16121A).copy(alpha = 0.82f)
+                },
             )
     }
 
     Box(
         modifier = glassModifier,
-        content = content
+        content = content,
     )
 }

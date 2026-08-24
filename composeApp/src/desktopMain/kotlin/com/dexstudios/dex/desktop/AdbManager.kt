@@ -84,7 +84,6 @@ object AdbManager {
             // Cleanup zip
             zipFile.delete()
             println("ADB downloaded and extracted successfully to ${adbExeFile.absolutePath}")
-
         } catch (e: Exception) {
             println("Failed to download or extract platform-tools: ${e.message}")
             e.printStackTrace()
@@ -112,7 +111,7 @@ object AdbManager {
     suspend fun connect(ip: String) = withContext(Dispatchers.IO) {
         val targetIp = ip.ifBlank { "127.0.0.1" }
         println("Attempting ADB connect to $targetIp...")
-        
+
         if (!isAdbPortOpen(targetIp)) {
             println("ADB connect failed: Port 5555 is not open or unreachable within 400ms on $targetIp")
             return@withContext

@@ -12,7 +12,7 @@ kotlin {
 
     sourceSets {
         val desktopMain = getByName("desktopMain")
-        
+
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -20,11 +20,11 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.components.uiToolingPreview)
-            
+
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.androidx.datastore.preferences)
-            
+
             implementation(project(":core:network"))
             implementation(project(":core:data"))
             implementation(project(":core:designsystem"))
@@ -34,17 +34,17 @@ kotlin {
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
-            
+
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
-            
+
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.qrcode.kotlin)
             implementation(libs.coil.compose)
             implementation(libs.compottie)
         }
-        
+
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.compose.native.tray)
@@ -70,18 +70,17 @@ compose.desktop {
     application {
         mainClass = "com.dexstudios.dex.MainKt"
 
-
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "DeX"
             packageVersion = "1.0.0"
-            
+
             macOS {
                 bundleID = "com.dexstudios.dex"
                 appCategory = "public.app-category.utilities"
                 // iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
             }
-            
+
             windows {
                 menuGroup = "DeX Studios"
                 upgradeUuid = "6ac1f203-bde0-4040-a2f3-f8a6dcda330c"

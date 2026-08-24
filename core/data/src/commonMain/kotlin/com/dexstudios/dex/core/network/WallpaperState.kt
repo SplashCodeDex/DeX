@@ -11,6 +11,3 @@ object WallpaperState {
         _revision.value = com.dexstudios.dex.core.network.HashUtils.currentTimeMillis()
     }
 }
-
-
-

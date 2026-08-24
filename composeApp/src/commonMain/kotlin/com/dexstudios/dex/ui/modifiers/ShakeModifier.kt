@@ -18,8 +18,13 @@ fun Modifier.shake(isError: Boolean): Modifier = composed {
                 targetValue = 0f,
                 animationSpec = keyframes {
                     durationMillis = 400
-                    0f at 0; (-10f) at 60; 10f at 120; (-10f) at 180; 10f at 240; 0f at 400
-                }
+                    0f at 0
+                    (-10f) at 60
+                    10f at 120
+                    (-10f) at 180
+                    10f at 240
+                    0f at 400
+                },
             )
         }
     }

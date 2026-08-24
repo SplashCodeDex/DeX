@@ -14,8 +14,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import java.awt.Desktop
 import java.io.File
 import java.net.URI
@@ -35,7 +35,7 @@ object GoogleOAuth {
     private const val TOKEN_URL = "https://oauth2.googleapis.com/token"
 
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String?>>()
-    
+
     val baseDirectory: File by lazy {
         val osName = System.getProperty("os.name").lowercase()
         if (osName.contains("win")) {
@@ -47,12 +47,7 @@ object GoogleOAuth {
     }
 
     @Serializable
-    data class GoogleProfile(
-        val email: String,
-        val name: String,
-        val picture: String,
-        val sub: String
-    )
+    data class GoogleProfile(val email: String, val name: String, val picture: String, val sub: String)
 
     private var cachedCredentials: Pair<String, String>? = null
 
@@ -82,11 +77,11 @@ object GoogleOAuth {
         val verifierBytes = ByteArray(32)
         secureRandom.nextBytes(verifierBytes)
         val verifier = base64Url(verifierBytes)
-        
+
         val digest = MessageDigest.getInstance("SHA-256")
         val challengeBytes = digest.digest(verifier.toByteArray(Charsets.UTF_8))
         val challenge = base64Url(challengeBytes)
-        
+
         val state = UUID.randomUUID().toString().replace("-", "")
 
         val authUrl = buildString {
@@ -136,7 +131,7 @@ object GoogleOAuth {
                 append("grant_type", "authorization_code")
                 append("code_verifier", verifier)
             }
-            
+
             val response: HttpResponse = http.post(TOKEN_URL) {
                 setBody(FormDataContent(formParameters))
             }
@@ -153,13 +148,13 @@ object GoogleOAuth {
             try {
                 val decoded = String(Base64.getUrlDecoder().decode(base64Pad(parts[1])), Charsets.UTF_8)
                 val claims = json.decodeFromString<JsonObject>(decoded)
-                
+
                 val email = claims["email"]?.jsonPrimitive?.content ?: return null
                 val profile = GoogleProfile(
                     email = email,
                     name = claims["name"]?.jsonPrimitive?.content ?: "",
                     picture = claims["picture"]?.jsonPrimitive?.content ?: "",
-                    sub = claims["sub"]?.jsonPrimitive?.content ?: ""
+                    sub = claims["sub"]?.jsonPrimitive?.content ?: "",
                 )
                 saveProfile(profile)
                 return profile
@@ -213,16 +208,12 @@ object GoogleOAuth {
         }
     }
 
-    private fun base64Url(bytes: ByteArray): String {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-    }
+    private fun base64Url(bytes: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 
-    private fun base64Pad(s: String): String {
-        return when (s.length % 4) {
-            2 -> "$s=="
-            3 -> "$s="
-            else -> s
-        }
+    private fun base64Pad(s: String): String = when (s.length % 4) {
+        2 -> "$s=="
+        3 -> "$s="
+        else -> s
     }
 
     private fun loadCredentials(): Pair<String, String>? {
@@ -245,9 +236,9 @@ object GoogleOAuth {
     private fun findCredentialsFile(): File? {
         val currentDir = File(System.getProperty("user.dir"))
         val candidates = mutableListOf(
-            File(currentDir, "oauth.local.json")
+            File(currentDir, "oauth.local.json"),
         )
-        
+
         var dir: File? = currentDir
         for (i in 0..5) {
             if (dir == null) break
@@ -255,8 +246,7 @@ object GoogleOAuth {
             candidates.add(File(dir, "DeXShareTarget/oauth.local.json"))
             dir = dir.parentFile
         }
-        
+
         return candidates.firstOrNull { it.exists() && it.isFile }
     }
 }
-

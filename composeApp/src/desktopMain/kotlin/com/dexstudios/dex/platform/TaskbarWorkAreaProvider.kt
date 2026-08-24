@@ -20,7 +20,7 @@ data class WorkAreaBounds(
     val width: Int = right - left,
     val height: Int = bottom - top,
     val insets: Insets = Insets(0, 0, 0, 0),
-    val screenBounds: Rectangle = Rectangle(left, top, right - left, bottom - top)
+    val screenBounds: Rectangle = Rectangle(left, top, right - left, bottom - top),
 )
 
 /**
@@ -99,7 +99,7 @@ object TaskbarWorkAreaProvider {
             width = width,
             height = height,
             insets = insets,
-            screenBounds = screenBounds
+            screenBounds = screenBounds,
         )
     }
 
@@ -109,7 +109,11 @@ object TaskbarWorkAreaProvider {
     fun getActiveScreenInsets(): Insets {
         val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
         val defaultDevice = ge.defaultScreenDevice
-        val mouseLocation: Point? = try { MouseInfo.getPointerInfo()?.location } catch (_: Exception) { null }
+        val mouseLocation: Point? = try {
+            MouseInfo.getPointerInfo()?.location
+        } catch (_: Exception) {
+            null
+        }
         val targetDevice: GraphicsDevice = if (mouseLocation != null) {
             ge.screenDevices?.firstOrNull { it.defaultConfiguration.bounds.contains(mouseLocation) } ?: defaultDevice
         } else {
@@ -124,7 +128,11 @@ object TaskbarWorkAreaProvider {
     fun getActiveScreenBounds(): Rectangle {
         val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
         val defaultDevice = ge.defaultScreenDevice
-        val mouseLocation: Point? = try { MouseInfo.getPointerInfo()?.location } catch (_: Exception) { null }
+        val mouseLocation: Point? = try {
+            MouseInfo.getPointerInfo()?.location
+        } catch (_: Exception) {
+            null
+        }
         val targetDevice: GraphicsDevice = if (mouseLocation != null) {
             ge.screenDevices?.firstOrNull { it.defaultConfiguration.bounds.contains(mouseLocation) } ?: defaultDevice
         } else {
@@ -148,7 +156,7 @@ object TaskbarWorkAreaProvider {
     fun calculateInitialWindowPosition(
         workArea: WorkAreaBounds = getActiveScreenWorkArea(),
         canvasWidth: Int = DockCardMetrics.CANVAS_WIDTH,
-        cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED
+        cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED,
     ): IntOffset {
         val x = calculateRestingX(workArea, canvasWidth)
         val y = calculateRestingY(workArea, cardCollapsedHeight)
@@ -162,29 +170,20 @@ object TaskbarWorkAreaProvider {
     /**
      * Computes the resting X origin coordinate.
      */
-    fun calculateRestingX(
-        workArea: WorkAreaBounds = getActiveScreenWorkArea(),
-        canvasWidth: Int = DockCardMetrics.CANVAS_WIDTH
-    ): Int {
-        return workArea.right - canvasWidth + DockCardMetrics.RESTING_CANVAS_OVERHANG
-    }
+    fun calculateRestingX(workArea: WorkAreaBounds = getActiveScreenWorkArea(), canvasWidth: Int = DockCardMetrics.CANVAS_WIDTH): Int =
+        workArea.right - canvasWidth + DockCardMetrics.RESTING_CANVAS_OVERHANG
 
     /**
      * Computes the resting Y origin coordinate.
      * On Windows/Linux: docks above the bottom taskbar via canvas-bottom overhang.
      * On macOS: docks right below the top menu bar (Top_work + 10).
      */
-    fun calculateRestingY(
-        workArea: WorkAreaBounds = getActiveScreenWorkArea(),
-        cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED
-    ): Int {
-        return if (isMacOS) {
-            workArea.top + 10
-        } else {
-            // Anchor the Native OS Window so the UI rests exactly
-            // CARD_MARGIN - RESTING_CANVAS_OVERHANG dp above the taskbar:
-            // Canvas top = workArea.bottom - CANVAS_HEIGHT + RESTING_CANVAS_OVERHANG.
-            workArea.bottom - DockCardMetrics.CANVAS_HEIGHT + DockCardMetrics.RESTING_CANVAS_OVERHANG
-        }
+    fun calculateRestingY(workArea: WorkAreaBounds = getActiveScreenWorkArea(), cardCollapsedHeight: Int = DockCardMetrics.CARD_HEIGHT_CONTRACTED): Int = if (isMacOS) {
+        workArea.top + 10
+    } else {
+        // Anchor the Native OS Window so the UI rests exactly
+        // CARD_MARGIN - RESTING_CANVAS_OVERHANG dp above the taskbar:
+        // Canvas top = workArea.bottom - CANVAS_HEIGHT + RESTING_CANVAS_OVERHANG.
+        workArea.bottom - DockCardMetrics.CANVAS_HEIGHT + DockCardMetrics.RESTING_CANVAS_OVERHANG
     }
 }

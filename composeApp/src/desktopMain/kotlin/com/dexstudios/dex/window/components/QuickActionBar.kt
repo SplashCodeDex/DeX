@@ -1,18 +1,4 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.icons.AnimatedClipboardIcon
-import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
-import org.jetbrains.compose.resources.painterResource
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -33,9 +19,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -51,8 +37,19 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.designsystem.icons.AnimatedClipboardIcon
+import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * Centered row of 4 primary 62x48dp pill buttons + 1 dynamic Danger Close pill.
@@ -77,12 +74,12 @@ fun QuickActionBar(
     onToggleTransfers: () -> Unit,
     onToggleClipboard: () -> Unit,
     onCloseExpandedPanel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // 1. Do Not Disturb Pill (62x48dp) with Animated Lottie Bell
         DeXQuickActionButton(
@@ -94,9 +91,9 @@ fun QuickActionBar(
                     isDndActive = isDndActive,
                     size = 22.dp,
                     tint = tint,
-                    contentDescription = "Do Not Disturb"
+                    contentDescription = "Do Not Disturb",
                 )
-            }
+            },
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -106,7 +103,7 @@ fun QuickActionBar(
             icon = painterResource(Res.drawable.ic_fluent_smartphone),
             tooltip = "Mirror Phone",
             isChecked = isMirroringActive,
-            onClick = onToggleMirror
+            onClick = onToggleMirror,
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -116,7 +113,7 @@ fun QuickActionBar(
             icon = painterResource(Res.drawable.ic_fluent_history),
             tooltip = "History",
             isChecked = isTransfersActive,
-            onClick = onToggleTransfers
+            onClick = onToggleTransfers,
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -132,16 +129,21 @@ fun QuickActionBar(
                     isClipboardActive = isClipboardActive,
                     size = 22.dp,
                     tint = tint,
-                    contentDescription = "Clipboard"
+                    contentDescription = "Clipboard",
                 )
-            }
+            },
         )
 
         // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 62dp)
         AnimatedVisibility(
             visible = isPanelExpanded,
-            enter = expandHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeIn(),
-            exit = shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) + fadeOut()
+            enter =
+            expandHorizontally(
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS),
+            ) + fadeIn(),
+            exit =
+            shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) +
+                fadeOut(),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -150,7 +152,7 @@ fun QuickActionBar(
                     tooltip = "Close",
                     isChecked = false,
                     isDanger = true,
-                    onClick = onCloseExpandedPanel
+                    onClick = onCloseExpandedPanel,
                 )
             }
         }
@@ -158,15 +160,7 @@ fun QuickActionBar(
 }
 
 @Composable
-fun DeXQuickActionButton(
-    icon: Painter,
-    tooltip: String,
-    isChecked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isDanger: Boolean = false,
-    badgeCount: Int = 0
-) {
+fun DeXQuickActionButton(icon: Painter, tooltip: String, isChecked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, isDanger: Boolean = false, badgeCount: Int = 0) {
     DeXQuickActionButton(
         tooltip = tooltip,
         isChecked = isChecked,
@@ -179,9 +173,9 @@ fun DeXQuickActionButton(
                 painter = icon,
                 contentDescription = tooltip,
                 tint = tint,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(22.dp),
             )
-        }
+        },
     )
 }
 
@@ -193,7 +187,7 @@ fun DeXQuickActionButton(
     modifier: Modifier = Modifier,
     isDanger: Boolean = false,
     badgeCount: Int = 0,
-    iconContent: @Composable (tint: Color) -> Unit
+    iconContent: @Composable (tint: Color) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -202,14 +196,14 @@ fun DeXQuickActionButton(
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
         animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-        label = "btnScale"
+        label = "btnScale",
     )
 
     // Tactile Translation: 0 -> -3dp (lift)
     val translateY by animateDpAsState(
         targetValue = if (isHovered) (-3).dp else 0.dp,
         animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-        label = "btnTransY"
+        label = "btnTransY",
     )
 
     // Emerald State Morphing Background Color
@@ -220,13 +214,13 @@ fun DeXQuickActionButton(
             else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
         },
         animationSpec = tween(200),
-        label = "btnBgColor"
+        label = "btnBgColor",
     )
 
     val hoverOverlayColor by animateColorAsState(
         targetValue = if (isHovered && !isChecked && !isDanger) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
         animationSpec = tween(200),
-        label = "btnHoverOverlay"
+        label = "btnHoverOverlay",
     )
 
     // Icon Color Morphing
@@ -237,7 +231,7 @@ fun DeXQuickActionButton(
             else -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface
         },
         animationSpec = tween(200),
-        label = "btnIconColor"
+        label = "btnIconColor",
     )
 
     Box(
@@ -255,9 +249,9 @@ fun DeXQuickActionButton(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
             ),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         iconContent(iconColor)
 
@@ -272,17 +266,20 @@ fun DeXQuickActionButton(
                     .align(Alignment.TopEnd)
                     .padding(top = 2.dp, end = 4.dp)
                     .then(
-                        if (badgeBorder != null) Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
-                        else Modifier
+                        if (badgeBorder != null) {
+                            Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
+                        } else {
+                            Modifier
+                        },
                     )
                     .background(badgeBgColor, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
                 Text(
                     text = badgeCount.toString(),
                     color = badgeTextColor,
                     fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }

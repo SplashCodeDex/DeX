@@ -18,18 +18,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 
-
 /** Combined profile snapshot — prevents triple-recomposition on Google sign-in. */
-data class GoogleProfile(
-    val name: String = "",
-    val picture: String = "",
-    val email: String = ""
-)
+data class GoogleProfile(val name: String = "", val picture: String = "", val email: String = "")
 
-class DeviceConfig(
-    private val dataStore: DataStore<Preferences>,
-    private val scope: CoroutineScope
-) : KoinComponent {
+class DeviceConfig(private val dataStore: DataStore<Preferences>, private val scope: CoroutineScope) : KoinComponent {
 
     companion object {
         val EMAIL_KEY = stringPreferencesKey("email")
@@ -71,7 +63,9 @@ class DeviceConfig(
     private val _publicAddressFlow = MutableStateFlow("")
 
     val googleProfileFlow: StateFlow<GoogleProfile> = combine(
-        _profileNameFlow, _profilePictureFlow, _emailFlow
+        _profileNameFlow,
+        _profilePictureFlow,
+        _emailFlow,
     ) { name, picture, email ->
         GoogleProfile(name, picture, email)
     }.stateIn(scope, SharingStarted.Eagerly, GoogleProfile())
@@ -233,6 +227,3 @@ class DeviceConfig(
         }
     }
 }
-
-
-

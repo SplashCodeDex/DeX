@@ -1,5 +1,9 @@
 package com.dexstudios.dex.core.network
 
+import io.ktor.client.*
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -14,31 +18,23 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import io.ktor.client.*
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
+import kotlinx.serialization.json.put
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.seconds
 
 private val lenientJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
 // We still use java.net.DatagramSocket for the manual probe fallback since both targets are JVM.
 // If this ever targets iOS, we would expect/actual the manual probe as well.
 
-class DiscoveryEngine(
-    private val deviceConfig: DeviceConfig,
-    private val discoveryServices: List<IDiscoveryService>,
-    private val httpClient: HttpClient
-) {
+class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discoveryServices: List<IDiscoveryService>, private val httpClient: HttpClient) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var cleanupJob: Job? = null
     private var identityWatchJob: Job? = null
@@ -59,7 +55,7 @@ class DiscoveryEngine(
             protocol = "https",
             download = false,
             identityHash = deviceConfig.identityHash,
-            googleSub = deviceConfig.googleSub.ifBlank { null }
+            googleSub = deviceConfig.googleSub.ifBlank { null },
         )
 
     fun startDiscovery() {
@@ -185,7 +181,7 @@ class DiscoveryEngine(
                             protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
                             download = false,
                             identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
-                            googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null }
+                            googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
                         )
                         addDevice(DiscoveredDevice(ip = ip, info = dto))
                     }
@@ -194,4 +190,3 @@ class DiscoveryEngine(
         }
     }
 }
-

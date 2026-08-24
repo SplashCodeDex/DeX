@@ -4,13 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-data class TransferSessionInfo(
-    val sessionId: String,
-    val senderAlias: String,
-    val totalFiles: Int,
-    val filesReceived: Int,
-    val isComplete: Boolean = false
-)
+data class TransferSessionInfo(val sessionId: String, val senderAlias: String, val totalFiles: Int, val filesReceived: Int, val isComplete: Boolean = false)
 
 object TransferStateMonitor {
     private val _activeTransfers = MutableStateFlow<Map<String, TransferSessionInfo>>(emptyMap())

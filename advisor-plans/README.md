@@ -37,10 +37,10 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 
 - [TEST-01] Add verification baseline to feature modules: Deferred. Need basic correctness fixes first.
 - [PERF-01] Busy-waiting polling loop for external drag-and-drop state: MITIGATED 2026-08-23. `deferHideOnDragDrop` polls with adaptive backoff (50ms → 250ms cap after 1s). Full event-driven fix via WH_MOUSE_LL hook deferred until `MouseInputProvider.kt` (under active unrelated work) is free to change.
-- [DX-02] Add code formatter and linter baseline: Deferred.
+- [DX-02] Add code formatter and linter baseline: RESOLVED 2026-08-23. Spotless 8.10.0 + ktlint 1.8.0 wired for all desktop modules (not yet enforced in check/CI).
 - [DOCS-01] Document local OAuth credentials setup: Deferred.
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).
-- [DX-01] Add Kotlin linting and formatting tooling: Deferred.
+- [DX-01] Add Kotlin linting and formatting tooling: RESOLVED 2026-08-23. Same implementation as DX-02.
 - [DX-02] Migrate println statements to structured logging: Deferred.
 - [DIR-01] Implement desktop file fetching and sharing: REJECTED (with one-line rationale). Largely implemented independently since the audit: ShareRoutes prepare-upload/upload/download/share-target with auth + path-traversal guard, RelayService hostAndPushAsync with TTL cleanup. Revisit only for gaps found in use.
 - [DIR-02] Implement system tray notifications: Rejected. Duplicate of Plan 014.

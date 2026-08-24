@@ -1,7 +1,7 @@
 package com.dexstudios.dex.core.designsystem.state
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 object TopAppBarState {
@@ -22,4 +22,3 @@ enum class HistoryDirection { ALL, SENT, RECEIVED }
 enum class HistoryType { ALL, IMAGES, VIDEOS, DOCUMENTS, APPS }
 enum class HistorySort { DATE_DESC, SIZE_DESC, NAME_ASC }
 enum class HistoryViewMode { LIST, GRID }
-

@@ -6,14 +6,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.contentOrNull
-
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -92,9 +91,9 @@ class DesktopUdpService : IDiscoveryService {
                         protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
                         download = json["download"]?.jsonPrimitive?.booleanOrNull ?: true,
                         identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
-                        googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null }
-                    )
-                )
+                        googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
+                    ),
+                ),
             )
             sendReply(packet)
         }.onFailure { e -> e.printStackTrace() }
@@ -104,7 +103,7 @@ class DesktopUdpService : IDiscoveryService {
         val info = localInfo ?: return
         runCatching {
             java.io.File("C:\\Users\\NicoDex\\Desktop\\dex_udp_debug.log").appendText("Broadcasting from Desktop!\\n")
-                        val replyJson = buildJsonObject {
+            val replyJson = buildJsonObject {
                 put("alias", info.alias)
                 put("version", info.version)
                 put("deviceModel", info.deviceModel)
@@ -138,7 +137,7 @@ class DesktopUdpService : IDiscoveryService {
         }
     }
 
-        private fun startBroadcasting() {
+    private fun startBroadcasting() {
         broadcastJob = scope.launch {
             while (isActive) {
                 val info = localInfo
@@ -206,10 +205,3 @@ class DesktopUdpService : IDiscoveryService {
         runCatching { legacySocket?.close() }
     }
 }
-
-
-
-
-
-
-

@@ -3,6 +3,7 @@ package com.dexstudios.dex.core.network
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.engine.IPlatformEngine
 import io.ktor.util.date.getTimeMillis
+import io.ktor.util.generateNonceBlocking
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,19 +14,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import kotlinx.serialization.json.contentOrNull
-import io.ktor.util.generateNonceBlocking
-
 import kotlin.time.Duration.Companion.milliseconds
 
-class MessageHandler(
-    private val deviceConfig: DeviceConfig,
-    private val engine: IPlatformEngine
-) {
+class MessageHandler(private val deviceConfig: DeviceConfig, private val engine: IPlatformEngine) {
     private val json = Json { ignoreUnknownKeys = true }
 
     var onSendMessage: ((String) -> Unit)? = null
@@ -39,22 +35,38 @@ class MessageHandler(
 
             when (type) {
                 "pair-prompt" -> handlePairPrompt(dataElement)
+
                 "pair-cancelled" -> handlePairCancelled()
+
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
+
                 "public-address" -> handlePublicAddress(dataElement)
+
                 "endpoint-info" -> handleEndpointInfo(dataElement)
+
                 "peer-endpoint" -> handlePeerEndpoint(dataElement)
+
                 "device-roster" -> handleDeviceRoster(dataElement)
+
                 "trust-check" -> handleTrustCheck(dataElement)
+
                 "unpair" -> handleUnpair(dataElement)
+
                 "relay-started" -> handleRelayReply(true)
+
                 "relay-error" -> handleRelayReply(false)
+
                 "set-clipboard" -> handleSetClipboard(dataElement)
+
                 "wallpaper-updated" -> WallpaperState.notifyUpdated()
+
                 "mirror-start" -> engine.handleMirrorStart()
+
                 "mirror-stop" -> engine.handleMirrorStop()
+
                 "list-shared-folders", "browse-folder", "pull-files", "grant-shared-folder" ->
                     engine.handleFileExplorerRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
+
                 else -> {
                     println("Unknown message type received: $type")
                 }
@@ -98,7 +110,7 @@ class MessageHandler(
             fingerprint = pairReq.fingerprint,
             pin = pairReq.pin,
             deferred = CompletableDeferred(),
-            deadlineElapsedMs = getTimeMillis() + PAIR_PROMPT_TIMEOUT_MS
+            deadlineElapsedMs = getTimeMillis() + PAIR_PROMPT_TIMEOUT_MS,
         )
         AuthState.updateIncomingPairRequest(info)
         engine.showPairingRequestNotification(pairReq.alias)
@@ -159,7 +171,7 @@ class MessageHandler(
                 uploadReq.info.tcpFallbackPort,
                 files,
                 uploadReq.info.fingerprint,
-                uploadReq.info.alias
+                uploadReq.info.alias,
             )
         }
     }
@@ -208,9 +220,9 @@ class MessageHandler(
                     port = 0,
                     protocol = "punch",
                     download = false,
-                    identityHash = null
+                    identityHash = null,
                 ),
-                viaRoster = true
+                viaRoster = true,
             )
         }
         println("Roster updated: ${roster.devices.size} same-email devices")
@@ -284,6 +296,3 @@ class MessageHandler(
         const val GRANT_WAIT_MS = 180_000L
     }
 }
-
-
-

@@ -15,11 +15,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
 
-class FileExplorerViewModel(
-    val clientEngine: ClientEngine,
-    val fileExplorerService: FileExplorerService,
-    val discoveryEngine: DiscoveryEngine
-) : ViewModel() {
+class FileExplorerViewModel(val clientEngine: ClientEngine, val fileExplorerService: FileExplorerService, val discoveryEngine: DiscoveryEngine) : ViewModel() {
 
     private val _mode = MutableStateFlow(ExplorerMode.History)
     val mode = _mode.asStateFlow()
@@ -93,20 +89,22 @@ class FileExplorerViewModel(
     }
 
     // Inner combine groups the SAF-related flows into a single tuple (max 5-param overload).
-    private data class SafSnapshot(
-        val folders: List<ExplorerFolderItem>,
-        val breadcrumb: List<Pair<String, String>>,
-        val entries: List<ExplorerFileEntry>
-    )
+    private data class SafSnapshot(val folders: List<ExplorerFolderItem>, val breadcrumb: List<Pair<String, String>>, val entries: List<ExplorerFileEntry>)
 
     private val safSnapshot: Flow<SafSnapshot> = combine(
-        _safFolders, _safBreadcrumb, _safEntries
+        _safFolders,
+        _safBreadcrumb,
+        _safEntries,
     ) { folders, breadcrumb, entries ->
         SafSnapshot(folders, breadcrumb, entries)
     }
 
     val displayedFiles = combine(
-        _mode, _currentLocalPath, transferHistoryItems, safSnapshot, debouncedQuery
+        _mode,
+        _currentLocalPath,
+        transferHistoryItems,
+        safSnapshot,
+        debouncedQuery,
     ) { m, path, history, saf, query ->
         val rawItems = if (m == ExplorerMode.History) {
             val folder = File(path)
@@ -118,10 +116,12 @@ class FileExplorerViewModel(
                         path = f.absolutePath,
                         size = if (f.isDirectory) 0L else f.length(),
                         isDirectory = f.isDirectory,
-                        timestamp = f.lastModified()
+                        timestamp = f.lastModified(),
                     )
                 } ?: emptyList()
-            } else emptyList()
+            } else {
+                emptyList()
+            }
 
             if (diskFiles.isEmpty() && history.isNotEmpty()) {
                 history.map { record ->
@@ -132,10 +132,12 @@ class FileExplorerViewModel(
                         size = record.size,
                         isDirectory = false,
                         timestamp = record.timestamp,
-                        uri = record.uri
+                        uri = record.uri,
                     )
                 }
-            } else diskFiles
+            } else {
+                diskFiles
+            }
         } else {
             if (saf.breadcrumb.isEmpty()) {
                 saf.folders.map { f ->
@@ -146,7 +148,7 @@ class FileExplorerViewModel(
                         size = 0L,
                         isDirectory = true,
                         timestamp = System.currentTimeMillis(),
-                        uri = f.uri
+                        uri = f.uri,
                     )
                 } + ExplorerFileItem(
                     id = "add_saf_folder",
@@ -155,7 +157,7 @@ class FileExplorerViewModel(
                     size = 0L,
                     isDirectory = true,
                     timestamp = 0L,
-                    isAddFolderButton = true
+                    isAddFolderButton = true,
                 )
             } else {
                 saf.entries.map { e ->
@@ -167,7 +169,7 @@ class FileExplorerViewModel(
                         isDirectory = e.isDirectory,
                         timestamp = System.currentTimeMillis(),
                         uri = e.uri,
-                        thumbBase64 = e.thumbBase64
+                        thumbBase64 = e.thumbBase64,
                     )
                 }
             }

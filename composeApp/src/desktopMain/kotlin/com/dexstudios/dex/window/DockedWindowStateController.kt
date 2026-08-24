@@ -45,10 +45,10 @@ class DockedWindowStateController(
     val scope: CoroutineScope,
     val windowState: WindowState = WindowState(
         size = DpSize(DockCardMetrics.CANVAS_WIDTH.dp, DockCardMetrics.CANVAS_HEIGHT.dp),
-        position = WindowPosition(0.dp, 0.dp)
+        position = WindowPosition(0.dp, 0.dp),
     ),
     var density: Float = 1.0f,
-    val mouseInputProvider: MouseInputProvider = com.dexstudios.dex.platform.DesktopMouseInputProvider
+    val mouseInputProvider: MouseInputProvider = com.dexstudios.dex.platform.DesktopMouseInputProvider,
 ) {
     val canvasWidth = DockCardMetrics.CANVAS_WIDTH
     val canvasHeight = DockCardMetrics.CANVAS_HEIGHT
@@ -96,39 +96,35 @@ class DockedWindowStateController(
 
     // === Content geometry helpers (single source of truth: DockCardMetrics) ===
 
-    private fun currentContentWidth(): Int =
-        expandedPanel?.expandedWidth ?: DockCardMetrics.CARD_WIDTH_CONTRACTED
+    private fun currentContentWidth(): Int = expandedPanel?.expandedWidth ?: DockCardMetrics.CARD_WIDTH_CONTRACTED
 
-    private fun currentContentHeight(): Int =
-        if (expandedPanel != null) {
-            DockCardMetrics.CARD_HEIGHT_EXPANDED
-        } else {
-            DockCardMetrics.CARD_HEIGHT_CONTRACTED
-        }
+    private fun currentContentHeight(): Int = if (expandedPanel != null) {
+        DockCardMetrics.CARD_HEIGHT_EXPANDED
+    } else {
+        DockCardMetrics.CARD_HEIGHT_CONTRACTED
+    }
 
-    private fun windowToContent(winX: Int, winY: Int): IntOffset =
-        DockCardPhysics.windowToContent(
-            windowX = winX,
-            windowY = winY,
-            cardWidth = currentContentWidth(),
-            cardHeight = currentContentHeight(),
-            canvasWidth = canvasWidth,
-            canvasHeight = canvasHeight,
-            margin = cardMargin,
-            isMacOS = isMacOS
-        )
+    private fun windowToContent(winX: Int, winY: Int): IntOffset = DockCardPhysics.windowToContent(
+        windowX = winX,
+        windowY = winY,
+        cardWidth = currentContentWidth(),
+        cardHeight = currentContentHeight(),
+        canvasWidth = canvasWidth,
+        canvasHeight = canvasHeight,
+        margin = cardMargin,
+        isMacOS = isMacOS,
+    )
 
-    private fun contentToWindow(contentLeft: Int, contentTop: Int): IntOffset =
-        DockCardPhysics.contentToWindow(
-            contentLeft = contentLeft,
-            contentTop = contentTop,
-            cardWidth = currentContentWidth(),
-            cardHeight = currentContentHeight(),
-            canvasWidth = canvasWidth,
-            canvasHeight = canvasHeight,
-            margin = cardMargin,
-            isMacOS = isMacOS
-        )
+    private fun contentToWindow(contentLeft: Int, contentTop: Int): IntOffset = DockCardPhysics.contentToWindow(
+        contentLeft = contentLeft,
+        contentTop = contentTop,
+        cardWidth = currentContentWidth(),
+        cardHeight = currentContentHeight(),
+        canvasWidth = canvasWidth,
+        canvasHeight = canvasHeight,
+        margin = cardMargin,
+        isMacOS = isMacOS,
+    )
 
     /**
      * Resolves the work area of the display that currently owns most of the card content.
@@ -142,7 +138,7 @@ class DockedWindowStateController(
         val centerDpY = contentTop + currentContentHeight() / 2
         return TaskbarWorkAreaProvider.getWorkAreaForPoint(
             DisplayCoordinateSpace.dpToNative(centerDpX, density),
-            DisplayCoordinateSpace.dpToNative(centerDpY, density)
+            DisplayCoordinateSpace.dpToNative(centerDpY, density),
         )
     }
 
@@ -307,7 +303,7 @@ class DockedWindowStateController(
             canvasWidth = canvasWidth,
             canvasHeight = canvasHeight,
             margin = cardMargin,
-            isMacOS = isMacOS
+            isMacOS = isMacOS,
         )
 
         expandedPanel = panel
@@ -343,12 +339,17 @@ class DockedWindowStateController(
                 },
                 cardWidth = contractedCardWidth,
                 cardHeight = contractedCardHeight,
-                workArea = workArea
+                workArea = workArea,
             )
             DockCardPhysics.contentToWindow(
-                clampedLeft, clampedTop,
-                contractedCardWidth, contractedCardHeight,
-                canvasWidth, canvasHeight, cardMargin, isMacOS
+                clampedLeft,
+                clampedTop,
+                contractedCardWidth,
+                contractedCardHeight,
+                canvasWidth,
+                canvasHeight,
+                cardMargin,
+                isMacOS,
             )
         } else {
             // Contraction Clamping (Void Prevention)
@@ -358,7 +359,7 @@ class DockedWindowStateController(
                 contractedCardWidth = contractedCardWidth,
                 workArea = workArea,
                 canvasWidth = canvasWidth,
-                margin = cardMargin
+                margin = cardMargin,
             )
             IntOffset(safeWinX, windowState.position.y.value.toInt())
         }
@@ -429,7 +430,14 @@ class DockedWindowStateController(
         val cardW = currentContentWidth()
         val cardH = currentContentHeight()
         val (candidateContentLeft, candidateContentTop) = DockCardPhysics.windowToContent(
-            candidateX, candidateY, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            candidateX,
+            candidateY,
+            cardW,
+            cardH,
+            canvasWidth,
+            canvasHeight,
+            cardMargin,
+            isMacOS,
         )
 
         // 20px Magnetic Edge Snapping (inward-only, stable per-gesture work area)
@@ -438,11 +446,18 @@ class DockedWindowStateController(
             candidateContentTop = candidateContentTop,
             cardWidth = cardW,
             cardHeight = cardH,
-            workArea = anchoredWorkAreaInDp(currentDensity)
+            workArea = anchoredWorkAreaInDp(currentDensity),
         )
 
         val finalWin = DockCardPhysics.contentToWindow(
-            snappedLeft, snappedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            snappedLeft,
+            snappedTop,
+            cardW,
+            cardH,
+            canvasWidth,
+            canvasHeight,
+            cardMargin,
+            isMacOS,
         )
         windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
     }
@@ -462,17 +477,31 @@ class DockedWindowStateController(
         val cardW = currentContentWidth()
         val cardH = currentContentHeight()
         val (candidateLeft, candidateTop) = DockCardPhysics.windowToContent(
-            candidateX.toInt(), candidateY.toInt(), cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            candidateX.toInt(),
+            candidateY.toInt(),
+            cardW,
+            cardH,
+            canvasWidth,
+            canvasHeight,
+            cardMargin,
+            isMacOS,
         )
         val (clampedLeft, clampedTop) = DockCardPhysics.applySanityClamp(
             contentLeft = candidateLeft,
             contentTop = candidateTop,
             cardWidth = cardW,
             cardHeight = cardH,
-            workArea = workArea
+            workArea = workArea,
         )
         val finalWin = DockCardPhysics.contentToWindow(
-            clampedLeft, clampedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+            clampedLeft,
+            clampedTop,
+            cardW,
+            cardH,
+            canvasWidth,
+            canvasHeight,
+            cardMargin,
+            isMacOS,
         )
         windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
     }
@@ -491,7 +520,14 @@ class DockedWindowStateController(
 
             var gestureArea = anchoredWorkAreaInDp()
             val (cLeft, cTop) = DockCardPhysics.windowToContent(
-                winX, winY, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+                winX,
+                winY,
+                cardW,
+                cardH,
+                canvasWidth,
+                canvasHeight,
+                cardMargin,
+                isMacOS,
             )
             val sb = gestureArea.screenBounds
             val fullyOutsideGestureDisplay =
@@ -507,11 +543,18 @@ class DockedWindowStateController(
                 contentTop = cTop,
                 cardWidth = cardW,
                 cardHeight = cardH,
-                workArea = gestureArea
+                workArea = gestureArea,
             )
 
             val finalWin = DockCardPhysics.contentToWindow(
-                clampedLeft, clampedTop, cardW, cardH, canvasWidth, canvasHeight, cardMargin, isMacOS
+                clampedLeft,
+                clampedTop,
+                cardW,
+                cardH,
+                canvasWidth,
+                canvasHeight,
+                cardMargin,
+                isMacOS,
             )
             windowState.position = WindowPosition(finalWin.x.dp, finalWin.y.dp)
         }
@@ -585,7 +628,7 @@ class DockedWindowStateController(
 
                 anim.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
+                    animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
                 ) {
                     val curX = startX + (targetX - startX) * value
                     val curY = startY + (targetY - startY) * value

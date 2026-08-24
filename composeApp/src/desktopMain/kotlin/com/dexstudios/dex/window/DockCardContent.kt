@@ -2,16 +2,18 @@ package com.dexstudios.dex.window
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
-import androidx.compose.foundation.background
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
@@ -43,7 +44,6 @@ import com.dexstudios.dex.window.components.SettingsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import com.dexstudios.dex.window.styling.skiaDropShadow
-import androidx.compose.foundation.border
 import com.kyant.backdrop.Backdrop
 
 /**
@@ -64,7 +64,7 @@ fun DockCardContent(
     backdrop: Backdrop? = LocalBackdrop.current,
     onDismiss: () -> Unit,
     onExitEngine: () -> Unit,
-    pairingEngine: PairingEngine
+    pairingEngine: PairingEngine,
 ) {
     val pairingState by pairingEngine.state.collectAsState()
 
@@ -82,7 +82,7 @@ fun DockCardContent(
             else -> DockCardAnimations.CARD_WIDTH_EXPANDED
         },
         animationSpec = DockCardPhysics.ElasticDpSpec,
-        label = "cardWidth"
+        label = "cardWidth",
     )
 
     val cardHeight by animateDpAsState(
@@ -91,7 +91,7 @@ fun DockCardContent(
             else -> DockCardAnimations.CARD_HEIGHT_CONTRACTED
         },
         animationSpec = DockCardPhysics.ElasticDpSpec,
-        label = "cardHeight"
+        label = "cardHeight",
     )
 
     val cardShape = RoundedCornerShape(34.dp)
@@ -100,22 +100,28 @@ fun DockCardContent(
     val cardAlpha by animateFloatAsState(
         targetValue = if (controller.isVisible) 1f else 0f,
         animationSpec = if (controller.isVisible) DockCardAnimations.PopInAlphaSpec else tween(200, easing = FastOutSlowInEasing),
-        label = "cardAlpha"
+        label = "cardAlpha",
     )
 
     val isMacOS = com.dexstudios.dex.platform.DesktopEnvironment.isMacOS
 
     val cardTranslationY by animateDpAsState(
-        targetValue = if (controller.isVisible) 0.dp else if (isMacOS) (-15).dp else 15.dp,
+        targetValue = if (controller.isVisible) {
+            0.dp
+        } else if (isMacOS) {
+            (-15).dp
+        } else {
+            15.dp
+        },
         animationSpec = if (controller.isVisible) spring(dampingRatio = 0.65f, stiffness = 300f) else tween(200, easing = FastOutSlowInEasing),
-        label = "cardTranslationY"
+        label = "cardTranslationY",
     )
 
     // Uniform scale bounce from 0.85 to 1.0
     val cardScale by animateFloatAsState(
         targetValue = if (controller.isVisible) 1f else 0.85f,
         animationSpec = if (controller.isVisible) DockCardPhysics.PopInSpringSpec else tween(200, easing = FastOutSlowInEasing),
-        label = "cardScale"
+        label = "cardScale",
     )
 
     Box(
@@ -134,21 +140,21 @@ fun DockCardContent(
                 blurRadius = glassPreset.shadowRadius,
                 borderRadius = 34.dp,
                 offsetX = 0.dp,
-                offsetY = 8.dp
+                offsetY = 8.dp,
             )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(34.dp)
+                shape = RoundedCornerShape(34.dp),
             )
             .graphicsLayer {
                 shape = cardShape
                 clip = true
             }
-            .background(MaterialTheme.colorScheme.surface, cardShape)
+            .background(MaterialTheme.colorScheme.surface, cardShape),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
                 // Left Drawer Panel (Animated Visibility with spring slide + smooth fade)
@@ -156,24 +162,26 @@ fun DockCardContent(
                     visible = controller.isExpanded && controller.expandedPanel != ExpandedPanel.Pairing,
                     enter = slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = DockCardPhysics.ElasticIntOffsetSpec
+                        animationSpec = DockCardPhysics.ElasticIntOffsetSpec,
                     ) + fadeIn(animationSpec = DockCardAnimations.SmoothEase),
                     exit = slideOutHorizontally(
                         targetOffsetX = { it },
-                        animationSpec = DockCardPhysics.ElasticIntOffsetSpec
+                        animationSpec = DockCardPhysics.ElasticIntOffsetSpec,
                     ) + fadeOut(animationSpec = DockCardAnimations.SmoothEase),
-                    modifier = Modifier.weight(1f).fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxSize(),
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (controller.expandedPanel) {
                             ExpandedPanel.FileExplorer -> FileExplorerPanel(
                                 controller = controller,
-                                onClose = { controller.collapsePanel() }
+                                onClose = { controller.collapsePanel() },
                             )
+
                             ExpandedPanel.Settings -> SettingsPanel(
                                 controller = controller,
-                                onClose = { controller.collapsePanel() }
+                                onClose = { controller.collapsePanel() },
                             )
+
                             else -> {}
                         }
                     }
@@ -186,22 +194,22 @@ fun DockCardContent(
                         if (targetState) {
                             // Slide PinPairingPanel in from right, MainMenuColumn out to left
                             (slideInHorizontally(initialOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                    (slideOutHorizontally(targetOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                                (slideOutHorizontally(targetOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
                         } else {
                             // Slide MainMenuColumn in from left, PinPairingPanel out to right
                             (slideInHorizontally(initialOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                    (slideOutHorizontally(targetOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                                (slideOutHorizontally(targetOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
                         }
                     },
                     modifier = Modifier.width(320.dp),
                     contentAlignment = Alignment.Center,
-                    label = "PairingSlide"
+                    label = "PairingSlide",
                 ) { isPairing ->
                     if (isPairing) {
                         PinPairingPanel(
                             pairingEngine = pairingEngine,
                             onClose = { controller.collapsePanel() },
-                            modifier = Modifier.width(310.dp).fillMaxHeight()
+                            modifier = Modifier.width(310.dp).fillMaxHeight(),
                         )
                     } else {
                         MainMenuColumn(
@@ -215,13 +223,13 @@ fun DockCardContent(
                             },
                             onExitEngine = onExitEngine,
                             onDismiss = onDismiss,
-                            modifier = Modifier.width(310.dp).fillMaxHeight()
+                            modifier = Modifier.width(310.dp).fillMaxHeight(),
                         )
                     }
                 }
             }
         }
-        
+
         InboundPairingDialogOverlay()
     }
 }

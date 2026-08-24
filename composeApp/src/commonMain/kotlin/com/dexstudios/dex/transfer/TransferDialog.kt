@@ -1,11 +1,4 @@
 package com.dexstudios.dex.transfer
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_download
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
-import org.jetbrains.compose.resources.painterResource
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,45 +8,42 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_download
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
+import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun TransferDialog(
-    filename: String,
-    progress: Float,
-    speedBps: Long,
-    isReceiving: Boolean,
-    onDismiss: () -> Unit,
-    onCancel: () -> Unit
-) {
+fun TransferDialog(filename: String, progress: Float, speedBps: Long, isReceiving: Boolean, onDismiss: () -> Unit, onCancel: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         val backdrop = LocalBackdrop.current
-        
+
         val content = @Composable {
             Column(
                 modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     painter = if (isReceiving) painterResource(Res.drawable.ic_fluent_file_download) else painterResource(Res.drawable.ic_fluent_file_upload),
                     contentDescription = "Transfer Icon",
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = if (isReceiving) "Receiving File" else "Sending File",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = filename,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 LinearProgressIndicator(
@@ -61,18 +51,18 @@ fun TransferDialog(
                     modifier = Modifier.fillMaxWidth().height(8.dp),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    strokeCap = StrokeCap.Round
+                    strokeCap = StrokeCap.Round,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 val mbps = speedBps / 1048576.0
                 val pct = (progress * 100).toInt()
-                
+
                 Text(
                     text = "${mbps.toString().take(4)} MB/s - $pct%",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.align(Alignment.End),
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -86,7 +76,7 @@ fun TransferDialog(
             LiquidGlassPanel(
                 backdrop = backdrop,
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                config = LiquidGlassPresets.Dialog
+                config = LiquidGlassPresets.Dialog,
             ) {
                 content()
             }
@@ -94,7 +84,7 @@ fun TransferDialog(
             Surface(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                 shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
             ) {
                 content()
             }

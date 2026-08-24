@@ -1,15 +1,15 @@
 package com.dexstudios.dex.feature.discovery
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.designsystem.components.DeXScrollbar
+import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.feature.discovery.components.MainScreenCompact
 import com.dexstudios.dex.feature.discovery.components.MainScreenGrid
 
@@ -27,7 +27,7 @@ fun MainScreen(
     onRefreshDiscovery: () -> Unit = {},
     onPickFiles: () -> Unit = {},
     onPickFolder: () -> Unit = {},
-    onShowConnectionOptions: () -> Unit = {}
+    onShowConnectionOptions: () -> Unit = {},
 ) {
     // Determine which layout to use
     Box(modifier = modifier.fillMaxSize()) {
@@ -42,7 +42,7 @@ fun MainScreen(
                 onUntrustedDeviceButtonClick = { onPickFiles() },
                 onDeviceLongClick = {},
                 onScanClick = onRefreshDiscovery,
-                modifier = modifier
+                modifier = modifier,
             )
         } else {
             MainScreenGrid(
@@ -54,13 +54,13 @@ fun MainScreen(
                 onUntrustedDeviceButtonClick = { onPickFiles() },
                 onDeviceLongClick = {},
                 onScanClick = onRefreshDiscovery,
-                modifier = modifier
+                modifier = modifier,
             )
         }
 
         DeXScrollbar(
             listState = listState,
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
         )
     }
 }

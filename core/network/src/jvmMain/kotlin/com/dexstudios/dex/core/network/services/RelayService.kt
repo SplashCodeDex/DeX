@@ -56,11 +56,7 @@ object RelayService {
         }
     }
 
-    suspend fun hostAndPushAsync(
-        targetFingerprint: String,
-        files: List<Pair<String, String?>>,
-        senderAlias: String
-    ): Boolean {
+    suspend fun hostAndPushAsync(targetFingerprint: String, files: List<Pair<String, String?>>, senderAlias: String): Boolean {
         if (targetFingerprint.isEmpty() || files.isEmpty()) return false
 
         val fileMap = mutableMapOf<String, FileDto>()
@@ -81,7 +77,7 @@ object RelayService {
                     size = file.length(),
                     fileType = "application/octet-stream",
                     token = pullToken,
-                    relativePath = if (relativePath.isNullOrEmpty()) null else relativePath
+                    relativePath = if (relativePath.isNullOrEmpty()) null else relativePath,
                 )
             }
         }
@@ -98,9 +94,9 @@ object RelayService {
                 fingerprint = deviceConfig.fingerprint.ifEmpty { "desktop-migration" },
                 port = 48424,
                 protocol = "localsend",
-                download = false
+                download = false,
             ),
-            files = fileMap
+            files = fileMap,
         )
 
         val jsonStr = buildJsonObject {
@@ -118,13 +114,13 @@ object RelayService {
                     val last = hostedFileLastAccess[id]
                     last == null || (now - last) > 5 * 60 * 1000L
                 }
-                
+
                 for (id in stale) {
                     hostedFiles.remove(id)
                     hostedFileTokens.remove(id)
                     hostedFileLastAccess.remove(id)
                 }
-                
+
                 if (hostedIds.none { hostedFiles.containsKey(it) }) break
             }
         }

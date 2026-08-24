@@ -1,17 +1,4 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_palette
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_info
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settings
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,10 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import io.ktor.client.request.get
-import io.ktor.client.plugins.timeout
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,10 +39,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_info
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_palette
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settings
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
+import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.window.DockedWindowStateController
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,12 +80,7 @@ import javax.swing.JFileChooser
  *   7. About DeX (Version 1.0.0 & GitHub link) & Reset Identity
  */
 @Composable
-fun SettingsPanel(
-    onClose: () -> Unit = {},
-    controller: DockedWindowStateController? = null,
-    modifier: Modifier = Modifier,
-    deviceConfig: DeviceConfig = koinInject()
-) {
+fun SettingsPanel(onClose: () -> Unit = {}, controller: DockedWindowStateController? = null, modifier: Modifier = Modifier, deviceConfig: DeviceConfig = koinInject()) {
     val coroutineScope = rememberCoroutineScope()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
 
@@ -103,7 +97,7 @@ fun SettingsPanel(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(start = 24.dp, top = 20.dp, end = 16.dp, bottom = 16.dp)
+            .padding(start = 24.dp, top = 20.dp, end = 16.dp, bottom = 16.dp),
     ) {
         // Header
         Row(
@@ -111,26 +105,26 @@ fun SettingsPanel(
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_settings),
                         contentDescription = "Settings",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(end = 6.dp).size(18.dp)
+                        modifier = Modifier.padding(end = 6.dp).size(18.dp),
                     )
                     Text(
                         text = "Settings",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -144,20 +138,20 @@ fun SettingsPanel(
                             Desktop.getDesktop().browse(URI("https://github.com/SplashCodeDex/DeX"))
                         } catch (_: Exception) {}
                     }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_info),
                         contentDescription = "About",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 6.dp).size(16.dp)
+                        modifier = Modifier.padding(end = 6.dp).size(16.dp),
                     )
                     Text(
                         text = "DeX v1.0.0",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -169,7 +163,7 @@ fun SettingsPanel(
                 .fillMaxWidth()
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(end = 8.dp)
+                .padding(end = 8.dp),
         ) {
             // Profile Section
             Box(
@@ -178,12 +172,12 @@ fun SettingsPanel(
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(16.dp)
+                    .padding(16.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
@@ -192,7 +186,7 @@ fun SettingsPanel(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(56.dp)
-                                .clip(CircleShape)
+                                .clip(CircleShape),
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
@@ -200,19 +194,19 @@ fun SettingsPanel(
                                 text = googleProfile.name.ifBlank { "DeXStudios" },
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
                                 text = googleProfile.email.ifBlank { "dexify@dex.net" },
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
                                 text = "Premium User",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 2.dp)
+                                modifier = Modifier.padding(top = 2.dp),
                             )
                         }
                     }
@@ -223,13 +217,13 @@ fun SettingsPanel(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
                                 .clickable { deviceConfig.signOut() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
                         ) {
                             Text(
                                 text = "Sign Out",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.error
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
@@ -250,16 +244,16 @@ fun SettingsPanel(
                             isDndActive = isDndActive,
                             size = 20.dp,
                             tint = tint,
-                            contentDescription = "Do Not Disturb"
+                            contentDescription = "Do Not Disturb",
                         )
-                    }
+                    },
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_wifi),
                     title = "UPnP Port Forwarding",
                     subtitle = "Allow file transfers over the Internet via WAN router forwarding",
                     badge = if (isUpnpEnabled) "ON" else "OFF",
-                    onClick = { deviceConfig.upnpEnabled = !isUpnpEnabled }
+                    onClick = { deviceConfig.upnpEnabled = !isUpnpEnabled },
                 )
             }
 
@@ -270,14 +264,14 @@ fun SettingsPanel(
                     icon = painterResource(Res.drawable.ic_fluent_tune),
                     title = "Connect ADB",
                     subtitle = "Enable ADB terminal debugging for power users",
-                    onClick = { /* Launch ADB connection */ }
+                    onClick = { /* Launch ADB connection */ },
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_bolt),
                     title = "Auto-Connect ADB Hotspot",
                     subtitle = "Auto-connect ADB daemon when joining phone hotspot",
                     badge = if (isAutoAdbHotspotActive) "ON" else "OFF",
-                    onClick = { isAutoAdbHotspotActive = !isAutoAdbHotspotActive }
+                    onClick = { isAutoAdbHotspotActive = !isAutoAdbHotspotActive },
                 )
             }
 
@@ -300,7 +294,7 @@ fun SettingsPanel(
                                 e.printStackTrace()
                             }
                         }
-                    }
+                    },
                 )
             }
 
@@ -311,7 +305,7 @@ fun SettingsPanel(
                     icon = painterResource(Res.drawable.ic_fluent_palette),
                     title = "Theme",
                     subtitle = if (isDarkTheme) "Dark" else "Light",
-                    onClick = { isDarkTheme = !isDarkTheme }
+                    onClick = { isDarkTheme = !isDarkTheme },
                 )
             }
 
@@ -322,7 +316,7 @@ fun SettingsPanel(
                     icon = painterResource(Res.drawable.ic_fluent_touch_app),
                     title = "Wiggle-to-Open Menu",
                     subtitle = if (isWiggleEnabled) "Enabled" else "Disabled",
-                    onClick = { deviceConfig.wiggleEnabled = !isWiggleEnabled }
+                    onClick = { deviceConfig.wiggleEnabled = !isWiggleEnabled },
                 )
             }
 
@@ -346,7 +340,9 @@ fun SettingsPanel(
                                     val result = chooser.showOpenDialog(null)
                                     if (result == JFileChooser.APPROVE_OPTION) {
                                         chooser.selectedFile?.absolutePath
-                                    } else null
+                                    } else {
+                                        null
+                                    }
                                 }
                                 if (selectedDir != null) {
                                     downloadPath = selectedDir
@@ -355,7 +351,7 @@ fun SettingsPanel(
                                 controller?.isModalDialogOpen = false
                             }
                         }
-                    }
+                    },
                 )
             }
 
@@ -370,7 +366,7 @@ fun SettingsPanel(
                         try {
                             Desktop.getDesktop().browse(URI("https://github.com/SplashCodeDex/DeX"))
                         } catch (_: Exception) {}
-                    }
+                    },
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_warning),
@@ -379,7 +375,7 @@ fun SettingsPanel(
                     isDanger = true,
                     onClick = {
                         deviceConfig.signOut()
-                    }
+                    },
                 )
             }
 
@@ -395,7 +391,7 @@ private fun SettingsSectionHeader(title: String) {
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 6.dp)
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 6.dp),
     )
 }
 
@@ -408,20 +404,12 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
-        content = content
+        content = content,
     )
 }
 
 @Composable
-private fun SettingsItem(
-    icon: Painter,
-    title: String,
-    subtitle: String,
-    badge: String? = null,
-    isBadgeDanger: Boolean = false,
-    isDanger: Boolean = false,
-    onClick: () -> Unit = {}
-) {
+private fun SettingsItem(icon: Painter, title: String, subtitle: String, badge: String? = null, isBadgeDanger: Boolean = false, isDanger: Boolean = false, onClick: () -> Unit = {}) {
     SettingsItem(
         title = title,
         subtitle = subtitle,
@@ -434,9 +422,9 @@ private fun SettingsItem(
                 painter = icon,
                 contentDescription = title,
                 tint = tint,
-                modifier = Modifier.padding(end = 12.dp).size(20.dp)
+                modifier = Modifier.padding(end = 12.dp).size(20.dp),
             )
-        }
+        },
     )
 }
 
@@ -448,9 +436,15 @@ private fun SettingsItem(
     isBadgeDanger: Boolean = false,
     isDanger: Boolean = false,
     onClick: () -> Unit = {},
-    iconContent: @Composable (tint: Color) -> Unit
+    iconContent: @Composable (tint: Color) -> Unit,
 ) {
-    val iconTint = if (isDanger) MaterialTheme.colorScheme.error else if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val iconTint = if (isDanger) {
+        MaterialTheme.colorScheme.error
+    } else if (isBadgeDanger) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
@@ -458,7 +452,7 @@ private fun SettingsItem(
             .clip(RoundedCornerShape(10.dp))
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.padding(end = 12.dp).size(20.dp), contentAlignment = Alignment.Center) {
             iconContent(iconTint)
@@ -469,14 +463,14 @@ private fun SettingsItem(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                color = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = subtitle,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
@@ -485,13 +479,13 @@ private fun SettingsItem(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (isBadgeDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(
                     text = badge,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isBadgeDanger) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
+                    color = if (isBadgeDanger) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
                 )
             }
         }

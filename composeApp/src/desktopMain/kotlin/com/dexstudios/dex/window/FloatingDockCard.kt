@@ -9,6 +9,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -18,11 +23,6 @@ import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
 import com.dexstudios.dex.platform.DisplayCoordinateSpace
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.koin.compose.koinInject
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.KeyEventType
 
 /**
  * Root Floating Docked Card Window Canvas (1420x760 dp).
@@ -43,7 +43,7 @@ fun FloatingDockCard(
     onDismiss: () -> Unit,
     onExitEngine: () -> Unit,
     modifier: Modifier = Modifier,
-    pairingEngine: PairingEngine = koinInject()
+    pairingEngine: PairingEngine = koinInject(),
 ) {
     // Synchronize current monitor display density for 1:1 tactile drag scaling
     val density = LocalDensity.current.density
@@ -55,16 +55,17 @@ fun FloatingDockCard(
 
     CompositionLocalProvider(LocalBackdrop provides backdrop) {
         // 1420x760 Transparent Bounding Canvas
-        Box(modifier = modifier
-            .fillMaxSize()
-            .onPreviewKeyEvent { event ->
-                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && !controller.isPairingActive) {
-                    controller.hide()
-                    true
-                } else {
-                    false
-                }
-            }
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && !controller.isPairingActive) {
+                        controller.hide()
+                        true
+                    } else {
+                        false
+                    }
+                },
         ) {
             val isMacOS = remember { com.dexstudios.dex.platform.DesktopEnvironment.isMacOS }
             // The actual card container, anchored strictly to TopEnd with 25dp padding
@@ -75,7 +76,7 @@ fun FloatingDockCard(
                     .padding(
                         top = if (isMacOS) 25.dp else 0.dp,
                         bottom = if (isMacOS) 0.dp else 25.dp,
-                        end = 25.dp
+                        end = 25.dp,
                     )
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInWindow()
@@ -94,13 +95,13 @@ fun FloatingDockCard(
                             shapeWidth,
                             shapeHeight,
                             32f,
-                            32f
+                            32f,
                         )
                     },
                 backdrop = null,
                 onDismiss = onDismiss,
                 onExitEngine = onExitEngine,
-                pairingEngine = pairingEngine
+                pairingEngine = pairingEngine,
             )
         }
     }

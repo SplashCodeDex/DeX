@@ -1,11 +1,4 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
-import org.jetbrains.compose.resources.painterResource
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -16,12 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,10 +27,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.DockedWindowStateController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
@@ -62,32 +59,32 @@ fun TopActionsPanel(
     statusTelemetryText: String = "Ready",
     serverIpPort: String = "",
     showTelemetry: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var isCopied by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // 1. Drag Pill & Pin Handle Row
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 14.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             DragPillHandle(
                 controller = controller,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
         // 2. Tactile Quick Actions Row (56x44dp Pills + Dynamic Danger Close)
         Box(
             modifier = Modifier.padding(bottom = 12.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             QuickActionBar(
                 isDndActive = isDndActive,
@@ -100,7 +97,7 @@ fun TopActionsPanel(
                 onToggleMirror = onToggleMirror,
                 onToggleTransfers = onToggleTransfers,
                 onToggleClipboard = onToggleClipboard,
-                onCloseExpandedPanel = { controller.collapsePanel() }
+                onCloseExpandedPanel = { controller.collapsePanel() },
             )
         }
 
@@ -108,20 +105,20 @@ fun TopActionsPanel(
         AnimatedVisibility(
             visible = showTelemetry,
             enter = expandVertically(expandFrom = Alignment.Top),
-            exit = shrinkVertically(shrinkTowards = Alignment.Top)
+            exit = shrinkVertically(shrinkTowards = Alignment.Top),
         ) {
             Column {
                 HorizontalDivider(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     thickness = 1.dp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     val displayText = if (serverIpPort.isNotBlank()) {
                         "Status: $statusTelemetryText ($serverIpPort)"
@@ -134,7 +131,7 @@ fun TopActionsPanel(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         lineHeight = 13.sp,
-                        maxLines = 1
+                        maxLines = 1,
                     )
 
                     if (serverIpPort.isNotBlank()) {
@@ -145,7 +142,7 @@ fun TopActionsPanel(
                                     try {
                                         Toolkit.getDefaultToolkit().systemClipboard.setContents(
                                             StringSelection(serverIpPort),
-                                            null
+                                            null,
                                         )
                                     } catch (_: Exception) {}
                                     isCopied = true
@@ -155,13 +152,13 @@ fun TopActionsPanel(
                                     }
                                 }
                                 .padding(4.dp),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 painter = if (isCopied) painterResource(Res.drawable.ic_fluent_check) else painterResource(Res.drawable.ic_fluent_clipboard),
                                 contentDescription = "Copy IP",
                                 tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(14.dp),
                             )
                         }
                     }
@@ -172,7 +169,7 @@ fun TopActionsPanel(
         HorizontalDivider(
             color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp),
         )
     }
 }

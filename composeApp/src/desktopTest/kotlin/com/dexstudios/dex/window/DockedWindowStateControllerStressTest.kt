@@ -27,7 +27,7 @@ class DockedWindowStateControllerStressTest {
         width = 1920,
         height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     /** Deterministic provider so the guard truth-table never depends on real mouse state. */
@@ -39,13 +39,13 @@ class DockedWindowStateControllerStressTest {
     private fun createController(): DockedWindowStateController {
         val windowState = WindowState(
             size = DpSize(1420.dp, 760.dp),
-            position = WindowPosition(512.dp, 292.dp)
+            position = WindowPosition(512.dp, 292.dp),
         )
         return DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             windowState = windowState,
             density = 1.0f,
-            mouseInputProvider = MouseUpProvider()
+            mouseInputProvider = MouseUpProvider(),
         )
     }
 
@@ -71,7 +71,7 @@ class DockedWindowStateControllerStressTest {
                             assertEquals(
                                 expectedDismiss,
                                 actualDismiss,
-                                "Failed for: pinned=$pinned, trans=$transition, pair=$pairing, exp=$expanded, modal=$modal"
+                                "Failed for: pinned=$pinned, trans=$transition, pair=$pairing, exp=$expanded, modal=$modal",
                             )
                         }
                     }
@@ -236,7 +236,7 @@ class DockedWindowStateControllerStressTest {
             width = 1280,
             height = 720,
             insets = Insets(0, 0, 40, 0),
-            screenBounds = Rectangle(0, 0, 1280, 720)
+            screenBounds = Rectangle(0, 0, 1280, 720),
         )
 
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(
@@ -248,7 +248,7 @@ class DockedWindowStateControllerStressTest {
             expandDeltaHeight = 195,
             workArea = lowResWorkArea,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         // Verify post-expansion boundaries stay within lowResWorkArea
@@ -272,7 +272,7 @@ class DockedWindowStateControllerStressTest {
             width = 1920,
             height = 1040,
             insets = Insets(0, 0, 40, 0),
-            screenBounds = Rectangle(-1920, 0, 1920, 1080)
+            screenBounds = Rectangle(-1920, 0, 1920, 1080),
         )
 
         val (snappedLeft, snappedTop) = DockCardPhysics.evaluateMagneticSnap(
@@ -281,7 +281,7 @@ class DockedWindowStateControllerStressTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = secondaryLeftMonitor,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
 
         assertEquals(-1920, snappedLeft, "Should magnetically snap to left monitor boundary -1920")

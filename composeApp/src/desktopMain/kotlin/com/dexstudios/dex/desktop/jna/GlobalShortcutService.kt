@@ -16,7 +16,7 @@ object GlobalShortcutService {
 
         job = CoroutineScope(Dispatchers.IO).launch {
             val module = Kernel32.INSTANCE.GetModuleHandle(null)
-            
+
             hookProc = object : WinUser.LowLevelKeyboardProc {
                 override fun callback(nCode: Int, wParam: WinDef.WPARAM, lParam: WinUser.KBDLLHOOKSTRUCT): WinDef.LRESULT {
                     if (nCode >= 0 && wParam.toInt() == WinUser.WM_KEYDOWN) {
@@ -50,7 +50,7 @@ object GlobalShortcutService {
                 User32.INSTANCE.TranslateMessage(msg)
                 User32.INSTANCE.DispatchMessage(msg)
             }
-            
+
             // Cleanup on exit
             stop()
         }

@@ -1,5 +1,14 @@
 # Changelog
 
+## [10.1.9.0] - 2026-08-23
+### Added
+- **[minor] DX-02 baseline — Spotless 8.10.0 + ktlint 1.8.0 across all 7 desktop modules**:
+  - Version catalog entries + root-level `subprojects` wiring (kotlin and kotlinGradle formats); `spotlessApply` / `spotlessCheck` now work repo-wide. Deliberately NOT hooked into `check`, the pre-commit hook or CI yet.
+  - Baseline relaxations live in the authoritative `editorConfigOverride` map (mirrored in `.editorconfig` for IDE parity): intellij_idea style, max line length 200; disabled rules each with a written rationale — `no-wildcard-imports` (idiomatic in Compose sources), `no-empty-file` (reserved placeholder namespaces under core/data), `backing-property-naming` (codebase convention is `_xFlow -> xFlow`), `property-naming` (design-token vals), `filename` (camelCase route-file names are deliberate), and `function-naming` ignored for `@Composable`.
+  - One-time format pass applied: import ordering + whitespace across ~30 files; zero semantic changes. Full `core:network` and `composeApp` desktop suites green on the formatted tree.
+### Fixed
+- **[minor] Dead source repair surfaced by the lint baseline**: `feature/history/src/desktopMain/.../HistoryPlatformHelper.desktop.kt` contained orphaned statements (stray `println` + closing brace outside any declaration) committed broken since the archive-promotion commit; the directory is not wired into any compilation, which is why builds never caught it. Removed the orphan block so the file is valid Kotlin.
+
 ## [10.1.8.3] - 2026-08-23
 ### Fixed
 - **[fix] Peer PIN echo — server-side PIN proof is now end-to-end**: The Android peer (`DeX/app` `MessageHandler.sendPairResponse`) echoes the entered PIN in `pair-response.data.pin`, so phone-initiated pairing auto-persists on the desktop again when the correct PIN is typed — no manual Accept click needed for the normal flow. The already-paired auto-accept path (Task 5 partial-forget re-pairing) intentionally stays pinless: re-establishing trust after a deliberate desktop-side forget now requires explicit Accept on the pairing panel, which is exactly the assertion the server-side verification is meant to gate.

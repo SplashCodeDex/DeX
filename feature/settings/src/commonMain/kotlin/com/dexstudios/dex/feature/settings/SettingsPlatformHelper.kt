@@ -8,7 +8,7 @@ expect class SettingsPlatformHelper {
     fun getDeviceName(): String
     fun requestIgnoreBatteryOptimizations()
     fun addQuickSettingsTile()
-    
+
     val appVersion: String
     val isIgnoringBatteryOptimizations: Boolean
     val canAddQuickSettingsTile: Boolean
@@ -16,5 +16,3 @@ expect class SettingsPlatformHelper {
 
 @Composable
 expect fun rememberSettingsPlatformHelper(): SettingsPlatformHelper
-
-

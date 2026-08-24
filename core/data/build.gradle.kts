@@ -7,7 +7,7 @@ plugins {
 kotlin {
 
     jvm()
-    
+
     sourceSets {
         commonMain.dependencies {
             implementation(libs.androidx.datastore.preferences)
@@ -18,10 +18,3 @@ kotlin {
         }
     }
 }
-
-
-
-
-
-
-

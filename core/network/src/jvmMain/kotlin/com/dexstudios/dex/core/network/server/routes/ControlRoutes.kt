@@ -7,7 +7,6 @@ import io.ktor.server.routing.*
 
 fun Route.controlRoutes() {
     route("/api/localsend/v2") {
-
         post("/cancel") {
             val sessionId = call.request.queryParameters["sessionId"]
             if (sessionId != null) {
@@ -17,6 +16,5 @@ fun Route.controlRoutes() {
                 call.respond(HttpStatusCode.BadRequest)
             }
         }
-
     }
 }

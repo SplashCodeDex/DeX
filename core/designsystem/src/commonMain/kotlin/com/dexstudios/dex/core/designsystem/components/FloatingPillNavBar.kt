@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -24,30 +22,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
 import com.kyant.backdrop.Backdrop
 
-data class NavBarItem(
-    val selectedIcon: ImageVector,
-    val unselectedIcon: ImageVector,
-    val contentDescription: String,
-    val isSelected: Boolean,
-    val onClick: () -> Unit
-)
+data class NavBarItem(val selectedIcon: ImageVector, val unselectedIcon: ImageVector, val contentDescription: String, val isSelected: Boolean, val onClick: () -> Unit)
 
 @Composable
-fun FloatingPillNavBar(
-    items: List<NavBarItem>,
-    modifier: Modifier = Modifier,
-    backdrop: Backdrop? = null,
-    config: LiquidGlassConfig = LiquidGlassPresets.NavBar,
-) {
+fun FloatingPillNavBar(items: List<NavBarItem>, modifier: Modifier = Modifier, backdrop: Backdrop? = null, config: LiquidGlassConfig = LiquidGlassPresets.NavBar) {
     val selectedIndex = items.indexOfFirst { it.isSelected }.coerceAtLeast(0)
     var pressedIndex by remember { mutableStateOf<Int?>(null) }
     var dragX by remember { mutableStateOf<Float?>(null) }
@@ -71,7 +60,7 @@ fun FloatingPillNavBar(
                             }
                         }
                     }
-                }
+                },
         ) {
             val density = LocalDensity.current
             val totalWidth = maxWidth
@@ -105,27 +94,27 @@ fun FloatingPillNavBar(
                 targetValue = targetLeft,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = if (direction <= 0) 1200f else 600f
+                    stiffness = if (direction <= 0) 1200f else 600f,
                 ),
-                label = "navLeftBound"
+                label = "navLeftBound",
             )
 
             val rightBound by animateDpAsState(
                 targetValue = targetRight,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = if (direction >= 0) 1200f else 600f
+                    stiffness = if (direction >= 0) 1200f else 600f,
                 ),
-                label = "navRightBound"
+                label = "navRightBound",
             )
 
             val indicatorScale by animateFloatAsState(
                 targetValue = if (pressedIndex != null || dragX != null) 0.92f else 1f,
                 animationSpec = spring(
                     dampingRatio = if (pressedIndex != null || dragX != null) Spring.DampingRatioMediumBouncy else Spring.DampingRatioHighBouncy,
-                    stiffness = if (pressedIndex != null || dragX != null) Spring.StiffnessLow else Spring.StiffnessMedium
+                    stiffness = if (pressedIndex != null || dragX != null) Spring.StiffnessLow else Spring.StiffnessMedium,
                 ),
-                label = "navIndicatorScale"
+                label = "navIndicatorScale",
             )
 
             // 1. Shared Animated Highlighter (Liquid Glass or Solid Fallback)
@@ -150,14 +139,14 @@ fun FloatingPillNavBar(
                         lensHeight = 12.dp,
                         lensAmount = 24.dp,
                         surfaceTint = MaterialTheme.colorScheme.primary,
-                        surfaceTintAlpha = 0.12f
-                    )
+                        surfaceTintAlpha = 0.12f,
+                    ),
                 ) { }
             } else {
                 Box(
                     modifier = indicatorModifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .background(MaterialTheme.colorScheme.primary),
                 )
             }
 
@@ -165,7 +154,7 @@ fun FloatingPillNavBar(
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 items.forEachIndexed { index, item ->
                     NavBarIcon(
@@ -173,7 +162,7 @@ fun FloatingPillNavBar(
                         onPressedChanged = { isPressed ->
                             pressedIndex = if (isPressed) index else null
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -190,23 +179,19 @@ fun FloatingPillNavBar(
             modifier = panelModifier,
             shape = config.shape,
             config = config,
-            content = content
+            content = content,
         )
     } else {
         DeXPanel(
             modifier = panelModifier,
             shape = CircleShape,
-            content = content
+            content = content,
         )
     }
 }
 
 @Composable
-private fun NavBarIcon(
-    item: NavBarItem,
-    onPressedChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun NavBarIcon(item: NavBarItem, onPressedChanged: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -217,7 +202,7 @@ private fun NavBarIcon(
     // Restore animated visuals based on selection
     val contentColor by animateColorAsState(
         targetValue = if (item.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        label = "navContentColor"
+        label = "navContentColor",
     )
     val currentIcon = if (item.isSelected) item.selectedIcon else item.unselectedIcon
 
@@ -229,23 +214,22 @@ private fun NavBarIcon(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = item.onClick
+                onClick = item.onClick,
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = currentIcon,
             contentDescription = null,
             tint = contentColor,
-            modifier = Modifier.size(24.dp).padding(bottom = 2.dp)
+            modifier = Modifier.size(24.dp).padding(bottom = 2.dp),
         )
         Text(
             text = item.contentDescription,
             color = contentColor,
             fontSize = 12.sp,
-            fontWeight = if (item.isSelected) FontWeight.Bold else FontWeight.Medium
+            fontWeight = if (item.isSelected) FontWeight.Bold else FontWeight.Medium,
         )
     }
 }
-

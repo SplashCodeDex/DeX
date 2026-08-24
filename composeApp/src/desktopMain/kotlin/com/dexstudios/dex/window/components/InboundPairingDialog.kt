@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -24,12 +25,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.glass.DeXGlassPresets
 import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.core.designsystem.theme.LocalBackdrop
-import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.window.styling.skiaDropShadow
-import androidx.compose.foundation.border
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 
@@ -41,7 +41,7 @@ fun InboundPairingDialogOverlay() {
     AnimatedVisibility(
         visible = request != null,
         enter = fadeIn(),
-        exit = fadeOut()
+        exit = fadeOut(),
     ) {
         if (request != null) {
             Box(
@@ -50,11 +50,11 @@ fun InboundPairingDialogOverlay() {
                     .background(Color.Black.copy(alpha = 0.5f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null
+                        indication = null,
                     ) {
                         // Consumes clicks so they don't pass through to the background
                     },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 InboundPairingCard(
                     alias = request.alias,
@@ -64,7 +64,7 @@ fun InboundPairingDialogOverlay() {
                     },
                     onCancel = {
                         request.deferred.complete("")
-                    }
+                    },
                 )
             }
         }
@@ -72,15 +72,10 @@ fun InboundPairingDialogOverlay() {
 }
 
 @Composable
-private fun InboundPairingCard(
-    alias: String,
-    deadlineElapsedMs: Long,
-    onPinEntered: (String) -> Unit,
-    onCancel: () -> Unit
-) {
+private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEntered: (String) -> Unit, onCancel: () -> Unit) {
     var pinText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    
+
     // Countdown timer
     var remainingSeconds by remember { mutableStateOf(0) }
     LaunchedEffect(deadlineElapsedMs) {
@@ -110,43 +105,43 @@ private fun InboundPairingCard(
                 blurRadius = glassPreset.shadowRadius,
                 borderRadius = 24.dp,
                 offsetX = 0.dp,
-                offsetY = 8.dp
+                offsetY = 8.dp,
             )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(24.dp),
             )
-            .clip(cardShape)
+            .clip(cardShape),
     ) {
         LiquidGlassPanel(
             backdrop = LocalBackdrop.current,
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
             shape = cardShape,
-            config = glassPreset
+            config = glassPreset,
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     text = "Pairing Request",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
                     text = "$alias wants to connect.\nEnter the 6-digit PIN displayed on the device.",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // PIN Entry Input
                 BasicTextField(
                     value = pinText,
@@ -162,13 +157,13 @@ private fun InboundPairingCard(
                     modifier = Modifier.focusRequester(focusRequester),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     textStyle = LocalTextStyle.current.copy(
-                        color = Color.Transparent
+                        color = Color.Transparent,
                     ),
                     cursorBrush = SolidColor(Color.Transparent),
                     decorationBox = {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             val pinString = pinText.padEnd(6, ' ')
                             for (i in 0 until 6) {
@@ -176,23 +171,23 @@ private fun InboundPairingCard(
                                 PinDigitBox(
                                     digit = digit,
                                     isFilled = digit.isNotBlank(),
-                                    isError = false
+                                    isError = false,
                                 )
                             }
                         }
-                    }
+                    },
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Text(
                     text = "Expires in ${remainingSeconds}s",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 TextButton(onClick = onCancel) {
                     Text("Cancel", color = MaterialTheme.colorScheme.error)
                 }

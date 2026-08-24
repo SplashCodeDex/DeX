@@ -36,7 +36,5 @@ object ScreenBoundsHelper {
     /**
      * Checks whether multiple monitors are present.
      */
-    fun isMultiMonitor(): Boolean {
-        return getAllScreenDevices().size > 1
-    }
+    fun isMultiMonitor(): Boolean = getAllScreenDevices().size > 1
 }

@@ -1,8 +1,8 @@
 package com.dexstudios.dex
 
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -10,35 +10,35 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.dex_logo
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.di.commonNetworkModule
 import com.dexstudios.dex.core.network.di.desktopNetworkModule
-import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.server.DeXServer
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.FloatingDockCard
+import dev.nucleusframework.composenativetray.tray.api.Tray
+import okio.Path.Companion.toPath
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.core.DataStore
-import okio.Path.Companion.toPath
 import java.awt.Taskbar
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.dex_logo
-import dev.nucleusframework.composenativetray.tray.api.Tray
 
 val desktopAppModule = module {
     single<kotlinx.coroutines.CoroutineScope> { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()) }
 
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.createWithPath(
-            produceFile = { File(System.getProperty("user.home"), ".dex_settings.preferences_pb").absolutePath.toPath() }
+            produceFile = { File(System.getProperty("user.home"), ".dex_settings.preferences_pb").absolutePath.toPath() },
         )
     }
 
@@ -64,7 +64,7 @@ fun main() {
             null,
             "Failed to start DeX internal server.\nEnsure port 48425 is not in use by another instance.\nError: ${e.message}",
             "DeX Startup Error",
-            javax.swing.JOptionPane.ERROR_MESSAGE
+            javax.swing.JOptionPane.ERROR_MESSAGE,
         )
         kotlin.system.exitProcess(1)
     }
@@ -82,7 +82,7 @@ fun main() {
             com.dexstudios.dex.desktop.jna.WiggleToOpenService.start(
                 deviceConfig = deviceConfig,
                 onWake = { controller.hide() },
-                onTrigger = { controller.show() }
+                onTrigger = { controller.show() },
             )
             com.dexstudios.dex.desktop.jna.GlobalShortcutService.start {
                 controller.toggleVisibility()
@@ -112,7 +112,7 @@ fun main() {
             menuContent = {
                 Item(
                     label = if (controller.isVisible) "Hide DeX" else "Show DeX",
-                    onClick = toggleWithDebounce
+                    onClick = toggleWithDebounce,
                 )
                 Divider()
                 Item(
@@ -121,9 +121,9 @@ fun main() {
                         DesktopShutdownCoordinator.stopAllServices()
                         exitApplication()
                         kotlin.system.exitProcess(0)
-                    }
+                    },
                 )
-            }
+            },
         )
 
         // Gates actual AWT visibility until the UTILITY window type is applied
@@ -151,7 +151,7 @@ fun main() {
             transparent = true,
             alwaysOnTop = true,
             resizable = false,
-            title = "DeX"
+            title = "DeX",
         ) {
             val clientEngine = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.core.network.ClientEngine>() }
             val fileSender = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.desktop.transfer.DesktopFileSendService>() }
@@ -194,7 +194,7 @@ fun main() {
                                 try {
                                     dtde.acceptDrop(DnDConstants.ACTION_COPY)
                                     val droppedFiles = dtde.transferable.getTransferData(
-                                        java.awt.datatransfer.DataFlavor.javaFileListFlavor
+                                        java.awt.datatransfer.DataFlavor.javaFileListFlavor,
                                     ) as? List<*>
                                     val files = droppedFiles?.filterIsInstance<File>()?.filter { it.isFile } ?: emptyList()
                                     if (files.isNotEmpty()) {
@@ -236,10 +236,9 @@ fun main() {
                         DesktopShutdownCoordinator.stopAllServices()
                         exitApplication()
                         kotlin.system.exitProcess(0)
-                    }
+                    },
                 )
             }
         }
     }
 }
-

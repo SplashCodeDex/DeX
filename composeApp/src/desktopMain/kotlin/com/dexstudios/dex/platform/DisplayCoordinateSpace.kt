@@ -57,7 +57,7 @@ fun WorkAreaBounds.toDpSpace(density: Float): WorkAreaBounds {
         DisplayCoordinateSpace.nativeToDp(sb.x, density),
         DisplayCoordinateSpace.nativeToDp(sb.y, density),
         DisplayCoordinateSpace.nativeToDp(sb.width, density),
-        DisplayCoordinateSpace.nativeToDp(sb.height, density)
+        DisplayCoordinateSpace.nativeToDp(sb.height, density),
     )
     return WorkAreaBounds(
         left = left,
@@ -65,6 +65,6 @@ fun WorkAreaBounds.toDpSpace(density: Float): WorkAreaBounds {
         right = right,
         bottom = bottom,
         insets = insets,
-        screenBounds = scaledScreenBounds
+        screenBounds = scaledScreenBounds,
     )
 }

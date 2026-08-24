@@ -31,81 +31,125 @@ class DockCardPhysicsAdversarialTest {
 
     // === Multi-Monitor Work Areas ===
     private val standard1080p = WorkAreaBounds(
-        left = 0, top = 0, right = 1920, bottom = 1040,
-        width = 1920, height = 1040,
+        left = 0,
+        top = 0,
+        right = 1920,
+        bottom = 1040,
+        width = 1920,
+        height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     private val leftSecondaryMonitor = WorkAreaBounds(
-        left = -1920, top = 0, right = 0, bottom = 1040,
-        width = 1920, height = 1040,
+        left = -1920,
+        top = 0,
+        right = 0,
+        bottom = 1040,
+        width = 1920,
+        height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(-1920, 0, 1920, 1080)
+        screenBounds = Rectangle(-1920, 0, 1920, 1080),
     )
 
     private val topSecondaryMonitor = WorkAreaBounds(
-        left = 0, top = -1080, right = 1920, bottom = -40,
-        width = 1920, height = 1040,
+        left = 0,
+        top = -1080,
+        right = 1920,
+        bottom = -40,
+        width = 1920,
+        height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, -1080, 1920, 1080)
+        screenBounds = Rectangle(0, -1080, 1920, 1080),
     )
 
     private val rightSecondaryMonitor = WorkAreaBounds(
-        left = 1920, top = 0, right = 3840, bottom = 1040,
-        width = 1920, height = 1040,
+        left = 1920,
+        top = 0,
+        right = 3840,
+        bottom = 1040,
+        width = 1920,
+        height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(1920, 0, 1920, 1080)
+        screenBounds = Rectangle(1920, 0, 1920, 1080),
     )
 
     private val diagonalTopLeftMonitor = WorkAreaBounds(
-        left = -2560, top = -1440, right = 0, bottom = 0,
-        width = 2560, height = 1440,
+        left = -2560,
+        top = -1440,
+        right = 0,
+        bottom = 0,
+        width = 2560,
+        height = 1440,
         insets = Insets(0, 0, 0, 0),
-        screenBounds = Rectangle(-2560, -1440, 2560, 1440)
+        screenBounds = Rectangle(-2560, -1440, 2560, 1440),
     )
 
     private val ultraWideMonitor = WorkAreaBounds(
-        left = 0, top = 0, right = 5120, bottom = 1400,
-        width = 5120, height = 1400,
+        left = 0,
+        top = 0,
+        right = 5120,
+        bottom = 1400,
+        width = 5120,
+        height = 1400,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 5120, 1440)
+        screenBounds = Rectangle(0, 0, 5120, 1440),
     )
 
     private val fourKMonitor = WorkAreaBounds(
-        left = 0, top = 0, right = 3840, bottom = 2100,
-        width = 3840, height = 2100,
+        left = 0,
+        top = 0,
+        right = 3840,
+        bottom = 2100,
+        width = 3840,
+        height = 2100,
         insets = Insets(0, 0, 60, 0),
-        screenBounds = Rectangle(0, 0, 3840, 2160)
+        screenBounds = Rectangle(0, 0, 3840, 2160),
     )
 
     private val smallLegacyMonitor = WorkAreaBounds(
-        left = 0, top = 0, right = 1024, bottom = 728,
-        width = 1024, height = 728,
+        left = 0,
+        top = 0,
+        right = 1024,
+        bottom = 728,
+        width = 1024,
+        height = 728,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 1024, 768)
+        screenBounds = Rectangle(0, 0, 1024, 768),
     )
 
     // Taskbar Inset Variations
     private val leftTaskbarWorkArea = WorkAreaBounds(
-        left = 72, top = 0, right = 1920, bottom = 1080,
-        width = 1848, height = 1080,
+        left = 72,
+        top = 0,
+        right = 1920,
+        bottom = 1080,
+        width = 1848,
+        height = 1080,
         insets = Insets(0, 72, 0, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     private val topTaskbarWorkArea = WorkAreaBounds(
-        left = 0, top = 40, right = 1920, bottom = 1080,
-        width = 1920, height = 1040,
+        left = 0,
+        top = 40,
+        right = 1920,
+        bottom = 1080,
+        width = 1920,
+        height = 1040,
         insets = Insets(40, 0, 0, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     private val rightTaskbarWorkArea = WorkAreaBounds(
-        left = 0, top = 0, right = 1848, bottom = 1080,
-        width = 1848, height = 1080,
+        left = 0,
+        top = 0,
+        right = 1848,
+        bottom = 1080,
+        width = 1848,
+        height = 1080,
         insets = Insets(0, 0, 0, 72),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     // =========================================================================
@@ -118,12 +162,12 @@ class DockCardPhysicsAdversarialTest {
         val xStd = TaskbarWorkAreaProvider.calculateRestingX(standard1080p, 1420)
         val yStd = TaskbarWorkAreaProvider.calculateRestingY(standard1080p, 430)
         assertEquals(1920 - 1420 + 12, xStd) // 512
-        assertEquals(1040 - 760 + 12, yStd)  // 292
+        assertEquals(1040 - 760 + 12, yStd) // 292
 
         // Left Monitor (right = 0, bottom = 1040)
         val xLeft = TaskbarWorkAreaProvider.calculateRestingX(leftSecondaryMonitor, 1420)
         val yLeft = TaskbarWorkAreaProvider.calculateRestingY(leftSecondaryMonitor, 430)
-        assertEquals(0 - 1420 + 12, xLeft)   // -1408
+        assertEquals(0 - 1420 + 12, xLeft) // -1408
         assertEquals(1040 - 760 + 12, yLeft) // 292
         // Physical card right = winX + canvasWidth - margin = -1408 + 1420 - 25 = -13 = workArea.right - 13px!
         assertEquals(leftSecondaryMonitor.right - 13, xLeft + 1420 - 25)
@@ -132,7 +176,7 @@ class DockCardPhysicsAdversarialTest {
         val xTop = TaskbarWorkAreaProvider.calculateRestingX(topSecondaryMonitor, 1420)
         val yTop = TaskbarWorkAreaProvider.calculateRestingY(topSecondaryMonitor, 430)
         assertEquals(1920 - 1420 + 12, xTop)
-        assertEquals(-40 - 760 + 12, yTop)  // -788
+        assertEquals(-40 - 760 + 12, yTop) // -788
         // Card bottom = winY + margin + cardHeight
         assertEquals(topSecondaryMonitor.bottom - 293, yTop + 25 + 430)
 
@@ -147,7 +191,7 @@ class DockCardPhysicsAdversarialTest {
     fun testExpansionNudgeOnLeftMonitor() {
         // Resting position on left monitor
         val restingX = TaskbarWorkAreaProvider.calculateRestingX(leftSecondaryMonitor, 1420) // -1408
-        val restingY = TaskbarWorkAreaProvider.calculateRestingY(leftSecondaryMonitor, 430)  // 572
+        val restingY = TaskbarWorkAreaProvider.calculateRestingY(leftSecondaryMonitor, 430) // 572
 
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(
             currentWindowX = restingX,
@@ -158,7 +202,7 @@ class DockCardPhysicsAdversarialTest {
             expandDeltaHeight = 195,
             workArea = leftSecondaryMonitor,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         // Target expanded card:
@@ -189,7 +233,7 @@ class DockCardPhysicsAdversarialTest {
             expandDeltaHeight = 195,
             workArea = topSecondaryMonitor,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         val expW = 1054
@@ -217,7 +261,7 @@ class DockCardPhysicsAdversarialTest {
             expandDeltaHeight = 195,
             workArea = smallLegacyMonitor,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         val expRight = targetX + 1420 - 25
@@ -239,7 +283,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = standard1080p,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(21, left21, "Delta 21px must not snap (outside threshold)")
 
@@ -250,7 +294,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = standard1080p,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(0, left19, "Delta 19px must snap to workArea.left (0)")
 
@@ -261,7 +305,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = standard1080p,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(-19, leftNeg19, "Delta -19px must not snap to workArea.left (outward snap is disabled)")
     }
@@ -276,7 +320,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = leftSecondaryMonitor,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(-1920, snapLeft, "Must snap to negative left boundary (-1920)")
 
@@ -287,7 +331,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = leftSecondaryMonitor,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(-300, snapRight, "Must snap to negative right boundary (0 - 300 = -300)")
     }
@@ -301,7 +345,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = standard1080p,
-            minGrab = 60
+            minGrab = 60,
         )
         // Grab is per-axis: grabX = max(300*0.2, 60) = 60, grabY = max(430*0.2, 60) = 86
         // Max allowed contentLeft: workArea.right - grabX = 1920 - 60 = 1860
@@ -315,7 +359,7 @@ class DockCardPhysicsAdversarialTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = standard1080p,
-            minGrab = 60
+            minGrab = 60,
         )
         // Min allowed contentLeft: workArea.left + grabX - cardWidth = 0 + 60 - 300 = -240
         assertEquals(-240, clampXLow, "Extreme low X must clamp to left + grabX - cardWidth")
@@ -373,7 +417,7 @@ class DockCardPhysicsAdversarialTest {
         val controller = DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             density = 1.0f,
-            mouseInputProvider = DeterministicMouseProvider
+            mouseInputProvider = DeterministicMouseProvider,
         )
 
         controller.onDragStart(100, 100)
@@ -401,7 +445,7 @@ class DockCardPhysicsAdversarialTest {
         val controller = DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             density = 2.0f,
-            mouseInputProvider = DeterministicMouseProvider
+            mouseInputProvider = DeterministicMouseProvider,
         )
         val scale = DisplayCoordinateSpace.scaleFactor(2.0f)
 
@@ -457,7 +501,7 @@ class DockCardPhysicsAdversarialTest {
             workArea = leftSecondaryMonitor,
             canvasWidth = 1420,
             margin = 25,
-            minGrab = 60
+            minGrab = 60,
         )
 
         val safeContractedLeft = safeX + 1420 - 25 - 300
@@ -469,7 +513,7 @@ class DockCardPhysicsAdversarialTest {
         val controller = DockedWindowStateController(
             scope = CoroutineScope(Dispatchers.Unconfined),
             density = 1.0f,
-            mouseInputProvider = DeterministicMouseProvider
+            mouseInputProvider = DeterministicMouseProvider,
         )
 
         // Default state: should dismiss

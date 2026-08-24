@@ -1,5 +1,7 @@
 package com.dexstudios.dex.core.designsystem.theme
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -8,8 +10,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 
 /**
  * Configuration object containing the specific physics tuning values ported
@@ -64,18 +64,16 @@ fun spatialMenuEnter(
     initialOffsetY: Int = SpatialPhysics.POP_IN_INITIAL_OFFSET_Y,
     animationDuration: Int = SpatialPhysics.POP_IN_DURATION_MS,
     fadeDuration: Int = SpatialPhysics.POP_IN_FADE_DURATION_MS,
-    easing: Easing = PopInEase
-): EnterTransition {
-    return scaleIn(
-        initialScale = initialScale,
-        animationSpec = tween(durationMillis = animationDuration, easing = easing)
-    ) + slideInVertically(
-        initialOffsetY = { initialOffsetY },
-        animationSpec = tween(durationMillis = animationDuration, easing = easing)
-    ) + fadeIn(
-        animationSpec = tween(durationMillis = fadeDuration)
-    )
-}
+    easing: Easing = PopInEase,
+): EnterTransition = scaleIn(
+    initialScale = initialScale,
+    animationSpec = tween(durationMillis = animationDuration, easing = easing),
+) + slideInVertically(
+    initialOffsetY = { initialOffsetY },
+    animationSpec = tween(durationMillis = animationDuration, easing = easing),
+) + fadeIn(
+    animationSpec = tween(durationMillis = fadeDuration),
+)
 
 /**
  * Spatial Menu Exit Transition
@@ -90,16 +88,13 @@ fun spatialMenuExit(
     targetScale: Float = SpatialPhysics.HOVER_EXIT_TARGET_SCALE,
     targetOffsetY: Int = SpatialPhysics.HOVER_EXIT_TARGET_OFFSET_Y,
     animationDuration: Int = SpatialPhysics.HOVER_EXIT_DURATION_MS,
-    easing: Easing = HoverEase
-): ExitTransition {
-    return scaleOut(
-        targetScale = targetScale,
-        animationSpec = tween(durationMillis = animationDuration, easing = easing)
-    ) + slideOutVertically(
-        targetOffsetY = { targetOffsetY },
-        animationSpec = tween(durationMillis = animationDuration, easing = easing)
-    ) + fadeOut(
-        animationSpec = tween(durationMillis = animationDuration)
-    )
-}
-
+    easing: Easing = HoverEase,
+): ExitTransition = scaleOut(
+    targetScale = targetScale,
+    animationSpec = tween(durationMillis = animationDuration, easing = easing),
+) + slideOutVertically(
+    targetOffsetY = { targetOffsetY },
+    animationSpec = tween(durationMillis = animationDuration, easing = easing),
+) + fadeOut(
+    animationSpec = tween(durationMillis = animationDuration),
+)

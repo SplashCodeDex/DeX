@@ -1,7 +1,7 @@
 package com.dexstudios.dex.core.network.engine
 
-import kotlinx.serialization.json.JsonObject
 import com.dexstudios.dex.core.network.PullFileDto
+import kotlinx.serialization.json.JsonObject
 
 interface IPlatformEngine {
     fun showPairingRequestNotification(alias: String)
@@ -10,14 +10,7 @@ interface IPlatformEngine {
 
     fun setClipboardText(text: String)
 
-    fun downloadBatch(
-        senderIp: String,
-        port: Int,
-        tcpFallbackPort: Int,
-        files: List<PullFileDto>,
-        fingerprint: String,
-        sourceAlias: String
-    )
+    fun downloadBatch(senderIp: String, port: Int, tcpFallbackPort: Int, files: List<PullFileDto>, fingerprint: String, sourceAlias: String)
 
     fun handleFileExplorerRequest(type: String, data: JsonObject)
 

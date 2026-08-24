@@ -29,13 +29,6 @@ kotlin {
     }
 }
 
-
-
-
-
-
-
-
 compose.resources {
     publicResClass = true
     packageOfResClass = "com.dexstudios.dex.core.designsystem.generated.resources"

@@ -2,11 +2,11 @@ package com.dexstudios.dex.window.components
 
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.services.ExplorerFileEntry
 import com.dexstudios.dex.core.network.services.ExplorerFolderItem
 import com.dexstudios.dex.core.network.services.FileExplorerService
 import com.dexstudios.dex.core.network.services.PullProgressState
-import com.dexstudios.dex.core.network.TransferHistory
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -30,7 +30,7 @@ class FileExplorerViewModelTest {
     private lateinit var clientEngine: ClientEngine
     private lateinit var fileExplorerService: FileExplorerService
     private lateinit var discoveryEngine: DiscoveryEngine
-    
+
     private lateinit var viewModel: FileExplorerViewModel
 
     @Before
@@ -53,7 +53,7 @@ class FileExplorerViewModelTest {
         viewModel = FileExplorerViewModel(
             clientEngine = clientEngine,
             fileExplorerService = fileExplorerService,
-            discoveryEngine = discoveryEngine
+            discoveryEngine = discoveryEngine,
         )
     }
 
@@ -71,10 +71,10 @@ class FileExplorerViewModelTest {
     @Test
     fun `test toggleMode switches between History and Saf`() = runTest {
         assertEquals(ExplorerMode.History, viewModel.mode.value)
-        
+
         viewModel.toggleMode()
         assertEquals(ExplorerMode.Saf, viewModel.mode.value)
-        
+
         viewModel.toggleMode()
         assertEquals(ExplorerMode.History, viewModel.mode.value)
     }
@@ -85,7 +85,7 @@ class FileExplorerViewModelTest {
         assertEquals(0, viewModel.safBreadcrumb.value.size)
 
         viewModel.drillDown("path/to/folder", "My Folder", "content://uri/123")
-        
+
         val breadcrumb = viewModel.safBreadcrumb.value
         assertEquals(1, breadcrumb.size)
         assertEquals("My Folder", breadcrumb.first().first)
@@ -97,16 +97,16 @@ class FileExplorerViewModelTest {
         viewModel.toggleMode()
         viewModel.drillDown("path1", "Folder1", "uri1")
         viewModel.drillDown("path2", "Folder2", "uri2")
-        
+
         assertEquals(2, viewModel.safBreadcrumb.value.size)
-        
+
         viewModel.navigateUp()
         assertEquals(1, viewModel.safBreadcrumb.value.size)
         assertEquals("Folder1", viewModel.safBreadcrumb.value.first().first)
-        
+
         viewModel.navigateUp()
         assertEquals(0, viewModel.safBreadcrumb.value.size)
-        
+
         // Ensure it doesn't crash on empty
         viewModel.navigateUp()
         assertEquals(0, viewModel.safBreadcrumb.value.size)

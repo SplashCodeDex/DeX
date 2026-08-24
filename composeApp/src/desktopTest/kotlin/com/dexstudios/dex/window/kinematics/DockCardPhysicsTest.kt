@@ -17,7 +17,7 @@ class DockCardPhysicsTest {
         width = 1920,
         height = 1040,
         insets = Insets(0, 0, 40, 0),
-        screenBounds = Rectangle(0, 0, 1920, 1080)
+        screenBounds = Rectangle(0, 0, 1920, 1080),
     )
 
     @Test
@@ -60,7 +60,7 @@ class DockCardPhysicsTest {
             expandDeltaHeight = 195,
             workArea = testWorkArea,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         // Expanded card left: targetX + 1420 - 25 - (300 + 754) = targetX + 1395 - 1054 = targetX + 341
@@ -83,7 +83,7 @@ class DockCardPhysicsTest {
             expandDeltaHeight = 195,
             workArea = testWorkArea,
             canvasWidth = 1420,
-            margin = 25
+            margin = 25,
         )
 
         // Post-expansion expLeft should be >= workArea.left (0)
@@ -100,7 +100,7 @@ class DockCardPhysicsTest {
             cardWidth = 300,
             cardHeight = 430,
             workArea = testWorkArea,
-            snapThreshold = 20
+            snapThreshold = 20,
         )
         assertEquals(1620, snapLeft, "Should snap to right boundary 1620")
         assertEquals(500, snapTop)
@@ -116,7 +116,7 @@ class DockCardPhysicsTest {
             cardHeight = 430,
             workArea = testWorkArea,
             snapThreshold = 20,
-            minGrab = 60
+            minGrab = 60,
         )
         // Grab is max(300 * 0.2, 60) = 60. clampedLeft + cardWidth must be >= workArea.left + grab (60)
         // clampedLeft must be >= 60 - 300 = -240
@@ -133,7 +133,7 @@ class DockCardPhysicsTest {
             workArea = testWorkArea,
             canvasWidth = 1420,
             margin = 25,
-            minGrab = 60
+            minGrab = 60,
         )
 
         // Contracted left: safeWinX + 1420 - 25 - 300 = safeWinX + 1095

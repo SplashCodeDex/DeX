@@ -41,11 +41,21 @@ internal fun getFileIconColor(item: ExplorerFileItem): Color {
     if (item.isDirectory) return Color(0xFFFBBF24) // Amber Folder
     val ext = item.name.substringAfterLast('.', "").lowercase()
     return when (ext) {
-        "jpg", "jpeg", "png", "webp", "gif" -> Color(0xFF60A5FA) // Blue
-        "mp4", "mkv", "avi", "mov" -> Color(0xFFF472B6) // Pink
-        "mp3", "wav", "flac", "m4a" -> Color(0xFFA78BFA) // Purple
-        "pdf", "doc", "docx", "txt" -> Color(0xFF34D399) // Emerald
-        "zip", "rar", "7z", "tar", "gz" -> Color(0xFFF59E0B) // Amber
+        "jpg", "jpeg", "png", "webp", "gif" -> Color(0xFF60A5FA)
+
+        // Blue
+        "mp4", "mkv", "avi", "mov" -> Color(0xFFF472B6)
+
+        // Pink
+        "mp3", "wav", "flac", "m4a" -> Color(0xFFA78BFA)
+
+        // Purple
+        "pdf", "doc", "docx", "txt" -> Color(0xFF34D399)
+
+        // Emerald
+        "zip", "rar", "7z", "tar", "gz" -> Color(0xFFF59E0B)
+
+        // Amber
         else -> Color(0xFF9CA3AF) // Gray
     }
 }

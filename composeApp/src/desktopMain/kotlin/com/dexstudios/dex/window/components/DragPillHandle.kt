@@ -1,11 +1,4 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
-import org.jetbrains.compose.resources.painterResource
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -29,8 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,9 +32,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import org.jetbrains.compose.resources.painterResource
 import java.awt.MouseInfo
 
 /**
@@ -53,11 +50,7 @@ import java.awt.MouseInfo
  * - Pinned Location Shake: ±5px 3-cycle shake feedback when locked
  */
 @Composable
-fun DragPillHandle(
-    controller: DockedWindowStateController,
-    modifier: Modifier = Modifier,
-    showPinButton: Boolean = true
-) {
+fun DragPillHandle(controller: DockedWindowStateController, modifier: Modifier = Modifier, showPinButton: Boolean = true) {
     val density = LocalDensity.current.density
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -69,13 +62,13 @@ fun DragPillHandle(
             else -> 0.40f
         },
         animationSpec = tween(150),
-        label = "pillAlpha"
+        label = "pillAlpha",
     )
 
     val pillScaleX by animateFloatAsState(
         targetValue = if (isHovered) 1.15f else 1.0f,
         animationSpec = tween(200, easing = DockCardPhysics.HoverEase),
-        label = "pillScaleX"
+        label = "pillScaleX",
     )
 
     val pillColor by animateColorAsState(
@@ -85,13 +78,13 @@ fun DragPillHandle(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = tween(200),
-        label = "pillColor"
+        label = "pillColor",
     )
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         var isPinTemporarilyVisible by remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -108,13 +101,13 @@ fun DragPillHandle(
         androidx.compose.animation.AnimatedVisibility(
             visible = shouldShowPin,
             enter = androidx.compose.animation.expandHorizontally() + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.shrinkHorizontally() + androidx.compose.animation.fadeOut()
+            exit = androidx.compose.animation.shrinkHorizontally() + androidx.compose.animation.fadeOut(),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Pin Button
                 val pinHoverState = remember { MutableInteractionSource() }
                 val isPinHovered by pinHoverState.collectIsHoveredAsState()
-                
+
                 Box(
                     modifier = Modifier
                         .size(16.dp)
@@ -124,15 +117,15 @@ fun DragPillHandle(
                         .hoverable(pinHoverState)
                         .clickable(
                             interactionSource = pinHoverState,
-                            indication = null
+                            indication = null,
                         ) { controller.isPinned = !controller.isPinned },
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     androidx.compose.material3.Icon(
                         painter = painterResource(Res.drawable.ic_fluent_pin),
                         contentDescription = "Pin Location",
                         tint = if (controller.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(14.dp),
                     )
                 }
 
@@ -153,7 +146,7 @@ fun DragPillHandle(
                         },
                         onDoubleTap = {
                             controller.onDoubleTapReset()
-                        }
+                        },
                     )
                 }
                 .pointerInput(density) {
@@ -189,10 +182,10 @@ fun DragPillHandle(
                         },
                         onDragCancel = {
                             controller.onDragEnd()
-                        }
+                        },
                     )
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             // Visual pill bar
             Box(
@@ -203,7 +196,7 @@ fun DragPillHandle(
                         scaleX = pillScaleX
                     }
                     .clip(RoundedCornerShape(2.dp))
-                    .background(pillColor.copy(alpha = pillAlpha))
+                    .background(pillColor.copy(alpha = pillAlpha)),
             )
         }
     }

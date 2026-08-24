@@ -35,8 +35,7 @@ object PunchResumeState {
     private val sessions = ConcurrentHashMap<String, ConcurrentHashMap<String, ResumeEntry>>()
     private val acceptedSessions = ConcurrentHashMap<String, Long>()
 
-    fun mapFor(sessionId: String): ConcurrentHashMap<String, ResumeEntry> =
-        sessions.getOrPut(sessionId) { ConcurrentHashMap() }
+    fun mapFor(sessionId: String): ConcurrentHashMap<String, ResumeEntry> = sessions.getOrPut(sessionId) { ConcurrentHashMap() }
 
     fun isAccepted(sessionId: String): Boolean = acceptedSessions.containsKey(sessionId)
 
@@ -59,6 +58,3 @@ object PunchResumeState {
         }
     }
 }
-
-
-

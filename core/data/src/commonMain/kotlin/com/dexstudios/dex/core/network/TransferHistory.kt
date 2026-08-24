@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.dexstudios.dex.core.network.HashUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +19,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import com.dexstudios.dex.core.network.HashUtils
 
 @Serializable
 data class TransferRecord(
@@ -29,7 +29,7 @@ data class TransferRecord(
     val direction: String,
     val uri: String? = null,
     val peerDevice: String? = null,
-    val status: String = "success"
+    val status: String = "success",
 )
 
 object TransferHistory : KoinComponent {
@@ -65,15 +65,7 @@ object TransferHistory : KoinComponent {
         scope.launch { write(emptyList()) }
     }
 
-    fun log(
-        name: String,
-        size: Long,
-        direction: String,
-        uri: String? = null,
-        peerDevice: String? = null,
-        status: String = "success",
-        timestamp: Long = HashUtils.currentTimeMillis()
-    ) {
+    fun log(name: String, size: Long, direction: String, uri: String? = null, peerDevice: String? = null, status: String = "success", timestamp: Long = HashUtils.currentTimeMillis()) {
         val record = TransferRecord(
             id = HashUtils.generateUUID(),
             name = name,
@@ -82,7 +74,7 @@ object TransferHistory : KoinComponent {
             direction = direction,
             uri = uri,
             peerDevice = peerDevice,
-            status = status
+            status = status,
         )
         val updated = (listOf(record) + _items.value).take(MAX_ENTRIES)
         _items.value = updated
@@ -105,6 +97,3 @@ object TransferHistory : KoinComponent {
         }
     }
 }
-
-
-

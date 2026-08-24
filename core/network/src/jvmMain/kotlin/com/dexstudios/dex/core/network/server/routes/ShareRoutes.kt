@@ -1,8 +1,8 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.PrepareUploadResponseDto
-import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.RegisterDto
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import io.ktor.http.HttpStatusCode
@@ -13,21 +13,21 @@ import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import java.io.File
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
+import java.io.File
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
 data class ShareTargetPayload(val files: List<String>)
@@ -60,12 +60,12 @@ fun Route.shareRoutes() {
         post("/share-target") {
             try {
                 val payload = call.receive<ShareTargetPayload>()
-                
+
                 val fileList = payload.files.map { Pair(it, null) }
                 com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
                     targetFingerprint = "", // Target device should be sent in payload if specific
                     files = fileList,
-                    senderAlias = System.getProperty("user.name") ?: "PC"
+                    senderAlias = System.getProperty("user.name") ?: "PC",
                 )
                 call.respond(HttpStatusCode.OK)
             } catch (e: Exception) {
@@ -76,32 +76,31 @@ fun Route.shareRoutes() {
     }
 
     route("/api/localsend/v2") {
-
         get("/download") {
             val sessionId = call.request.queryParameters["sessionId"]
             val fileId = call.request.queryParameters["fileId"]
             val token = call.request.queryParameters["token"]
-            
+
             if (fileId == null || token == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get
             }
-            
+
             val expectedToken = com.dexstudios.dex.core.network.services.RelayService.hostedFileTokens[fileId]
             val filePath = com.dexstudios.dex.core.network.services.RelayService.hostedFiles[fileId]
-            
+
             if (expectedToken == null || expectedToken != token || filePath == null) {
                 call.respond(HttpStatusCode.Forbidden)
                 return@get
             }
-            
+
             com.dexstudios.dex.core.network.services.RelayService.hostedFileLastAccess[fileId] = System.currentTimeMillis()
             val file = File(filePath)
             if (!file.exists()) {
                 call.respond(HttpStatusCode.NotFound)
                 return@get
             }
-            
+
             call.respondFile(file)
         }
 
@@ -114,9 +113,9 @@ fun Route.shareRoutes() {
 
                 val koin = org.koin.core.context.GlobalContext.get()
                 val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
-                
+
                 val isAutoTrusted = !token.isNullOrEmpty() && (token == deviceConfig.identityHash || (deviceConfig.googleSub.isNotEmpty() && token == deviceConfig.googleSub))
-                
+
                 val pairedTokens = com.dexstudios.dex.auth.AuthState.pairedTokens.value
                 val isPaired = !token.isNullOrEmpty() && pairedTokens[req.info.fingerprint] == token
 
@@ -127,12 +126,12 @@ fun Route.shareRoutes() {
 
                 val sessionId = UUID.randomUUID().toString()
                 activeUploadSessions[sessionId] = SessionEntry(req)
-                
+
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
-                    sessionId, 
-                    req.info.alias.ifEmpty { "Device" }, 
-                    req.files.size, 
-                    0
+                    sessionId,
+                    req.info.alias.ifEmpty { "Device" },
+                    req.files.size,
+                    0,
                 )
 
                 val resFiles = mutableMapOf<String, String>()
@@ -178,7 +177,7 @@ fun Route.shareRoutes() {
 
             val rawFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
             val safeFileName = rawFileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            
+
             val downloadsFolder = File(System.getProperty("user.home"), "Downloads/DeX")
             downloadsFolder.mkdirs()
 
@@ -222,17 +221,17 @@ fun Route.shareRoutes() {
                         channel.copyTo(output)
                     }
                 }
-                
+
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
                 com.dexstudios.dex.core.network.services.RelayService.trackRelayFile(sessionId, safeFileName, destFile.absolutePath, senderAlias)
-                
+
                 val count = activeUploadSessionsProgress.merge(sessionId, 1) { a, b -> a + b } ?: 1
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(sessionId, senderAlias, sessionReq.files.size, count, count == sessionReq.files.size)
 
                 if (count == sessionReq.files.size) {
                     activeUploadSessions.remove(sessionId)
                     activeUploadSessionsProgress.remove(sessionId)
-                    
+
                     try {
                         if (java.awt.SystemTray.isSupported()) {
                             val tray = java.awt.SystemTray.getSystemTray()
@@ -241,10 +240,12 @@ fun Route.shareRoutes() {
                             trayIcon.isImageAutoSize = true
                             tray.add(trayIcon)
                             trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
-                            
+
                             shareRouteScope.launch {
                                 delay(5000)
-                                try { tray.remove(trayIcon) } catch (ignored: Exception) {
+                                try {
+                                    tray.remove(trayIcon)
+                                } catch (ignored: Exception) {
                                     println("Failed to remove SystemTray notification: ${ignored.message}")
                                 }
                             }
@@ -261,7 +262,9 @@ fun Route.shareRoutes() {
 
                 call.respond(HttpStatusCode.OK)
             } catch (e: Exception) {
-                try { if (destFile.exists()) destFile.delete() } catch (ignored: Exception) {}
+                try {
+                    if (destFile.exists()) destFile.delete()
+                } catch (ignored: Exception) {}
                 call.respond(HttpStatusCode.InternalServerError)
             }
         }
@@ -271,27 +274,27 @@ fun Route.shareRoutes() {
     get("/download/{fileId}") {
         val fileId = call.parameters["fileId"]
         val token = call.request.queryParameters["token"]
-        
+
         if (fileId == null || token == null) {
             call.respond(HttpStatusCode.BadRequest)
             return@get
         }
-        
+
         val expectedToken = com.dexstudios.dex.core.network.services.RelayService.hostedFileTokens[fileId]
         val filePath = com.dexstudios.dex.core.network.services.RelayService.hostedFiles[fileId]
-        
+
         if (expectedToken == null || expectedToken != token || filePath == null) {
             call.respond(HttpStatusCode.NotFound) // Original C# used NotFound for missing/invalid token
             return@get
         }
-        
+
         com.dexstudios.dex.core.network.services.RelayService.hostedFileLastAccess[fileId] = System.currentTimeMillis()
         val file = File(filePath)
         if (!file.exists()) {
             call.respond(HttpStatusCode.NotFound)
             return@get
         }
-        
+
         call.respondFile(file)
     }
 }

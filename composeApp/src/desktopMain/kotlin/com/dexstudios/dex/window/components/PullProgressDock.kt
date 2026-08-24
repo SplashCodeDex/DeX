@@ -29,9 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.network.ClientEngine
 import org.jetbrains.compose.resources.painterResource
 
@@ -39,11 +39,7 @@ import org.jetbrains.compose.resources.painterResource
  * Floating PullProgressDock Toast with a 4dp Emerald Progress Bar.
  */
 @Composable
-fun PullProgressDock(
-    clientEngine: ClientEngine,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val uploadState by clientEngine.uploadState.collectAsState()
 
     Box(
@@ -52,13 +48,13 @@ fun PullProgressDock(
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFF141118))
             .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -67,12 +63,12 @@ fun PullProgressDock(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = "${(uploadState.progress * 100).toInt()}% • ${formatSpeed(uploadState.speedBps)}",
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -85,7 +81,7 @@ fun PullProgressDock(
                         .bubbleFluidity()
                         .clip(CircleShape)
                         .clickable { onCancel() }
-                        .padding(2.dp)
+                        .padding(2.dp),
                 )
             }
 
@@ -99,7 +95,7 @@ fun PullProgressDock(
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
     }

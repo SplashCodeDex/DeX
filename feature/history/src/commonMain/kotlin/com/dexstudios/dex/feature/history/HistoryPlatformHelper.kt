@@ -11,4 +11,3 @@ expect class HistoryPlatformHelper {
 
 @Composable
 expect fun rememberHistoryPlatformHelper(): HistoryPlatformHelper
-

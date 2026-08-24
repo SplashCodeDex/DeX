@@ -13,43 +13,33 @@ import com.dexstudios.dex.core.designsystem.components.DeXPanel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 
 @Composable
-fun SettingsGroup(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
+fun SettingsGroup(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 8.dp),
         )
         DeXPanel(
             modifier = Modifier.fillMaxWidth(),
-            shadowRadius = 4.dp
+            shadowRadius = 4.dp,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                content = content
+                content = content,
             )
         }
     }
 }
 
 @Composable
-fun SettingsClickableRow(
-    title: String,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    icon: androidx.compose.ui.graphics.painter.Painter? = null,
-    onClick: () -> Unit
-) {
+fun SettingsClickableRow(title: String, modifier: Modifier = Modifier, subtitle: String? = null, icon: androidx.compose.ui.graphics.painter.Painter? = null, onClick: () -> Unit) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -57,27 +47,27 @@ fun SettingsClickableRow(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (icon != null) {
             Icon(
                 painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -85,37 +75,32 @@ fun SettingsClickableRow(
 }
 
 @Composable
-fun SettingsInfoRow(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.painter.Painter? = null
-) {
+fun SettingsInfoRow(title: String, value: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.painter.Painter? = null) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (icon != null) {
             Icon(
                 painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -128,7 +113,7 @@ fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: androidx.compose.ui.graphics.painter.Painter? = null
+    icon: androidx.compose.ui.graphics.painter.Painter? = null,
 ) {
     Row(
         modifier = modifier
@@ -136,35 +121,33 @@ fun SettingsSwitchRow(
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (icon != null) {
             Icon(
                 painter = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }
-
-

@@ -81,7 +81,7 @@ fun LiquidGlassIconButton(
                             refractionHeight = (config.lensHeight * refraction).toPx(),
                             refractionAmount = (config.lensAmount * refraction).toPx(),
                             depthEffect = config.depthEffect,
-                            chromaticAberration = config.chromaticAberration
+                            chromaticAberration = config.chromaticAberration,
                         )
                     }
                 },
@@ -92,7 +92,7 @@ fun LiquidGlassIconButton(
                     if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
                         drawRect(config.surfaceTint.copy(alpha = config.surfaceTintAlpha))
                     }
-                }
+                },
             )
     } else {
         Modifier
@@ -108,10 +108,9 @@ fun LiquidGlassIconButton(
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
-                onClick = onClick
+                onClick = onClick,
             ),
         contentAlignment = Alignment.Center,
-        content = content
+        content = content,
     )
 }
-

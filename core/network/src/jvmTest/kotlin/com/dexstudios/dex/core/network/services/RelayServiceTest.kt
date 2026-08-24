@@ -75,8 +75,8 @@ class RelayServiceTest {
             RelayService.hostAndPushAsync(
                 "fp_target",
                 listOf("Z:/definitely/not/here.bin" to null),
-                "alias"
-            )
+                "alias",
+            ),
         )
         assertTrue(RelayService.hostedFiles.isEmpty())
     }
@@ -99,7 +99,7 @@ class RelayServiceTest {
         val delivered = RelayService.hostAndPushAsync(
             targetFingerprint = "fp_phone",
             files = listOf(fileA.absolutePath to null, fileB.absolutePath to "sub/dir/nested.txt"),
-            senderAlias = "MyPC"
+            senderAlias = "MyPC",
         )
 
         assertTrue(delivered)
@@ -110,7 +110,7 @@ class RelayServiceTest {
         assertEquals("prepare-upload", frame["type"]?.toString()?.trim('"'))
         val request = Json.decodeFromJsonElement(
             PrepareUploadRequestDto.serializer(),
-            requireNotNull(frame["data"])
+            requireNotNull(frame["data"]),
         )
         assertEquals("MyPC", request.info.alias)
         assertEquals("desktop-migration", request.info.fingerprint) // empty local fingerprint falls back

@@ -1,12 +1,10 @@
 package com.dexstudios.dex.core.designsystem.components.glass
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-
-
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -210,7 +208,7 @@ object DeXGlassPresets {
             highlight = Highlight.Ambient.copy(alpha = 0.0f),
             shadowRadius = 0.dp,
             shadowColor = Color.Transparent,
-            innerShadow = null // no inset glow
+            innerShadow = null, // no inset glow
         )
 
     val DockCardLight: LiquidGlassConfig
@@ -226,7 +224,7 @@ object DeXGlassPresets {
             highlight = Highlight.Ambient.copy(alpha = 0.0f),
             shadowRadius = 0.dp,
             shadowColor = Color.Transparent,
-            innerShadow = null
+            innerShadow = null,
         )
 
     val DockCard: LiquidGlassConfig
@@ -246,7 +244,7 @@ object DeXGlassPresets {
             surfaceTintAlpha = 1.0f,
             highlight = Highlight.Ambient.copy(alpha = 0.0f),
             shadowRadius = 0.dp,
-            shadowColor = Color.Transparent
+            shadowColor = Color.Transparent,
         )
 
     val QuickActionActive: LiquidGlassConfig
@@ -261,6 +259,6 @@ object DeXGlassPresets {
             surfaceTintAlpha = 1.0f,
             highlight = Highlight.Ambient.copy(alpha = 0.0f),
             shadowRadius = 0.dp,
-            shadowColor = Color.Transparent
+            shadowColor = Color.Transparent,
         )
 }

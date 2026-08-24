@@ -20,7 +20,7 @@ fun DeXButton(
     colors: ButtonColors = ButtonDefaults.buttonColors(),
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.shape,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
     Button(
         onClick = onClick,
@@ -29,7 +29,7 @@ fun DeXButton(
         colors = colors,
         shape = shape,
         interactionSource = interactionSource,
-        content = content
+        content = content,
     )
 }
 
@@ -40,7 +40,7 @@ fun DeXTextButton(
     enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
     TextButton(
         onClick = onClick,
@@ -48,7 +48,6 @@ fun DeXTextButton(
         enabled = enabled,
         colors = colors,
         interactionSource = interactionSource,
-        content = content
+        content = content,
     )
 }
-

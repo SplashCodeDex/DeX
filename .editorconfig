@@ -17,3 +17,17 @@ charset = utf-8
 [*.{yml,yaml}]
 indent_size = 2
 end_of_line = lf
+
+# Kotlin / ktlint (DX-02 baseline). intellij_idea style + generous line length keeps the
+# initial adoption diff small; tighten deliberately later, never silently.
+# Wildcard imports stay allowed: idiomatic across the Compose UI sources.
+# no-empty-file: reserved placeholder namespaces under core/data (deliberate).
+# backing-property-naming: codebase convention is "_xFlow -> xFlow", not ktlint's "_x -> x".
+[*.{kt,kts}]
+ktlint_code_style = intellij_idea
+max_line_length = 200
+ktlint_function_naming_ignore_when_annotated_with = Composable
+ktlint_standard_property-naming = disabled
+ktlint_standard_no-wildcard-imports = disabled
+ktlint_standard_no-empty-file = disabled
+ktlint_standard_backing-property-naming = disabled

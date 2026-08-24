@@ -42,14 +42,7 @@ class DesktopPlatformEngine : IPlatformEngine {
         }
     }
 
-    override fun downloadBatch(
-        senderIp: String,
-        port: Int,
-        tcpFallbackPort: Int,
-        files: List<PullFileDto>,
-        fingerprint: String,
-        sourceAlias: String
-    ) {
+    override fun downloadBatch(senderIp: String, port: Int, tcpFallbackPort: Int, files: List<PullFileDto>, fingerprint: String, sourceAlias: String) {
         println("[DesktopPlatformEngine] downloadBatch from $senderIp:$port")
         // Desktop implementation for fetching files will go here
     }

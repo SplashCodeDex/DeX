@@ -10,5 +10,5 @@ import com.dexstudios.dex.platform.DockCardMetrics
 enum class ExpandedPanel(val expandedWidth: Int) {
     FileExplorer(DockCardMetrics.FILE_EXPLORER_WIDTH_EXPANDED),
     Settings(DockCardMetrics.SETTINGS_WIDTH_EXPANDED),
-    Pairing(DockCardMetrics.PAIRING_WIDTH_EXPANDED)
+    Pairing(DockCardMetrics.PAIRING_WIDTH_EXPANDED),
 }

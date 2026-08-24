@@ -77,30 +77,33 @@ class ShareRoutesTest {
 
     private fun Application.installShareRoutes() {
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    encodeDefaults = true
+                },
+            )
         }
         routing { shareRoutes() }
     }
 
-    private fun prepareRequest(fingerprint: String, vararg files: FileDto): String =
-        Json.encodeToString(
-            PrepareUploadRequestDto(
-                info = RegisterDto(
-                    alias = "Pixel",
-                    version = "2.0",
-                    deviceModel = "Pixel 9",
-                    deviceType = "mobile",
-                    fingerprint = fingerprint,
-                    port = 48424,
-                    protocol = "localsend",
-                    download = false
-                ),
-                files = files.associateBy { it.id }
-            )
-        )
+    private fun prepareRequest(fingerprint: String, vararg files: FileDto): String = Json.encodeToString(
+        PrepareUploadRequestDto(
+            info = RegisterDto(
+                alias = "Pixel",
+                version = "2.0",
+                deviceModel = "Pixel 9",
+                deviceType = "mobile",
+                fingerprint = fingerprint,
+                port = 48424,
+                protocol = "localsend",
+                download = false,
+            ),
+            files = files.associateBy { it.id },
+        ),
+    )
 
-    private fun sampleFile(id: String): FileDto =
-        FileDto(id = id, fileName = "photo.jpg", size = 1024, fileType = "image/jpeg")
+    private fun sampleFile(id: String): FileDto = FileDto(id = id, fileName = "photo.jpg", size = 1024, fileType = "image/jpeg")
 
     // =========================================================================
     // prepare-upload auth matrix
@@ -209,12 +212,16 @@ class ShareRoutesTest {
             assertEquals(HttpStatusCode.BadRequest, missingParams.status)
 
             val wrongToken = client.get("/api/localsend/v2/download") {
-                parameter("sessionId", "s"); parameter("fileId", "file-1"); parameter("token", "nope")
+                parameter("sessionId", "s")
+                parameter("fileId", "file-1")
+                parameter("token", "nope")
             }
             assertEquals(HttpStatusCode.Forbidden, wrongToken.status)
 
             val served = client.get("/api/localsend/v2/download") {
-                parameter("sessionId", "s"); parameter("fileId", "file-1"); parameter("token", "pulltok")
+                parameter("sessionId", "s")
+                parameter("fileId", "file-1")
+                parameter("token", "pulltok")
             }
             assertEquals(HttpStatusCode.OK, served.status)
             assertEquals(payload, served.bodyAsText())
@@ -236,7 +243,9 @@ class ShareRoutesTest {
         RelayService.hostedFileTokens["file-9"] = "pulltok"
 
         val response = client.get("/api/localsend/v2/download") {
-            parameter("sessionId", "s"); parameter("fileId", "file-9"); parameter("token", "pulltok")
+            parameter("sessionId", "s")
+            parameter("fileId", "file-9")
+            parameter("token", "pulltok")
         }
         assertEquals(HttpStatusCode.NotFound, response.status)
     }
@@ -278,12 +287,16 @@ class ShareRoutesTest {
         assertEquals(HttpStatusCode.BadRequest, noParams.status)
 
         val unknownSession = client.post("/api/localsend/v2/upload") {
-            parameter("sessionId", "sess-fake"); parameter("fileId", "f1"); setBody("")
+            parameter("sessionId", "sess-fake")
+            parameter("fileId", "f1")
+            setBody("")
         }
         assertEquals(HttpStatusCode.BadRequest, unknownSession.status)
 
         val unknownFile = client.post("/api/localsend/v2/upload") {
-            parameter("sessionId", "sess-real"); parameter("fileId", "f-other"); setBody("")
+            parameter("sessionId", "sess-real")
+            parameter("fileId", "f-other")
+            setBody("")
         }
         assertEquals(HttpStatusCode.BadRequest, unknownFile.status)
     }
@@ -295,13 +308,14 @@ class ShareRoutesTest {
         activeUploadSessions["sess-slip"] = SessionEntry(prepareRequestParsed("phone-fp", slip))
 
         val response = client.post("/api/localsend/v2/upload") {
-            parameter("sessionId", "sess-slip"); parameter("fileId", "f1"); setBody("")
+            parameter("sessionId", "sess-slip")
+            parameter("fileId", "f1")
+            setBody("")
         }
         assertEquals(HttpStatusCode.BadRequest, response.status)
     }
 
-    private fun prepareRequestParsed(fingerprint: String, vararg files: FileDto): PrepareUploadRequestDto =
-        Json.decodeFromString<PrepareUploadRequestDto>(prepareRequest(fingerprint, *files))
+    private fun prepareRequestParsed(fingerprint: String, vararg files: FileDto): PrepareUploadRequestDto = Json.decodeFromString<PrepareUploadRequestDto>(prepareRequest(fingerprint, *files))
 
     private fun assertValidPrepareResponse(dto: PrepareUploadResponseDto) {
         assertEquals(true, dto.sessionId.isNotEmpty())

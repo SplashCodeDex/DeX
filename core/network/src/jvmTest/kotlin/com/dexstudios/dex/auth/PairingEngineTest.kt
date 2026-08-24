@@ -12,8 +12,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -57,10 +57,10 @@ class PairingEngineTest {
                 fingerprint = "test-fingerprint",
                 port = 53317,
                 protocol = "http",
-                download = true
+                download = true,
             ),
             viaWan = false,
-            viaRoster = false
+            viaRoster = false,
         )
 
         pairingEngine.initiatePairing(device)
@@ -104,7 +104,7 @@ class PairingEngineTest {
     @Test
     fun `handlePinDigitEntered updates digit count`() = runTest {
         pairingEngine.handleInboundPairingRequest("192.168.1.200", "fingerprint")
-        
+
         pairingEngine.handlePinDigitEntered(1)
         var state = pairingEngine.state.value
         assertIs<PairingState.PinPhase>(state)

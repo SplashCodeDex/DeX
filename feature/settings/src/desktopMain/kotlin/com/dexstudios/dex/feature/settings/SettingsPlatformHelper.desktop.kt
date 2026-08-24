@@ -30,7 +30,4 @@ actual class SettingsPlatformHelper {
 }
 
 @Composable
-actual fun rememberSettingsPlatformHelper(): SettingsPlatformHelper {
-    return remember { SettingsPlatformHelper() }
-}
-
+actual fun rememberSettingsPlatformHelper(): SettingsPlatformHelper = remember { SettingsPlatformHelper() }

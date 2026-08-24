@@ -12,27 +12,13 @@ import kotlinx.serialization.json.*
 import java.util.UUID
 
 @Serializable
-data class ExplorerFolderItem(
-    val id: String,
-    val name: String,
-    val uri: String
-)
+data class ExplorerFolderItem(val id: String, val name: String, val uri: String)
 
 @Serializable
-data class ExplorerFileEntry(
-    val uri: String,
-    val name: String,
-    val isDirectory: Boolean,
-    val size: Long,
-    val thumbBase64: String? = null
-)
+data class ExplorerFileEntry(val uri: String, val name: String, val isDirectory: Boolean, val size: Long, val thumbBase64: String? = null)
 
 @Serializable
-data class PullFileItem(
-    val uri: String,
-    val name: String,
-    val size: Long
-)
+data class PullFileItem(val uri: String, val name: String, val size: Long)
 
 data class PullProgressState(
     val requestId: String = "",
@@ -43,7 +29,7 @@ data class PullProgressState(
     val totalBytes: Long = 0L,
     val progress: Float = 0f,
     val isPulling: Boolean = false,
-    val isDone: Boolean = false
+    val isDone: Boolean = false,
 )
 
 class FileExplorerService {
@@ -85,7 +71,7 @@ class FileExplorerService {
                 ExplorerFolderItem(
                     id = id,
                     name = fObj["name"]?.jsonPrimitive?.content ?: id,
-                    uri = fObj["uri"]?.jsonPrimitive?.content ?: ""
+                    uri = fObj["uri"]?.jsonPrimitive?.content ?: "",
                 )
             }
         } catch (e: Exception) {
@@ -131,7 +117,7 @@ class FileExplorerService {
                     name = eObj["name"]?.jsonPrimitive?.content ?: "unnamed",
                     isDirectory = eObj["isDirectory"]?.jsonPrimitive?.booleanOrNull ?: false,
                     size = eObj["size"]?.jsonPrimitive?.longOrNull ?: 0L,
-                    thumbBase64 = thumb
+                    thumbBase64 = thumb,
                 )
             }
         } catch (e: Exception) {
@@ -207,7 +193,7 @@ class FileExplorerService {
             requestId = requestId,
             totalFiles = files.size,
             totalBytes = files.sumOf { it.size },
-            isPulling = true
+            isPulling = true,
         )
 
         requestId

@@ -28,22 +28,11 @@ object PcMemory : KoinComponent {
         }
     }
 
-    suspend fun fingerprint(): String? {
-        return dataStore.data.map { it[KEY_FINGERPRINT] }.firstOrNull()
-    }
+    suspend fun fingerprint(): String? = dataStore.data.map { it[KEY_FINGERPRINT] }.firstOrNull()
 
-    suspend fun ip(): String? {
-        return dataStore.data.map { it[KEY_IP] }.firstOrNull()
-    }
+    suspend fun ip(): String? = dataStore.data.map { it[KEY_IP] }.firstOrNull()
 
-    suspend fun port(): Int {
-        return dataStore.data.map { it[KEY_PORT] }.firstOrNull() ?: DeXPorts.HTTPS
-    }
+    suspend fun port(): Int = dataStore.data.map { it[KEY_PORT] }.firstOrNull() ?: DeXPorts.HTTPS
 
-    suspend fun quicPort(): Int {
-        return dataStore.data.map { it[KEY_QUIC_PORT] }.firstOrNull() ?: DeXPorts.QUIC
-    }
+    suspend fun quicPort(): Int = dataStore.data.map { it[KEY_QUIC_PORT] }.firstOrNull() ?: DeXPorts.QUIC
 }
-
-
-

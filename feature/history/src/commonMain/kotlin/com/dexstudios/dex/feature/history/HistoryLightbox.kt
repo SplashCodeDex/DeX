@@ -17,28 +17,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.dexstudios.dex.core.network.TransferRecord
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.network.TransferRecord
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.vibrancy
 import kotlin.math.roundToInt
 
 @Composable
-fun HistoryLightbox(
-    record: TransferRecord,
-    onDismiss: () -> Unit,
-    backdrop: Backdrop
-) {
+fun HistoryLightbox(record: TransferRecord, onDismiss: () -> Unit, backdrop: Backdrop) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(IntOffset.Zero) }
 
@@ -49,8 +45,8 @@ fun HistoryLightbox(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onDismiss
-            )
+                onClick = onDismiss,
+            ),
     ) {
         // 1. Blurred background sampling the History screen
         Box(
@@ -62,13 +58,13 @@ fun HistoryLightbox(
                     effects = {
                         blur(24.dp.toPx())
                         vibrancy()
-                    }
-                )
+                    },
+                ),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f)) // Dimming
+                    .background(Color.Black.copy(alpha = 0.6f)), // Dimming
             )
         }
 
@@ -77,7 +73,7 @@ fun HistoryLightbox(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
@@ -89,7 +85,7 @@ fun HistoryLightbox(
                                 val normalized = uriStr.replace('\\', '/')
                                 if (normalized.startsWith("/")) "file://$normalized" else "file:///$normalized"
                             }
-                        }
+                        },
                     )
                     .crossfade(true)
                     .build(),
@@ -109,7 +105,7 @@ fun HistoryLightbox(
                             scale = (scale * zoom).coerceIn(0.5f, 3f)
                             offset = IntOffset(
                                 (offset.x + pan.x).roundToInt(),
-                                (offset.y + pan.y).roundToInt()
+                                (offset.y + pan.y).roundToInt(),
                             )
 
                             // "Bubble Exit" physics
@@ -124,7 +120,7 @@ fun HistoryLightbox(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White)
                     }
-                }
+                },
             )
 
             // Header Info in Lightbox
@@ -133,23 +129,20 @@ fun HistoryLightbox(
                     .statusBarsPadding()
                     .align(Alignment.TopCenter)
                     .padding(top = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     text = record.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = record.peerDevice ?: "Unknown Device",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = Color.White.copy(alpha = 0.7f),
                 )
             }
         }
     }
 }
-
-
-

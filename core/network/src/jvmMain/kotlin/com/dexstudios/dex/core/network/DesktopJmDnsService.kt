@@ -1,14 +1,13 @@
 package com.dexstudios.dex.core.network
 
-
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
-import java.net.Inet4Address
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceEvent
 import javax.jmdns.ServiceInfo
@@ -60,7 +59,7 @@ class DesktopJmDnsService : IDiscoveryService {
                     quicPort = quicPort,
                     tcpFallbackPort = tcpFallbackPort,
                     identityHash = identityHash,
-                    googleSub = googleSub
+                    googleSub = googleSub,
                 )
 
                 val ip = resolvedInfo.hostAddresses?.firstOrNull()
@@ -69,7 +68,7 @@ class DesktopJmDnsService : IDiscoveryService {
                         ip = ip,
                         info = dto,
                         viaWan = false,
-                        viaRoster = false
+                        viaRoster = false,
                     )
                     onDeviceDiscovered?.invoke(device)
                 }
@@ -129,7 +128,8 @@ class DesktopJmDnsService : IDiscoveryService {
 
                 val name = ni.displayName.lowercase()
                 if (name.contains("vmware") || name.contains("virtualbox") ||
-                    name.contains("vethernet") || name.contains("wsl") || name.contains("hyper-v")) {
+                    name.contains("vethernet") || name.contains("wsl") || name.contains("hyper-v")
+                ) {
                     continue
                 }
 

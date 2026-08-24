@@ -45,12 +45,16 @@ class ClientEngineTransferContractTest {
     }
 
     /** Mirrors the production client wiring (ContentNegotiation is required for body parsing). */
-    private fun clientWithJson(engine: MockEngine): HttpClient =
-        HttpClient(engine) {
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
-            }
+    private fun clientWithJson(engine: MockEngine): HttpClient = HttpClient(engine) {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    encodeDefaults = true
+                },
+            )
         }
+    }
 
     private fun sampleRequest() = PrepareUploadRequestDto(
         info = RegisterDto(
@@ -61,9 +65,9 @@ class ClientEngineTransferContractTest {
             fingerprint = "fp_pc",
             port = 48424,
             protocol = "localsend",
-            download = false
+            download = false,
         ),
-        files = mapOf("f1" to FileDto(id = "f1", fileName = "a.bin", size = 10, fileType = "application/octet-stream"))
+        files = mapOf("f1" to FileDto(id = "f1", fileName = "a.bin", size = 10, fileType = "application/octet-stream")),
     )
 
     // =========================================================================
@@ -122,8 +126,14 @@ class ClientEngineTransferContractTest {
         val stream = ByteArrayInputStream(byteArrayOf(1, 2, 3, 4))
 
         val outcome = clientEngine.uploadFile(
-            ip = "10.0.0.2", port = 48424, sessionId = "sess-9", fileId = "rid-1",
-            fileName = "a.bin", token = "pulltok", stream = stream, fileSize = 4
+            ip = "10.0.0.2",
+            port = 48424,
+            sessionId = "sess-9",
+            fileId = "rid-1",
+            fileName = "a.bin",
+            token = "pulltok",
+            stream = stream,
+            fileSize = 4,
         )
 
         assertTrue(outcome.ok)
@@ -139,7 +149,14 @@ class ClientEngineTransferContractTest {
         val engine = MockEngine { respond("", HttpStatusCode.InsufficientStorage) }
 
         val outcome = ClientEngine(HttpClient(engine)).uploadFile(
-            "10.0.0.2", 48424, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1
+            "10.0.0.2",
+            48424,
+            "s",
+            "f",
+            "n",
+            "t",
+            ByteArrayInputStream(ByteArray(1)),
+            1,
         )
 
         assertFalse(outcome.ok)
@@ -151,7 +168,14 @@ class ClientEngineTransferContractTest {
         val engine = MockEngine { throw java.net.ConnectException("boom") }
 
         val outcome = ClientEngine(HttpClient(engine)).uploadFile(
-            "10.0.0.2", 48424, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1
+            "10.0.0.2",
+            48424,
+            "s",
+            "f",
+            "n",
+            "t",
+            ByteArrayInputStream(ByteArray(1)),
+            1,
         )
 
         assertFalse(outcome.ok)
@@ -183,7 +207,14 @@ class ClientEngineTransferContractTest {
         val clientEngine = ClientEngine(HttpClient(MockEngine { respondOk() }), quicClient = quic)
 
         val outcome = clientEngine.uploadFileQuic(
-            "10.0.0.2", 48424, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1
+            "10.0.0.2",
+            48424,
+            "s",
+            "f",
+            "n",
+            "t",
+            ByteArrayInputStream(ByteArray(1)),
+            1,
         )
 
         assertEquals(UploadOutcome(true, 200), outcome)
@@ -204,8 +235,11 @@ class ClientEngineTransferContractTest {
         val clientEngine = ClientEngine(HttpClient(MockEngine { respondOk() }), quicClient = quic)
 
         val outcome = clientEngine.downloadFileQuic(
-            "10.0.0.2", 48424, "file-1", "pulltok",
-            output = Channels.newChannel(ByteArrayOutputStream())
+            "10.0.0.2",
+            48424,
+            "file-1",
+            "pulltok",
+            output = Channels.newChannel(ByteArrayOutputStream()),
         )
 
         assertTrue(outcome.ok)
@@ -221,22 +255,22 @@ class ClientEngineTransferContractTest {
                 every {
                     it.uploadFile(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
                 } returns null
-            }
+            },
         )
 
         assertFalse(noQuic.quicAvailable())
         assertEquals("", noQuic.lastUploadProtocol())
         assertEquals(
             UploadOutcome(false, -1),
-            noQuic.uploadFileQuic("ip", 1, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1)
+            noQuic.uploadFileQuic("ip", 1, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1),
         )
         assertEquals(
             UploadOutcome(false, -1),
-            nullRequest.uploadFileQuic("ip", 1, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1)
+            nullRequest.uploadFileQuic("ip", 1, "s", "f", "n", "t", ByteArrayInputStream(ByteArray(1)), 1),
         )
         assertEquals(
             DownloadOutcome(false, -1),
-            noQuic.downloadFileQuic("ip", 1, "fid", "tok", Channels.newChannel(ByteArrayOutputStream()))
+            noQuic.downloadFileQuic("ip", 1, "fid", "tok", Channels.newChannel(ByteArrayOutputStream())),
         )
     }
 
@@ -300,7 +334,7 @@ class ClientEngineTransferContractTest {
         val cancelledIds = mutableListOf<String>()
         val clientEngine = ClientEngine(
             HttpClient(MockEngine { respondOk() }),
-            onCancelUpload = { cancelledIds.add(it) }
+            onCancelUpload = { cancelledIds.add(it) },
         )
         clientEngine.activeWorkId = "work-7"
 
@@ -312,9 +346,8 @@ class ClientEngineTransferContractTest {
         assertFalse(clientEngine.uploadState.value.isUploading)
     }
 
-    private fun String.toQueryValue(key: String): String? =
-        substringAfter('?', "").split('&')
-            .map { it.split('=', limit = 2) }
-            .firstOrNull { it.first() == key }
-            ?.getOrNull(1)
+    private fun String.toQueryValue(key: String): String? = substringAfter('?', "").split('&')
+        .map { it.split('=', limit = 2) }
+        .firstOrNull { it.first() == key }
+        ?.getOrNull(1)
 }

@@ -28,7 +28,7 @@ fun LiquidToastNotification(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
     acceptText: String = "Accept",
-    dismissText: String = "Dismiss"
+    dismissText: String = "Dismiss",
 ) {
     LiquidGlassPanel(
         backdrop = backdrop,
@@ -37,38 +37,38 @@ fun LiquidToastNotification(
         config = LiquidGlassPresets.Dialog.copy(
             shape = RoundedCornerShape(24.dp),
             surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-            surfaceTintAlpha = 0.25f
-        )
+            surfaceTintAlpha = 0.25f,
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                lineHeight = 20.sp,
             )
-            
+
             Spacer(modifier = Modifier.height(20.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             ) {
                 // Accept Button (Primary Blue)
                 Button(
@@ -79,17 +79,17 @@ fun LiquidToastNotification(
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(
                         text = acceptText,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
                     )
                 }
-                
+
                 // Dismiss Button (Liquid Glass / Secondary)
                 LiquidGlassPanel(
                     backdrop = backdrop,
@@ -103,18 +103,18 @@ fun LiquidToastNotification(
                         shape = CircleShape,
                         surfaceTint = MaterialTheme.colorScheme.onSurface,
                         surfaceTintAlpha = 0.1f, // Light tint for button contrast
-                        shadowRadius = 0.dp
-                    )
+                        shadowRadius = 0.dp,
+                    ),
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = dismissText,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
                         )
                     }
                 }

@@ -1,6 +1,12 @@
 package com.dexstudios.dex.desktop.jna
 
+import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.core.network.WebSocketEngine
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import org.koin.core.context.GlobalContext
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.FlavorListener
@@ -9,15 +15,10 @@ import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import java.util.Base64
 import javax.imageio.ImageIO
-import org.koin.core.context.GlobalContext
-import com.dexstudios.dex.core.network.DiscoveryEngine
-import com.dexstudios.dex.core.network.WebSocketEngine
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 
 object ClipboardSyncService {
     private var processJob: Job? = null
+
     @Volatile private var lastHash: String = ""
 
     private val flavorListener = FlavorListener {
@@ -43,8 +44,8 @@ object ClipboardSyncService {
         }
     }
 
-    fun stop() { 
-        processJob?.cancel() 
+    fun stop() {
+        processJob?.cancel()
         try {
             Toolkit.getDefaultToolkit().systemClipboard.removeFlavorListener(flavorListener)
         } catch (e: Exception) { }
@@ -52,13 +53,13 @@ object ClipboardSyncService {
 
     private fun processClipboard() {
         if (deviceConfig?.clipboardSyncEnabled != true) return
-        
+
         try {
             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
             if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
                 val text = clipboard.getData(DataFlavor.stringFlavor) as? String ?: return
                 val hash = hashString(text)
-                
+
                 if (hash != lastHash) {
                     lastHash = hash
                     sendToPhone(text)
@@ -79,10 +80,10 @@ object ClipboardSyncService {
                 }
             }
         } catch (e: java.lang.IllegalStateException) {
-            // Clipboard is locked by another process (common on Windows). 
+            // Clipboard is locked by another process (common on Windows).
             // We can safely ignore as the user hasn't successfully copied it yet.
             println("ClipboardSyncService: Clipboard locked (${e.message})")
-        } catch (e: Exception) { 
+        } catch (e: Exception) {
             e.printStackTrace()
         }
     }
@@ -104,15 +105,15 @@ object ClipboardSyncService {
                         }
                     }.toString()
                 }
-                
+
                 val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)
-                
+
                 if (!success) {
                     // ADB Fallback
                     val b64 = Base64.getEncoder().encodeToString(data.toByteArray(Charsets.UTF_8))
                     try {
                         Runtime.getRuntime().exec(
-                            arrayOf("adb", "shell", "am", "broadcast", "-a", "com.dexstudios.dex.SET_CLIPBOARD", "-e", "text_b64", b64)
+                            arrayOf("adb", "shell", "am", "broadcast", "-a", "com.dexstudios.dex.SET_CLIPBOARD", "-e", "text_b64", b64),
                         ).waitFor()
                     } catch (e: Exception) { }
                 }

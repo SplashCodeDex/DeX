@@ -1,18 +1,15 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
-
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,8 +32,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,7 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import kotlinx.coroutines.delay
@@ -70,7 +69,7 @@ import java.awt.event.InputEvent
 
 enum class ExitConfirmationStage {
     Idle,
-    Confirming
+    Confirming,
 }
 
 /**
@@ -80,13 +79,7 @@ enum class ExitConfirmationStage {
  * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer detection, -62dp expansion, 3s auto-revert timer)
  */
 @Composable
-fun BottomDockPanel(
-    onProfileClick: () -> Unit,
-    onExitEngine: () -> Unit,
-    hasActiveTransfers: Boolean = false,
-    isMirroringActive: Boolean = false,
-    modifier: Modifier = Modifier
-) {
+fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasActiveTransfers: Boolean = false, isMirroringActive: Boolean = false, modifier: Modifier = Modifier) {
     val coroutineScope = rememberCoroutineScope()
     var confirmationStage by remember { mutableStateOf(ExitConfirmationStage.Idle) }
     var isShiftHeld by remember { mutableStateOf(false) }
@@ -105,19 +98,19 @@ fun BottomDockPanel(
     val avatarScale by animateFloatAsState(
         targetValue = if (isConfirming) 0.6f else 1.0f,
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "avatarScale"
+        label = "avatarScale",
     )
 
     val exitExpandAmount by animateDpAsState(
         targetValue = if (isConfirming) 58.dp else 0.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
-        label = "exitExpandAmount"
+        label = "exitExpandAmount",
     )
 
     val exitHeight by animateDpAsState(
         targetValue = if (isConfirming) 41.dp else 40.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
-        label = "exitHeight"
+        label = "exitHeight",
     )
 
     val exitInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -129,38 +122,38 @@ fun BottomDockPanel(
             else -> Color.Transparent
         },
         animationSpec = tween(durationMillis = 300),
-        label = "exitBtnBg"
+        label = "exitBtnBg",
     )
 
     val exitCenterBias by animateFloatAsState(
         targetValue = if (isConfirming) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
-        label = "exitCenterBias"
+        label = "exitCenterBias",
     )
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         HorizontalDivider(
             color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             val avatarInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val avatarHovered by avatarInteraction.collectIsHoveredAsState()
-            
+
             val avatarHoverScale by animateFloatAsState(
                 targetValue = if (avatarHovered) 1.08f else 1.0f,
                 animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
-                label = "avatarHoverScale"
+                label = "avatarHoverScale",
             )
 
             // 34x34dp Profile Avatar Button
@@ -177,22 +170,22 @@ fun BottomDockPanel(
                     .clickable(
                         interactionSource = avatarInteraction,
                         indication = null,
-                        onClick = onProfileClick
+                        onClick = onProfileClick,
                     ),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Image(
                     painter = painterResource(Res.drawable.profile_avatar),
                     contentDescription = "Profile Settings",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
             val exitHoverScale by animateFloatAsState(
                 targetValue = if (exitHovered && !isConfirming) 1.08f else 1.0f,
                 animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
-                label = "exitHoverScale"
+                label = "exitHoverScale",
             )
 
             // 2-Stage Exit Button Container
@@ -206,8 +199,8 @@ fun BottomDockPanel(
                         val placeable = measurable.measure(
                             constraints.copy(
                                 maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else androidx.compose.ui.unit.Constraints.Infinity,
-                                minWidth = constraints.minWidth + extra
-                            )
+                                minWidth = constraints.minWidth + extra,
+                            ),
                         )
                         layout(placeable.width - extra, placeable.height) {
                             placeable.place(-extra, 0)
@@ -232,7 +225,7 @@ fun BottomDockPanel(
                     }
                     .clickable(
                         interactionSource = exitInteraction,
-                        indication = null
+                        indication = null,
                     ) {
                         // Check Shift modifier via both PointerEvent and AWT EventQueue
                         val awtShift = try {
@@ -257,11 +250,11 @@ fun BottomDockPanel(
                         }
                     }
                     .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterStart,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Left spacer pushes text to center when expanded, relative to the available space
                     val bias = exitCenterBias.coerceIn(0f, 1f)
@@ -272,13 +265,13 @@ fun BottomDockPanel(
                     // Main Content (Icon + Text)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_fluent_power_filled),
                             contentDescription = "Exit Engine",
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
                         )
 
                         AnimatedContent(
@@ -286,14 +279,16 @@ fun BottomDockPanel(
                             transitionSpec = {
                                 fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                             },
-                            label = "exitText"
+                            label = "exitText",
                         ) { state ->
                             Text(
                                 text = when {
                                     state == ExitConfirmationStage.Confirming && (hasActiveTransfers || isMirroringActive) ->
                                         "Transfer Active! Click to Force Exit"
+
                                     state == ExitConfirmationStage.Confirming ->
                                         "Cancel / Shift+Click Exit"
+
                                     else -> "Exit Engine"
                                 },
                                 fontSize = 15.sp,
@@ -301,7 +296,7 @@ fun BottomDockPanel(
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.error,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
@@ -316,7 +311,7 @@ fun BottomDockPanel(
                         lineHeight = 14.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }

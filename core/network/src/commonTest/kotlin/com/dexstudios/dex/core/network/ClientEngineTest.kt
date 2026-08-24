@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.auth.AuthState
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
@@ -9,7 +10,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import com.dexstudios.dex.auth.AuthState
 
 class ClientEngineTest {
 
@@ -41,7 +41,7 @@ class ClientEngineTest {
             respond(
                 content = "",
                 status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
         val clientEngine = ClientEngine(client = HttpClient(mockEngine))
@@ -60,7 +60,7 @@ class ClientEngineTest {
             respond(
                 content = "Internal Server Error",
                 status = HttpStatusCode.InternalServerError,
-                headers = headersOf(HttpHeaders.ContentType, "text/plain")
+                headers = headersOf(HttpHeaders.ContentType, "text/plain"),
             )
         }
         val clientEngine = ClientEngine(client = HttpClient(mockEngine))

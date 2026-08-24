@@ -1,9 +1,11 @@
 package com.dexstudios.dex.window.kinematics
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -15,11 +17,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.VectorConverter
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import com.dexstudios.dex.platform.DockCardMetrics
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Complete Animation Specifications and Presets for the DeX Floating Dock Card.
@@ -38,6 +38,7 @@ object DockCardAnimations {
 
     // === Spring Specs (WPF ElasticEase Oscillations=1, Springiness=7 Equivalent) ===
     val BouncyEase = DockCardPhysics.ElasticExpansionSpec
+
     // === Pop-In Entrance Alpha Spec ===
     val PopInAlphaSpec = tween<Float>(durationMillis = 150, easing = LinearEasing)
 
@@ -56,4 +57,3 @@ object DockCardAnimations {
     val SmoothEase = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
     val SmoothEaseDp = tween<Dp>(durationMillis = 300, easing = FastOutSlowInEasing)
 }
-

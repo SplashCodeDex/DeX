@@ -41,18 +41,14 @@ import java.util.Base64
  * 100x115dp File & Folder Grid Card with hover lift, press sink, and micro-thumbnail decoding.
  */
 @Composable
-internal fun FileGridItemCard(
-    item: ExplorerFileItem,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
         animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-        label = "itemScale"
+        label = "itemScale",
     )
 
     // Decode Base64 micro-thumbnail if present
@@ -64,7 +60,9 @@ internal fun FileGridItemCard(
             } catch (_: Exception) {
                 null
             }
-        } else null
+        } else {
+            null
+        }
     }
 
     Box(
@@ -81,20 +79,20 @@ internal fun FileGridItemCard(
                     isSelected -> androidx.compose.ui.graphics.Color(0xFF332D3B)
                     isHovered -> MaterialTheme.colorScheme.surfaceVariant
                     else -> androidx.compose.ui.graphics.Color.Transparent
-                }
+                },
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
             )
             .padding(8.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             // 48x48dp Icon or Micro-Thumbnail Glyph
             Box(
@@ -102,7 +100,7 @@ internal fun FileGridItemCard(
                     .size(48.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 val isMedia = item.name.endsWith(".jpg", true) || item.name.endsWith(".png", true) || item.name.endsWith(".jpeg", true)
                 if (thumbnailBitmap != null) {
@@ -110,7 +108,7 @@ internal fun FileGridItemCard(
                         bitmap = thumbnailBitmap,
                         contentDescription = item.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else if (isMedia && !item.isDirectory) {
                     val coilUri = if (item.path.startsWith("C:", ignoreCase = true) || item.path.startsWith("W:", ignoreCase = true) || item.path.contains(":\\")) {
@@ -122,14 +120,14 @@ internal fun FileGridItemCard(
                         model = coilUri,
                         contentDescription = item.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     Icon(
                         painter = getFileIcon(item),
                         contentDescription = item.name,
                         tint = getFileIconColor(item),
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(28.dp),
                     )
                 }
             }
@@ -146,7 +144,7 @@ internal fun FileGridItemCard(
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             )
 
             // File Size or Timestamp Sub-label
@@ -158,7 +156,7 @@ internal fun FileGridItemCard(
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             )
         }
     }

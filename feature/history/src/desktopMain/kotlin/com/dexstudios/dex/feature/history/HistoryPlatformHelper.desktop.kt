@@ -19,14 +19,7 @@ actual class HistoryPlatformHelper {
     actual fun shareFile(uriStr: String) {
         println("Share file: $uriStr")
     }
-
-    // dummy
-        println("Toast: $message")
-    }
 }
 
 @Composable
-actual fun rememberHistoryPlatformHelper(): HistoryPlatformHelper {
-    return remember { HistoryPlatformHelper() }
-}
-
+actual fun rememberHistoryPlatformHelper(): HistoryPlatformHelper = remember { HistoryPlatformHelper() }

@@ -1,15 +1,7 @@
 package com.dexstudios.dex.window.components
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
-
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
-
-import org.jetbrains.compose.resources.painterResource
-
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,8 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -42,8 +32,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -66,14 +57,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.auth.PairingState
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.ui.modifiers.shake
-import kotlinx.coroutines.delay
-import io.ktor.util.date.getTimeMillis
 import io.github.g0dkar.qrcode.QRCode
-import org.jetbrains.skia.Image as SkiaImage
-import androidx.compose.ui.graphics.toComposeImageBitmap
+import io.ktor.util.date.getTimeMillis
+import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
+import org.jetbrains.skia.Image as SkiaImage
 
 sealed interface PinPairingUiState {
     data class PinView(
@@ -83,15 +80,10 @@ sealed interface PinPairingUiState {
         val enteredDigitCount: Int = 0,
         val remainingSeconds: Int = 60,
         val isError: Boolean = false,
-        val statusText: String = "Waiting for acceptance..."
+        val statusText: String = "Waiting for acceptance...",
     ) : PinPairingUiState
 
-    data class QrView(
-        val title: String = "Pairing Request",
-        val subtitle: String = "",
-        val qrPayload: String = "",
-        val remainingSeconds: Int = 60
-    ) : PinPairingUiState
+    data class QrView(val title: String = "Pairing Request", val subtitle: String = "", val qrPayload: String = "", val remainingSeconds: Int = 60) : PinPairingUiState
 
     data object Success : PinPairingUiState
 }
@@ -105,36 +97,33 @@ sealed interface PinPairingUiState {
  * - Action buttons: Cancel, QR/PIN toggle, Accept, Accept Once (Guest)
  */
 @Composable
-fun PinPairingPanel(
-    state: PinPairingUiState,
-    onToggleQrPin: () -> Unit,
-    onAccept: () -> Unit,
-    onAcceptOnce: () -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccept: () -> Unit, onAcceptOnce: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val isError = (state as? PinPairingUiState.PinView)?.isError == true
 
     val switchQrToPinAnim: AnimatedContentTransitionScope<PinPairingUiState>.() -> ContentTransform = {
         if (targetState is PinPairingUiState.PinView) {
-            (slideInHorizontally(
-                initialOffsetX = { 140 },
-                animationSpec = tween(250, easing = FastOutSlowInEasing)
-            ) + fadeIn(tween(250))).togetherWith(
+            (
+                slideInHorizontally(
+                    initialOffsetX = { 140 },
+                    animationSpec = tween(250, easing = FastOutSlowInEasing),
+                ) + fadeIn(tween(250))
+                ).togetherWith(
                 slideOutHorizontally(
                     targetOffsetX = { -140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                ) + fadeOut(tween(250))
+                    animationSpec = tween(250, easing = FastOutSlowInEasing),
+                ) + fadeOut(tween(250)),
             )
         } else {
-            (slideInHorizontally(
-                initialOffsetX = { -140 },
-                animationSpec = tween(250, easing = FastOutSlowInEasing)
-            ) + fadeIn(tween(250))).togetherWith(
+            (
+                slideInHorizontally(
+                    initialOffsetX = { -140 },
+                    animationSpec = tween(250, easing = FastOutSlowInEasing),
+                ) + fadeIn(tween(250))
+                ).togetherWith(
                 slideOutHorizontally(
                     targetOffsetX = { 140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                ) + fadeOut(tween(250))
+                    animationSpec = tween(250, easing = FastOutSlowInEasing),
+                ) + fadeOut(tween(250)),
             )
         }
     }
@@ -144,13 +133,13 @@ fun PinPairingPanel(
             .fillMaxSize()
             .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
                 Text(
@@ -161,7 +150,7 @@ fun PinPairingPanel(
                     },
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = when (state) {
@@ -170,7 +159,7 @@ fun PinPairingPanel(
                         is PinPairingUiState.Success -> "Device paired successfully"
                     },
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -181,13 +170,13 @@ fun PinPairingPanel(
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onCancel() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_fluent_close),
                     contentDescription = "Close",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -198,18 +187,18 @@ fun PinPairingPanel(
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             AnimatedContent(
                 targetState = state,
                 transitionSpec = switchQrToPinAnim,
-                label = "pairingFlip"
+                label = "pairingFlip",
             ) { currentState ->
                 when (currentState) {
                     is PinPairingUiState.PinView -> {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            verticalArrangement = Arrangement.Center,
                         ) {
                             // 6-Digit PIN Display with 15px error shake
                             Row(
@@ -217,7 +206,7 @@ fun PinPairingPanel(
                                     .shake(currentState.isError)
                                     .padding(vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val pinString = currentState.pinCode.padEnd(6, ' ')
                                 for (i in 0 until 6) {
@@ -226,7 +215,7 @@ fun PinPairingPanel(
                                     PinDigitBox(
                                         digit = digit,
                                         isFilled = isFilled,
-                                        isError = currentState.isError
+                                        isError = currentState.isError,
                                     )
                                 }
                             }
@@ -236,7 +225,7 @@ fun PinPairingPanel(
                             Text(
                                 text = "Expires in ${currentState.remainingSeconds}s",
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
                         }
                     }
@@ -244,7 +233,7 @@ fun PinPairingPanel(
                     is PinPairingUiState.QrView -> {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            verticalArrangement = Arrangement.Center,
                         ) {
                             // 140x140dp QR View Surface on White Rounded Card
                             Box(
@@ -253,11 +242,11 @@ fun PinPairingPanel(
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color.White)
                                     .padding(10.dp),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 StyledQrMatrixCanvas(
                                     payload = currentState.qrPayload.ifBlank { "dex://pair/local" },
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
                                 )
                             }
 
@@ -266,7 +255,7 @@ fun PinPairingPanel(
                             Text(
                                 text = "Expires in ${currentState.remainingSeconds}s",
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
                         }
                     }
@@ -274,20 +263,20 @@ fun PinPairingPanel(
                     is PinPairingUiState.Success -> {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            verticalArrangement = Arrangement.Center,
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(RoundedCornerShape(32.dp))
                                     .background(MaterialTheme.colorScheme.primary),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.ic_fluent_check),
                                     contentDescription = "Success",
                                     tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(36.dp),
                                 )
                             }
                             Spacer(modifier = Modifier.height(12.dp))
@@ -295,7 +284,7 @@ fun PinPairingPanel(
                                 text = "Pairing Complete",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
@@ -306,11 +295,11 @@ fun PinPairingPanel(
         // Action Buttons Row: Cancel, QR/PIN Toggle, Accept, Accept Once (Guest)
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // Cancel Button (80dp minimum)
                 Box(
@@ -321,13 +310,13 @@ fun PinPairingPanel(
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { onCancel() },
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Cancel",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 
@@ -340,20 +329,20 @@ fun PinPairingPanel(
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onToggleQrPin() },
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = if (state is PinPairingUiState.QrView) painterResource(Res.drawable.ic_fluent_pin) else painterResource(Res.drawable.ic_fluent_qr_code),
                             contentDescription = "Toggle QR/PIN",
                             tint = Color.Black,
-                            modifier = Modifier.padding(end = 4.dp).size(16.dp)
+                            modifier = Modifier.padding(end = 4.dp).size(16.dp),
                         )
                         Text(
                             text = if (state is PinPairingUiState.QrView) "PIN CODE" else "QR CODE",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color.Black
+                            color = Color.Black,
                         )
                     }
                 }
@@ -367,13 +356,13 @@ fun PinPairingPanel(
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onAccept() },
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Accept",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSecondary
+                        color = MaterialTheme.colorScheme.onSecondary,
                     )
                 }
             }
@@ -387,13 +376,13 @@ fun PinPairingPanel(
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                     .clickable { onAcceptOnce() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = "Accept Once (Guest)",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -404,15 +393,11 @@ fun PinPairingPanel(
  * 44x56dp minimum digit box with 32sp bold text and border morphing.
  */
 @Composable
-internal fun PinDigitBox(
-    digit: String,
-    isFilled: Boolean,
-    isError: Boolean
-) {
+internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
     val popScale by animateFloatAsState(
         targetValue = if (isFilled) 1.0f else 0.95f,
         animationSpec = tween(100, easing = FastOutSlowInEasing),
-        label = "digitPop"
+        label = "digitPop",
     )
 
     val borderStroke = when {
@@ -432,23 +417,20 @@ internal fun PinDigitBox(
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(borderStroke, RoundedCornerShape(8.dp)),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = digit,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
     }
 }
 
 @Composable
-private fun StyledQrMatrixCanvas(
-    payload: String,
-    modifier: Modifier = Modifier
-) {
+private fun StyledQrMatrixCanvas(payload: String, modifier: Modifier = Modifier) {
     val imageBitmap = remember(payload) {
         val rawBytes = QRCode(payload).render().getBytes()
         SkiaImage.makeFromEncoded(rawBytes).toComposeImageBitmap()
@@ -460,11 +442,7 @@ private fun StyledQrMatrixCanvas(
  * PairingEngine integration overload for backwards and automated orchestration compatibility.
  */
 @Composable
-fun PinPairingPanel(
-    pairingEngine: PairingEngine,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val engineState by pairingEngine.state.collectAsState()
     var isQrMode by remember { mutableStateOf(false) }
 
@@ -493,36 +471,40 @@ fun PinPairingPanel(
     val uiState: PinPairingUiState = when (val s = engineState) {
         is PairingState.Idle -> PinPairingUiState.PinView(
             pinCode = "------",
-            remainingSeconds = remainingSeconds
+            remainingSeconds = remainingSeconds,
         )
+
         is PairingState.QrPhase -> if (isQrMode) {
             PinPairingUiState.QrView(
                 qrPayload = com.dexstudios.dex.window.components.QrPayloadGenerator.generateLocalPayload(),
-                remainingSeconds = remainingSeconds
+                remainingSeconds = remainingSeconds,
             )
         } else {
             PinPairingUiState.PinView(
                 pinCode = "------",
-                remainingSeconds = remainingSeconds
+                remainingSeconds = remainingSeconds,
             )
         }
+
         is PairingState.PinPhase -> if (isQrMode) {
             PinPairingUiState.QrView(
                 qrPayload = com.dexstudios.dex.window.components.QrPayloadGenerator.generateLocalPayload(),
-                remainingSeconds = remainingSeconds
+                remainingSeconds = remainingSeconds,
             )
         } else {
             PinPairingUiState.PinView(
                 pinCode = s.pinCode,
                 enteredDigitCount = s.digitCount,
                 isError = s.isError,
-                remainingSeconds = remainingSeconds
+                remainingSeconds = remainingSeconds,
             )
         }
+
         is PairingState.Success -> PinPairingUiState.Success
+
         is PairingState.Error -> PinPairingUiState.PinView(
             isError = true,
-            remainingSeconds = remainingSeconds
+            remainingSeconds = remainingSeconds,
         )
     }
 
@@ -541,7 +523,6 @@ fun PinPairingPanel(
             pairingEngine.rejectInboundPairing()
             onClose()
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }
-

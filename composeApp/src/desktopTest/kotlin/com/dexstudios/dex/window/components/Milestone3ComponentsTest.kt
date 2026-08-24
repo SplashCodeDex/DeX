@@ -10,15 +10,13 @@ import kotlin.test.assertTrue
 
 class Milestone3ComponentsTest {
 
-
-
     @Test
     fun testPinPairingUiStateProperties() {
         val pinView = PinPairingUiState.PinView(
             pinCode = "123456",
             enteredDigitCount = 3,
             remainingSeconds = 45,
-            isError = false
+            isError = false,
         )
         assertEquals("123456", pinView.pinCode)
         assertEquals(3, pinView.enteredDigitCount)
@@ -27,7 +25,7 @@ class Milestone3ComponentsTest {
 
         val qrView = PinPairingUiState.QrView(
             qrPayload = "dex://192.168.1.5:53317",
-            remainingSeconds = 60
+            remainingSeconds = 60,
         )
         assertEquals("dex://192.168.1.5:53317", qrView.qrPayload)
         assertEquals(60, qrView.remainingSeconds)
@@ -49,7 +47,7 @@ class Milestone3ComponentsTest {
     fun testDangerousFileExtensionClassification() {
         val dangerousExtensions = setOf(
             ".exe", ".bat", ".cmd", ".ps1", ".vbs", ".vbe",
-            ".msi", ".scr", ".com", ".pif", ".wsf"
+            ".msi", ".scr", ".com", ".pif", ".wsf",
         )
 
         fun isDangerous(filename: String): Boolean {

@@ -3,18 +3,14 @@ package com.dexstudios.dex.core.network.server
 import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.serialization.json.JsonObject
-import java.util.concurrent.ConcurrentHashMap
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
-
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import java.util.concurrent.ConcurrentHashMap
 
-private data class SessionHolder(
-    val session: WebSocketSession,
-    val mutex: Mutex = Mutex()
-)
+private data class SessionHolder(val session: WebSocketSession, val mutex: Mutex = Mutex())
 
 object WebSocketConnectionManager {
     private val sessions = ConcurrentHashMap<String, SessionHolder>()

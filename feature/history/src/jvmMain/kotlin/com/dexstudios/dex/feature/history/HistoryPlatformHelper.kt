@@ -20,6 +20,4 @@ actual class HistoryPlatformHelper {
 }
 
 @Composable
-actual fun rememberHistoryPlatformHelper(): HistoryPlatformHelper {
-    return remember { HistoryPlatformHelper() }
-}
+actual fun rememberHistoryPlatformHelper(): HistoryPlatformHelper = remember { HistoryPlatformHelper() }

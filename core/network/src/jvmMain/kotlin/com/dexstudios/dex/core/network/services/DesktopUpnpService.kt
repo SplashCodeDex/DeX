@@ -6,10 +6,10 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -17,10 +17,7 @@ import java.net.MulticastSocket
 import java.net.Socket
 import java.net.URI
 
-class DesktopUpnpService(
-    private val httpClient: HttpClient,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-) {
+class DesktopUpnpService(private val httpClient: HttpClient, private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
     private val _publicIp = MutableStateFlow<String?>(null)
     val publicIp = _publicIp.asStateFlow()
 
@@ -29,7 +26,7 @@ class DesktopUpnpService(
     private val IGD_SERVICES = listOf(
         "urn:schemas-upnp-org:service:WANIPConnection:2",
         "urn:schemas-upnp-org:service:WANIPConnection:1",
-        "urn:schemas-upnp-org:service:WANPPPConnection:1"
+        "urn:schemas-upnp-org:service:WANPPPConnection:1",
     )
 
     private data class IgdInfo(val controlUrl: String, val serviceType: String, val routerIp: String)
@@ -219,23 +216,25 @@ class DesktopUpnpService(
             val regex = "<NewExternalIPAddress>(.*?)</NewExternalIPAddress>".toRegex(RegexOption.IGNORE_CASE)
             val ip = regex.find(xml)?.groupValues?.get(1)?.trim()
             return if (ip.isNullOrEmpty() || ip == "0.0.0.0") null else ip
-        } catch (e: Exception) { return null }
+        } catch (e: Exception) {
+            return null
+        }
     }
 
-    private fun getLocalIpForRoute(routerIp: String): String? {
-        return try {
-            val probe = Socket()
-            probe.connect(InetSocketAddress(routerIp, SSDP_PORT), 1000)
-            val addr = probe.localAddress.hostAddress
-            probe.close()
-            addr
-        } catch (e: Exception) { null }
+    private fun getLocalIpForRoute(routerIp: String): String? = try {
+        val probe = Socket()
+        probe.connect(InetSocketAddress(routerIp, SSDP_PORT), 1000)
+        val addr = probe.localAddress.hostAddress
+        probe.close()
+        addr
+    } catch (e: Exception) {
+        null
     }
 
-    private fun resolveUrl(baseUrl: String, controlPath: String): String {
-        return try {
-            val baseUri = URI(baseUrl)
-            baseUri.resolve(controlPath).toString()
-        } catch (e: Exception) { controlPath }
+    private fun resolveUrl(baseUrl: String, controlPath: String): String = try {
+        val baseUri = URI(baseUrl)
+        baseUri.resolve(controlPath).toString()
+    } catch (e: Exception) {
+        controlPath
     }
 }

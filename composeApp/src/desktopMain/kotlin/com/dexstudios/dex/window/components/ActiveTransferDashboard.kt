@@ -2,12 +2,12 @@ package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +19,7 @@ import com.dexstudios.dex.core.network.TransferStateMonitor
 import com.kyant.backdrop.Backdrop
 
 @Composable
-fun ActiveTransferDashboard(
-    backdrop: Backdrop?,
-    modifier: Modifier = Modifier
-) {
+fun ActiveTransferDashboard(backdrop: Backdrop?, modifier: Modifier = Modifier) {
     val transfersMap by TransferStateMonitor.activeTransfers.collectAsState()
     val activeTransfers = transfersMap.values.toList()
 
@@ -30,11 +27,11 @@ fun ActiveTransferDashboard(
         visible = activeTransfers.isNotEmpty(),
         enter = fadeIn(tween(300)) + slideInVertically(animationSpec = tween(300), initialOffsetY = { -50 }) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
         exit = fadeOut(tween(300)) + slideOutVertically(animationSpec = tween(300), targetOffsetY = { -50 }) + scaleOut(targetScale = 0.9f, animationSpec = tween(300)),
-        modifier = modifier
+        modifier = modifier,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             for (transfer in activeTransfers) {
                 Box(
@@ -42,29 +39,29 @@ fun ActiveTransferDashboard(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(16.dp)
+                        .padding(16.dp),
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         val progressPercent = if (transfer.totalFiles > 0) transfer.filesReceived.toFloat() / transfer.totalFiles.toFloat() else 0f
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = if (transfer.isComplete) "Transfer Complete" else "Receiving from ${transfer.senderAlias}",
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1
+                                maxLines = 1,
                             )
                             Text(
                                 text = "${transfer.filesReceived} / ${transfer.totalFiles}",
                                 fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             )
                         }
-                        
+
                         LinearProgressIndicator(
                             progress = { progressPercent },
                             modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),

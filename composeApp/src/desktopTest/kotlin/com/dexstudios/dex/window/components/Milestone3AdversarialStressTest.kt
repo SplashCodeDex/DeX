@@ -33,15 +33,13 @@ class Milestone3AdversarialStressTest {
 
     @Test
     fun testExitStageTextResolutionUnderAllConditions() {
-        fun resolveExitButtonText(
-            stage: ExitConfirmationStage,
-            hasActiveTransfers: Boolean,
-            isMirroringActive: Boolean
-        ): String = when {
+        fun resolveExitButtonText(stage: ExitConfirmationStage, hasActiveTransfers: Boolean, isMirroringActive: Boolean): String = when {
             stage == ExitConfirmationStage.Confirming && (hasActiveTransfers || isMirroringActive) ->
                 "Transfer Active! Click to Force Exit"
+
             stage == ExitConfirmationStage.Confirming ->
                 "Cancel / Shift+Click Exit"
+
             else -> "Exit Engine"
         }
 
@@ -66,14 +64,11 @@ class Milestone3AdversarialStressTest {
 
     @Test
     fun testBottomDockPanelKinematicTargets() {
-        fun getAvatarScale(stage: ExitConfirmationStage): Float =
-            if (stage == ExitConfirmationStage.Confirming) 0.6f else 1.0f
+        fun getAvatarScale(stage: ExitConfirmationStage): Float = if (stage == ExitConfirmationStage.Confirming) 0.6f else 1.0f
 
-        fun getExitButtonOffsetX(stage: ExitConfirmationStage): Float =
-            if (stage == ExitConfirmationStage.Confirming) -62f else 0f
+        fun getExitButtonOffsetX(stage: ExitConfirmationStage): Float = if (stage == ExitConfirmationStage.Confirming) -62f else 0f
 
-        fun isExitBadgeVisible(stage: ExitConfirmationStage): Boolean =
-            stage == ExitConfirmationStage.Idle
+        fun isExitBadgeVisible(stage: ExitConfirmationStage): Boolean = stage == ExitConfirmationStage.Idle
 
         // Idle state targets
         assertEquals(1.0f, getAvatarScale(ExitConfirmationStage.Idle))
@@ -165,26 +160,23 @@ class Milestone3AdversarialStressTest {
 
     @Test
     fun testQuickActionBarEmeraldColorMorphing() {
-        fun resolveBgColor(
-            isChecked: Boolean,
-            isDanger: Boolean,
-            isHovered: Boolean,
-            isPressed: Boolean
-        ): Color = when {
+        fun resolveBgColor(isChecked: Boolean, isDanger: Boolean, isHovered: Boolean, isPressed: Boolean): Color = when {
             isDanger && (isHovered || isPressed) -> Color(0xFFFF453A)
-            isChecked -> Color(0xFF0AE66D) // Emerald
+
+            isChecked -> Color(0xFF0AE66D)
+
+            // Emerald
             isHovered -> Color(0xFF332D3B)
+
             else -> Color(0xFF2B2631)
         }
 
-        fun resolveIconColor(
-            isChecked: Boolean,
-            isDanger: Boolean,
-            isHovered: Boolean,
-            isPressed: Boolean
-        ): Color = when {
-            isChecked -> Color(0xFF000000) // Black icon on active green
+        fun resolveIconColor(isChecked: Boolean, isDanger: Boolean, isHovered: Boolean, isPressed: Boolean): Color = when {
+            isChecked -> Color(0xFF000000)
+
+            // Black icon on active green
             isDanger && (isHovered || isPressed) -> Color(0xFFFFFFFF)
+
             else -> Color(0xFFFFFFFF)
         }
 
@@ -207,12 +199,7 @@ class Milestone3AdversarialStressTest {
 
     @Test
     fun testBadgeCounterInversionRules() {
-        data class BadgeStyle(
-            val isVisible: Boolean,
-            val bgColor: Color,
-            val textColor: Color,
-            val hasBorder: Boolean
-        )
+        data class BadgeStyle(val isVisible: Boolean, val bgColor: Color, val textColor: Color, val hasBorder: Boolean)
 
         fun resolveBadgeStyle(badgeCount: Int, isChecked: Boolean): BadgeStyle {
             if (badgeCount <= 0) return BadgeStyle(false, Color.Transparent, Color.Transparent, false)

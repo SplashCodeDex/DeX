@@ -5,7 +5,4 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-expect fun DeXScrollbar(
-    listState: LazyListState,
-    modifier: Modifier = Modifier
-)
+expect fun DeXScrollbar(listState: LazyListState, modifier: Modifier = Modifier)

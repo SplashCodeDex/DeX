@@ -1,24 +1,21 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import com.dexstudios.dex.core.network.server.DexRequestStore
+import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import kotlinx.serialization.json.buildJsonObject
-import com.dexstudios.dex.core.network.server.DexRequestStore
-import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 
-fun Route.webSocketRoutes(
-    pairingEngine: com.dexstudios.dex.auth.PairingEngine,
-    mirrorEngine: com.dexstudios.dex.core.network.IMirrorEngine
-) {
+fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, mirrorEngine: com.dexstudios.dex.core.network.IMirrorEngine) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         if (fingerprint != null) {
@@ -44,13 +41,15 @@ fun Route.webSocketRoutes(
                             "grant-shared-folder-reply",
                             "grant-reply",
                             "pull-reply",
-                            "reply" -> {
+                            "reply",
+                            -> {
                                 val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
                                     ?: jsonObject["requestId"]?.jsonPrimitive?.content
                                 if (reqId != null) {
                                     DexRequestStore.completeRequest(reqId, dataObj ?: jsonObject)
                                 }
                             }
+
                             "pair-request" -> {
                                 if (fingerprint != null) {
                                     val ip = call.request.local.remoteHost
@@ -67,30 +66,35 @@ fun Route.webSocketRoutes(
                                     WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
                                 }
                             }
+
                             "pair-response" -> {
                                 val accepted = dataObj?.get("accepted")?.jsonPrimitive?.content?.toBoolean() == true
                                 val claimedPin = dataObj?.get("pin")?.jsonPrimitive?.contentOrNull
                                 val verifiedByPin = accepted && fingerprint != null &&
-                                        pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
+                                    pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
                                 when {
                                     // Peer proved knowledge of the displayed PIN: grant and persist trust.
                                     verifiedByPin -> {
                                         com.dexstudios.dex.core.network.DeviceManager.savePairedFingerprint(fingerprint!!)
                                         pairingEngine.handlePairResponse(true)
                                     }
+
                                     // Trust assertion without PIN proof is never persisted; the desktop
                                     // user can still grant access manually via the pairing panel.
                                     accepted -> {
                                         println("Rejected pair-response from $fingerprint: PIN not proven")
                                         pairingEngine.handlePairResponse(false)
                                     }
+
                                     else -> pairingEngine.handlePairResponse(false)
                                 }
                             }
+
                             "pin-digit-entered" -> {
                                 val count = dataObj?.get("digitCount")?.jsonPrimitive?.content?.toIntOrNull() ?: 0
                                 pairingEngine.handlePinDigitEntered(count)
                             }
+
                             "pull-progress" -> {
                                 val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
                                 if (reqId != null) {
@@ -98,6 +102,7 @@ fun Route.webSocketRoutes(
                                     println("Pull progress for $reqId: $dataObj")
                                 }
                             }
+
                             else -> {
                                 // Additional protocol routing
                             }

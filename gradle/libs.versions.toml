@@ -40,6 +40,8 @@ profileinstaller = "1.4.1"
 jna = "5.14.0"
 qrcode = "3.3.0"
 compottie = "2.2.4"
+spotless = "8.10.0"
+ktlint = "1.8.0"
 [libraries]
 compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
 compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-multiplatform" }
@@ -127,3 +129,4 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 android-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidGradlePlugin" }
 android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

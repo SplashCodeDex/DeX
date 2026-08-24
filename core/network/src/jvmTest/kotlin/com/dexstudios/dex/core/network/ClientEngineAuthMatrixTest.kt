@@ -73,7 +73,7 @@ class ClientEngineAuthMatrixTest {
 
         assertEquals(
             "pairtok_paired",
-            engine.authToken("fp_paired", "other_hash", targetGoogleSub = "sub_theirs")
+            engine.authToken("fp_paired", "other_hash", targetGoogleSub = "sub_theirs"),
         )
     }
 

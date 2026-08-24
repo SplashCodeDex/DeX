@@ -17,7 +17,6 @@ import java.util.UUID
 
 fun Route.fileExplorerRoutes() {
     route("/local/dex") {
-
         post("/list-folders") {
             val fp = call.request.queryParameters["fingerprint"]
             if (fp == null) {

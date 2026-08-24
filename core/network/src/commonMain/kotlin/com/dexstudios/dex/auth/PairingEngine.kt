@@ -1,19 +1,19 @@
 package com.dexstudios.dex.auth
 
-import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.DeviceManager
+import com.dexstudios.dex.core.network.DiscoveredDevice
+import io.ktor.util.date.getTimeMillis
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import io.ktor.util.date.getTimeMillis
 
 sealed interface PairingState {
     data object Idle : PairingState
@@ -22,17 +22,10 @@ sealed interface PairingState {
         val ip: String,
         val fingerprint: String,
         // Absolute wall-clock deadline; the panel countdown and the expiry sweep both honor it.
-        val expiresAtMillis: Long = 0L
+        val expiresAtMillis: Long = 0L,
     ) : PairingState
 
-    data class PinPhase(
-        val ip: String,
-        val fingerprint: String,
-        val pinCode: String,
-        val digitCount: Int,
-        val isError: Boolean = false,
-        val expiresAtMillis: Long = 0L
-    ) : PairingState
+    data class PinPhase(val ip: String, val fingerprint: String, val pinCode: String, val digitCount: Int, val isError: Boolean = false, val expiresAtMillis: Long = 0L) : PairingState
 
     data object Success : PairingState
     data class Error(val message: String) : PairingState
@@ -42,7 +35,7 @@ class PairingEngine(
     // Injectable so tests can drive the accept/reject paths under virtual time.
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     // Injectable clock so PIN expiry logic is deterministically testable.
-    private val nowMillis: () -> Long = ::getTimeMillis
+    private val nowMillis: () -> Long = ::getTimeMillis,
 ) {
     private val _state = MutableStateFlow<PairingState>(PairingState.Idle)
     val state: StateFlow<PairingState> = _state.asStateFlow()
@@ -68,7 +61,7 @@ class PairingEngine(
                 current.fingerprint,
                 "------",
                 digitCount,
-                expiresAtMillis = current.expiresAtMillis
+                expiresAtMillis = current.expiresAtMillis,
             )
             armExpiry(current.fingerprint)
         } else if (current is PairingState.PinPhase) {
@@ -86,7 +79,7 @@ class PairingEngine(
             fingerprint,
             pinCode,
             digitCount = 0,
-            expiresAtMillis = nowMillis() + PIN_TTL_MS
+            expiresAtMillis = nowMillis() + PIN_TTL_MS,
         )
         armExpiry(fingerprint)
         return pinCode
@@ -141,11 +134,11 @@ class PairingEngine(
     fun verifyInboundPin(fingerprint: String, pin: String): Boolean {
         val current = _state.value
         return current is PairingState.PinPhase &&
-                current.fingerprint == fingerprint &&
-                pin.isNotBlank() &&
-                pin == current.pinCode &&
-                current.expiresAtMillis > 0L &&
-                nowMillis() <= current.expiresAtMillis
+            current.fingerprint == fingerprint &&
+            pin.isNotBlank() &&
+            pin == current.pinCode &&
+            current.expiresAtMillis > 0L &&
+            nowMillis() <= current.expiresAtMillis
     }
 
     fun handlePairResponse(accepted: Boolean) {
@@ -161,6 +154,7 @@ class PairingEngine(
                     PairingState.Error("Pairing rejected or timed out")
                 }
             }
+
             else -> Unit
         }
     }

@@ -46,10 +46,10 @@ fun GlassScrollEdge(
                         setFloatUniform("size", size.width, size.height)
                         setColorUniform("tint", tint)
                         setFloatUniform("tintIntensity", tintIntensity)
-                    }
+                    },
                 )
-            }
-        )
+            },
+        ),
     )
 }
 
@@ -66,4 +66,3 @@ private const val GlassEdgeShader = """
         return mix(content.eval(coord) * alpha, tint * alpha, tintIntensity);
     }
 """
-

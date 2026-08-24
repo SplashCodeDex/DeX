@@ -18,9 +18,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
@@ -41,11 +41,7 @@ import kotlin.math.min
  * failure retries with capped backoff — a retried session never leaves duplicate
  * files on the phone because the receiver dedupes via hashes and answers "[SKIP]".
  */
-class DesktopFileSendService(
-    private val clientEngine: ClientEngine,
-    private val discoveryEngine: DiscoveryEngine,
-    private val deviceConfig: DeviceConfig
-) {
+class DesktopFileSendService(private val clientEngine: ClientEngine, private val discoveryEngine: DiscoveryEngine, private val deviceConfig: DeviceConfig) {
     companion object {
         private const val MAX_CONCURRENT_UPLOADS = 3
         private const val PARTIAL_SIZE = 32768
@@ -81,7 +77,7 @@ class DesktopFileSendService(
 
         if (isSessionActive()) {
             clientEngine.updateUploadState(
-                UploadState(fileName = regularFiles.first().name, error = "A transfer is already in progress", isUploading = false)
+                UploadState(fileName = regularFiles.first().name, error = "A transfer is already in progress", isUploading = false),
             )
             return
         }
@@ -100,7 +96,7 @@ class DesktopFileSendService(
         sessionJob?.cancel()
         sessionJob = null
         clientEngine.updateUploadState(
-            clientEngine.uploadState.value.copy(isUploading = false, error = "Upload cancelled")
+            clientEngine.uploadState.value.copy(isUploading = false, error = "Upload cancelled"),
         )
     }
 
@@ -118,12 +114,7 @@ class DesktopFileSendService(
     }
 
     /** One full prepare-upload -> parallel upload -> finish pass. */
-    private suspend fun executeSessionAttempt(
-        files: List<File>,
-        target: DiscoveredDevice,
-        peerName: String,
-        suppressFailurePaint: Boolean
-    ): SessionOutcome {
+    private suspend fun executeSessionAttempt(files: List<File>, target: DiscoveredDevice, peerName: String, suppressFailurePaint: Boolean): SessionOutcome {
         val fileData = LinkedHashMap<String, File>()
         files.forEach { file -> fileData[UUID.randomUUID().toString()] = file }
         val totalBatchSize = fileData.values.sumOf { it.length() }
@@ -135,14 +126,14 @@ class DesktopFileSendService(
                 totalFiles = fileData.size,
                 isUploading = true,
                 peerName = peerName,
-                targetFingerprint = target.info.fingerprint
-            )
+                targetFingerprint = target.info.fingerprint,
+            ),
         )
 
         val token = clientEngine.authToken(
             targetFingerprint = target.info.fingerprint,
             targetIdentityHash = target.info.identityHash,
-            targetGoogleSub = target.info.googleSub
+            targetGoogleSub = target.info.googleSub,
         )
         val prepared = clientEngine.prepareUpload(
             ip = target.ip,
@@ -155,11 +146,11 @@ class DesktopFileSendService(
                         fileName = file.name,
                         size = file.length(),
                         fileType = mimeOf(file),
-                        partialHash = computePartialHash(file)
+                        partialHash = computePartialHash(file),
                     )
-                }
+                },
             ),
-            token = token
+            token = token,
         )
         val response = prepared.response ?: run {
             // Transport failure (-1) is retryable; auth/HTTP rejections are terminal
@@ -212,9 +203,14 @@ class DesktopFileSendService(
                                 val onBytes: (Long) -> Unit = { bytes ->
                                     val delta = bytes - perFile.getAndSet(bytes)
                                     reportProgress(
-                                        doneCount.get(), fileData.size,
-                                        totalSent.addAndGet(delta), totalBatchSize,
-                                        file.name, useQuic, peerName, target.info.fingerprint
+                                        doneCount.get(),
+                                        fileData.size,
+                                        totalSent.addAndGet(delta),
+                                        totalBatchSize,
+                                        file.name,
+                                        useQuic,
+                                        peerName,
+                                        target.info.fingerprint,
                                     )
                                 }
 
@@ -256,16 +252,13 @@ class DesktopFileSendService(
         if (failed.isNotEmpty() && failed.all { it.second.httpStatus == 403 }) {
             // Sharper than the generic all-failed message when the cause is unreadable files
             clientEngine.updateUploadState(
-                clientEngine.uploadState.value.copy(error = "Cannot read one or more files", isUploading = false)
+                clientEngine.uploadState.value.copy(error = "Cannot read one or more files", isUploading = false),
             )
         }
         return SessionOutcome(transportAllFailed = false)
     }
 
-    private data class SessionOutcome(
-        val transportAllFailed: Boolean,
-        val wasCancelled: Boolean = false
-    )
+    private data class SessionOutcome(val transportAllFailed: Boolean, val wasCancelled: Boolean = false)
 
     /**
      * Resolves the LAN drop target among live discoveries. WAN/roster entries carry
@@ -308,7 +301,7 @@ class DesktopFileSendService(
         val chosenFingerprint = candidates.firstOrNull()
             ?: run {
                 clientEngine.updateUploadState(
-                    UploadState(error = "No trusted device online", isUploading = false)
+                    UploadState(error = "No trusted device online", isUploading = false),
                 )
                 return false
             }
@@ -325,14 +318,14 @@ class DesktopFileSendService(
                 totalFiles = files.size,
                 isUploading = true,
                 peerName = peerName,
-                targetFingerprint = chosenFingerprint
-            )
+                targetFingerprint = chosenFingerprint,
+            ),
         )
 
         val delivered = com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
             targetFingerprint = chosenFingerprint,
             files = payload,
-            senderAlias = alias
+            senderAlias = alias,
         )
 
         if (delivered) {
@@ -343,15 +336,14 @@ class DesktopFileSendService(
                 UploadState(
                     fileName = if (files.size == 1) files.first().name else "${files.size} files",
                     error = "$peerName is not connected - open DeX on the phone and try again",
-                    isUploading = false
-                )
+                    isUploading = false,
+                ),
             )
         }
         return delivered
     }
 
-    private fun mimeOf(file: File): String =
-        runCatching { java.nio.file.Files.probeContentType(file.toPath()) }.getOrNull() ?: "application/octet-stream"
+    private fun mimeOf(file: File): String = runCatching { java.nio.file.Files.probeContentType(file.toPath()) }.getOrNull() ?: "application/octet-stream"
 
     private fun logSent(file: File, peerName: String) {
         TransferHistory.log(name = file.name, size = file.length(), direction = "sent", uri = file.absolutePath, peerDevice = peerName)
@@ -410,16 +402,7 @@ class DesktopFileSendService(
     }
 
     /** Throttled aggregate progress publisher with smoothed speed (worker parity). */
-    private fun reportProgress(
-        doneFiles: Int,
-        totalFiles: Int,
-        sentBytes: Long,
-        totalBytes: Long,
-        currentFile: String,
-        useQuic: Boolean,
-        peerName: String,
-        targetFingerprint: String?
-    ) {
+    private fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String, useQuic: Boolean, peerName: String, targetFingerprint: String?) {
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < PROGRESS_THROTTLE_MS) return
 
@@ -447,8 +430,8 @@ class DesktopFileSendService(
                     protocol = if (useQuic) clientEngine.lastUploadProtocol() else "http/1.1",
                     speedBps = smoothedSpeed.get(),
                     targetFingerprint = targetFingerprint,
-                    peerName = peerName
-                )
+                    peerName = peerName,
+                ),
             )
         } catch (_: Exception) {
             // UI updates must never kill the transfer

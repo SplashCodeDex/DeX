@@ -9,10 +9,6 @@ actual fun actualSha256(input: String): String {
     return digest.joinToString("") { "%02x".format(it) }
 }
 
-actual fun actualGenerateUUID(): String {
-    return UUID.randomUUID().toString()
-}
+actual fun actualGenerateUUID(): String = UUID.randomUUID().toString()
 
-actual fun actualCurrentTimeMillis(): Long {
-    return System.currentTimeMillis()
-}
+actual fun actualCurrentTimeMillis(): Long = System.currentTimeMillis()

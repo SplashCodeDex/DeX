@@ -32,14 +32,7 @@ import org.jetbrains.skia.RRect
  * @param spread Optional expansion of the shadow bounds before blur decay (default 0.dp).
  */
 @Composable
-fun Modifier.skiaDropShadow(
-    color: Color = Color.Black.copy(alpha = 0.55f),
-    blurRadius: Dp = 32.dp,
-    borderRadius: Dp = 34.dp,
-    offsetX: Dp = 0.dp,
-    offsetY: Dp = 8.dp,
-    spread: Dp = 0.dp
-): Modifier {
+fun Modifier.skiaDropShadow(color: Color = Color.Black.copy(alpha = 0.55f), blurRadius: Dp = 32.dp, borderRadius: Dp = 34.dp, offsetX: Dp = 0.dp, offsetY: Dp = 8.dp, spread: Dp = 0.dp): Modifier {
     val density = LocalDensity.current
 
     // Hoist native Skia Paint and MaskFilter allocations out of the 60fps draw path.
@@ -54,7 +47,7 @@ fun Modifier.skiaDropShadow(
                 this.maskFilter = MaskFilter.makeBlur(
                     mode = FilterBlurMode.NORMAL,
                     sigma = sigma,
-                    respectCTM = true
+                    respectCTM = true,
                 )
             }
         }
@@ -72,7 +65,7 @@ fun Modifier.skiaDropShadow(
                 dy - sp,
                 size.width + dx + sp,
                 size.height + dy + sp,
-                rPx
+                rPx,
             )
             canvas.skiaCanvas.drawRRect(rrect, paint)
         }
