@@ -1,4 +1,11 @@
 # Changelog
+## [10.1.25.1] - 2026-08-24
+### Changed
+- **[minor] Warning sweep: removed K2-redundant null assertions**:
+  - Dropped `!!` sites the compiler already proves safe via smart-cast (`PullProgressDock` pull-state accessors behind the `isPulling == true` check, `FileExplorerPanel` SAF pull behind the `uri != null` guard, `WebSocketRoutes.grantPairing(fingerprint)` behind PIN verification) and an always-true `dataObj != null` condition implied by `requestId != null`.
+  - `compileKotlinDesktop` for composeApp and core/network now emits zero warnings; spotlessCheck + desktopTest green.
+
+
 ## [10.1.25.0] - 2026-08-24
 ### Changed
 - **[minor] Desktop shell: animation-spec centralization, port constants, loopback API, shutdown flush reorder**:

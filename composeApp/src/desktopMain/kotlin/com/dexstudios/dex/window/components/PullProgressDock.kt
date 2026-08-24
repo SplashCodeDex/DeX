@@ -47,19 +47,19 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
 
     val showPull = pullState?.isPulling == true
     val title = if (showPull) {
-        pullState!!.activeFileName.ifBlank {
+        pullState.activeFileName.ifBlank {
             if (pullState.totalFiles > 1) "Receiving ${pullState.totalFiles} files from phone" else "Receiving from phone"
         }
     } else {
         uploadState.fileName.ifBlank { "Transferring files..." }
     }
     val progress = if (showPull) {
-        pullState!!.progress.coerceIn(0f, 1f)
+        pullState.progress.coerceIn(0f, 1f)
     } else {
         uploadState.progress.coerceIn(0f, 1f)
     }
     val detail = if (showPull) {
-        "${(pullState!!.progress * 100).toInt()}% • ${pullState.completedFiles}/${pullState.totalFiles} files • ${formatFileSize(pullState.bytesTransferred)}"
+        "${(pullState.progress * 100).toInt()}% • ${pullState.completedFiles}/${pullState.totalFiles} files • ${formatFileSize(pullState.bytesTransferred)}"
     } else {
         "${(uploadState.progress * 100).toInt()}% • ${formatSpeed(uploadState.speedBps)}"
     }

@@ -204,7 +204,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                     // token and hand it back so the peer can store it too),
                                     // and upgrade the session so prompts flow immediately.
                                     verifiedByPin -> {
-                                        val pairToken = grantPairing(fingerprint!!)
+                                        val pairToken = grantPairing(fingerprint)
                                         WebSocketConnectionManager.sendRequest(
                                             fingerprint,
                                             buildJsonObject {
@@ -280,7 +280,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
 
                             "pull-progress" -> {
                                 val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
-                                if (reqId != null && dataObj != null) {
+                                if (reqId != null) {
                                     val state = dataObj["state"]?.jsonPrimitive?.contentOrNull ?: "running"
                                     val doneFiles = dataObj["doneFiles"]?.jsonPrimitive?.intOrNull ?: 0
                                     val totalFiles = dataObj["totalFiles"]?.jsonPrimitive?.intOrNull ?: 0

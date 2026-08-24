@@ -1,5 +1,6 @@
 ---
 import { site } from '../../data/site';
+import BrandMark from './BrandMark.astro';
 
 const oldWays = [
   {
@@ -41,7 +42,8 @@ const oldWays = [
     </div>
 
     <p class="landing-reveal mt-10 text-center text-lg text-muted-foreground">
-      DeX skips all of it — scan once, tap send, the file is already there.{' '}
+      <BrandMark class="h-[0.95em]" /> skips all of it — scan once, tap send, the file is already
+      there.{' '}
       <a
         href={site.downloadPage}
         class="font-medium text-primary-500 underline-offset-4 hover:underline"

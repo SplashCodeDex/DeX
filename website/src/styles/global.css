@@ -1,23 +1,14 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/manrope';
 @import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/caveat';
 
 @custom-variant dark (&:is(.dark *));
-
-/* Brand accent font — the DeX wordmark face (free for commercial use,
-   FontFreebies by IanMikraz, pay-what-you-like on Gumroad). */
-@font-face {
-  font-family: 'Creepy Notes';
-  src: url('/assets/fonts/CreepyNotes.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
 
 @theme {
   --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-brand: 'Creepy Notes', 'Space Grotesk Variable', cursive;
+  --font-brand: 'Caveat Variable', 'Space Grotesk Variable', cursive;
 
   --color-primary-50: oklch(95% 0.025 261.4);
   --color-primary-100: oklch(86% 0.05 261.4);

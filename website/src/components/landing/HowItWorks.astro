@@ -1,9 +1,12 @@
 ---
+const brandInline =
+  '<img src="/assets/logos/dex-dark.png" alt="DeX" class="inline-block h-[0.95em] w-auto align-baseline dark:hidden" /><img src="/assets/logos/dex-light.png" alt="" aria-hidden="true" class="hidden h-[0.95em] w-auto align-baseline dark:block" />';
+
 const steps = [
   {
     n: '1',
     title: 'Scan',
-    body: 'Open DeX on your computer and scan the code with your phone camera. That pairs them once.',
+    body: `Open ${brandInline} on your computer and scan the code with your phone camera. That pairs them once.`,
   },
   {
     n: '2',
@@ -25,7 +28,8 @@ const steps = [
         Three steps. That&rsquo;s the whole app.
       </h2>
       <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
-        No setup wizards, no settings to figure out. If you can scan a code, you already know DeX.
+        No setup wizards, no settings to figure out. If you can scan a code, you already know
+        <Fragment set:html={brandInline} />.
       </p>
     </div>
 
@@ -39,7 +43,9 @@ const steps = [
             {step.n}
           </span>
           <h3 class="mt-5 text-xl font-bold text-foreground">{step.title}</h3>
-          <p class="mt-2 leading-relaxed text-muted-foreground">{step.body}</p>
+          <p class="mt-2 leading-relaxed text-muted-foreground">
+            <Fragment set:html={step.body} />
+          </p>
         </li>
       ))}
     </ol>

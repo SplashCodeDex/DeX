@@ -23,6 +23,7 @@ export const site = {
       name: 'iPhone & iPad',
       requirement: 'Companion app',
       icon: '/assets/platform/apple.png',
+      iconDark: '/assets/platform/apple-white.png',
       badge: '/assets/stores/appstore.svg',
       badgeAlt: 'Download on the App Store',
       available: false,
@@ -41,7 +42,6 @@ export const site = {
     free: {
       price: '$0',
       period: 'forever',
-      cta: 'Download DeX',
       features: [
         'Phone-to-computer transfers on the same Wi-Fi',
         'Connect by scanning a code',

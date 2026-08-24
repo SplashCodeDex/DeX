@@ -1,6 +1,9 @@
 ---
 import { site } from '../../data/site';
 
+const brandInline =
+  '<img src="/assets/logos/dex-dark.png" alt="DeX" class="inline-block h-[0.95em] w-auto align-baseline dark:hidden" /><img src="/assets/logos/dex-light.png" alt="" aria-hidden="true" class="hidden h-[0.95em] w-auto align-baseline dark:block" />';
+
 const faqs = [
   {
     q: 'Do my files get uploaded anywhere?',
@@ -12,15 +15,15 @@ const faqs = [
   },
   {
     q: 'What do I need to get started?',
-    a: 'DeX on your computer (Windows or macOS) and on your Android phone. Scan the code shown on screen once, and your devices stay connected.',
+    a: `${brandInline} on your computer (Windows or macOS) and on your Android phone. Scan the code shown on screen once, and your devices stay connected.`,
   },
   {
     q: 'Is there a file size limit?',
-    a: 'If your devices can store it, DeX can send it — photos, videos, whole folders. Nothing gets compressed on the way.',
+    a: `If your devices can store it, ${brandInline} can send it — photos, videos, whole folders. Nothing gets compressed on the way.`,
   },
   {
     q: 'Does it work with LocalSend apps?',
-    a: 'Yes. DeX speaks the same protocol, so it fits right in next to LocalSend on other devices.',
+    a: `Yes. ${brandInline} speaks the same protocol, so it fits right in next to LocalSend on other devices.`,
   },
   {
     q: 'How much does it cost?',
@@ -55,7 +58,9 @@ const faqs = [
               <path d="m6 9 6 6 6-6"></path>
             </svg>
           </summary>
-          <p class="px-5 pb-5 leading-relaxed text-muted-foreground">{item.a}</p>
+          <p class="px-5 pb-5 leading-relaxed text-muted-foreground">
+            <Fragment set:html={item.a} />
+          </p>
         </details>
       ))}
     </div>

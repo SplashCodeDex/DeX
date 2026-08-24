@@ -326,7 +326,7 @@ fun FileExplorerPanel(
                                         if (item.isDirectory) {
                                             viewModel.drillDown(item.path, item.name, item.uri)
                                         } else if (item.uri != null && activeFingerprint.isNotBlank()) {
-                                            viewModel.pullSafFile(item.uri!!, item.name, item.size)
+                                            viewModel.pullSafFile(item.uri, item.name, item.size)
                                         }
                                     }
                                 } else {
