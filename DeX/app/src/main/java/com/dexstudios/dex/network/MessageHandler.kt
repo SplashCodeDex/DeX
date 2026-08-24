@@ -121,7 +121,9 @@ class MessageHandler(
             } else {
                 Timber.i("Pairing rejected or timed out with ${pairReq.alias}")
             }
-            sendPairResponse(accepted)
+            // Echo the entered PIN so the PC can verify the proof server-side before
+            // persisting trust (a bare accepted=true assertion is no longer honored).
+            sendPairResponse(accepted, enteredPin)
         }
     }
 
@@ -269,11 +271,20 @@ class MessageHandler(
         PunchState.pendingRelay.value = null
     }
 
-    private fun sendPairResponse(accepted: Boolean) {
+    /**
+     * Replies to the PC's pair-prompt. When [enteredPin] is non-empty it is echoed so the PC
+     * can verify the PIN proof server-side before persisting trust; a null/empty pin (timeout,
+     * cancel, or the already-paired auto-accept path) means the PC will require explicit
+     * user consent on its pairing panel instead.
+     */
+    private fun sendPairResponse(accepted: Boolean, enteredPin: String? = null) {
         val payload = buildJsonObject {
             put("type", "pair-response")
             putJsonObject("data") {
                 put("accepted", accepted)
+                if (!enteredPin.isNullOrEmpty()) {
+                    put("pin", enteredPin)
+                }
             }
         }
         onSendMessage?.invoke(payload.toString())

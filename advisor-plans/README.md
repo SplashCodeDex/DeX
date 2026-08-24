@@ -36,7 +36,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 ## Findings considered and rejected (or deferred)
 
 - [TEST-01] Add verification baseline to feature modules: Deferred. Need basic correctness fixes first.
-- [PERF-01] Busy-waiting polling loop for external drag-and-drop state: Deferred.
+- [PERF-01] Busy-waiting polling loop for external drag-and-drop state: MITIGATED 2026-08-23. `deferHideOnDragDrop` polls with adaptive backoff (50ms → 250ms cap after 1s). Full event-driven fix via WH_MOUSE_LL hook deferred until `MouseInputProvider.kt` (under active unrelated work) is free to change.
 - [DX-02] Add code formatter and linter baseline: Deferred.
 - [DOCS-01] Document local OAuth credentials setup: Deferred.
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).

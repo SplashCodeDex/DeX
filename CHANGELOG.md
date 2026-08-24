@@ -1,5 +1,15 @@
 # Changelog
 
+## [10.1.8.3] - 2026-08-23
+### Fixed
+- **[fix] Peer PIN echo — server-side PIN proof is now end-to-end**: The Android peer (`DeX/app` `MessageHandler.sendPairResponse`) echoes the entered PIN in `pair-response.data.pin`, so phone-initiated pairing auto-persists on the desktop again when the correct PIN is typed — no manual Accept click needed for the normal flow. The already-paired auto-accept path (Task 5 partial-forget re-pairing) intentionally stays pinless: re-establishing trust after a deliberate desktop-side forget now requires explicit Accept on the pairing panel, which is exactly the assertion the server-side verification is meant to gate.
+### Changed
+- **[minor] PERF-01 mitigation — adaptive drag-release polling**: `DockedWindowStateController.deferHideOnDragDrop` no longer busy-polls at a fixed 50ms; the interval relaxes to a 250ms cap after the first second of an active drag (~4x lower idle CPU cost, release-detection latency still imperceptible). Full event-driven WH_MOUSE_LL hook remains deferred while `MouseInputProvider.kt` is under active unrelated work.
+### Removed
+- **[minor] Dead API**: `PairingEngine.markPairingError()` had zero callers anywhere (engine, UI, tests); deleted. The error path is owned by the expiry sweep and `handlePairResponse`.
+### Documented
+- **[minor] Pairing concurrency model**: `handleInboundPairingRequest` now documents its deliberate last-wins single-offer semantics and why superseded peers can never gain trust (exact-fingerprint PIN proof + TTL).
+
 ## [10.1.8.2] - 2026-08-23
 ### Fixed
 - **[fix] Enforced PIN TTL — pairing offers now actually expire**:

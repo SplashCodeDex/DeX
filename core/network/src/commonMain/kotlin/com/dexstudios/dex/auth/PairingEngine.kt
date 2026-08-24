@@ -77,6 +77,9 @@ class PairingEngine(
     }
 
     fun handleInboundPairingRequest(ip: String, fingerprint: String): String {
+        // Concurrency model: one pairing offer at a time (last-wins). A superseded peer can
+        // never gain trust from its stale offer — verifyInboundPin matches the exact
+        // fingerprint AND honors the TTL — so overwriting is safe without a pending-map.
         val pinCode = (100000..999999).random().toString()
         _state.value = PairingState.PinPhase(
             ip,
@@ -159,13 +162,6 @@ class PairingEngine(
                 }
             }
             else -> Unit
-        }
-    }
-
-    fun markPairingError() {
-        val current = _state.value
-        if (current is PairingState.PinPhase) {
-            _state.value = current.copy(isError = true)
         }
     }
 

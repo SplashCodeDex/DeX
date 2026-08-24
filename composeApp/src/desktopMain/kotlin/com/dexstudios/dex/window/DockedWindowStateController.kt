@@ -194,6 +194,11 @@ class DockedWindowStateController(
         if (dragDropDeferJob?.isActive == true) return
         dragDropDeferJob = scope.launch(Dispatchers.IO) {
             try {
+                // Adaptive backoff instead of a fixed 50ms busy-wait: drags typically last
+                // seconds, so the poll interval relaxes to 250ms after the first second.
+                // Release detection latency stays imperceptible while idle CPU cost drops ~4x.
+                var delayMs = 50L
+                var elapsedMs = 0L
                 while (isActive) {
                     if (!mouseInputProvider.isLeftMouseButtonDown()) {
                         // Mouse released!
@@ -218,7 +223,11 @@ class DockedWindowStateController(
                         }
                         break
                     }
-                    delay(50)
+                    delay(delayMs)
+                    elapsedMs += delayMs
+                    if (elapsedMs >= 1000L && delayMs < 250L) {
+                        delayMs = minOf(delayMs * 2, 250L)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
