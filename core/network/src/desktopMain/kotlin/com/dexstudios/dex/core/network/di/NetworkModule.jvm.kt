@@ -29,7 +29,9 @@ val desktopNetworkModule = module {
     single<IMirrorEngine> { JvmMirrorEngine() }
     single { FileExplorerService() }
 
-    // WAN reachability: UPnP port mapping + public-address discovery for same-account phones
-    single { DesktopUpnpService(get()) }
+    // WAN reachability: UPnP port mapping + public-address discovery for same-account phones.
+    // The service is pref-aware: it awaits DeviceConfig's persisted load and honors the
+    // Settings "UPnP Port Forwarding" toggle live.
+    single { DesktopUpnpService(get(), get()) }
     single { PublicAddressService(get(), getOrNull()) }
 }

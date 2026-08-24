@@ -2,6 +2,7 @@ package com.dexstudios.dex.core.network.services
 
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DeXPorts
+import com.dexstudios.dex.core.network.DeviceConfig
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -10,6 +11,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -21,7 +24,7 @@ import java.net.MulticastSocket
 import java.net.Socket
 import java.net.URI
 
-class DesktopUpnpService(private val httpClient: HttpClient, private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
+class DesktopUpnpService(private val httpClient: HttpClient, private val deviceConfig: DeviceConfig? = null, private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
     private val _publicIp = MutableStateFlow<String?>(null)
     val publicIp = _publicIp.asStateFlow()
 
@@ -39,33 +42,55 @@ class DesktopUpnpService(private val httpClient: HttpClient, private val scope: 
     @Volatile
     private var lastKnownIgd: IgdInfo? = null
 
+    /**
+     * Pref-aware entry point. Awaits the persisted settings load, then maps or releases the
+     * router ports following [DeviceConfig.upnpEnabled] — including live toggles from the
+     * Settings panel. With no config wired (tests), behaves as always-on.
+     */
     fun configureAsync() {
+        val dc = deviceConfig
+        if (dc == null) {
+            scope.launch { configureMappings() }
+            return
+        }
         scope.launch {
-            try {
-                val igd = discoverIgdAsync() ?: run {
-                    Logger.i("[UPNP] No UPnP Internet Gateway Device found.")
-                    return@launch
+            dc.initializedFlow.filter { it }.first()
+            dc.upnpEnabledFlow.collect { enabled ->
+                if (enabled) {
+                    configureMappings()
+                } else {
+                    Logger.i("[UPNP] Disabled in settings; releasing router mappings.")
+                    releaseMappedPorts()
                 }
-                lastKnownIgd = igd
-
-                // Delete stale mappings first (also sweeps leaks from older sessions)
-                deletePortMapping(igd, DeXPorts.HTTPS, "TCP")
-                deletePortMapping(igd, DeXPorts.QUIC, "UDP")
-                deletePortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
-
-                // Add active mappings
-                addPortMapping(igd, DeXPorts.HTTPS, "TCP")
-                addPortMapping(igd, DeXPorts.QUIC, "UDP")
-                addPortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
-
-                val externalIp = getExternalIp(igd)
-                if (externalIp != null) {
-                    Logger.i("[UPNP] Public IP: $externalIp")
-                    _publicIp.value = externalIp
-                }
-            } catch (e: Exception) {
-                Logger.i("[UPNP] Configure failed: ${e.message}")
             }
+        }
+    }
+
+    private suspend fun configureMappings() {
+        try {
+            val igd = discoverIgdAsync() ?: run {
+                Logger.i("[UPNP] No UPnP Internet Gateway Device found.")
+                return
+            }
+            lastKnownIgd = igd
+
+            // Delete stale mappings first (also sweeps leaks from older sessions)
+            deletePortMapping(igd, DeXPorts.HTTPS, "TCP")
+            deletePortMapping(igd, DeXPorts.QUIC, "UDP")
+            deletePortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
+
+            // Add active mappings
+            addPortMapping(igd, DeXPorts.HTTPS, "TCP")
+            addPortMapping(igd, DeXPorts.QUIC, "UDP")
+            addPortMapping(igd, DeXPorts.OAUTH_CALLBACK, "TCP")
+
+            val externalIp = getExternalIp(igd)
+            if (externalIp != null) {
+                Logger.i("[UPNP] Public IP: $externalIp")
+                _publicIp.value = externalIp
+            }
+        } catch (e: Exception) {
+            Logger.i("[UPNP] Configure failed: ${e.message}")
         }
     }
 

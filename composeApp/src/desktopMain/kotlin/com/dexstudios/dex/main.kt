@@ -24,6 +24,7 @@ import com.dexstudios.dex.core.network.server.DeXServer
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.FloatingDockCard
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toPath
 import org.koin.core.context.startKoin
@@ -111,14 +112,6 @@ fun main() {
         kotlin.system.exitProcess(1)
     }
 
-    // WAN reachability: open UPnP mappings and resolve our public address so same-account
-    // phones can reach this PC from cellular networks without manual port forwarding.
-    runCatching {
-        org.koin.java.KoinJavaComponent.getKoin()
-            .get<com.dexstudios.dex.core.network.services.DesktopUpnpService>()
-            .configureAsync()
-    }
-
     application {
         val coroutineScope = rememberCoroutineScope()
         val controller = remember(coroutineScope) {
@@ -128,7 +121,27 @@ fun main() {
         }
 
         LaunchedEffect(Unit) {
-            val deviceConfig = org.koin.java.KoinJavaComponent.getKoin().get<DeviceConfig>()
+            val koin = org.koin.java.KoinJavaComponent.getKoin()
+            val deviceConfig = koin.get<DeviceConfig>()
+
+            // Download location: ReceiveStorage is the single read authority for where
+            // inbound files land; this collector is its single writer, mirroring the
+            // persisted pref (blank = legacy default).
+            com.dexstudios.dex.core.network.server.ReceiveStorage.overridePath =
+                deviceConfig.downloadDir.ifBlank { null }
+            launch {
+                deviceConfig.downloadDirFlow.collect { dir ->
+                    com.dexstudios.dex.core.network.server.ReceiveStorage.overridePath = dir.ifBlank { null }
+                }
+            }
+
+            // WAN reachability: UPnP mappings + public-address resolution for same-account
+            // phones. configureAsync is pref-aware — it awaits the persisted settings load,
+            // maps only when "UPnP Port Forwarding" is ON, and releases on toggle-off.
+            runCatching {
+                koin.get<com.dexstudios.dex.core.network.services.DesktopUpnpService>().configureAsync()
+            }
+
             com.dexstudios.dex.desktop.jna.WiggleToOpenService.start(
                 deviceConfig = deviceConfig,
                 onWake = { controller.hide() },

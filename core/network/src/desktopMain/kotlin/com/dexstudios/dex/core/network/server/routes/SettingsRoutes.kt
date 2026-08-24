@@ -11,9 +11,11 @@ import kotlinx.serialization.Serializable
 data class ProfileDto(val email: String, val name: String, val picture: String)
 
 /**
- * Google sign-in browser redirect target. Registered BOTH on the full app listeners and on
- * the dedicated loopback 48425 listener (DeXServer) — the URI is registered in the Google
- * Cloud Console client, so it must keep serving exactly this path and port.
+ * Google sign-in browser redirect target. Served ONLY by the dedicated loopback 48425
+ * listener (DeXServer) — the URI is registered in the Google Cloud Console client, so it
+ * must keep serving exactly this path and port. Deliberately NOT registered on the
+ * LAN-facing listeners: a forged callback there would let a peer feed arbitrary
+ * code/state into [GoogleOAuth.handleCallback].
  */
 fun Route.oauthCallbackRoutes() {
     get("/local/oauth/callback") {
@@ -51,6 +53,12 @@ fun Route.oauthCallbackRoutes() {
     }
 }
 
+/**
+ * Account/control settings routes. LOOPBACK-ONLY by contract: DeXServer registers these
+ * exclusively on the 127.0.0.1:[DeXPorts.LOOPBACK_CONTROL] listener. They mutate
+ * security-relevant state (identity email drives the auto-trust identity hash) and must
+ * never be reachable from the LAN-facing HTTPS listener.
+ */
 fun Route.settingsRoutes() {
     post("/local/settings/email") {
         val email = call.receiveText()
@@ -83,9 +91,6 @@ fun Route.settingsRoutes() {
             )
         }
     }
-
-    // OAuth browser redirect — shared with the dedicated loopback 48425 listener
-    oauthCallbackRoutes()
 
     post("/local/settings/signout") {
         val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()

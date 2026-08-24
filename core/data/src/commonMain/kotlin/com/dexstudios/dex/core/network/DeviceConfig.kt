@@ -61,6 +61,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         val DND_ENABLED_KEY = booleanPreferencesKey("dnd_enabled")
         val AUTO_ADB_HOTSPOT_ENABLED_KEY = booleanPreferencesKey("auto_adb_hotspot_enabled")
         val THEME_OVERRIDE_KEY = stringPreferencesKey("theme_override")
+        val DOWNLOAD_DIR_KEY = stringPreferencesKey("download_dir")
 
         // Legal values for [THEME_OVERRIDE_KEY]; absent key means follow the OS setting.
         const val THEME_SYSTEM = "system"
@@ -91,6 +92,17 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
 
     private val _themeOverrideFlow = MutableStateFlow(THEME_SYSTEM)
     val themeOverrideFlow: StateFlow<String> = _themeOverrideFlow.asStateFlow()
+
+    /** Signals completion of the init-block DataStore load; consumers gate on it to avoid racing defaults. */
+    private val _initializedFlow = MutableStateFlow(false)
+    val initializedFlow: StateFlow<Boolean> = _initializedFlow.asStateFlow()
+
+    /**
+     * Custom download directory override for inbound transfers. Empty string means "use the
+     * legacy default" (`~/Downloads/DeX`, owned by [com.dexstudios.dex.core.network.server.ReceiveStorage]).
+     */
+    private val _downloadDirFlow = MutableStateFlow("")
+    val downloadDirFlow: StateFlow<String> = _downloadDirFlow.asStateFlow()
 
     private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
@@ -230,6 +242,19 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
     val fingerprint: String
         get() = _fingerprintFlow.value
 
+    /** Custom download directory for inbound transfers; empty string = platform default. */
+    var downloadDir: String
+        get() = _downloadDirFlow.value
+        set(value) {
+            val normalized = value.trim()
+            _downloadDirFlow.value = normalized
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[DOWNLOAD_DIR_KEY] = normalized
+                }
+            }
+        }
+
     val identityHash: String
         get() = _identityHashFlow.value
 
@@ -317,7 +342,9 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
                 THEME_DARK, THEME_LIGHT -> savedTheme
                 else -> THEME_SYSTEM
             }
+            _downloadDirFlow.value = prefs[DOWNLOAD_DIR_KEY] ?: ""
             Logger.i("DeviceConfig fully initialized.")
+            _initializedFlow.value = true
         }
     }
 

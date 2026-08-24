@@ -1,4 +1,39 @@
 # Changelog
+## [10.1.26.0] - 2026-08-24
+### Fixed
+- **[fix] Settings surface audit remediation (plan 021): LAN-exposed account routes, dead-end download location, dead UPnP toggle**:
+  - Security: `/local/settings/*` (email/signout/google-signin/google-profile) were registered on the shared app module and therefore reachable from ANY LAN peer on the WAN HTTPS listener — an unauthenticated peer could overwrite the identity email (re-deriving the auto-trust identity hash), force sign-out, remotely pop the OAuth browser flow, or read back the Google profile. DeXServer now splits the module: protocol surface on `0.0.0.0:48424`, settings routes ONLY on the loopback control listener (`127.0.0.1:28425`). The OAuth callback route was removed from all shared modules and is served exclusively by its dedicated loopback 48425 listener (Google-Console-registered URI untouched).
+  - Download Location: the Settings picker only wrote panel-local state — transfers kept landing in hardcoded `~/Downloads/DeX` and the choice reset every restart. New persisted `download_dir` pref in DeviceConfig; ReceiveStorage (single read authority for inbound saves) honors it via a single-writer mirror in main.kt; picker writes the pref so the choice takes effect immediately and survives restarts.
+  - UPnP toggle: `upnpEnabled` was persisted but consumed nowhere — mappings were always attempted at startup regardless of the setting. DesktopUpnpService.configureAsync() is now pref-aware: awaits the DataStore load, maps ports only when ON, releases existing router mappings on toggle-off, and follows live toggles from the panel.
+  - Verified: gradlew build + spotlessCheck + all desktopTest suites green.
+
+
+
+## [10.1.27.1] - 2026-08-24
+### Fixed
+- **[fix] Morph stage overflow + dark-mode mark color**:
+  - The Lottie SVG carries its intrinsic 256px canvas, so it overflowed the download heading's 2.2em stage and rendered the mark below the headline (user screenshot). The stage CSS now forces the injected svg to `width/height: 100%; display: block`, confining the animation to any stage box (download H1 + hero).
+  - Dark mode now inverts the monochrome morph (`filter: invert(1)` on `.dark [data-logo-morph] svg`), so the animated mark reads white like the `dex-light.png` fallback; hero stage bumped to h-40/h-48 to restore visual weight now that the overflow is contained.
+  - Verified: `astro check` 0/0/0; build clean; containment + invert rules present in the shipped CSS (lightningcss emits `invert()`, valid per the optional-argument filter spec).
+
+## [10.1.27.0] - 2026-08-24
+### Changed
+- **[minor] Brand mark scale pass, equal download cards, Lottie mark in the download heading**:
+  - Inline wordmark scaled 2.3x in typography: `BrandMark` default is now `h-[2.3em]` with `align-middle` (the logo canvas carries padding, so the visible mark reads at text scale); all `h-[0.95em]` usages dropped to the default, the pricing "Pro" label raised to `h-[3em]`, and the raw-img inline pattern in HowItWorks/FAQ strings moved to `h-[2.2em] align-middle`. Button marks (`h-[1.1em]` fixedLight) unchanged.
+  - Download page: phone cards now use the same `sm:grid-cols-3` grid as the computer cards (equal card size, two cards + open column).
+  - The download H1 mark ("Get ▸ free") is now a live `[data-logo-morph]` Lottie stage — the monitor→DeX morph plays in the heading and parks on the settled frame; `logoMorph.ts` refactored to mount N stages (`querySelectorAll` + shared replay on nav-logo click), reduced-motion still falls back to the static wordmark pair.
+  - Verified: `astro check` 0/0/0 across 23 files; build clean; morph stage present in /download HTML, both grids 3-col, scaled marks on all three pages.
+
+## [10.1.26.0] - 2026-08-24
+### Changed
+- **[minor] Brand mark replaces DeX text, Caveat brand font, white Apple logo, LocalSend de-branding**:
+  - Every visible "DeX" text now renders as the theme-swapped wordmark image via a new `BrandMark.astro` inline component: download H1 ("Get [mark] free"), pricing "DeX Pro" label + free CTA, FinalCta heading subline + CTA, Compare closer, Bento features subline, How-it-works subline + step 1, and three FAQ answers (string answers moved to `Fragment set:html` with an inline-mark pattern, matching the bento icon approach). Only `<title>`/meta keep the literal word (browser tabs cannot render images); aria-labels keep "DeX" for screen readers.
+  - Brand accent font swapped per feedback (Creepy Notes too thin): now Caveat Variable 5.3.0 (OFL, handwritten like the wordmark but with real stroke weight) applied at semibold; Creepy Notes @font-face, TTF asset, and fonts directory removed.
+  - Apple logo gets a white variant (`apple-white.png`, alpha-preserving recolor) shown via `dark:` classes in dark mode; `site.ts` mobile entries gained optional `iconDark` with an `'iconDark' in` type guard for the const-asserted union.
+  - LocalSend de-branding: "LocalSend v2 compatible" hero badge removed (user request), and the two remaining mentions swept — "Works alongside LocalSend apps" pricing feature and the LocalSend FAQ entry (FAQ now five questions). Flagged for user veto.
+  - Housekeeping: dead `free.cta` config field removed after the CTA moved to the mark+Download pattern.
+  - Verified: `astro check` 0/0/0 across 23 files; build clean (3 routes); zero LocalSend strings in any built page; Caveat in shipped CSS; apple/apple-white both referenced on /download.
+
 ## [10.1.25.1] - 2026-08-24
 ### Changed
 - **[minor] Warning sweep: removed K2-redundant null assertions**:

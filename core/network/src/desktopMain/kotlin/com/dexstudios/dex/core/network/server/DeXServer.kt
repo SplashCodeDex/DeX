@@ -47,7 +47,13 @@ object DeXServer {
     fun start() {
         if (server1 != null) return
 
-        val appModule: Application.() -> Unit = {
+        val keyStore = CertificateGenerator.getOrCreateKeyStore()
+
+        // Core protocol surface: device/share/control/websocket/explorer/clipboard routes.
+        // Deliberately EXCLUDES settingsRoutes — account mutation belongs to the loopback
+        // control plane only (plan 021), and oauthCallbackRoutes to the dedicated 48425
+        // loopback listener below.
+        val baseModule: Application.() -> Unit = {
             install(ContentNegotiation) {
                 json(
                     Json {
@@ -87,11 +93,8 @@ object DeXServer {
                 )
                 fileExplorerRoutes()
                 clipboardRoutes()
-                settingsRoutes()
             }
         }
-
-        val keyStore = CertificateGenerator.getOrCreateKeyStore()
 
         server1 = embeddedServer(Netty, configure = {
             sslConnector(
@@ -104,8 +107,16 @@ object DeXServer {
                 port = DeXPorts.HTTPS
                 keyStorePath = java.io.File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
             }
-        }, module = appModule).start(wait = false)
-        server2 = embeddedServer(Netty, port = DeXPorts.LOOPBACK_CONTROL, host = "127.0.0.1", module = appModule).start(wait = false)
+        }, module = baseModule).start(wait = false)
+
+        // Loopback control plane: core protocol surface PLUS the account settings routes,
+        // which mutate identity/trust state and must never face the LAN (plan 021).
+        server2 = embeddedServer(Netty, port = DeXPorts.LOOPBACK_CONTROL, host = "127.0.0.1", module = {
+            baseModule()
+            routing {
+                settingsRoutes()
+            }
+        }).start(wait = false)
 
         // Plain-HTTP fallback listener: exposes ONLY the hosted-file pull endpoints. Serving the
         // full application over plaintext on 0.0.0.0 let any LAN peer hit /ws, /register and

@@ -94,9 +94,7 @@ fun SettingsPanel(
     val themeOverride by deviceConfig.themeOverrideFlow.collectAsState()
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
-    var downloadPath by remember {
-        mutableStateOf(getDeXDownloadDirectory())
-    }
+    val downloadDirPref by deviceConfig.downloadDirFlow.collectAsState()
 
     Column(
         modifier = modifier
@@ -351,13 +349,13 @@ fun SettingsPanel(
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_folder),
                     title = "Download Location",
-                    subtitle = downloadPath,
+                    subtitle = downloadDirPref.ifBlank { getDeXDownloadDirectory() },
                     onClick = {
                         coroutineScope.launch {
                             controller?.isModalDialogOpen = true
                             try {
                                 val selectedDir = withContext(Dispatchers.IO) {
-                                    val chooser = JFileChooser(downloadPath).apply {
+                                    val chooser = JFileChooser(downloadDirPref.ifBlank { getDeXDownloadDirectory() }).apply {
                                         fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
                                         dialogTitle = "Select DeX Download Location"
                                         isAcceptAllFileFilterUsed = false
@@ -370,7 +368,8 @@ fun SettingsPanel(
                                     }
                                 }
                                 if (selectedDir != null) {
-                                    downloadPath = selectedDir
+                                    // Persisted: transfers land here immediately and the choice survives restarts.
+                                    deviceConfig.downloadDir = selectedDir
                                 }
                             } finally {
                                 controller?.isModalDialogOpen = false
