@@ -47,16 +47,21 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
     val frameBytes by mirrorEngine.latestFrame.collectAsState()
 
     // Decode off the UI thread: Image.makeFromEncoded on every incoming frame during
-    // composition stalled composition at phone frame rates.
+    // composition stalled composition at phone frame rates. A malformed frame keeps the
+    // last good bitmap instead of crashing composition (silent by design: a hostile or
+    // glitchy stream would otherwise spam one log line per frame).
     val latestFrame by produceState<ImageBitmap?>(initialValue = null, key1 = frameBytes) {
         // Local capture: delegated properties cannot be smart-cast inside the producer.
         val bytes = frameBytes
-        value = if (bytes != null) {
-            withContext(Dispatchers.Default) {
-                org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
-            }
+        if (bytes == null) {
+            value = null
         } else {
-            null
+            val decoded = withContext(Dispatchers.Default) {
+                runCatching { org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap() }.getOrNull()
+            }
+            if (decoded != null) {
+                value = decoded
+            }
         }
     }
 

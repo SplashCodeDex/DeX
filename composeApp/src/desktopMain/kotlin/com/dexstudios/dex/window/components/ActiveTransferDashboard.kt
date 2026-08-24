@@ -1,7 +1,6 @@
 package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.network.TransferStateMonitor
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 
 @Composable
 fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
@@ -24,8 +24,12 @@ fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
 
     AnimatedVisibility(
         visible = activeTransfers.isNotEmpty(),
-        enter = fadeIn(tween(300)) + slideInVertically(animationSpec = tween(300), initialOffsetY = { -50 }) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
-        exit = fadeOut(tween(300)) + slideOutVertically(animationSpec = tween(300), targetOffsetY = { -50 }) + scaleOut(targetScale = 0.9f, animationSpec = tween(300)),
+        enter =
+        fadeIn(DockCardAnimations.LinearFadeSpec) + slideInVertically(animationSpec = DockCardAnimations.LinearSlideSpec, initialOffsetY = { -50 }) +
+            scaleIn(initialScale = 0.9f, animationSpec = DockCardAnimations.LinearFadeSpec),
+        exit =
+        fadeOut(DockCardAnimations.LinearFadeSpec) + slideOutVertically(animationSpec = DockCardAnimations.LinearSlideSpec, targetOffsetY = { -50 }) +
+            scaleOut(targetScale = 0.9f, animationSpec = DockCardAnimations.LinearFadeSpec),
         modifier = modifier,
     ) {
         Column(

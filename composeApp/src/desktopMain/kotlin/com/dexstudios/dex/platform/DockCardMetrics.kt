@@ -23,8 +23,17 @@ object DockCardMetrics {
     const val CARD_WIDTH_CONTRACTED = 320
     const val CARD_HEIGHT_CONTRACTED = 430
 
+    /** Content width of the main menu / pairing columns inside the contracted card. */
+    const val MAIN_MENU_WIDTH = 310
+
     const val SETTINGS_WIDTH_EXPANDED = 675
     const val PAIRING_WIDTH_EXPANDED = 400
     const val FILE_EXPLORER_WIDTH_EXPANDED = 1054
     const val CARD_HEIGHT_EXPANDED = 625
+
+    /**
+     * Corner arc of the native AWT click-through hit shape (AWT-space units — device
+     * pixels on Windows, logical points on macOS). Must match the visual card radius.
+     */
+    const val AWT_HIT_SHAPE_CORNER_RADIUS = 32f
 }

@@ -101,16 +101,16 @@ object DeXServer {
                 privateKeyPassword = { CertificateGenerator.getPassword().toCharArray() },
             ) {
                 host = "0.0.0.0"
-                port = 48424
+                port = DeXPorts.HTTPS
                 keyStorePath = java.io.File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
             }
         }, module = appModule).start(wait = false)
-        server2 = embeddedServer(Netty, port = 28425, host = "127.0.0.1", module = appModule).start(wait = false)
+        server2 = embeddedServer(Netty, port = DeXPorts.LOOPBACK_CONTROL, host = "127.0.0.1", module = appModule).start(wait = false)
 
         // Plain-HTTP fallback listener: exposes ONLY the hosted-file pull endpoints. Serving the
         // full application over plaintext on 0.0.0.0 let any LAN peer hit /ws, /register and
         // /upload without TLS — the pull fallback never needed more than downloads.
-        server3 = embeddedServer(Netty, port = 48426, host = "0.0.0.0", module = {
+        server3 = embeddedServer(Netty, port = DeXPorts.PULL, host = "0.0.0.0", module = {
             routing {
                 hostedDownloadRoutes()
             }

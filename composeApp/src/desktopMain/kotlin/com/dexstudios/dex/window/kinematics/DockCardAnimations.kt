@@ -13,6 +13,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -56,4 +57,35 @@ object DockCardAnimations {
     // === Smooth Transitions ===
     val SmoothEase = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
     val SmoothEaseDp = tween<Dp>(durationMillis = 300, easing = FastOutSlowInEasing)
+
+    // === Exit / Hide (decelerate out of view) ===
+    val HideEase = tween<Float>(durationMillis = 200, easing = FastOutSlowInEasing)
+    val HideEaseDp = tween<Dp>(durationMillis = 200, easing = FastOutSlowInEasing)
+
+    // === Panel slide/fade transitions between dock columns ===
+    val PanelSlideSpec = tween<Float>(durationMillis = 250, easing = FastOutSlowInEasing)
+
+    /** [IntOffset] twin of [PanelSlideSpec] for slideInHorizontally/slideOutHorizontally. */
+    val PanelSlideOffsetSpec = tween<IntOffset>(durationMillis = 250, easing = FastOutSlowInEasing)
+
+    // === Expansion settle used by the window-state controller ===
+    val ExpansionSettleSpec = tween<Float>(durationMillis = 450, easing = FastOutSlowInEasing)
+
+    // === Gentle hover for content surfaces (softer than the 500ms chrome hover) ===
+    val SoftHoverSpec = tween<Float>(durationMillis = 300, easing = HoverEase)
+    val SnapHoverSpec = tween<Float>(durationMillis = 200, easing = HoverEase)
+
+    // === Default-easing (linear) transitions — fade/move/scale without an ease curve ===
+    val LinearFadeSpec = tween<Float>(durationMillis = 300)
+
+    /** [IntOffset] twin of [LinearFadeSpec] for slide transitions. */
+    val LinearSlideSpec = tween<IntOffset>(durationMillis = 300)
+    val LinearMoveDpSpec = tween<Dp>(durationMillis = 300)
+    val LinearColorSpec = tween<Color>(durationMillis = 300)
+    val LinearColorSnapSpec = tween<Color>(durationMillis = 200)
+    val QuickFadeSpec = tween<Float>(durationMillis = 150)
+
+    /** Conditional reveal/collapse durations for content that animates both ways. */
+    const val CONTENT_REVEAL_MS = 400
+    const val CONTENT_COLLAPSE_MS = 150
 }

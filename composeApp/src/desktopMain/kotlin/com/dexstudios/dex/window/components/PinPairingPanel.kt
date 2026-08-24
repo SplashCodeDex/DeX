@@ -3,10 +3,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -65,6 +63,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.ui.modifiers.shake
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import io.github.g0dkar.qrcode.QRCode
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
@@ -105,25 +104,25 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
             (
                 slideInHorizontally(
                     initialOffsetX = { 140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing),
-                ) + fadeIn(tween(250))
+                    animationSpec = DockCardAnimations.PanelSlideOffsetSpec,
+                ) + fadeIn(DockCardAnimations.PanelSlideSpec)
                 ).togetherWith(
                 slideOutHorizontally(
                     targetOffsetX = { -140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing),
-                ) + fadeOut(tween(250)),
+                    animationSpec = DockCardAnimations.PanelSlideOffsetSpec,
+                ) + fadeOut(DockCardAnimations.PanelSlideSpec),
             )
         } else {
             (
                 slideInHorizontally(
                     initialOffsetX = { -140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing),
-                ) + fadeIn(tween(250))
+                    animationSpec = DockCardAnimations.PanelSlideOffsetSpec,
+                ) + fadeIn(DockCardAnimations.PanelSlideSpec)
                 ).togetherWith(
                 slideOutHorizontally(
                     targetOffsetX = { 140 },
-                    animationSpec = tween(250, easing = FastOutSlowInEasing),
-                ) + fadeOut(tween(250)),
+                    animationSpec = DockCardAnimations.PanelSlideOffsetSpec,
+                ) + fadeOut(DockCardAnimations.PanelSlideSpec),
             )
         }
     }
@@ -396,7 +395,7 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
 internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
     val popScale by animateFloatAsState(
         targetValue = if (isFilled) 1.0f else 0.95f,
-        animationSpec = tween(100, easing = FastOutSlowInEasing),
+        animationSpec = DockCardAnimations.PressSinkSpec,
         label = "digitPop",
     )
 

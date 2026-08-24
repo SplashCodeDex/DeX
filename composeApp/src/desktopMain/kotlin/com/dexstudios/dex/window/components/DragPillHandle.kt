@@ -1,7 +1,6 @@
 package com.dexstudios.dex.window.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -37,7 +36,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.DockedWindowStateController
-import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import org.jetbrains.compose.resources.painterResource
 import java.awt.MouseInfo
 
@@ -61,13 +60,13 @@ fun DragPillHandle(controller: DockedWindowStateController, modifier: Modifier =
             isHovered -> 0.85f
             else -> 0.40f
         },
-        animationSpec = tween(150),
+        animationSpec = DockCardAnimations.QuickFadeSpec,
         label = "pillAlpha",
     )
 
     val pillScaleX by animateFloatAsState(
         targetValue = if (isHovered) 1.15f else 1.0f,
-        animationSpec = tween(200, easing = DockCardPhysics.HoverEase),
+        animationSpec = DockCardAnimations.SnapHoverSpec,
         label = "pillScaleX",
     )
 
@@ -77,7 +76,7 @@ fun DragPillHandle(controller: DockedWindowStateController, modifier: Modifier =
             isHovered -> MaterialTheme.colorScheme.onSurface
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(200),
+        animationSpec = DockCardAnimations.LinearColorSnapSpec,
         label = "pillColor",
     )
 

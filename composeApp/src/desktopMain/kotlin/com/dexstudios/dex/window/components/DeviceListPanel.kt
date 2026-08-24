@@ -69,6 +69,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.user2_avatar
 import com.dexstudios.dex.core.designsystem.generated.resources.user3_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DiscoveredDevice
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.withLock
@@ -218,7 +219,7 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
     )
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = androidx.compose.animation.core.tween(300, easing = DockCardPhysics.HoverEase),
+        animationSpec = DockCardAnimations.SoftHoverSpec,
     )
 
     Row(

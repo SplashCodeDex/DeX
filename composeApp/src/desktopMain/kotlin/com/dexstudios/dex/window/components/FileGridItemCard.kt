@@ -1,7 +1,6 @@
 package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.mirror.toImageBitmap
-import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
@@ -55,7 +54,7 @@ internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onCli
 
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
+        animationSpec = DockCardAnimations.HoverSpec,
         label = "itemScale",
     )
 

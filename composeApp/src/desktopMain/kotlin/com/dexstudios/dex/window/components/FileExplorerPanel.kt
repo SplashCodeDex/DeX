@@ -1,7 +1,6 @@
 package com.dexstudios.dex.window.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -48,6 +47,7 @@ import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.services.FileExplorerService
 import com.dexstudios.dex.desktop.transfer.DesktopFileSendService
 import com.dexstudios.dex.window.DockedWindowStateController
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -348,8 +348,8 @@ fun FileExplorerPanel(
             ) {
                 AnimatedVisibility(
                     visible = isTransferring,
-                    enter = slideInVertically(initialOffsetY = { 50 }, animationSpec = tween(300)) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { 50 }, animationSpec = tween(300)) + fadeOut(),
+                    enter = slideInVertically(initialOffsetY = { 50 }, animationSpec = DockCardAnimations.LinearSlideSpec) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { 50 }, animationSpec = DockCardAnimations.LinearSlideSpec) + fadeOut(),
                 ) {
                     PullProgressDock(
                         clientEngine = clientEngine,
@@ -373,7 +373,7 @@ fun FileExplorerPanel(
             ) {
                 val sendFilesInteraction = remember { MutableInteractionSource() }
                 val sendFilesHovered by sendFilesInteraction.collectIsHoveredAsState()
-                val sendFilesScale by animateFloatAsState(targetValue = if (sendFilesHovered) 1.08f else 1.0f, animationSpec = tween(500, easing = DockCardPhysics.HoverEase), label = "sendFilesScale")
+                val sendFilesScale by animateFloatAsState(targetValue = if (sendFilesHovered) 1.08f else 1.0f, animationSpec = DockCardAnimations.HoverSpec, label = "sendFilesScale")
 
                 // Send Files Action (Native File Picker)
                 Row(
@@ -423,7 +423,7 @@ fun FileExplorerPanel(
                 val sendFoldersHovered by sendFoldersInteraction.collectIsHoveredAsState()
                 val sendFoldersScale by animateFloatAsState(
                     targetValue = if (sendFoldersHovered) 1.08f else 1.0f,
-                    animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
+                    animationSpec = DockCardAnimations.HoverSpec,
                     label = "sendFoldersScale",
                 )
 

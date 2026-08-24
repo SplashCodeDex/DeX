@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.platform.DisplayCoordinateSpace
+import com.dexstudios.dex.platform.DockCardMetrics
 import org.koin.compose.koinInject
 import kotlin.math.abs
 
@@ -73,15 +74,15 @@ fun FloatingDockCard(
                 }
             },
     ) {
-        // The actual card container, anchored strictly to TopEnd with 25dp padding
+        // The actual card container, anchored strictly to TopEnd with the metric margin
         DockCardContent(
             controller = controller,
             modifier = Modifier
                 .align(if (isMacOS) Alignment.TopEnd else Alignment.BottomEnd)
                 .padding(
-                    top = if (isMacOS) 25.dp else 0.dp,
-                    bottom = if (isMacOS) 0.dp else 25.dp,
-                    end = 25.dp,
+                    top = if (isMacOS) DockCardMetrics.CARD_MARGIN.dp else 0.dp,
+                    bottom = if (isMacOS) 0.dp else DockCardMetrics.CARD_MARGIN.dp,
+                    end = DockCardMetrics.CARD_MARGIN.dp,
                 )
                 .onGloballyPositioned { coordinates ->
                     val bounds = coordinates.boundsInWindow()
@@ -103,13 +104,14 @@ fun FloatingDockCard(
                     val shapeHeight = bounds.height / awtScale
 
                     // Restrict native OS hit-testing to the card bounds for true click-through
+                    val hitCorner = DockCardMetrics.AWT_HIT_SHAPE_CORNER_RADIUS
                     window.shape = java.awt.geom.RoundRectangle2D.Float(
                         shapeX,
                         shapeY,
                         shapeWidth,
                         shapeHeight,
-                        32f,
-                        32f,
+                        hitCorner,
+                        hitCorner,
                     )
                 },
             onDismiss = onDismiss,

@@ -103,7 +103,7 @@ fun MainMenuColumn(
         } else {
             20.dp
         },
-        animationSpec = if (controller.isVisible) DockCardAnimations.PopInMenuTranslateYSpec else tween(200, easing = FastOutSlowInEasing),
+        animationSpec = if (controller.isVisible) DockCardAnimations.PopInMenuTranslateYSpec else DockCardAnimations.HideEaseDp,
         label = "menuTranslateY",
     )
 
@@ -115,13 +115,15 @@ fun MainMenuColumn(
         } else {
             35.dp
         },
-        animationSpec = if (isContentVisible) DockCardAnimations.PopInMenuContentTranslateYSpec else tween(200, easing = FastOutSlowInEasing),
+        animationSpec = if (isContentVisible) DockCardAnimations.PopInMenuContentTranslateYSpec else DockCardAnimations.HideEaseDp,
         label = "contentTranslateY",
     )
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (isContentVisible) 1f else 0f,
-        animationSpec = tween(if (isContentVisible) 400 else 150),
+        animationSpec = tween(
+            durationMillis = if (isContentVisible) DockCardAnimations.CONTENT_REVEAL_MS else DockCardAnimations.CONTENT_COLLAPSE_MS,
+        ),
         label = "contentAlpha",
     )
 

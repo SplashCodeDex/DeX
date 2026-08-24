@@ -139,7 +139,7 @@ fun SettingsPanel(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         try {
-                            Desktop.getDesktop().browse(URI("https://github.com/SplashCodeDex/DeX"))
+                            Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
                         } catch (_: Exception) {}
                     }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -152,7 +152,7 @@ fun SettingsPanel(
                         modifier = Modifier.padding(end = 6.dp).size(16.dp),
                     )
                     Text(
-                        text = "DeX v1.0.0",
+                        text = "DeX v${com.dexstudios.dex.AppBuildConfig.VERSION_NAME}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -302,11 +302,7 @@ fun SettingsPanel(
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
-                                io.ktor.client.HttpClient(io.ktor.client.engine.cio.CIO).use { client ->
-                                    client.get("http://127.0.0.1:28425/local/settings/google-signin") {
-                                        timeout { requestTimeoutMillis = 5_000 }
-                                    }
-                                }
+                                com.dexstudios.dex.core.network.LoopbackControlApi.triggerGoogleSignIn()
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -390,10 +386,10 @@ fun SettingsPanel(
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_info),
                     title = "DeX Project",
-                    subtitle = "Version 1.0.0 — View on GitHub",
+                    subtitle = "Version ${com.dexstudios.dex.AppBuildConfig.VERSION_NAME} — View on GitHub",
                     onClick = {
                         try {
-                            Desktop.getDesktop().browse(URI("https://github.com/SplashCodeDex/DeX"))
+                            Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
                         } catch (_: Exception) {}
                     },
                 )

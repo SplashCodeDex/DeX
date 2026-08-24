@@ -2,11 +2,9 @@ package com.dexstudios.dex.window
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -33,6 +31,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.platform.DockCardMetrics
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
 import com.dexstudios.dex.window.components.PinPairingPanel
@@ -84,7 +83,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
 
     val cardAlpha by animateFloatAsState(
         targetValue = if (controller.isVisible) 1f else 0f,
-        animationSpec = if (controller.isVisible) DockCardAnimations.PopInAlphaSpec else tween(200, easing = FastOutSlowInEasing),
+        animationSpec = if (controller.isVisible) DockCardAnimations.PopInAlphaSpec else DockCardAnimations.HideEase,
         label = "cardAlpha",
     )
 
@@ -98,14 +97,14 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
         } else {
             15.dp
         },
-        animationSpec = if (controller.isVisible) spring(dampingRatio = 0.65f, stiffness = 300f) else tween(200, easing = FastOutSlowInEasing),
+        animationSpec = if (controller.isVisible) spring(dampingRatio = 0.65f, stiffness = 300f) else DockCardAnimations.HideEaseDp,
         label = "cardTranslationY",
     )
 
     // Uniform scale bounce from 0.85 to 1.0
     val cardScale by animateFloatAsState(
         targetValue = if (controller.isVisible) 1f else 0.85f,
-        animationSpec = if (controller.isVisible) DockCardPhysics.PopInSpringSpec else tween(200, easing = FastOutSlowInEasing),
+        animationSpec = if (controller.isVisible) DockCardPhysics.PopInSpringSpec else DockCardAnimations.HideEase,
         label = "cardScale",
     )
 
@@ -165,21 +164,34 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                     }
                 }
 
-                // Right Column: Wrapper of 320dp to prevent layout jumps, centering the 310dp content
+                // Right Column: Wrapper of the contracted card width to prevent layout jumps,
+                // centering the main-menu content width
                 AnimatedContent(
                     targetState = controller.expandedPanel == ExpandedPanel.Pairing,
                     transitionSpec = {
                         if (targetState) {
                             // Slide PinPairingPanel in from right, MainMenuColumn out to left
-                            (slideInHorizontally(initialOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                (slideOutHorizontally(targetOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                            (
+                                slideInHorizontally(initialOffsetX = { DockCardMetrics.MAIN_MENU_WIDTH }, animationSpec = DockCardAnimations.PanelSlideOffsetSpec) +
+                                    fadeIn(DockCardAnimations.PanelSlideSpec)
+                                ) togetherWith
+                                (
+                                    slideOutHorizontally(targetOffsetX = { -DockCardMetrics.MAIN_MENU_WIDTH }, animationSpec = DockCardAnimations.PanelSlideOffsetSpec) +
+                                        fadeOut(DockCardAnimations.PanelSlideSpec)
+                                    )
                         } else {
                             // Slide MainMenuColumn in from left, PinPairingPanel out to right
-                            (slideInHorizontally(initialOffsetX = { -310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(250))) togetherWith
-                                (slideOutHorizontally(targetOffsetX = { 310 }, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(250)))
+                            (
+                                slideInHorizontally(initialOffsetX = { -DockCardMetrics.MAIN_MENU_WIDTH }, animationSpec = DockCardAnimations.PanelSlideOffsetSpec) +
+                                    fadeIn(DockCardAnimations.PanelSlideSpec)
+                                ) togetherWith
+                                (
+                                    slideOutHorizontally(targetOffsetX = { DockCardMetrics.MAIN_MENU_WIDTH }, animationSpec = DockCardAnimations.PanelSlideOffsetSpec) +
+                                        fadeOut(DockCardAnimations.PanelSlideSpec)
+                                    )
                         }
                     },
-                    modifier = Modifier.width(320.dp),
+                    modifier = Modifier.width(DockCardMetrics.CARD_WIDTH_CONTRACTED.dp),
                     contentAlignment = Alignment.Center,
                     label = "PairingSlide",
                 ) { isPairing ->
@@ -187,7 +199,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                         PinPairingPanel(
                             pairingEngine = pairingEngine,
                             onClose = { controller.collapsePanel() },
-                            modifier = Modifier.width(310.dp).fillMaxHeight(),
+                            modifier = Modifier.width(DockCardMetrics.MAIN_MENU_WIDTH.dp).fillMaxHeight(),
                         )
                     } else {
                         MainMenuColumn(
@@ -201,7 +213,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                             },
                             onExitEngine = onExitEngine,
                             onDismiss = onDismiss,
-                            modifier = Modifier.width(310.dp).fillMaxHeight(),
+                            modifier = Modifier.width(DockCardMetrics.MAIN_MENU_WIDTH.dp).fillMaxHeight(),
                         )
                     }
                 }

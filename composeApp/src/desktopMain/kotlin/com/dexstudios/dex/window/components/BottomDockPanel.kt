@@ -2,7 +2,6 @@ package com.dexstudios.dex.window.components
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -60,6 +59,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Toolkit
@@ -77,7 +77,17 @@ enum class ExitConfirmationStage {
  * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer force-exit, -62dp expansion, 3s auto-revert timer)
  */
 @Composable
-fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasActiveTransfers: Boolean = false, isMirroringActive: Boolean = false, modifier: Modifier = Modifier) {
+fun BottomDockPanel(
+    onProfileClick: () -> Unit,
+    onExitEngine: () -> Unit,
+    hasActiveTransfers: Boolean = false,
+    isMirroringActive: Boolean = false,
+    modifier: Modifier = Modifier,
+    // Live engines for the click-time re-check below; the rendered props are only a
+    // paint-time snapshot and an upload can settle between render and click.
+    clientEngine: com.dexstudios.dex.core.network.ClientEngine = org.koin.compose.koinInject(),
+    fileSender: com.dexstudios.dex.desktop.transfer.DesktopFileSendService = org.koin.compose.koinInject(),
+) {
     var confirmationStage by remember { mutableStateOf(ExitConfirmationStage.Idle) }
     var isShiftHeld by remember { mutableStateOf(false) }
 
@@ -94,7 +104,7 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
 
     val avatarScale by animateFloatAsState(
         targetValue = if (isConfirming) 0.6f else 1.0f,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        animationSpec = DockCardAnimations.SmoothEase,
         label = "avatarScale",
     )
 
@@ -118,10 +128,9 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
             isConfirming || exitHovered -> MaterialTheme.colorScheme.surfaceVariant
             else -> Color.Transparent
         },
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = DockCardAnimations.LinearColorSpec,
         label = "exitBtnBg",
     )
-
     val exitCenterBias by animateFloatAsState(
         targetValue = if (isConfirming) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
@@ -149,7 +158,7 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
 
             val avatarHoverScale by animateFloatAsState(
                 targetValue = if (avatarHovered) 1.08f else 1.0f,
-                animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                animationSpec = DockCardAnimations.HoverSpec,
                 label = "avatarHoverScale",
             )
 
@@ -181,7 +190,7 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
 
             val exitHoverScale by animateFloatAsState(
                 targetValue = if (exitHovered && !isConfirming) 1.08f else 1.0f,
-                animationSpec = tween(500, easing = com.dexstudios.dex.window.kinematics.DockCardPhysics.HoverEase),
+                animationSpec = DockCardAnimations.HoverSpec,
                 label = "exitHoverScale",
             )
 
@@ -242,7 +251,12 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
                                     confirmationStage = ExitConfirmationStage.Confirming
 
                                 ExitConfirmationStage.Confirming -> {
-                                    if (hasActiveTransfers || isMirroringActive) {
+                                    // Live re-check at click time: trusting the rendered
+                                    // props alone could turn a cancel into an exit (transfer
+                                    // settled since paint) or miss a just-started transfer.
+                                    val transferLiveNow =
+                                        clientEngine.uploadState.value.isUploading || fileSender.isSessionActive()
+                                    if (isMirroringActive || transferLiveNow) {
                                         // The label promised "Click to Force Exit" — honor it.
                                         // A plain click while a transfer/mirror is live force-exits;
                                         // without active work a plain click only cancels (WPF parity).
@@ -282,7 +296,7 @@ fun BottomDockPanel(onProfileClick: () -> Unit, onExitEngine: () -> Unit, hasAct
                         AnimatedContent(
                             targetState = confirmationStage,
                             transitionSpec = {
-                                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                                fadeIn(DockCardAnimations.LinearFadeSpec) togetherWith fadeOut(DockCardAnimations.LinearFadeSpec)
                             },
                             label = "exitText",
                         ) { state ->

@@ -632,7 +632,7 @@ class DockedWindowStateController(
 
                 anim.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+                    animationSpec = com.dexstudios.dex.window.kinematics.DockCardAnimations.ExpansionSettleSpec,
                 ) {
                     val curX = startX + (targetX - startX) * value
                     val curY = startY + (targetY - startY) * value
