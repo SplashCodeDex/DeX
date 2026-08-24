@@ -30,6 +30,7 @@ honor its STOP conditions, and update your row when done.
 | 020  | remove-orphaned-ui-code | P1 | S | — | DONE |
 | 021  | fix-settings-surface | P1 | M | — | DONE |
 | 022  | settings-audit-followups | P2 | S-M | 021 | DONE |
+| 023  | dnd-mute-semantics-and-surface-pruning | P1 | M | 022 | DONE |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Dependency notes

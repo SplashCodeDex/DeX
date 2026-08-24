@@ -1,15 +1,52 @@
 # Changelog
+## [10.1.28.0] - 2026-08-24
+### Changed
+- **[minor] Product-direction settings corrections (plan 023): DND mutes alerts instead of refusing, UPnP always-on, ADB scoped to a picked phone, Auto-Connect removed, GitHub row removed**:
+  - Do Not Disturb semantics flipped: it now MUTES the alert layer only (tray balloon notifications for incoming files and pairing requests are suppressed while DND is ON); transfers still arrive and pairing still works. The old behavior refused trusted inbound transfers with Forbidden (ShareRoutes) and silently dropped pairing requests (WebSocketRoutes) — both refusal paths removed; an end user who wants total silence closes the app entirely.
+  - UPnP port forwarding is core product behavior and no longer has a settings surface: the `upnp_enabled` preference, its flow/setter, the panel toggle and the pref-gating in DesktopUpnpService were all removed; mappings configure unconditionally at startup and are still released on shutdown.
+  - "Connect ADB" now targets ONE phone: a picker dialog lists discovered devices (name + IP) for the power user to choose from, replacing the blast-everything loop; empty state explains itself.
+  - "Auto-Connect ADB Hotspot" feature removed entirely: AutoAdbHotspotService deleted, its startup wiring, the `auto_adb_hotspot_enabled` preference/flow/setter and the settings row are gone — out of scope for the project's sole purpose.
+  - "DeX Project" (View on GitHub) settings item removed; section renamed to "Maintenance"; Reset Identity & Trust retained behind its confirmation dialog.
+  - Download Location note: changing it does not delete or move existing files; the History browser simply points at the new folder going forward, and previously received files stay in the old folder on disk (also recorded in the transfer-history store).
+  - Verified: gradlew build + spotlessCheck + all desktopTest suites green; runtime smoke boot clean.
 
+
+
+## [10.1.27.7] - 2026-08-24
+### Changed
+- **[minor] Website: light mode no longer reads as dead white/empty; display type upgraded from generic Space Grotesk to Bricolage Grotesque**:
+  - Root cause of the washed-out light theme: `--background` was `oklch(99% 0 0)` (pure white, zero chroma) while every card surface used dark-tuned translucent whites (`border-white/10 bg-white/5`), which are invisible on white — sections floated on an empty field. Light `:root` tokens now sit on a cool paper tint (`oklch(98.4% 0.007 261)`, hue follows primary) with stronger borders (`90.5% 0.012 261`), deeper muted-foreground, and tinted secondary/muted; light `theme-color` meta synced to `#fafafd`.
+  - Centralized `.glass-card` (+ `.glass-card-hover`) component class in `global.css` replaces the 14 duplicated dark-only card treatments across BentoFeatures (6 tiles), HowItWorks, Compare, Security, FAQ, FinalCta, DownloadSection (2), and Pricing (2, Pro keeps its `border-primary-500/40` override): light mode gets frosted white 62% + dark 8% border + blur; dark mode keeps the exact previous white/5-on-black values. Radius/padding/shadow stay per-call-site utilities.
+  - New fixed `.ambient-bg` layer in `LandingLayout` (theme-aware radial washes: primary top, accent right, cool left) so no section floats on a bare background; dark variant adds the same depth subtly.
+  - Typography: `--font-display` swaps Space Grotesk for `@fontsource-variable/bricolage-grotesque` (kept as fallback; Space Grotesk package/import retained for the `--font-brand` chain). Hero/DownloadSection h1 `font-black` → `font-extrabold` (Bricolage wght caps at 800). Body stays Manrope; brand faces untouched (Creepy Notes wordmark, Caveat accents).
+  - Light-mode polish: StickyCta pill border `white/10` → `black/10 dark:white/10`; theme-toggle buttons get visible `black/5` hover states in light (Hero, StickyCta, PageHeader).
+  - Verified via headless-Chrome captures (forced-light harness pages, removed afterwards): hero, HowItWorks, and Compare in light show frosted bordered cards on the tinted ambient field; dark hero unchanged plus subtle glows. `astro check` 0/0/0, production build green, temp clones/profiles/screenshots cleaned up. Pre-existing uncommitted `site.ts`/`logoMorph.ts` edits from an earlier session left untouched.
 
 ## [10.1.27.6] - 2026-08-24
 ### Changed
 - **[minor] Live Shift+Click affordance in the Shortcuts card**: the Instant Exit row's static text badge is replaced by a real-time glyph combo — code-drawn `KeyboardShiftGlyph` (outline Shift arrow that fills the moment Shift is held) plus `MouseGlyph` (the DeX reference mouse whose primary/left button blinks and emits a body-clipped ripple ring while Shift is down), driven by a new `ShiftKeyState` platform provider (Win32 `GetAsyncKeyState` VK_SHIFT / macOS CoreGraphics `CGEventSourceFlagsState`, focus-independent, polled at 64ms only while Settings is open). `SettingsItem` gained an optional trailing composable slot to host the combo.
   - Verified: `:composeApp:spotlessCheck` + `:composeApp:desktopTest` green; `:core:designsystem` compiles (no test sources).
 
+## [10.1.27.5] - 2026-08-24
+### Changed
+- **[minor] Website: inline DeX wordmark is now live text in the 'Creepy Notes' face**: every DeX logo rendered inside running copy (BrandMark component in BentoFeatures/Compare/FinalCta/Pricing, plus the duplicated `brandInline` img strings in HowItWorks and FAQ) was a PNG pair with canvas-padding scaling hacks (`h-[2.2em]`/`h-[2.3em]`, `fixedLight` for gradient buttons). It now renders as real text — `<span class="font-logo font-bold">DeX</span>` — inheriting size and color from the surrounding typography like any word.
+  - Font: locally installed 'Creepy Notes' (verified family name via PrivateFontCollection) bundled at `website/public/assets/fonts/CreepyNotes.ttf` (43 KB) with an `@font-face` rule (`local()` short-circuit + `font-display: swap`) in `global.css`; new `--font-logo` theme token falls back to Caveat/cursive. Caveat `--font-brand` accents ("instant", "Phone"/"Computer" headings) untouched.
+  - Single source: new `website/src/data/brand.ts` exports `brandWordmarkHtml` consumed by the two raw-HTML interpolation contexts; `BrandMark.astro` renders the same markup as a component; obsolete `fixedLight` prop and em-height sizing removed from all call sites (`normal-case` added on the Pricing Pro heading so uppercase styling can't flatten the brand casing).
+  - Standalone logo surfaces (header nav, hero morph stage, download/sticky-cta marks, favicons) intentionally remain images/animations — this change covers only inline-typography contexts.
+  - Verified: `astro check` 0 errors/0 warnings; production build green; dist CSS carries the @font-face and all wordmarks emit the text span.
+
 ## [10.1.27.4] - 2026-08-24
 ### Changed
 - **[minor] Shortcut discovery: read-only Shortcuts card in Settings → Interaction**: the gestures with no visible affordance are now documented in-app — global Show/Hide dock toggle rendered from `DesktopEnvironment.globalToggleShortcutHint` (`Win+Shift+D`, hidden entirely on platforms without a registered shortcut), Shift+Click instant exit bypass on Exit Engine, and force-exit-on-click while a transfer is live. Reference rows reuse the existing `SettingsItem` badge pill for the combos and stay non-clickable.
   - Verified: `:composeApp:spotlessCheck` + `:composeApp:desktopTest` green.
+
+## [10.1.27.3] - 2026-08-24
+### Fixed
+- **[fix] Morph mark containment, park frame, and remnant sweep (verified via headless captures)**:
+  - Root cause of the mark rendering outside its stage (user screenshots): the Lottie SVG overflowed its box because the dark-mode fallback used `dark:block` (a block box) that filled the stage, pushing the in-flow SVG one stage-height down; and the animation's raw end frame (op=456) still shows device remnants (monitor frame/stand, shelf line, iPhone buttons) behind the DeX letters — those keyframes extend beyond op, so no clean stop frame exists in playback.
+  - Fallback logos are now `absolute inset-0 object-contain` inside a `relative` stage, leaving the SVG as the only in-flow child (both themes); `overflow: hidden` on the stage svg guards against inline-SVG visible-overflow (the UA hidden default only applies to root SVG documents).
+  - Park logic rewritten in `logoMorph.ts`: on `complete` (plus an 8.5s DOMLoaded fallback timer, since `complete` proved unreliable under virtualized time) the animation stops at the end and every non-letter sibling group of the settled wordmark is hidden — monitor frame `matrix(1,0,0,1,124,88)`, stands at 124,168/124,191, and the identity-transform shelf line matched by its `M20,124…228,124` path; replay restores them before `goToAndPlay`.
+  - Verified with headless-Chrome screenshots + a same-origin measurement harness: stage/svg rects coincide, `elementFromPoint` at the old stray-mark position now hits the svg, hero and download stages render the clean white (dark) / black (light) wordmark with zero remnant strokes; `astro check` 0/0/0 across 23 files; debug harness and preview server removed afterwards.
 
 ## [10.1.27.2] - 2026-08-24
 ### Fixed

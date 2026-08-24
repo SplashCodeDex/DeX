@@ -24,14 +24,13 @@ import kotlin.time.Duration.Companion.seconds
 val desktopNetworkModule = module {
     single<IDiscoveryService> { DesktopJmDnsService() }
     single<IDiscoveryService> { DesktopUdpService() }
-    single<IPlatformEngine> { DesktopPlatformEngine() }
+    single<IPlatformEngine> { DesktopPlatformEngine(get()) }
     single<HardwareTelemetry> { JvmHardwareTelemetry() }
     single<IMirrorEngine> { JvmMirrorEngine() }
     single { FileExplorerService() }
 
     // WAN reachability: UPnP port mapping + public-address discovery for same-account phones.
-    // The service is pref-aware: it awaits DeviceConfig's persisted load and honors the
-    // Settings "UPnP Port Forwarding" toggle live.
-    single { DesktopUpnpService(get(), get()) }
+    // Always-on core behavior — no settings surface (plan 023).
+    single { DesktopUpnpService(get()) }
     single { PublicAddressService(get(), getOrNull()) }
 }

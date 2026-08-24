@@ -136,8 +136,7 @@ fun main() {
             }
 
             // WAN reachability: UPnP mappings + public-address resolution for same-account
-            // phones. configureAsync is pref-aware — it awaits the persisted settings load,
-            // maps only when "UPnP Port Forwarding" is ON, and releases on toggle-off.
+            // phones. Always-on core behavior — no settings surface (plan 023).
             runCatching {
                 koin.get<com.dexstudios.dex.core.network.services.DesktopUpnpService>().configureAsync()
             }
@@ -151,11 +150,6 @@ fun main() {
                 controller.toggleVisibility()
             }
             com.dexstudios.dex.desktop.jna.ClipboardSyncService.start(deviceConfig)
-            com.dexstudios.dex.desktop.AutoAdbHotspotService.start(
-                deviceConfig = deviceConfig,
-                devicesFlow = org.koin.java.KoinJavaComponent.getKoin()
-                    .get<com.dexstudios.dex.core.network.DiscoveryEngine>().devices,
-            )
         }
 
         // 300ms Click Debounce Filter for Tray Action

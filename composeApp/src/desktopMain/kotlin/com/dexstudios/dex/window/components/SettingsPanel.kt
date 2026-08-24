@@ -56,7 +56,6 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settin
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.icons.KeyboardShiftGlyph
@@ -106,14 +105,13 @@ fun SettingsPanel(
     val coroutineScope = rememberCoroutineScope()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
     val isDndActive by deviceConfig.dndEnabledFlow.collectAsState()
-    val isAutoAdbHotspotActive by deviceConfig.autoAdbHotspotEnabledFlow.collectAsState()
     val themeOverride by deviceConfig.themeOverrideFlow.collectAsState()
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
-    val isUpnpEnabled by deviceConfig.upnpEnabledFlow.collectAsState()
     val downloadDirPref by deviceConfig.downloadDirFlow.collectAsState()
     val deviceAlias by deviceConfig.aliasFlow.collectAsState()
     var showAliasEditor by remember { mutableStateOf(false) }
     var showResetConfirm by remember { mutableStateOf(false) }
+    var showAdbPicker by remember { mutableStateOf(false) }
 
     // Real Google avatar when signed in; fetched and decoded off the UI thread via the
     // shared skia helper. Falls back to the bundled placeholder when signed out or on
@@ -285,7 +283,7 @@ fun SettingsPanel(
             SettingsCard {
                 SettingsItem(
                     title = "Do Not Disturb",
-                    subtitle = "Auto-reject all pairing/transfer requests",
+                    subtitle = "Mute alerts — files still arrive silently",
                     badge = if (isDndActive) "ON" else "OFF",
                     isBadgeDanger = isDndActive,
                     onClick = { deviceConfig.dndEnabled = !isDndActive },
@@ -298,13 +296,6 @@ fun SettingsPanel(
                         )
                     },
                 )
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_wifi),
-                    title = "UPnP Port Forwarding",
-                    subtitle = "Allow file transfers over the Internet via WAN router forwarding",
-                    badge = if (isUpnpEnabled) "ON" else "OFF",
-                    onClick = { deviceConfig.upnpEnabled = !isUpnpEnabled },
-                )
             }
 
             // Developer Tools
@@ -313,28 +304,8 @@ fun SettingsPanel(
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_tune),
                     title = "Connect ADB",
-                    subtitle = "Run adb connect against every discovered device",
-                    onClick = {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            val devices = discoveryEngine.devices.value.values.toList()
-                            if (devices.isEmpty()) {
-                                co.touchlab.kermit.Logger.i("Connect ADB: no devices discovered yet")
-                            }
-                            devices.forEach { device ->
-                                // Self-gating: AdbManager probes port 5555 with a bounded TCP
-                                // ping before invoking the adb binary, so offline devices cost
-                                // ~400ms each instead of hanging the session.
-                                com.dexstudios.dex.desktop.AdbManager.connect(device.ip)
-                            }
-                        }
-                    },
-                )
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_bolt),
-                    title = "Auto-Connect ADB Hotspot",
-                    subtitle = "Run adb connect for discovered devices as soon as they appear",
-                    badge = if (isAutoAdbHotspotActive) "ON" else "OFF",
-                    onClick = { deviceConfig.autoAdbHotspotEnabled = !isAutoAdbHotspotActive },
+                    subtitle = "Pick a discovered phone to connect over ADB",
+                    onClick = { showAdbPicker = true },
                 )
             }
 
@@ -458,19 +429,9 @@ fun SettingsPanel(
                 )
             }
 
-            // About & Reset
-            SettingsSectionHeader("About & Maintenance")
+            // Maintenance
+            SettingsSectionHeader("Maintenance")
             SettingsCard {
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_info),
-                    title = "DeX Project",
-                    subtitle = "Version ${com.dexstudios.dex.AppBuildConfig.VERSION_NAME} — View on GitHub",
-                    onClick = {
-                        try {
-                            Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
-                        } catch (_: Exception) {}
-                    },
-                )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_warning),
                     title = "Reset Identity & Trust",
@@ -491,6 +452,22 @@ fun SettingsPanel(
             onSave = { value ->
                 deviceConfig.alias = value
                 showAliasEditor = false
+            },
+        )
+    }
+
+    if (showAdbPicker) {
+        val discoveredDevices = discoveryEngine.devices.collectAsState().value.values.toList()
+        AdbDevicePickerDialog(
+            devices = discoveredDevices,
+            onDismiss = { showAdbPicker = false },
+            onPick = { device ->
+                showAdbPicker = false
+                // Self-gating: AdbManager probes port 5555 with a bounded TCP ping before
+                // invoking the adb binary, so an unreachable pick costs ~400ms, never a hang.
+                coroutineScope.launch(Dispatchers.IO) {
+                    com.dexstudios.dex.desktop.AdbManager.connect(device.ip)
+                }
             },
         )
     }
@@ -547,6 +524,54 @@ private fun AliasEditorDialog(current: String, onDismiss: () -> Unit, onSave: (S
         confirmButton = {
             TextButton(onClick = { onSave(draft.trim()) }) { Text("Save") }
         },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+/**
+ * Power-user ADB connect: pick ONE discovered phone and run `adb connect` against it.
+ * Empty state explains why the list is empty instead of showing a dead dialog.
+ */
+@Composable
+private fun AdbDevicePickerDialog(devices: List<com.dexstudios.dex.core.network.DiscoveredDevice>, onDismiss: () -> Unit, onPick: (com.dexstudios.dex.core.network.DiscoveredDevice) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Connect over ADB") },
+        text = {
+            if (devices.isEmpty()) {
+                Text("No phones discovered yet. Make sure your phone is on the same network and DeX is running.")
+            } else {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    devices.forEach { device ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onPick(device) }
+                                .padding(horizontal = 4.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    text = device.info.alias.ifBlank { "Unknown phone" },
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = device.ip,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },

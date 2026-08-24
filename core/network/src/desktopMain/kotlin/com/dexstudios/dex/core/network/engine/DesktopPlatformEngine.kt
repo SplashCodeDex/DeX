@@ -2,14 +2,20 @@ package com.dexstudios.dex.core.network.engine
 
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DesktopPullService
+import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.PullFileDto
 import kotlinx.serialization.json.JsonObject
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
-class DesktopPlatformEngine : IPlatformEngine {
+class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IPlatformEngine {
 
     private fun showSystemNotification(title: String, message: String, type: java.awt.TrayIcon.MessageType) {
+        if (deviceConfig?.dndEnabled == true) {
+            // Do Not Disturb mutes the alerting layer only — transfers/pairing proceed.
+            Logger.i("[DND] Suppressed notification: $title — $message")
+            return
+        }
         if (!java.awt.SystemTray.isSupported()) return
         val tray = java.awt.SystemTray.getSystemTray()
         val trayIcons = tray.trayIcons

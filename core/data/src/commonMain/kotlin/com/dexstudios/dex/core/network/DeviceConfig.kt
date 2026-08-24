@@ -57,9 +57,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         val ALIAS_KEY = stringPreferencesKey("alias")
         val CLIPBOARD_SYNC_ENABLED_KEY = booleanPreferencesKey("clipboard_sync_enabled")
         val WIGGLE_ENABLED_KEY = booleanPreferencesKey("wiggle_enabled")
-        val UPNP_ENABLED_KEY = booleanPreferencesKey("upnp_enabled")
         val DND_ENABLED_KEY = booleanPreferencesKey("dnd_enabled")
-        val AUTO_ADB_HOTSPOT_ENABLED_KEY = booleanPreferencesKey("auto_adb_hotspot_enabled")
         val THEME_OVERRIDE_KEY = stringPreferencesKey("theme_override")
         val DOWNLOAD_DIR_KEY = stringPreferencesKey("download_dir")
 
@@ -81,14 +79,8 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
     private val _wiggleEnabledFlow = MutableStateFlow(true)
     val wiggleEnabledFlow: StateFlow<Boolean> = _wiggleEnabledFlow.asStateFlow()
 
-    private val _upnpEnabledFlow = MutableStateFlow(false)
-    val upnpEnabledFlow: StateFlow<Boolean> = _upnpEnabledFlow.asStateFlow()
-
     private val _dndEnabledFlow = MutableStateFlow(false)
     val dndEnabledFlow: StateFlow<Boolean> = _dndEnabledFlow.asStateFlow()
-
-    private val _autoAdbHotspotEnabledFlow = MutableStateFlow(false)
-    val autoAdbHotspotEnabledFlow: StateFlow<Boolean> = _autoAdbHotspotEnabledFlow.asStateFlow()
 
     private val _themeOverrideFlow = MutableStateFlow(THEME_SYSTEM)
     val themeOverrideFlow: StateFlow<String> = _themeOverrideFlow.asStateFlow()
@@ -181,21 +173,10 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             }
         }
 
-    var upnpEnabled: Boolean
-        get() = _upnpEnabledFlow.value
-        set(value) {
-            _upnpEnabledFlow.value = value
-            persist {
-                dataStore.edit { prefs ->
-                    prefs[UPNP_ENABLED_KEY] = value
-                }
-            }
-        }
-
     /**
-     * Do Not Disturb: when true, inbound pairing requests are never surfaced (and never
-     * mint a PIN) and inbound transfer sessions are refused with Forbidden. Enforced in
-     * `WebSocketRoutes` (pair-request) and `ShareRoutes` (prepare-upload).
+     * Do Not Disturb: mutes the ALERT layer only (tray notifications for incoming files
+     * and pairing requests). Transfers still arrive and pairing still works — an end
+     * user who wants total silence closes the app entirely.
      */
     var dndEnabled: Boolean
         get() = _dndEnabledFlow.value
@@ -204,18 +185,6 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             persist {
                 dataStore.edit { prefs ->
                     prefs[DND_ENABLED_KEY] = value
-                }
-            }
-        }
-
-    /** Auto-connect ADB transport for discovered devices; enforced by AutoAdbHotspotService (composeApp). */
-    var autoAdbHotspotEnabled: Boolean
-        get() = _autoAdbHotspotEnabledFlow.value
-        set(value) {
-            _autoAdbHotspotEnabledFlow.value = value
-            persist {
-                dataStore.edit { prefs ->
-                    prefs[AUTO_ADB_HOTSPOT_ENABLED_KEY] = value
                 }
             }
         }
@@ -335,9 +304,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             _aliasFlow.value = prefs[ALIAS_KEY] ?: ""
             _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
             _wiggleEnabledFlow.value = prefs[WIGGLE_ENABLED_KEY] ?: true
-            _upnpEnabledFlow.value = prefs[UPNP_ENABLED_KEY] ?: false
             _dndEnabledFlow.value = prefs[DND_ENABLED_KEY] ?: false
-            _autoAdbHotspotEnabledFlow.value = prefs[AUTO_ADB_HOTSPOT_ENABLED_KEY] ?: false
             _themeOverrideFlow.value = when (val savedTheme = prefs[THEME_OVERRIDE_KEY]) {
                 THEME_DARK, THEME_LIGHT -> savedTheme
                 else -> THEME_SYSTEM

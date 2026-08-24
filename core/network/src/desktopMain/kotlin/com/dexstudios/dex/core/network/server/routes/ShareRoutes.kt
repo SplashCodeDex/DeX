@@ -188,14 +188,8 @@ fun Route.shareRoutes() {
                     return@post
                 }
 
-                // Do Not Disturb: refuse new inbound transfer sessions even from trusted peers.
-                // The sender receives the same Forbidden an untrusted peer would get, so its
-                // normal "Not authorized" error path surfaces instead of a silent stall.
-                if (deviceConfig.dndEnabled) {
-                    co.touchlab.kermit.Logger.i("DND: rejected inbound transfer session from ${req.info.alias}")
-                    call.respond(HttpStatusCode.Forbidden)
-                    return@post
-                }
+                // Do Not Disturb intentionally does NOT refuse transfers: it mutes the
+                // alerting layer (DesktopPlatformEngine) while files still arrive silently.
 
                 val downloadsFolder = ReceiveStorage.downloadsDir()
 

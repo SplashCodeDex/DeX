@@ -172,24 +172,21 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
 
                             "pair-request" -> {
                                 if (fingerprint != null) {
+                                    // Pairing is interactive consent, not a passive alert: it must
+                                    // work regardless of Do Not Disturb. DND mutes the tray
+                                    // notification (DesktopPlatformEngine), never the flow itself.
                                     val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
-                                    if (deviceConfig.dndEnabled) {
-                                        // Do Not Disturb: never surface the pairing prompt and never
-                                        // mint a PIN. The requester's offer times out on its side.
-                                        Logger.i("DND: ignored inbound pairing request from $fingerprint")
-                                    } else {
-                                        val ip = call.request.local.remoteHost
-                                        val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
-                                        val promptJson = buildJsonObject {
-                                            put("type", "pair-prompt")
-                                            putJsonObject("data") {
-                                                put("pin", pin)
-                                                put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
-                                                put("fingerprint", deviceConfig.fingerprint)
-                                            }
-                                        }.toString()
-                                        WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
-                                    }
+                                    val ip = call.request.local.remoteHost
+                                    val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
+                                    val promptJson = buildJsonObject {
+                                        put("type", "pair-prompt")
+                                        putJsonObject("data") {
+                                            put("pin", pin)
+                                            put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
+                                            put("fingerprint", deviceConfig.fingerprint)
+                                        }
+                                    }.toString()
+                                    WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
                                 }
                             }
 
