@@ -1,4 +1,10 @@
 # Changelog
+
+## [10.1.27.4] - 2026-08-24
+### Changed
+- **[minor] Shortcut discovery: read-only Shortcuts card in Settings → Interaction**: the gestures with no visible affordance are now documented in-app — global Show/Hide dock toggle rendered from `DesktopEnvironment.globalToggleShortcutHint` (`Win+Shift+D`, hidden entirely on platforms without a registered shortcut), Shift+Click instant exit bypass on Exit Engine, and force-exit-on-click while a transfer is live. Reference rows reuse the existing `SettingsItem` badge pill for the combos and stay non-clickable.
+  - Verified: `:composeApp:spotlessCheck` + `:composeApp:desktopTest` green.
+
 ## [10.1.27.2] - 2026-08-24
 ### Fixed
 - **[fix] Exit row no longer advertises an unrelated shortcut**: the monospace hint pinned inside the Exit Engine row displayed the global window toggle (`Win+Shift+D`, registered by `GlobalShortcutService` to show/hide the whole dock), reading as if a Win+Shift combo exits the engine — it does not. The hint block was removed from `BottomDockPanel`; the exit row now carries only its own semantics ("Exit Engine" / "Cancel / Shift+Click Exit", Shift+Click instant-exit bypass unchanged, active-transfer force-exit unchanged). `DesktopEnvironment.globalToggleShortcutHint` remains the single source of truth for the registered global shortcut for future Settings/help surfaces.

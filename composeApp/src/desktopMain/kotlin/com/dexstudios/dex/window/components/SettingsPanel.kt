@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_info
@@ -82,7 +83,8 @@ import javax.swing.JFileChooser
  *   2. Dev Tools (ADB Connect & Auto-Connect Hotspot)
  *   3. Identity (Device Name editor, Google OAuth loopback sign-in)
  *   4. Appearance (Theme: System / Dark / Light)
- *   5. Interaction (Wiggle-to-Open Menu)
+ *   5. Interaction (Wiggle-to-Open Menu + read-only shortcut reference card: global
+ *      Show/Hide toggle, Shift+Click instant exit, force-exit during transfers)
  *   6. Storage (Download Location folder chooser — persisted via DeviceConfig.downloadDir;
  *      the modal-dialog guard is raised during pick)
  *   7. About & Maintenance (version from AppBuildConfig, GitHub link, Reset Identity & Trust
@@ -387,6 +389,31 @@ fun SettingsPanel(
                     title = "Wiggle-to-Open Menu",
                     subtitle = if (isWiggleEnabled) "Enabled" else "Disabled",
                     onClick = { deviceConfig.wiggleEnabled = !isWiggleEnabled },
+                )
+            }
+            // Shortcut reference (read-only): surfaces gestures that have no visible
+            // affordance anywhere in the UI. The global-toggle row renders the combo
+            // actually registered by GlobalShortcutService via DesktopEnvironment and
+            // hides entirely on platforms without one (never advertise a fake shortcut).
+            SettingsCard {
+                if (com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint.isNotEmpty()) {
+                    SettingsItem(
+                        icon = painterResource(Res.drawable.ic_fluent_computer),
+                        title = "Show / Hide DeX",
+                        subtitle = "Global shortcut — works even while the menu is hidden",
+                        badge = com.dexstudios.dex.platform.DesktopEnvironment.globalToggleShortcutHint,
+                    )
+                }
+                SettingsItem(
+                    icon = painterResource(Res.drawable.ic_fluent_bolt),
+                    title = "Instant Exit",
+                    subtitle = "Hold Shift and click Exit Engine to skip confirmation",
+                    badge = "Shift+Click",
+                )
+                SettingsItem(
+                    icon = painterResource(Res.drawable.ic_fluent_info),
+                    title = "Force Exit During Transfers",
+                    subtitle = "With a transfer running, clicking Exit Engine quits immediately",
                 )
             }
 
