@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.icons.AnimatedSearchToXIcon
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
@@ -142,11 +143,14 @@ fun FileExplorerPanel(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_fluent_search),
-                        contentDescription = "Search",
+                    AnimatedSearchToXIcon(
+                        isSearching = searchQuery.isNotEmpty(),
+                        onClick = if (searchQuery.isNotEmpty()) {
+                            { viewModel.updateSearchQuery("") }
+                        } else null,
+                        size = 16.dp,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp).size(14.dp)
+                        modifier = Modifier.padding(end = 8.dp)
                     )
 
                     BasicTextField(

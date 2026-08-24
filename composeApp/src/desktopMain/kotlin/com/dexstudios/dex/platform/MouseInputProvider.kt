@@ -1,11 +1,41 @@
 package com.dexstudios.dex.platform
 
+import com.sun.jna.Library
+import com.sun.jna.Native
+
 interface MouseInputProvider {
     fun isLeftMouseButtonDown(): Boolean
     fun getCursorPosition(): Pair<Int, Int>
 }
 
 object DesktopMouseInputProvider : MouseInputProvider {
+
+    /**
+     * Minimal CoreGraphics binding for macOS left-button state. CGEventSourceButtonState
+     * reports the physical button regardless of window focus, mirroring the semantics of
+     * GetAsyncKeyState on Windows. Coordinates on macOS are logical points, which matches
+     * DisplayCoordinateSpace's identity conversion.
+     */
+    private interface CoreGraphicsLib : Library {
+        @Suppress("FunctionName")
+        fun CGEventSourceButtonState(stateID: Int, button: Int): Boolean
+    }
+
+    private const val kCGEventSourceStateCombinedSessionState = 0
+    private const val kCGMouseButtonLeft = 0
+
+    private val coreGraphics: CoreGraphicsLib? by lazy {
+        if (!com.dexstudios.dex.platform.DesktopEnvironment.isMacOS) {
+            null
+        } else {
+            try {
+                Native.load("CoreGraphics", CoreGraphicsLib::class.java)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
     override fun isLeftMouseButtonDown(): Boolean {
         if (com.dexstudios.dex.platform.DesktopEnvironment.isWindows) {
             try {
@@ -15,6 +45,15 @@ object DesktopMouseInputProvider : MouseInputProvider {
                 return false
             }
         }
+        if (com.dexstudios.dex.platform.DesktopEnvironment.isMacOS) {
+            val cg = coreGraphics ?: return false
+            return try {
+                cg.CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonLeft)
+            } catch (_: Throwable) {
+                false
+            }
+        }
+        // Other platforms: AWT cannot report global button state reliably
         return false
     }
 
@@ -28,6 +67,13 @@ object DesktopMouseInputProvider : MouseInputProvider {
                 return Pair(0, 0)
             }
         }
-        return Pair(0, 0)
+        // macOS/Linux: AWT reports coordinates in the platform's native space
+        return try {
+            val info = java.awt.MouseInfo.getPointerInfo() ?: return Pair(0, 0)
+            val loc = info.location
+            Pair(loc.x, loc.y)
+        } catch (_: Throwable) {
+            Pair(0, 0)
+        }
     }
 }

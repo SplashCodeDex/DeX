@@ -23,7 +23,12 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.PaddingValues
@@ -382,6 +387,17 @@ private fun DeviceListItemRow(
 
 
 
+// DevicesMorph playback tuning (mirrors the reference browser player)
+private const val TOTAL_FRAMES = 456f          // animation "op"
+private const val SETTLE_FRAME = 455f          // last frame with the fully settled DeX
+private const val SETTLE_PROGRESS = SETTLE_FRAME / TOTAL_FRAMES
+private const val RAMP_START_FRAME = 415f      // frame where the slow-down begins
+private const val MIN_SPEED = 0.12f            // final playback speed (gentle drift to a stop)
+private const val ANIMATION_FPS = 60f
+private const val HOLD_ON_DEX_MS = 4_000L      // hold on DeX before the transition
+private const val FADE_OUT_MS = 600            // DeX fades out completely (to blank)
+private const val FADE_IN_MS = 600             // monitor (start frame) fades in
+
 @Composable
 private fun DeviceEmptyState() {
     var jsonString by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
@@ -408,14 +424,59 @@ private fun DeviceEmptyState() {
                 val composition by io.github.alexzhirkevich.compottie.rememberLottieComposition {
                     io.github.alexzhirkevich.compottie.LottieCompositionSpec.JsonString(jsonString!!)
                 }
+
+                // Playback logic ported from the reference browser player:
+                // ritardando settle -> hold on DeX -> fade to blank -> monitor fades in -> repeat
+                val lottieProgress = remember { Animatable(0f) }
+                val lottieAlpha = remember { Animatable(1f) }
+
+                LaunchedEffect(composition) {
+                    if (composition == null) return@LaunchedEffect
+                    while (true) {
+                        // 1. Play frames 0..455, decelerating while the DeX pops in
+                        var lastNanos = withFrameNanos { it }
+                        var speed = 1f
+                        while (lottieProgress.value < SETTLE_PROGRESS) {
+                            val nanos = withFrameNanos { it }
+                            val dt = (nanos - lastNanos) / 1_000_000_000f
+                            lastNanos = nanos
+                            val currentFrame = lottieProgress.value * TOTAL_FRAMES
+                            speed = if (currentFrame > RAMP_START_FRAME && currentFrame < SETTLE_FRAME) {
+                                val t = (currentFrame - RAMP_START_FRAME) / (SETTLE_FRAME - RAMP_START_FRAME)
+                                1f - (1f - MIN_SPEED) * t * t
+                            } else {
+                                1f
+                            }
+                            lottieProgress.snapTo(
+                                (lottieProgress.value + speed * ANIMATION_FPS * dt / TOTAL_FRAMES)
+                                    .coerceAtMost(SETTLE_PROGRESS)
+                            )
+                        }
+
+                        // 2. Hold on the fully settled DeX
+                        delay(HOLD_ON_DEX_MS)
+
+                        // 3. DeX fades out completely, leaving a blank screen
+                        lottieAlpha.animateTo(0f, tween(FADE_OUT_MS))
+
+                        // 4. Jump back to frame 0 (the monitor) while invisible
+                        lottieProgress.snapTo(0f)
+
+                        // 5. The monitor fades in
+                        lottieAlpha.animateTo(1f, tween(FADE_IN_MS))
+                    }
+                }
                 
                 Image(
                     painter = io.github.alexzhirkevich.compottie.rememberLottiePainter(
                         composition = composition,
-                        iterations = io.github.alexzhirkevich.compottie.Compottie.IterateForever
+                        progress = { lottieProgress.value }
                     ),
                     contentDescription = "Scanning",
-                    modifier = Modifier.fillMaxWidth().height(190.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp)
+                        .graphicsLayer { this.alpha = lottieAlpha.value },
                     contentScale = ContentScale.Fit,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                 )

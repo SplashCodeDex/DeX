@@ -1,8 +1,12 @@
 package com.dexstudios.dex.core.designsystem.icons
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -20,6 +24,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -81,10 +87,12 @@ fun AnimatedDndBell(
     }
 
     val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
-    val effectiveTint = if (isDndActive) {
-        if (isDark) Color.White else Color.Black
+    val effectiveTint = if (!isDndActive) {
+        // Bell pill is OFF (unchecked, dark surface) — White for contrast in dark mode
+        if (isDark) Color.White else tint
     } else {
-        tint
+        // Bell pill is ON (checked, Emerald surface) — Black for contrast in dark mode
+        if (isDark) Color.Black else tint
     }
 
     val activeJson = if (isDndActive) dndOnJson else dndOffJson
@@ -105,8 +113,8 @@ fun AnimatedDndBell(
                 restartOnPlay = true
             )
 
-            // When DnD is ON and the v2 animation has finished its slash, transition to AlertOnFilled
-            val showFilledAlertOn = isDndActive && (progress >= 0.95f)
+            // When notifications are active (DnD is OFF) and v4 finishes its ringing sway, transition to AlertOnFilled
+            val showFilledAlertOn = (!isDndActive) && (progress >= 0.95f)
 
             Crossfade(
                 targetState = showFilledAlertOn,
@@ -138,3 +146,144 @@ fun AnimatedDndBell(
         }
     }
 }
+
+/**
+ * Animated / Kinematic Clipboard Icon.
+ *
+ * Smoothly crossfades between:
+ * - [isClipboardActive] = true: `<ClipboardCheckmarkRegular />`
+ * - [isClipboardActive] = false: `<ClipboardOffRegular />`
+ *
+ * @param isClipboardActive Current state of clipboard synchronization.
+ * @param modifier Custom Modifier for layout, sizing, or alignment.
+ * @param size Target square dimensions (defaults to 24dp).
+ * @param tint Color to apply to the icon strokes; defaults to current theme [onSurface].
+ * @param contentDescription Accessibility description for the clipboard icon.
+ */
+@Composable
+fun AnimatedClipboardIcon(
+    isClipboardActive: Boolean,
+    modifier: Modifier = Modifier,
+    size: Dp = 24.dp,
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+    contentDescription: String? = "Clipboard Sync"
+) {
+    val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    val effectiveTint = if (isClipboardActive) {
+        if (isDark) Color.Black else tint
+    } else {
+        tint
+    }
+
+    val iconResource = if (isClipboardActive) DeXIcons.ClipboardCheckmark else DeXIcons.ClipboardOff
+
+    Crossfade(
+        targetState = iconResource,
+        animationSpec = tween(200),
+        modifier = modifier.size(size),
+        label = "ClipboardStateCrossfade"
+    ) { res ->
+        Box(
+            modifier = Modifier.size(size),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(res),
+                contentDescription = contentDescription,
+                tint = effectiveTint,
+                modifier = Modifier.size(size)
+            )
+        }
+    }
+}
+
+/**
+ * Animated Search-to-X Morphing Icon.
+ *
+ * Smoothly morphs between:
+ * - [isSearching] = false: Search magnifying glass icon
+ * - [isSearching] = true: 'X' close / clear icon
+ *
+ * When [isSearching] is true and [onClick] is provided, clicking the 'X' triggers [onClick] (e.g. to clear the query).
+ *
+ * @param isSearching Whether a search query is active (user typed text into the box).
+ * @param modifier Custom Modifier for layout, sizing, or alignment.
+ * @param size Target square dimensions (defaults to 16dp).
+ * @param tint Color to apply to the icon strokes; defaults to current theme [onSurfaceVariant].
+ * @param onClick Optional callback invoked when clicked. Active when [isSearching] is true.
+ * @param contentDescription Accessibility description for the icon.
+ */
+@Composable
+fun AnimatedSearchToXIcon(
+    isSearching: Boolean,
+    modifier: Modifier = Modifier,
+    size: Dp = 16.dp,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null,
+    contentDescription: String? = if (isSearching) "Clear search" else "Search"
+) {
+    var searchJson by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            searchJson = LottieAssetCache.loadJson("files/search_to_x.json")
+        } catch (e: Exception) {
+            println("DeXAnimatedIcons: Failed to load search_to_x Lottie asset: ${e.message}")
+        }
+    }
+
+    val progress by animateFloatAsState(
+        targetValue = if (isSearching) 1f else 0f,
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        label = "SearchToXProgress"
+    )
+
+    val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    val effectiveTint = if (isDark) Color.White else tint
+
+    val clickModifier = if (onClick != null && isSearching) {
+        Modifier
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+    } else Modifier
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .then(clickModifier),
+        contentAlignment = Alignment.Center
+    ) {
+        val json = searchJson
+        if (json != null) {
+            val composition by rememberLottieComposition(Unit) {
+                LottieCompositionSpec.JsonString(json)
+            }
+
+            val colorFilter = if (effectiveTint.isSpecified) ColorFilter.tint(effectiveTint) else null
+
+            Image(
+                painter = rememberLottiePainter(
+                    composition = composition,
+                    progress = { progress }
+                ),
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size),
+                contentScale = ContentScale.Fit,
+                colorFilter = colorFilter
+            )
+        } else {
+            Icon(
+                painter = painterResource(if (isSearching) DeXIcons.Close else DeXIcons.Search),
+                contentDescription = contentDescription,
+                tint = effectiveTint,
+                modifier = Modifier.size(size)
+            )
+        }
+    }
+}
+
+

@@ -66,7 +66,8 @@ fun MainMenuColumn(
     modifier: Modifier = Modifier,
     discoveryEngine: DiscoveryEngine = koinInject(),
     deviceConfig: DeviceConfig = koinInject(),
-    clientEngine: ClientEngine = koinInject()
+    clientEngine: ClientEngine = koinInject(),
+    fileSender: com.dexstudios.dex.desktop.transfer.DesktopFileSendService = koinInject()
 ) {
     val coroutineScope = rememberCoroutineScope()
     val devicesMap by discoveryEngine.devices.collectAsState()
@@ -77,6 +78,9 @@ fun MainMenuColumn(
             .distinctUntilChanged()
     }.collectAsState(initial = false)
     val isClipboardSyncEnabled by deviceConfig.clipboardSyncEnabledFlow.collectAsState()
+
+    // Pinned default send destination (surfaced in telemetry once telemetry is enabled)
+    val preferredTargetFp by fileSender.preferredTargetFlow.collectAsState()
 
     var isDndActive by remember { mutableStateOf(false) }
     var isMirroringActive by remember { mutableStateOf(false) }
@@ -186,7 +190,13 @@ fun MainMenuColumn(
                     deviceConfig.clipboardSyncEnabled = !deviceConfig.clipboardSyncEnabled
                 },
                 clipboardBadgeCount = 0,
-                statusTelemetryText = if (isUploading) "Transferring" else "Ready",
+                statusTelemetryText = when {
+                    isUploading -> "Transferring"
+                    else -> preferredTargetFp
+                        ?.let { fp -> (discoveredList + pairedList).firstOrNull { it.fingerprint == fp }?.alias }
+                        ?.let { "Ready - $it" }
+                        ?: "Ready"
+                },
                 serverIpPort = serverIpPortText,
                 showTelemetry = false // WPF pnlAdbStatus is hidden by default (Height=0) until connected
             )
@@ -213,17 +223,53 @@ fun MainMenuColumn(
                     val selectedDevice = item.rawDevice ?: devices.find { it.info.fingerprint == item.fingerprint }
                     selectedDevice?.let { onPairDevice(it) }
                 },
-                onSendFile = {
-                    onExpandFileExplorer()
+                onSendFile = { item ->
+                    // Pin this device as the default drop target, then send picked files
+                    // explicitly to it. The native chooser steals focus, so the modal
+                    // guard keeps the dock card from auto-hiding mid-selection.
+                    coroutineScope.launch(Dispatchers.IO) {
+                        fileSender.setPreferredTarget(item.fingerprint)
+                        val picked = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                            runCatching {
+                                controller.isModalDialogOpen = true
+                                try {
+                                    val holder = arrayOfNulls<List<java.io.File>>(1)
+                                    java.awt.EventQueue.invokeAndWait {
+                                        val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Send files to ${item.alias}", java.awt.FileDialog.LOAD)
+                                        dialog.isMultipleMode = true
+                                        dialog.isVisible = true
+                                        holder[0] = dialog.files.toList()
+                                    }
+                                    holder[0].orEmpty()
+                                } finally {
+                                    controller.isModalDialogOpen = false
+                                }
+                            }.getOrDefault(emptyList())
+                        }
+                        if (picked.isNotEmpty()) {
+                            fileSender.sendFiles(picked, item.fingerprint)
+                        }
+                    }
                 },
                 onSendClipboard = { item ->
                     coroutineScope.launch(Dispatchers.IO) {
                         try {
                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                             val text = clipboard.getData(DataFlavor.stringFlavor) as? String
-                            if (!text.isNullOrBlank()) {
-                                println("Pushed clipboard text to device ${item.alias}: $text")
+                            if (text.isNullOrBlank()) {
+                                println("Clipboard is empty or not text - nothing to push to ${item.alias}")
+                                return@launch
                             }
+                            val device = item.rawDevice
+                            val ok = clientEngine.sendClipboard(
+                                ip = item.ip,
+                                port = device?.info?.port ?: 53317,
+                                text = text,
+                                targetFingerprint = device?.info?.fingerprint ?: item.fingerprint,
+                                targetIdentityHash = device?.info?.identityHash,
+                                targetGoogleSub = device?.info?.googleSub
+                            )
+                            println(if (ok) "Pushed clipboard text to ${item.alias}" else "Failed to push clipboard to ${item.alias}")
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }

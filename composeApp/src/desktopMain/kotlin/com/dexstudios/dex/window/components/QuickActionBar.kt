@@ -1,5 +1,6 @@
 package com.dexstudios.dex.window.components
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.icons.AnimatedClipboardIcon
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
@@ -122,11 +123,18 @@ fun QuickActionBar(
 
         // 4. Clipboard Sync Pill (62x48dp)
         DeXQuickActionButton(
-            icon = painterResource(Res.drawable.ic_fluent_clipboard),
             tooltip = "Clipboard",
             isChecked = isClipboardActive,
             badgeCount = clipboardBadgeCount,
-            onClick = onToggleClipboard
+            onClick = onToggleClipboard,
+            iconContent = { tint ->
+                AnimatedClipboardIcon(
+                    isClipboardActive = isClipboardActive,
+                    size = 22.dp,
+                    tint = tint,
+                    contentDescription = "Clipboard"
+                )
+            }
         )
 
         // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 62dp)

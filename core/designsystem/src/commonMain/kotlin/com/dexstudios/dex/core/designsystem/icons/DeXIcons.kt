@@ -36,6 +36,8 @@ object DeXIcons {
     // Content & Files
     val Article: DrawableResource = Res.drawable.ic_fluent_article
     val Clipboard: DrawableResource = Res.drawable.ic_fluent_clipboard
+    val ClipboardCheckmark: DrawableResource = Res.drawable.ic_fluent_clipboard_checkmark
+    val ClipboardOff: DrawableResource = Res.drawable.ic_fluent_clipboard_off
     val Cloud: DrawableResource = Res.drawable.ic_fluent_cloud
     val CloudDownload: DrawableResource = Res.drawable.ic_fluent_cloud_download
     val CloudUpload: DrawableResource = Res.drawable.ic_fluent_cloud_upload
