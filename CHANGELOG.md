@@ -1,4 +1,8 @@
 # Changelog
+## [10.1.28.3] - 2026-08-24
+### Changed
+- **[minor] Live Shift+Click affordance moves onto the Exit Engine button itself**: the real-time glyph combo (`KeyboardShiftGlyph` filling the moment Shift is held + `MouseGlyph` blinking/rippling its primary button, driven by `ShiftKeyState` global polling) is now pinned to the far right of the Exit Engine row — right where the gesture applies — and hides only in the "Transfer Active! Click to Force Exit" stage, where a plain click already exits and a Shift hint would contradict the label. Shared composables extracted to `ShiftClickAffordance.kt`; the Settings shortcut-reference row returns to its static badge.
+
 ## [10.1.28.1] - 2026-08-24
 ### Fixed
 - **[minor] Settings item icons were undersized and double-padded**: each row's icon rendered at 20dp inside a 20dp slot while ALSO carrying its own trailing padding, squeezing glyphs off-center. Icon slot is now a proper 32dp centered box with 22dp glyphs (animated DND bell matched); spacing owned by the slot alone. Also carries a concurrent cleanup on the same file: the Instant Exit row's live Shift+Click glyph animation was replaced by a static "Shift+Click" badge.

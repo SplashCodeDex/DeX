@@ -321,6 +321,13 @@ fun BottomDockPanel(
 
                     // Right spacer balances the left spacer when expanded
                     Spacer(modifier = Modifier.weight(1f))
+
+                    // Live Shift+Click affordance pinned to the far right. Hidden only in
+                    // the "Transfer Active! Click to Force Exit" stage, where a plain click
+                    // already exits and a Shift hint would contradict the label.
+                    if (confirmationStage == ExitConfirmationStage.Idle || !(hasActiveTransfers || isMirroringActive)) {
+                        ShiftClickCombo(modifier = Modifier.padding(start = 6.dp))
+                    }
                 }
             }
         }
