@@ -47,7 +47,6 @@ export const site = {
         'Connect by scanning a code',
         'Copy on your phone, paste on your computer',
         'Browse folders on either device before sending',
-        'Works alongside LocalSend apps',
         'Windows, macOS, and Android',
       ],
     },

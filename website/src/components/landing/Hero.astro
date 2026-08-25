@@ -9,26 +9,54 @@ import { site } from '../../data/site';
   </div>
 
   <div class="relative z-20 mx-auto max-w-3xl text-center">
-    <div class="mx-auto h-32 w-32 sm:h-40 sm:w-40" data-logo-morph>
-      <img
-        src="/assets/logos/dex-dark.png"
-        alt="DeX"
-        width="240"
-        height="240"
-        loading="eager"
-        class="morph-fallback h-full w-auto dark:hidden"
-      />
-      <img
-        src="/assets/logos/dex-light.png"
-        alt=""
+    <div class="relative mx-auto flex items-center justify-center gap-1 sm:gap-2">
+      <div class="relative h-40 w-40 shrink-0 sm:h-52 sm:w-52" data-logo-morph>
+        <img
+          src="/assets/logos/dex-dark.png"
+          alt="DeX"
+          width="240"
+          height="240"
+          loading="eager"
+          class="morph-fallback absolute inset-0 h-full w-full object-contain dark:hidden"
+        />
+        <img
+          src="/assets/logos/dex-light.png"
+          alt=""
+          aria-hidden="true"
+          width="240"
+          height="240"
+          loading="eager"
+          class="morph-fallback absolute inset-0 hidden h-full w-full object-contain dark:block"
+        />
+      </div>
+      <div
+        class="pointer-events-none relative h-14 w-14 shrink-0 accent-alt sm:h-20 sm:w-20"
+        data-logo-accent
+        data-logo-src="/assets/brand/arrow-down.json"
         aria-hidden="true"
-        width="240"
-        height="240"
-        loading="eager"
-        class="morph-fallback hidden h-full w-auto dark:block"
-      />
+      ></div>
+      <div class="relative h-40 w-40 shrink-0 sm:h-52 sm:w-52" data-logo-morph="reverse" aria-hidden="true">
+        <img
+          src="/assets/logos/dex-dark.png"
+          alt=""
+          aria-hidden="true"
+          width="240"
+          height="240"
+          loading="eager"
+          class="morph-fallback absolute inset-0 h-full w-full object-contain dark:hidden"
+        />
+        <img
+          src="/assets/logos/dex-light.png"
+          alt=""
+          aria-hidden="true"
+          width="240"
+          height="240"
+          loading="eager"
+          class="morph-fallback absolute inset-0 hidden h-full w-full object-contain dark:block"
+        />
+      </div>
     </div>
-    <h1 class="text-balance text-4xl font-black tracking-tight text-foreground sm:text-5xl md:text-6xl">
+    <h1 class="text-balance text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl">
       Phone to PC transfers that feel <span class="font-brand text-[1.15em] font-semibold text-primary-500">instant</span>.
     </h1>
     <p class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -109,7 +137,7 @@ import { site } from '../../data/site';
           type="button"
           aria-label="Toggle theme"
           data-theme-toggle
-          class="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-xl text-muted-foreground transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-white/5 hover:text-foreground active:bg-white/10 shadow-none hover:shadow-none border-none bg-transparent"
+          class="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-xl text-muted-foreground transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-black/5 hover:text-foreground active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 shadow-none hover:shadow-none border-none bg-transparent"
         >
           <span class="theme-icon theme-icon-sun grid place-items-center">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="!size-5 text-amber-500 fill-amber-500/20">

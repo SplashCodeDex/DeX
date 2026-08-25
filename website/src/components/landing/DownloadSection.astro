@@ -1,6 +1,5 @@
 ---
 import { site } from '../../data/site';
-import BrandMark from './BrandMark.astro';
 
 const { desktop, mobile } = site;
 ---
@@ -8,8 +7,28 @@ const { desktop, mobile } = site;
 <section id="download" class="relative px-4 pb-24 pt-10 md:pb-32">
   <div class="mx-auto max-w-5xl">
     <div class="landing-reveal mb-14 text-center">
-      <h1 class="text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
-        Get <BrandMark class="h-[0.95em]" /> free
+      <h1 class="text-balance text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        Get
+        <span class="relative mx-1 inline-block h-[2.2em] w-[2.2em] align-middle" data-logo-morph>
+          <img
+            src="/assets/logos/dex-dark.png"
+            alt="DeX"
+            width="240"
+            height="240"
+            loading="eager"
+            class="morph-fallback absolute inset-0 h-full w-full object-contain dark:hidden"
+          />
+          <img
+            src="/assets/logos/dex-light.png"
+            alt=""
+            aria-hidden="true"
+            width="240"
+            height="240"
+            loading="eager"
+            class="morph-fallback absolute inset-0 hidden h-full w-full object-contain dark:block"
+          />
+        </span>
+        free
       </h1>
       <p class="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
         One install on your computer, one app on your phone. Sending takes one scan.
@@ -19,13 +38,13 @@ const { desktop, mobile } = site;
     <h2 class="landing-reveal mb-6 font-brand text-2xl font-semibold text-primary-600 dark:text-primary-400">
       Phone
     </h2>
-    <div class="grid gap-6 sm:grid-cols-2">
+    <div class="grid gap-6 sm:grid-cols-3">
       {mobile.map((platform, i) => (
         <div
-          class="landing-reveal flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          class="landing-reveal glass-card flex flex-col items-center rounded-3xl p-8 text-center shadow-lg"
           style={`transition-delay: ${i * 0.1}s`}
         >
-          {platform.iconDark ? (
+          {'iconDark' in platform && platform.iconDark ? (
             <>
               <img src={platform.icon} alt="" aria-hidden="true" width="56" height="56" loading="lazy" class="size-14 object-contain dark:hidden" />
               <img src={platform.iconDark} alt="" aria-hidden="true" width="56" height="56" loading="lazy" class="hidden size-14 object-contain dark:block" />
@@ -62,7 +81,7 @@ const { desktop, mobile } = site;
     <div class="grid gap-6 sm:grid-cols-3">
       {desktop.map((platform, i) => (
         <div
-          class="landing-reveal flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          class="landing-reveal glass-card flex flex-col items-center rounded-3xl p-8 text-center shadow-lg"
           style={`transition-delay: ${i * 0.1}s`}
         >
           <img src={platform.icon} alt="" aria-hidden="true" width="56" height="56" loading="lazy" class="size-14 object-contain" />

@@ -1,23 +1,14 @@
 ---
 /**
  * Inline DeX wordmark for use inside sentences, headings, and buttons.
- * Renders the theme-matched logo at text scale; pass a height class sized
- * against the surrounding font size (defaults to ~1em).
+ * Rendered as live text in the brand logo face ('Creepy Notes', bold), so it
+ * reads like any other word: it inherits size and color from the surrounding
+ * typography instead of needing the old image canvas scaling.
  */
 interface Props {
   class?: string;
-  /** Use the light wordmark on fixed dark surfaces (e.g. gradient buttons). */
-  fixedLight?: boolean;
 }
-const { class: className = 'h-[1em]', fixedLight = false } = Astro.props;
-const base = `inline-block w-auto align-baseline ${className}`;
+const { class: className = '' } = Astro.props;
 ---
 
-{fixedLight ? (
-  <img src="/assets/logos/dex-light.png" alt="DeX" loading="lazy" class={base} />
-) : (
-  <>
-    <img src="/assets/logos/dex-dark.png" alt="DeX" loading="lazy" class={`${base} dark:hidden`} />
-    <img src="/assets/logos/dex-light.png" alt="" aria-hidden="true" loading="lazy" class={`hidden ${base} dark:block`} />
-  </>
-)}
+<span class:list={['font-logo font-bold', className]}>DeX</span>

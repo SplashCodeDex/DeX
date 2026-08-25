@@ -1,12 +1,11 @@
 ---
-const brandInline =
-  '<img src="/assets/logos/dex-dark.png" alt="DeX" class="inline-block h-[0.95em] w-auto align-baseline dark:hidden" /><img src="/assets/logos/dex-light.png" alt="" aria-hidden="true" class="hidden h-[0.95em] w-auto align-baseline dark:block" />';
+import { brandWordmarkHtml } from '../../data/brand';
 
 const steps = [
   {
     n: '1',
     title: 'Scan',
-    body: `Open ${brandInline} on your computer and scan the code with your phone camera. That pairs them once.`,
+    body: `Open ${brandWordmarkHtml} on your computer and scan the code with your phone camera. That pairs them once.`,
   },
   {
     n: '2',
@@ -29,14 +28,14 @@ const steps = [
       </h2>
       <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
         No setup wizards, no settings to figure out. If you can scan a code, you already know
-        <Fragment set:html={brandInline} />.
+        <Fragment set:html={brandWordmarkHtml} />.
       </p>
     </div>
 
     <ol class="grid gap-6 md:grid-cols-3">
       {steps.map((step, i) => (
         <li
-          class="landing-reveal rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20"
+          class="landing-reveal glass-card rounded-3xl p-8 shadow-lg"
           style={`transition-delay: ${i * 0.12}s`}
         >
           <span class="text-5xl font-black tracking-tight text-primary-500/40 dark:text-primary-500/50">
@@ -51,3 +50,4 @@ const steps = [
     </ol>
   </div>
 </section>
+

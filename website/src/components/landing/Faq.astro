@@ -1,8 +1,6 @@
 ---
 import { site } from '../../data/site';
-
-const brandInline =
-  '<img src="/assets/logos/dex-dark.png" alt="DeX" class="inline-block h-[0.95em] w-auto align-baseline dark:hidden" /><img src="/assets/logos/dex-light.png" alt="" aria-hidden="true" class="hidden h-[0.95em] w-auto align-baseline dark:block" />';
+import { brandWordmarkHtml } from '../../data/brand';
 
 const faqs = [
   {
@@ -15,15 +13,11 @@ const faqs = [
   },
   {
     q: 'What do I need to get started?',
-    a: `${brandInline} on your computer (Windows or macOS) and on your Android phone. Scan the code shown on screen once, and your devices stay connected.`,
+    a: `${brandWordmarkHtml} on your computer (Windows or macOS) and on your Android phone. Scan the code shown on screen once, and your devices stay connected.`,
   },
   {
     q: 'Is there a file size limit?',
-    a: `If your devices can store it, ${brandInline} can send it — photos, videos, whole folders. Nothing gets compressed on the way.`,
-  },
-  {
-    q: 'Does it work with LocalSend apps?',
-    a: `Yes. ${brandInline} speaks the same protocol, so it fits right in next to LocalSend on other devices.`,
+    a: `If your devices can store it, ${brandWordmarkHtml} can send it — photos, videos, whole folders. Nothing gets compressed on the way.`,
   },
   {
     q: 'How much does it cost?',
@@ -42,7 +36,7 @@ const faqs = [
 
     <div class="space-y-3">
       {faqs.map((item) => (
-        <details class="landing-reveal group rounded-2xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-md dark:border-white/5 dark:bg-black/20">
+        <details class="landing-reveal glass-card group rounded-2xl shadow-lg">
           <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 text-left text-base font-semibold text-foreground [&::-webkit-details-marker]:hidden">
             {item.q}
             <svg
@@ -66,3 +60,4 @@ const faqs = [
     </div>
   </div>
 </section>
+

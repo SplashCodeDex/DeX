@@ -1,14 +1,28 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/manrope';
+@import '@fontsource-variable/bricolage-grotesque';
 @import '@fontsource-variable/space-grotesk';
 @import '@fontsource-variable/caveat';
+
+/* DeX logo face: bundled copy of the locally installed 'Creepy Notes'
+   (public/assets/fonts/CreepyNotes.ttf); local() short-circuits where installed. */
+@font-face {
+  font-family: 'Creepy Notes';
+  src:
+    local('Creepy Notes'),
+    url('/assets/fonts/CreepyNotes.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
   --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --font-brand: 'Caveat Variable', 'Space Grotesk Variable', cursive;
+  --font-logo: 'Creepy Notes', 'Caveat Variable', cursive;
 
   --color-primary-50: oklch(95% 0.025 261.4);
   --color-primary-100: oklch(86% 0.05 261.4);
@@ -82,7 +96,9 @@
 }
 
 :root {
-  --background: oklch(99% 0 0);
+  /* Light mode sits on a cool paper tint (hue follows primary) instead of dead
+     white, so translucent glass surfaces and ambient washes stay perceptible. */
+  --background: oklch(98.4% 0.007 261);
   --foreground: oklch(15% 0.01 280);
   --card: oklch(100% 0 0);
   --card-foreground: oklch(15% 0.01 280);
@@ -90,16 +106,16 @@
   --popover-foreground: oklch(15% 0.01 280);
   --primary: var(--color-primary-600);
   --primary-foreground: oklch(100% 0 0);
-  --secondary: oklch(97% 0.002 280);
+  --secondary: oklch(96.6% 0.009 261);
   --secondary-foreground: oklch(15% 0.01 280);
-  --muted: oklch(97% 0.002 280);
-  --muted-foreground: oklch(45% 0.02 280);
+  --muted: oklch(96% 0.01 261);
+  --muted-foreground: oklch(42% 0.025 261);
   --accent: var(--color-accent-600);
   --accent-foreground: oklch(100% 0 0);
   --destructive: var(--color-error);
   --destructive-foreground: var(--color-error-foreground);
-  --border: oklch(92% 0.004 280);
-  --input: oklch(92% 0.004 280);
+  --border: oklch(90.5% 0.012 261);
+  --input: oklch(90.5% 0.012 261);
   --ring: var(--color-primary-600);
 }
 
@@ -152,6 +168,56 @@
   }
 }
 
+@layer components {
+  /* Frosted card surface shared by every landing card. Light mode needs real
+     opacity + a dark border to read on the tinted background; dark mode keeps
+     the original white/5-on-black treatment. Radius, padding, and shadow stay
+     per-call-site utilities. */
+  .glass-card {
+    border: 1px solid oklch(20% 0.02 261 / 0.08);
+    background: oklch(100% 0 0 / 0.62);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dark .glass-card {
+    border-color: rgb(255 255 255 / 0.05);
+    background: rgb(0 0 0 / 0.2);
+  }
+
+  .glass-card-hover {
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .glass-card-hover:hover {
+    background: oklch(100% 0 0 / 0.85);
+    border-color: oklch(20% 0.02 261 / 0.14);
+  }
+
+  .dark .glass-card-hover:hover {
+    background: rgb(0 0 0 / 0.4);
+    border-color: rgb(255 255 255 / 0.09);
+  }
+
+  /* Fixed ambient wash behind the whole landing page so sections never float
+     on a bare field. Theme-aware: airy tints in light, deep glows in dark. */
+  .ambient-bg {
+    background:
+      radial-gradient(55rem 36rem at 50% -12rem, oklch(88% 0.045 261 / 0.55), transparent 65%),
+      radial-gradient(42rem 30rem at 88% 12%, oklch(90% 0.05 300 / 0.4), transparent 60%),
+      radial-gradient(48rem 34rem at 4% 78%, oklch(91% 0.04 200 / 0.45), transparent 60%);
+  }
+
+  .dark .ambient-bg {
+    background:
+      radial-gradient(55rem 36rem at 50% -12rem, oklch(38% 0.09 261 / 0.28), transparent 65%),
+      radial-gradient(42rem 30rem at 88% 12%, oklch(34% 0.1 300 / 0.14), transparent 60%),
+      radial-gradient(48rem 34rem at 4% 78%, oklch(32% 0.07 200 / 0.14), transparent 60%);
+  }
+}
+
 .skip-link {
   position: absolute;
   top: -100px;
@@ -189,10 +255,20 @@
 }
 
 /* Logo morph (Lottie): static fallback logos swap to the SVG animation once
-   the JSON has loaded; reduced-motion keeps the fallbacks visible instead. */
+   the JSON has loaded; reduced-motion keeps the fallbacks visible instead.
+   The injected SVG carries the animation's intrinsic 256px canvas, so it is
+   forced to fill its stage box; dark mode inverts the monochrome mark. */
 [data-logo-morph] svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   opacity: 0;
   transition: opacity 0.4s ease;
+}
+
+.dark [data-logo-morph] svg {
+  filter: invert(1);
 }
 
 [data-logo-morph].morph-loaded svg {
@@ -206,6 +282,65 @@
 [data-logo-morph].morph-loaded .morph-fallback,
 [data-logo-morph].morph-static svg {
   opacity: 0 !important;
+}
+
+/* Accent divider between the paired morph stages: the arrow-down mark held
+   sideways — .accent-alt faces it left, the base -90deg faces it right —
+   swapping instantly per round (no rotation swing). Each new round adds a
+   short springy X-nudge toward the facing direction via translate, kept well
+   clear of the transform property so the rotation is untouched. Dark mode
+   inverts the monochrome stroke; reduced-motion removes it from the row. */
+[data-logo-accent] {
+  transform: rotate(-90deg);
+}
+
+[data-logo-accent].accent-alt {
+  transform: rotate(90deg);
+}
+
+@keyframes accent-nudge-left {
+  0% { translate: 0 0; }
+  30% { translate: -10px 0; }
+  60% { translate: 5px 0; }
+  80% { translate: -2px 0; }
+  100% { translate: 0 0; }
+}
+
+@keyframes accent-nudge-right {
+  0% { translate: 0 0; }
+  30% { translate: 10px 0; }
+  60% { translate: -5px 0; }
+  80% { translate: 2px 0; }
+  100% { translate: 0 0; }
+}
+
+.accent-nudge-left {
+  animation: accent-nudge-left 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.accent-nudge-right {
+  animation: accent-nudge-right 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-logo-accent] svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.dark [data-logo-accent] svg {
+  filter: invert(1);
+}
+
+[data-logo-accent].morph-loaded svg {
+  opacity: 1;
+}
+
+[data-logo-accent].morph-static {
+  display: none;
 }
 
 .sticky-cta {
