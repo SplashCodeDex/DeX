@@ -25,7 +25,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,17 +57,13 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_tune
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
-import com.dexstudios.dex.core.designsystem.icons.KeyboardShiftGlyph
-import com.dexstudios.dex.core.designsystem.icons.MouseGlyph
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.mirror.toImageBitmap
-import com.dexstudios.dex.platform.ShiftKeyState
 import com.dexstudios.dex.window.DockedWindowStateController
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
@@ -290,7 +285,7 @@ fun SettingsPanel(
                     iconContent = { tint ->
                         AnimatedDndBell(
                             isDndActive = isDndActive,
-                            size = 20.dp,
+                            size = 22.dp,
                             tint = tint,
                             contentDescription = "Do Not Disturb",
                         )
@@ -384,7 +379,7 @@ fun SettingsPanel(
                     icon = painterResource(Res.drawable.ic_fluent_bolt),
                     title = "Instant Exit",
                     subtitle = "Hold Shift and click Exit Engine to skip confirmation",
-                    trailing = { ShiftClickCombo() },
+                    badge = "Shift+Click",
                 )
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_info),
@@ -578,43 +573,6 @@ private fun AdbDevicePickerDialog(devices: List<com.dexstudios.dex.core.network.
     )
 }
 
-/**
- * Live Shift+Click affordance for the Instant Exit row: polls the global Shift modifier
- * while composed (the row only exists while Settings is open, so there is no idle cost)
- * and reflects it in real time — the Shift arrow fills and the mouse's primary button
- * blinks/ripples the moment Shift is held, previewing the exact gesture.
- */
-@Composable
-private fun rememberShiftHeld(pollIntervalMs: Long = 64L): Boolean {
-    var shiftHeld by remember { mutableStateOf(false) }
-    LaunchedEffect(pollIntervalMs) {
-        while (true) {
-            shiftHeld = withContext(Dispatchers.IO) { ShiftKeyState.isShiftHeldNow() }
-            delay(pollIntervalMs)
-        }
-    }
-    return shiftHeld
-}
-
-@Composable
-private fun ShiftClickCombo(modifier: Modifier = Modifier) {
-    val shiftHeld = rememberShiftHeld()
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        KeyboardShiftGlyph(isFilled = shiftHeld, size = 15.dp)
-        Text(
-            text = "+",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        MouseGlyph(buttonActive = shiftHeld, size = 15.dp)
-    }
-}
-
 @Composable
 private fun SettingsSectionHeader(title: String) {
     Text(
@@ -663,7 +621,7 @@ private fun SettingsItem(
                 painter = icon,
                 contentDescription = title,
                 tint = tint,
-                modifier = Modifier.padding(end = 12.dp).size(20.dp),
+                modifier = Modifier.size(22.dp),
             )
         },
     )
@@ -696,7 +654,7 @@ private fun SettingsItem(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.padding(end = 12.dp).size(20.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.padding(end = 12.dp).size(32.dp), contentAlignment = Alignment.Center) {
             iconContent(iconTint)
         }
 

@@ -1,4 +1,23 @@
 # Changelog
+## [10.1.28.1] - 2026-08-24
+### Fixed
+- **[minor] Settings item icons were undersized and double-padded**: each row's icon rendered at 20dp inside a 20dp slot while ALSO carrying its own trailing padding, squeezing glyphs off-center. Icon slot is now a proper 32dp centered box with 22dp glyphs (animated DND bell matched); spacing owned by the slot alone. Also carries a concurrent cleanup on the same file: the Instant Exit row's live Shift+Click glyph animation was replaced by a static "Shift+Click" badge.
+
+
+## [10.1.28.2] - 2026-08-24
+### Changed
+- **[minor] Website: shrink the static-logo fallback window before the DeX morph plays**:
+  - `logoMorph.ts` now imports `lottie-web` statically instead of via dynamic `import()` — the library rides the page's module graph and is fetched during module instantiation rather than discovered only after the entry script executes and requests a separate chunk.
+  - `LandingLayout` preloads `/assets/brand/dex-morph.json` (`as="fetch" crossorigin`) so the animation data downloads in parallel with JS, plus media-matched image preloads for both fallback logos. The `crossorigin` attribute is required — without it Chrome discards the hint ("request credentials mode does not match") because Lottie's XHR uses same-origin credentials; verified consumed with zero preload warnings after the fix.
+  - The static fallback logos remain by design (no-JS / reduced-motion / slow-network cover); these changes only shorten how long they hold the stage. `astro check` 0/0/0, build green, morph boot confirmed (`morph-loaded` present) under headless virtual time.
+
+## [10.1.28.1] - 2026-08-24
+### Added
+- **[minor] Website: the hero DeX morph now auto-replays on an idle loop instead of holding forever**:
+  - `logoMorph.ts` previously replayed only on nav-logo click — after parking, the settled wordmark never moved again. A shared idle timer (`REPLAY_IDLE_MS = 6000`) now restarts the morph ~6s after any stage parks; per-stage parks re-arm one module-level timer so multiple stages can't double-restart each other.
+  - The auto-cycle fires only while a morph stage intersects the viewport (IntersectionObserver, 0.25 threshold) and the tab is visible (`document.hidden` guard); otherwise the cycle defers and retries on the next tick, so nothing animates offscreen or in a background tab. Manual trigger replays clear the pending auto timer; the loop re-arms on the next park. `prefers-reduced-motion` stays fully static.
+  - Verified in headless Chrome under virtualized time: DOM dump at t=12s shows the parked hero's 4 remnant groups hidden; at t=16.5s (park ≈8.5s fallback + 6s idle) they are restored — replay fired inside the window. `astro check` 0/0/0, production build green.
+
 ## [10.1.28.0] - 2026-08-24
 ### Changed
 - **[minor] Product-direction settings corrections (plan 023): DND mutes alerts instead of refusing, UPnP always-on, ADB scoped to a picked phone, Auto-Connect removed, GitHub row removed**:
