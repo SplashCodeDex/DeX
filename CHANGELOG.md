@@ -1,5 +1,20 @@
 # Changelog
 # Changelog
+## [10.1.28.20] - 2026-08-25
+### Added
+- **[minor] Desktop: liquid-glass foundation + QuickActionBar converted to liquid glass**:
+  - `io.github.kyant0:backdrop` 2.0.0 added to the version catalog and `core/designsystem` as an `api` dependency (glass components expose `Backdrop` in public signatures); Android's glass stack ported 1:1 into `core/designsystem/components/glass/` — `LiquidGlassConfig` (all tokens/presets), `LiquidGlassPanel`, `LiquidGlassIconButton`, `shinyGlare`, `LocalBackdrop`.
+  - `DockCardContent` now captures a `cardBackdrop` layer containing the card face fill + smoke haze, so glass controls refract real content; the layer sits below the content tree so glass can't sample itself.
+  - All five QuickActionBar pills (DND, Mirror, History, Clipboard, Danger Close) are now `LiquidGlassIconButton`s on the `IconButton` preset squared to RoundedCornerShape(22dp): crisp stack (blur 1dp, lens 30/35dp with press refraction boost spring 0.6/600, glare highlight -52.82deg @ 0.78, 4dp shadow). State fills moved to a single animated surface overlay — checked = primary wash, danger hover = error, idle hover = 8% ink — drawn over the glass under the icon; icon/badge contrast logic unchanged.
+  - Desktop port deviation: `LiquidGlassIconButton` now applies the caller's `modifier` first in its chain (Android original ignored it) so hover transforms wrap correctly.
+  - Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.19] - 2026-08-25
+### Fixed
+- **[fix] Desktop PIN panel status line corrected to the legacy runtime text** — the WPF pairing screen never shows "Waiting for acceptance..." on the PIN view; `Show-PinPanel` overwrites `txtPinStatus` at runtime with inline icon runs: "Enter This Pin On Your Phone <E8EA> or PC <E7F4>". The panel now renders exactly that line under the digits, using cross-platform Fluent SVGs (`ic_fluent_smartphone` / `ic_fluent_computer`, 14dp) instead of Windows-only Segoe font glyphs so macOS renders identically; the now-dead `statusText` field was removed from `PinPairingUiState.PinView`. Verified via `:composeApp:desktopTest` green.
+
+## [10.1.28.18] - 2026-08-25
+# Changelog
 ## [10.1.28.18] - 2026-08-25
 ### Fixed
 - **[fix] Desktop pairing screen re-based 1:1 onto the legacy WPF PIN panel** (all values read from `Archived_Legacy_WPF`, not eyeballed):

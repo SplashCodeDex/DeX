@@ -59,8 +59,10 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.ui.modifiers.shake
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
@@ -79,7 +81,6 @@ sealed interface PinPairingUiState {
         val enteredDigitCount: Int = 0,
         val remainingSeconds: Int = 60,
         val isError: Boolean = false,
-        val statusText: String = "Waiting for acceptance...",
     ) : PinPairingUiState
 
     data class QrView(val title: String = "Pairing Request", val subtitle: String = "", val qrPayload: String = "", val remainingSeconds: Int = 60) : PinPairingUiState
@@ -219,13 +220,36 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                                 }
                             }
 
-                            // Status line (WPF txtPinStatus): sits directly under the digits
-                            Text(
-                                text = currentState.statusText,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
+                            // WPF txtPinStatus runtime line (Show-PinPanel): inline icon runs
+                            // "Enter This Pin On Your Phone <E8EA> or PC <E7F4>", rendered here
+                            // with cross-platform Fluent SVGs instead of Segoe font glyphs.
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "Enter This Pin On Your Phone",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Icon(
+                                    painter = painterResource(Res.drawable.ic_fluent_smartphone),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text = "or PC",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Icon(
+                                    painter = painterResource(Res.drawable.ic_fluent_computer),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(12.dp))
 
