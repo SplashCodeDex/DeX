@@ -101,9 +101,11 @@ class DockedWindowStateController(
 
     private fun currentContentWidth(): Int = expandedPanel?.expandedWidth ?: DockCardMetrics.CARD_WIDTH_CONTRACTED
 
-    private fun currentContentHeight(): Int = if (expandedPanel != null) {
+    private fun currentContentHeight(): Int = if (expandedPanel != null && expandedPanel != ExpandedPanel.Pairing) {
         DockCardMetrics.CARD_HEIGHT_EXPANDED
     } else {
+        // WPF parity: the pairing view slides into the fixed-size column without growing
+        // the card, so window placement math must treat Pairing as contracted-height too.
         DockCardMetrics.CARD_HEIGHT_CONTRACTED
     }
 

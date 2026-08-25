@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.designsystem.components.AmbientSmokeBackground
 import com.dexstudios.dex.platform.DockCardMetrics
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
@@ -70,10 +71,14 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
         label = "cardWidth",
     )
 
+    // Animated card height. WPF parity: the legacy window was fixed 1420x760 NoResize and
+    // the PIN view slid in WITHOUT any height change, so the Pairing panel keeps the card
+    // at its contracted height — only FileExplorer/Settings grow it.
     val cardHeight by animateDpAsState(
-        targetValue = when {
-            controller.isExpanded -> DockCardAnimations.CARD_HEIGHT_EXPANDED
-            else -> DockCardAnimations.CARD_HEIGHT_CONTRACTED
+        targetValue = if (controller.isExpanded && controller.expandedPanel != ExpandedPanel.Pairing) {
+            DockCardAnimations.CARD_HEIGHT_EXPANDED
+        } else {
+            DockCardAnimations.CARD_HEIGHT_CONTRACTED
         },
         animationSpec = DockCardPhysics.ElasticDpSpec,
         label = "cardHeight",
@@ -121,15 +126,24 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
             }
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                // Hairline uses the outline role so the floating card keeps definition
+                // over any wallpaper in both themes (surfaceVariant would vanish on the
+                // light porcelain canvas).
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(34.dp),
             )
             .graphicsLayer {
                 shape = cardShape
                 clip = true
             }
-            .background(MaterialTheme.colorScheme.surface, cardShape),
+            // Card face paints the `background` role — 1:1 with the Android
+            // main screen canvas (#DAD9DD light / #111318 dark).
+            .background(MaterialTheme.colorScheme.background, cardShape),
     ) {
+        // Ambient purple/violet/pink haze behind all card content; the card's
+        // rounded-corner graphicsLayer clip keeps it inside the face.
+        AmbientSmokeBackground(modifier = Modifier.fillMaxSize())
+
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {

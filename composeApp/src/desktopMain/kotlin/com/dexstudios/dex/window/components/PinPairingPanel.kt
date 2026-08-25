@@ -75,7 +75,7 @@ sealed interface PinPairingUiState {
     data class PinView(
         val title: String = "Pairing Request",
         val subtitle: String = "",
-        val pinCode: String = "482910",
+        val pinCode: String = "48291",
         val enteredDigitCount: Int = 0,
         val remainingSeconds: Int = 60,
         val isError: Boolean = false,
@@ -89,7 +89,7 @@ sealed interface PinPairingUiState {
 
 /**
  * PinPairingPanel Composable:
- * - 6-digit PIN display (44x56dp minimum digit boxes, 32sp bold, border morphing)
+ * - 5-digit PIN display (44x56dp minimum digit boxes, 32sp bold, border morphing)
  * - 140x140dp QR code view with 60s countdown timer
  * - QR <-> PIN horizontal flip transition (+-140dp slide, 250ms)
  * - 15px error shake animation
@@ -199,7 +199,7 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            // 6-Digit PIN Display with 15px error shake
+                            // 5-Digit PIN Display with 15px error shake
                             Row(
                                 modifier = Modifier
                                     .shake(currentState.isError)
@@ -207,8 +207,8 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                val pinString = currentState.pinCode.padEnd(6, ' ')
-                                for (i in 0 until 6) {
+                                val pinString = currentState.pinCode.padEnd(PairingEngine.PIN_LENGTH, ' ')
+                                for (i in 0 until PairingEngine.PIN_LENGTH) {
                                     val digit = if (i < pinString.length && pinString[i] != ' ') pinString[i].toString() else ""
                                     val isFilled = i < currentState.enteredDigitCount || digit.isNotBlank()
                                     PinDigitBox(
@@ -218,6 +218,14 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                                     )
                                 }
                             }
+
+                            // Status line (WPF txtPinStatus): sits directly under the digits
+                            Text(
+                                text = currentState.statusText,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
@@ -300,22 +308,21 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Cancel Button (80dp minimum)
+                // Cancel Button (WPF AnimatedActionBtn: MinWidth 80, Padding 16,10, FontSize 14 Medium, CornerRadius 12)
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp)
                         .bubbleFluidity()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary)
                         .clickable { onCancel() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Cancel",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
 
@@ -323,9 +330,8 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp)
                         .bubbleFluidity()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onToggleQrPin() },
                     contentAlignment = Alignment.Center,
@@ -334,14 +340,14 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                         Icon(
                             painter = if (state is PinPairingUiState.QrView) painterResource(Res.drawable.ic_fluent_pin) else painterResource(Res.drawable.ic_fluent_qr_code),
                             contentDescription = "Toggle QR/PIN",
-                            tint = Color.Black,
+                            tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.padding(end = 4.dp).size(16.dp),
                         )
                         Text(
                             text = if (state is PinPairingUiState.QrView) "PIN CODE" else "QR CODE",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.Black,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSecondary,
                         )
                     }
                 }
@@ -350,31 +356,30 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp)
                         .bubbleFluidity()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.secondary)
                         .clickable { onAccept() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Accept",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSecondary,
                     )
                 }
             }
 
-            // Accept Once (Guest) Button
+            // Accept Once (Guest) Button — full-width bordered row beneath (WPF btnPinAcceptOnce)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
                     .bubbleFluidity()
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                    .clickable { onAcceptOnce() },
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                    .clickable { onAcceptOnce() }
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -389,7 +394,8 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onAccep
 }
 
 /**
- * 44x56dp minimum digit box with 32sp bold text and border morphing.
+ * Digit box with WPF-parity presentation: filled accent background, transparent idle border,
+ * 32sp bold digits (legacy MainWindow.xaml icPinDigits template: AccentBrush fill, BorderThickness 2).
  */
 @Composable
 internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
@@ -401,8 +407,11 @@ internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
 
     val borderStroke = when {
         isError -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
-        isFilled -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+
+        // Bright ring on the accent fill echoes the legacy shimmer sweep (no gradients).
+        isFilled -> BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+
+        else -> BorderStroke(2.dp, Color.Transparent)
     }
 
     Box(
@@ -414,7 +423,7 @@ internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
                 scaleY = popScale
             }
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.primary)
             .border(borderStroke, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
@@ -422,7 +431,7 @@ internal fun PinDigitBox(digit: String, isFilled: Boolean, isError: Boolean) {
             text = digit,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimary,
             textAlign = TextAlign.Center,
         )
     }
@@ -469,7 +478,7 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
 
     val uiState: PinPairingUiState = when (val s = engineState) {
         is PairingState.Idle -> PinPairingUiState.PinView(
-            pinCode = "------",
+            pinCode = "-".repeat(PairingEngine.PIN_LENGTH),
             remainingSeconds = remainingSeconds,
         )
 
@@ -480,7 +489,7 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
             )
         } else {
             PinPairingUiState.PinView(
-                pinCode = "------",
+                pinCode = "-".repeat(PairingEngine.PIN_LENGTH),
                 remainingSeconds = remainingSeconds,
             )
         }

@@ -233,29 +233,29 @@ class Milestone3AdversarialStressTest {
     // =========================================================================
 
     @Test
-    fun test6DigitBoxFormattingMatrix() {
+    fun test5DigitBoxFormattingMatrix() {
         fun extractDigits(pinCode: String): List<String> {
-            val pinString = pinCode.padEnd(6, ' ')
-            return (0 until 6).map { i ->
+            val pinString = pinCode.padEnd(5, ' ')
+            return (0 until 5).map { i ->
                 if (i < pinString.length && pinString[i] != ' ') pinString[i].toString() else ""
             }
         }
 
-        // 1. Standard 6 digits
-        val std = extractDigits("482910")
-        assertEquals(listOf("4", "8", "2", "9", "1", "0"), std)
+        // 1. Standard 5 digits (legacy WPF server parity: Random().Next(10000, 99999))
+        val std = extractDigits("48291")
+        assertEquals(listOf("4", "8", "2", "9", "1"), std)
 
         // 2. Partial 3 digits
         val partial = extractDigits("123")
-        assertEquals(listOf("1", "2", "3", "", "", ""), partial)
+        assertEquals(listOf("1", "2", "3", "", ""), partial)
 
         // 3. Empty digits
         val empty = extractDigits("")
-        assertEquals(listOf("", "", "", "", "", ""), empty)
+        assertEquals(listOf("", "", "", "", ""), empty)
 
-        // 4. Overlong 8 digits -> extracts first 6
+        // 4. Overlong 8 digits -> extracts first 5
         val overlong = extractDigits("98765432")
-        assertEquals(listOf("9", "8", "7", "6", "5", "4"), overlong)
+        assertEquals(listOf("9", "8", "7", "6", "5"), overlong)
     }
 
     @Test

@@ -1,11 +1,90 @@
 # Changelog
+# Changelog
+## [10.1.28.18] - 2026-08-25
+### Fixed
+- **[fix] Desktop pairing screen re-based 1:1 onto the legacy WPF PIN panel** (all values read from `Archived_Legacy_WPF`, not eyeballed):
+  - **PIN length corrected to five digits.** The legacy server minted `Random().Next(10000, 99999)` (`LocalSendEndpoints.cs:91`) and the Android entry dialog enforces exactly five slots (`length <= 5`, `length == 5`, domino `repeat(5)`), but the desktop engine generated six — meaning phone-side entry of a PC-displayed PIN could never complete. `PairingEngine` now generates `(10000..99999)` and publishes `PIN_LENGTH = 5`; panel slots, masked placeholder, inbound-dialog auto-submit and its copy all derive from that constant.
+  - **Pairing no longer grows the dock card.** The WPF window was fixed 1420x760 NoResize with the PIN view sliding into the column; now both the rendered height (`DockCardContent`) and the window-placement math (`DockedWindowStateController.currentContentHeight()`) treat Pairing as contracted-height — only FileExplorer/Settings expand.
+  - **WPF-exact control styling**: digit boxes are filled accent (`primary`) with transparent idle border, bright ring when entered, red on error (legacy `icPinDigits` template: AccentBrush fill / BorderThickness 2 / CornerRadius 8); buttons use radius 12 with padding-based sizing per `AnimatedActionBtn` (Padding 16,10, FontSize 14 Medium) — Cancel moved to accent fill; Accept Once keeps its full-width accent-bordered row; the missing status line ("Waiting for acceptance...") is rendered under the digits again.
+  - Tests updated to the five-digit contract (`PairingEngineTest`, `Milestone3AdversarialStressTest` formatting matrix, `Milestone3ComponentsTest`). Verified via `:core:network:desktopTest` + `:composeApp:desktopTest` green (`--rerun-tasks`, exit 0); also unblocks the compile deferral noted in 10.1.28.17.
+
+## [10.1.28.17] - 2026-08-25
+## [10.1.28.17] - 2026-08-25
+### Changed
+- **[minor] Desktop dock card face uses the `background` role** — was `surface`, so light rendered pure white and dark #1E1E20 instead of the Android main-screen canvas tones (#DAD9DD / #111318); now 1:1 with the phone app. Compile verification deferred: an unrelated in-progress edit in `PinPairingPanel.kt` currently blocks `:composeApp:compileKotlinDesktop`.
+
+## [10.1.28.16] - 2026-08-25
+### Fixed
+- **[fix] Desktop: three always-on idle CPU drains eliminated after a live resource audit** (audit baseline at process level: memory flat ~715MB private over 8min, GC near-silent, threads/handles stable - no leak; but ~1% of one core burned while fully idle):
+  - Lottie scan loop in the device-list empty state keys its `LaunchedEffect` on panel visibility now - once the dock card hides, the `withFrameNanos` playback coroutine is cancelled instead of forcing frame production at display refresh rate forever behind contentAlpha=0 (previously the loaded JSON was never cleared, so the first empty-state appearance ignited a permanent per-frame loop). The composed Lottie view keeps its footprint while hidden so there is no layout jump mid fade-out; each appearance restarts the cycle deterministically at frame 0.
+  - Wiggle-to-open detector switched from an unconditional 66Hz x5-native-call poll to adaptive cadence: a single key-state probe every 50ms while no button is held, full-rate 15ms sampling with the complete cursor/foreground-window pipeline only during an actual press. Detection thresholds (900ms history, 150ms min drag, 300px bounds, 3 reversals @15px), ring-buffer mechanics, double-fire cooldown and the 5s sleep/wake detector are preserved 1:1; worst-case press-detection lag is bounded by the 50ms idle tick.
+  - Live Shift+Click affordance poller gated by real dock visibility, threaded through `MainMenuColumn -> BottomDockPanel -> ShiftClickCombo`; the old "no idle cost" doc premise was false because the menu tree stays composed behind graphicsLayer alpha when hidden, so the 64ms GetAsyncKeyState poll ran permanently since the exit-row relocation. Held-state resets when disabled so the glyph can never reopen stale-filled.
+
+  Verified via `:composeApp:compileKotlinDesktop` green. Runtime note: the wiggle trigger path was not exercised live because `wiggle_enabled=false` in the stored prefs (disabled service correctly idles at its 250ms cadence); positive-gesture verification on this machine needs the setting toggled on first.
+
+## [10.1.28.15] - 2026-08-25
+### Changed
+- **[major] Desktop theme re-based 1:1 onto the Android app's palette (both themes)**:
+  - `core/designsystem/theme/Color.kt` rebuilt around the seven Android seeds per mode — light: #DAD9DD background / #FFFFFF surface / #E0E2EC surfaceVariant / **black** primary / #1A1C1E+#44474E text; dark: #111318 / #1E1E20 / #2F3033 / **white** primary / #E3E2E6+#C4C6CF. The porcelain/royal-purple light identity and the emerald-accent dark identity are fully retired.
+  - Every M3 role the desktop fills derives from those seeds with no invented hexes: primary/secondary/tertiary collapse into the single monochrome accent Android uses for CTAs, containers = SurfaceVariant steps, the dark surfaceContainer ladder maps onto #111318/#1E1E20/#2F3033 exactly, hairlines become #44474E @55%/28% (light) and solid #2F3033 (dark), inverse roles mirror the opposite mode.
+  - Ripple color parity: raw black in light / white in dark (was Violet Ink in light).
+  - Kept untouched: danger reds (semantic), `GlassSurfaceAlpha`, the user-tuned smoke trio. Old Brand* tokens (Lavender/VioletInk/RoyalPurple/Porcelain/Slate) deleted — grep-verified they were referenced only inside designsystem itself.
+  - Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.14] - 2026-08-25
+### Changed
+- **[minor] Desktop: smoke haze re-synced to the current Android tune** — the designsystem smoke tokens now carry the user's exact Android hexes (`SmokePurple` #C6FF8BEA soft lavender, `SmokeViolet` #FFA226FF vivid purple, `SmokePink` #673AB7 deep violet) and the plume color placement was updated to match (violet top-left, pink right, purple bottom); anchors, pose, falloff and 0.40/0.40 alphas were already identical. Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.13] - 2026-08-25
+### Added
+- **[minor] Desktop: the ambient smoke haze now backs the dock card face** — the tuned static Android composition is ported 1:1 into shared `core/designsystem` as `AmbientSmokeBackground` (`commonMain`, pure Compose APIs): same pink/violet/purple plumes (#EC4899 / #8B5CF6 / #9333EA), anchors, `StaticSmokePhase` 0.35 frozen pose and user-tuned 0.40/0.40 alphas; plume colors added to the designsystem `Color.kt` beside the brand seeds. Mounted in `DockCardContent` as the first child above the `surface` fill, so the rounded-corner clip contains the haze, all panels render over it, and the static canvas costs nothing while idle. Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.12] - 2026-08-25
+### Changed
+- **[minor] Android: ambient smoke haze frozen into a static composition** — the 72s drift clock is replaced by a single `StaticSmokePhase` (0.35) constant, so the three plumes hold one chosen pose and the canvas paints once per size change with zero idle cost; the plume parametric math is kept intact so re-enabling animation later is a one-line clock swap. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.11] - 2026-08-25
+### Changed
+- **[minor] Android: acrylic grain and glinting dust removed from the ambient smoke** — the haze is back to just the three drifting plumes (single 72s clock, draw-phase only, three gradient circles per frame); both overlay experiments deleted cleanly along with their now-unused imports, and the user-tuned plume alphas (0.40/0.40) stay as-is. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.10] - 2026-08-25
+### Changed
+- **[minor] Android: acrylic grain replaced with a glinting dust field** — the static speckle tile is gone; instead a seeded pool of 96 tiny dots (0.9–2.2dp, positions identical every launch) twinkles over the haze on a second 8s draw-phase clock, each speck riding a narrow sine glint (`sin^6` falloff) so roughly half sit dormant at any instant and only a few sparkle at once. Count scales with screen area (48–96); ~15% of specks pick up the plume pink/violet/purple tints, the rest stay white; peak glint alpha 55% dark / 50% light. Still zero recomposition per frame — knobs: `GlintCycleMillis`, `GlintPeakAlpha*`, `GlintFalloffPower`, `GlintAreaPerParticlePx`. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.9] - 2026-08-25
+### Changed
+- **[minor] Android: ambient smoke haze gains an acrylic grain finish** — a deterministic 192px black/white speckle tile (seeded, identical every launch) is generated once and drawn as a single repeating `ImageShader` rect over the plumes at 6% dark / 5% light opacity, giving the surface a Fluent-acrylic tooth and dithering the soft gradients so they cannot band on OLED panels; the tile rides the existing draw pass so it adds no recomposition or extra frames. User-tuned plume alphas (0.40/0.40) preserved untouched. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.8] - 2026-08-25
+### Changed
+- **[minor] Android: ambient smoke haze retuned** — plume color placement swapped (pink now drifts top-left, purple closes at the bottom, violet stays right) and peak center opacity nudged 16% -> 18% dark / 13% -> 15% light; anchors, drift paths and timing untouched. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.7] - 2026-08-25
+### Added
+- **[minor] Android: ambient smoke haze behind the main screen background**:
+  - New `AmbientSmokeBackground` composable (`ui/components`) paints three slow-drifting plumes — purple #9333EA, violet #8B5CF6, pink #EC4899 — as soft multi-stop radial gradients anchored near the top-left, right edge and bottom of the screen; peak center opacity is 16% dark / 13% light so content readability is untouched.
+  - Each plume follows a seamless Lissajous drift (integer frequency ratios over a shared 72s cycle, per-plume phase) plus a ±7% "breathing" radius oscillation; all animation values are read inside the draw phase only, so the effect re-issues gradient circles per frame without ever recomposing the tree.
+  - No real blur pass is used by design: the gradient falloff (solid-ish core to transparent at 40% stop shaping) reads as pre-blurred smoke while avoiding a full-screen `RenderEffect` GPU cost every frame; plume colors are centralized as `SmokePurple`/`SmokeViolet`/`SmokePink` in the Android theme `Color.kt`.
+  - Mounted inside `MainScreen`'s glass backdrop box directly above the base fill and below all content, so the liquid-glass scroll edges sample the moving haze too. Verified via `:app:compileDebugKotlin` green.
+
+## [10.1.28.6] - 2026-08-25
+### Added
+- **[minor] Website: Spline 3D integration scaffolded behind a build-time asset gate**:
+  - New `SplineBot.astro` landing section (mounted between BentoFeatures and Compare) hosting a `<spline-viewer>` stage in a rounded glass-card frame with fixed aspect ratios (4:3 mobile / 16:9 desktop) so the canvas never shifts layout. The section renders only when the compiled scene export exists at `public/assets/spline/bot.splinecode` (`fs.existsSync` gate in frontmatter), so the site never ships a section pointing at a missing asset — dropping Spline's editor export there and rebuilding brings it online.
+  - Client behavior: `@splinetool/viewer` (v2.0.5, self-hosted through the bundle, no unpkg CDN) is dynamically imported only when the stage nears the viewport (IntersectionObserver, 600px margin); reduced-motion users get a static branded poster instead of any canvas; on `load-complete` the poster fades out, on viewer error or a 20s load timeout the poster returns an honest status line instead of spinning forever.
+  - Raw `.spline` editor files cannot be rendered by the web runtime — an editor Export (Spline Viewer) is required to produce the `.splinecode`. Embedded texture PNGs extracted from the provided project during inspection (bot eyes, phone screen) confirmed scene content but were removed again; the real export carries its own assets. License of the remixed community file must be checked before shipping commercially.
+  - The compiled export has since landed at the expected path (47KB, fully self-contained — zero external asset or CDN references) and the section is verified live in headed Chrome: `load-complete` fires, the poster fades, the bot renders with its baked speech bubbles, and the console stays clean.
+  - `@types/node` added as devDependency for Node builtins used by the gate; `astro check` 0/0/0, production build green, absence gate verified against dist output.
+
 ## [10.1.28.5] - 2026-08-25
 ### Changed
 - **[major] Desktop light theme rebuilt on the new brand palette (#D0BCFF / #381E72 / #7560A3 / #EAF6FA / #4D5156)**:
   - `Color.kt` restructured around five named brand seeds (Lavender Mist #D0BCFF, Violet Ink #381E72, Royal Purple #7560A3, Porcelain #EAF6FA, Slate #4D5156); every scheme role derives from them — no orphan hexes in the light identity.
-  - Light mapping: Royal Purple drives interaction (`primary`, white content), Lavender fills selected/active containers with Violet Ink text, Violet Ink is the strong CTA accent (`secondary`), Porcelain is the canvas/well/divider tone behind a pure-white card surface, Slate carries typography and hairlines; danger reds preserved. Ripple tint follows Violet Ink instead of raw black.
+  - Light "porcelain canvas" model (v2 after first-pass review): the dock card face itself carries the mist identity (`surface` = Porcelain #EAF6FA) while every raised element — pills, wells, hovers, dialogs, transfer toast — is pure white via `surfaceVariant`/container roles, restoring visible tonal steps like the approved dark theme. Royal Purple drives interaction, Lavender fills selected containers with Violet Ink text, Violet Ink is the strong CTA accent (`secondary`), Slate carries typography and hairlines; danger reds preserved. Ripple tint follows Violet Ink instead of raw black. `outlineVariant` = Slate @ 28% for hairlines that read on both porcelain and white.
+  - Dividers and hairline borders migrated from `surfaceVariant` to `outlineVariant` so they stay visible over white raised elements: BottomDockPanel, TopActionsPanel (x2), PIN digit boxes and the Accept-Once outline (PinPairingPanel), inbound pairing card border; PullProgressDock toast now paints `surfaceContainerLowest`.
+  - Dark parity guard: `DarkOutlineVariant` pinned to the solid legacy hairline tone (#2B2631) so every border/divider migration renders exactly like the pre-rebuild dark surfaces — the approved dark look stays untouched until its own pass.
   - `Theme.kt` now fills the complete Material 3 role set for BOTH themes (containers, outline/inverse, full `surfaceContainer` ladder) so M3 defaults (dialogs, text fields, buttons) can never fall back to baseline purple; dark keeps its approved emerald/neutrals exactly, with the new roles filled from its existing dark tones.
-  - Theme-blind hardcoded dark colors replaced with roles so light actually renders: device avatar glyph now uses `onPrimary` instead of hardcoded black (DeviceListPanel), QR/PIN toggle button content uses `onSecondary` instead of black (PinPairingPanel), file-grid selection paints `primaryContainer` + hover wash instead of dark-only hexes (FileGridItemCard), transfer toast background uses `surface` instead of `#141118` (PullProgressDock), dock card border moved to `outlineVariant` so the floating card keeps definition over the porcelain canvas (DockCardContent), mirror letterbox normalized to pure black in both themes (MirrorWindow). Semantic file-type category colors intentionally untouched.
+  - Theme-blind hardcoded dark colors replaced with roles so light actually renders: device avatar glyph now uses `onPrimary` instead of hardcoded black (DeviceListPanel), QR/PIN toggle button content uses `onSecondary` instead of black (PinPairingPanel), file-grid selection paints `primaryContainer` + hover wash instead of dark-only hexes (FileGridItemCard), transfer toast background uses a theme role instead of `#141118` (PullProgressDock), dock card border moved to `outlineVariant` so the floating card keeps definition over any wallpaper (DockCardContent), mirror letterbox normalized to pure black in both themes (MirrorWindow). Semantic file-type category colors intentionally untouched.
   - Verified: `:composeApp:compileKotlinDesktop` and `:composeApp:desktopTest` green.
 
 ## [10.1.28.4] - 2026-08-25

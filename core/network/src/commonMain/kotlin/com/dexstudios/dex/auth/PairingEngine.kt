@@ -77,7 +77,9 @@ class PairingEngine(
             _state.value = PairingState.PinPhase(
                 current.ip,
                 current.fingerprint,
-                "------",
+                // No PIN exists yet in this phase (the remote device is typing before its pair-request
+                // reached us), so render the masked placeholder instead of fake digits.
+                "-".repeat(PIN_LENGTH),
                 digitCount,
                 expiresAtMillis = current.expiresAtMillis,
             )
@@ -91,7 +93,9 @@ class PairingEngine(
         // Concurrency model: one pairing offer at a time (last-wins). A superseded peer can
         // never gain trust from its stale offer — verifyInboundPin matches the exact
         // fingerprint AND honors the TTL — so overwriting is safe without a pending-map.
-        val pinCode = (100000..999999).random().toString()
+        // 5-digit range mirrors the legacy WPF server (Random().Next(10000, 99999)); the
+        // phone-side entry dialog enforces exactly this length.
+        val pinCode = (10000..99999).random().toString()
         _state.value = PairingState.PinPhase(
             ip,
             fingerprint,
@@ -214,8 +218,15 @@ class PairingEngine(
         }
     }
 
-    private companion object {
+    companion object {
         /** Server-side pairing offers expire; the panel countdown mirrors this deadline. */
-        const val PIN_TTL_MS = 60_000L
+        private const val PIN_TTL_MS = 60_000L
+
+        /**
+         * Canonical PIN length. The legacy WPF server minted Random().Next(10000, 99999) —
+         * five digits — and the phone's entry dialog enforces exactly five slots, so every
+         * producer/consumer (engine, panels, dialogs, tests) shares this constant.
+         */
+        const val PIN_LENGTH = 5
     }
 }

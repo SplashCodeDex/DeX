@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
+import com.dexstudios.dex.auth.PairingEngine
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 
@@ -97,7 +98,7 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
             .width(360.dp)
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(24.dp),
             )
             .clip(cardShape),
@@ -122,7 +123,7 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "$alias wants to connect.\nEnter the 6-digit PIN displayed on the device.",
+                    text = "$alias wants to connect.\nEnter the ${PairingEngine.PIN_LENGTH}-digit PIN displayed on the device.",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -135,9 +136,9 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
                     value = pinText,
                     onValueChange = { newValue ->
                         val digitsOnly = newValue.filter { it.isDigit() }
-                        if (digitsOnly.length <= 6) {
+                        if (digitsOnly.length <= PairingEngine.PIN_LENGTH) {
                             pinText = digitsOnly
-                            if (digitsOnly.length == 6) {
+                            if (digitsOnly.length == PairingEngine.PIN_LENGTH) {
                                 onPinEntered(digitsOnly)
                             }
                         }
@@ -153,8 +154,8 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val pinString = pinText.padEnd(6, ' ')
-                            for (i in 0 until 6) {
+                            val pinString = pinText.padEnd(PairingEngine.PIN_LENGTH, ' ')
+                            for (i in 0 until PairingEngine.PIN_LENGTH) {
                                 val digit = if (i < pinString.length && pinString[i] != ' ') pinString[i].toString() else ""
                                 PinDigitBox(
                                     digit = digit,

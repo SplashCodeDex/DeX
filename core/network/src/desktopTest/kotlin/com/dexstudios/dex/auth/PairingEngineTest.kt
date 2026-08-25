@@ -74,14 +74,15 @@ class PairingEngineTest {
     }
 
     @Test
-    fun `handleInboundPairingRequest transitions to PinPhase and returns 6-digit PIN`() = runTest {
+    fun `handleInboundPairingRequest transitions to PinPhase and returns 5-digit PIN`() = runTest {
         val ip = "192.168.1.200"
         val fingerprint = "inbound-fingerprint"
 
         val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
 
-        // Verify PIN is exactly 6 digits
-        assertTrue(pin.length == 6, "PIN should be 6 digits")
+        // Verify PIN is exactly 5 digits (legacy WPF server parity: Random().Next(10000, 99999);
+        // the phone-side entry dialog enforces exactly five slots)
+        assertTrue(pin.length == PairingEngine.PIN_LENGTH, "PIN should be 5 digits")
         assertTrue(pin.all { it.isDigit() }, "PIN should contain only digits")
 
         // Verify state is PinPhase
@@ -111,10 +112,10 @@ class PairingEngineTest {
         assertIs<PairingState.PinPhase>(state)
         assertEquals(1, state.digitCount)
 
-        pairingEngine.handlePinDigitEntered(6)
+        pairingEngine.handlePinDigitEntered(PairingEngine.PIN_LENGTH)
         state = pairingEngine.state.value
         assertIs<PairingState.PinPhase>(state)
-        assertEquals(6, state.digitCount)
+        assertEquals(PairingEngine.PIN_LENGTH, state.digitCount)
     }
 
     @Test

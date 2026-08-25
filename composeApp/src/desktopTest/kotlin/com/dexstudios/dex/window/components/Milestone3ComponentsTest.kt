@@ -13,12 +13,12 @@ class Milestone3ComponentsTest {
     @Test
     fun testPinPairingUiStateProperties() {
         val pinView = PinPairingUiState.PinView(
-            pinCode = "123456",
+            pinCode = "12345",
             enteredDigitCount = 3,
             remainingSeconds = 45,
             isError = false,
         )
-        assertEquals("123456", pinView.pinCode)
+        assertEquals("12345", pinView.pinCode)
         assertEquals(3, pinView.enteredDigitCount)
         assertEquals(45, pinView.remainingSeconds)
         assertFalse(pinView.isError)
