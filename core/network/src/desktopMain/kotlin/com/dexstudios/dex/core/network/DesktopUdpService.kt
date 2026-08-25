@@ -19,8 +19,14 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.MulticastSocket
 import java.net.NetworkInterface
+import java.util.concurrent.ConcurrentHashMap
 
 private val lenientJson = Json { ignoreUnknownKeys = true }
+
+// One discovery reaction per announcing fingerprint per window. Coalesces the dual-port
+// copies of a single announcement (both listeners receive it) and caps any flood.
+private const val PeerDiscoveryCooldownMs = 3000L
+private const val MaxTrackedPeers = 256
 
 class DesktopUdpService : IDiscoveryService {
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -30,12 +36,18 @@ class DesktopUdpService : IDiscoveryService {
     private var httpsSocket: MulticastSocket? = null
     private var legacySocket: MulticastSocket? = null
 
+    // Persistent ephemeral socket for unicast replies; reused so replying never pays
+    // socket allocation or network-interface enumeration per packet.
+    private var replySocket: DatagramSocket? = null
+    private val lastSeenByFingerprint = ConcurrentHashMap<String, Long>()
+
     private var localInfo: RegisterDto? = null
     private var onDeviceDiscovered: ((DiscoveredDevice) -> Unit)? = null
 
     override fun start(localInfo: RegisterDto, onDeviceDiscovered: (DiscoveredDevice) -> Unit) {
         this.localInfo = localInfo
         this.onDeviceDiscovered = onDeviceDiscovered
+        replySocket = runCatching { DatagramSocket() }.getOrNull()
 
         httpsJob = scope.launch { startListening(DeXPorts.HTTPS, 0) }
         legacyJob = scope.launch { startListening(28424, 1) }
@@ -73,6 +85,16 @@ class DesktopUdpService : IDiscoveryService {
             val fp = json["fingerprint"]?.jsonPrimitive?.contentOrNull ?: ""
             if (fp.isEmpty() || fp == localInfo?.fingerprint) return
 
+            // Cooldown gate: each announcing fingerprint earns at most one discovery
+            // reaction per window. Without this, every reply we send is itself an
+            // announcement that other peers answer, and those answers re-trigger us -
+            // an unbounded mutual amplification loop that saturates a CPU core.
+            val now = System.currentTimeMillis()
+            val lastSeen = lastSeenByFingerprint[fp]
+            if (lastSeen != null && now - lastSeen < PeerDiscoveryCooldownMs) return
+            lastSeenByFingerprint[fp] = now
+            if (lastSeenByFingerprint.size > MaxTrackedPeers) pruneStalePeerEntries(now)
+
             val ip = packet.address.hostAddress ?: return
 
             onDeviceDiscovered?.invoke(
@@ -100,6 +122,7 @@ class DesktopUdpService : IDiscoveryService {
 
     private fun sendReply(packet: DatagramPacket) {
         val info = localInfo ?: return
+        val socket = replySocket ?: return
         runCatching {
             val replyJson = buildJsonObject {
                 put("alias", info.alias)
@@ -116,23 +139,19 @@ class DesktopUdpService : IDiscoveryService {
                 info.googleSub?.let { put("googleSub", it) }
             }
             val replyData = replyJson.toString().toByteArray(Charsets.UTF_8)
-            val mcastPacketHttps = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
-            val mcastPacketLegacy = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 28424)
-            val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
 
-            NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
-                runCatching {
-                    if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
-                        MulticastSocket().use { mSocket ->
-                            mSocket.networkInterface = ni
-                            mSocket.send(mcastPacketHttps)
-                            mSocket.send(mcastPacketLegacy)
-                        }
-                    }
-                }
-            }
-            runCatching { DatagramSocket().use { it.send(ucastPacket) } }
+            // Unicast only, straight back to the sender. The announcement itself already
+            // reached every group member, so multicasting the answer would re-broadcast
+            // into the group and make every member answer again - the discovery echo
+            // storm. Peers that missed this exchange learn about us from their own copy
+            // of our periodic announcements instead.
+            val ucastPacket = DatagramPacket(replyData, replyData.size, packet.address, packet.port)
+            synchronized(socket) { socket.send(ucastPacket) }
         }
+    }
+
+    private fun pruneStalePeerEntries(now: Long) {
+        lastSeenByFingerprint.entries.removeIf { now - it.value > PeerDiscoveryCooldownMs }
     }
 
     private fun startBroadcasting() {
@@ -200,5 +219,8 @@ class DesktopUdpService : IDiscoveryService {
         broadcastJob?.cancel()
         runCatching { httpsSocket?.close() }
         runCatching { legacySocket?.close() }
+        runCatching { replySocket?.close() }
+        replySocket = null
+        lastSeenByFingerprint.clear()
     }
 }

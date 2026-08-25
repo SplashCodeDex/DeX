@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.components.AmbientSmokeBackground
+import com.dexstudios.dex.core.designsystem.components.AmbientSmokeMood
 import com.dexstudios.dex.platform.DockCardMetrics
 import com.dexstudios.dex.window.components.FileExplorerPanel
 import com.dexstudios.dex.window.components.InboundPairingDialogOverlay
@@ -39,6 +40,8 @@ import com.dexstudios.dex.window.components.PinPairingPanel
 import com.dexstudios.dex.window.components.SettingsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * Main Content Surface for the DeX Floating Dock Card.
@@ -140,9 +143,33 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
             // main screen canvas (#DAD9DD light / #111318 dark).
             .background(MaterialTheme.colorScheme.background, cardShape),
     ) {
-        // Ambient purple/violet/pink haze behind all card content; the card's
-        // rounded-corner graphicsLayer clip keeps it inside the face.
-        AmbientSmokeBackground(modifier = Modifier.fillMaxSize())
+        // Liquid-glass backdrop source: the card face fill plus the smoke haze
+        // are captured into a layer so glass controls sample real content and
+        // never draw empty glass. Kept separate from the content tree so glass
+        // elements (which live above) can't capture themselves.
+        val cardBackdrop = rememberLayerBackdrop()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(cardBackdrop),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+            )
+            // The haze live-choreographs around whichever panel is expanded and
+            // freezes back to the canonical static pose at rest.
+            AmbientSmokeBackground(
+                modifier = Modifier.fillMaxSize(),
+                mood = when (controller.expandedPanel) {
+                    ExpandedPanel.FileExplorer -> AmbientSmokeMood.Explorer
+                    ExpandedPanel.Settings -> AmbientSmokeMood.Settings
+                    ExpandedPanel.Pairing -> AmbientSmokeMood.Pairing
+                    null -> AmbientSmokeMood.Resting
+                },
+            )
+        }
 
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -218,6 +245,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                     } else {
                         MainMenuColumn(
                             controller = controller,
+                            cardBackdrop = cardBackdrop,
                             onExpandFileExplorer = { controller.expandPanel(ExpandedPanel.FileExplorer) },
                             onExpandSettings = { controller.expandPanel(ExpandedPanel.Settings) },
                             onContract = { controller.collapsePanel() },

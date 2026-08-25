@@ -1,4 +1,4 @@
-package com.dexstudios.dex.ui.components.glass
+package com.dexstudios.dex.core.designsystem.components.glass
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
@@ -16,8 +16,8 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 
 /**
- * Core optical and physics tokens derived from iterative tuning
- * (Matching liquid-glass-2026-08-17T18-35-42.json)
+ * Core optical and physics tokens derived from iterative tuning on the Android
+ * app (Matching liquid-glass-2026-08-17T18-35-42.json) — kept 1:1.
  */
 object LiquidGlassTokens {
     val LensHeight = 30.dp
@@ -57,9 +57,9 @@ data class LiquidGlassConfig(
     val highlight: Highlight = Highlight(
         style = HighlightStyle.Default(
             angle = LiquidGlassTokens.GlareAngle,
-            falloff = LiquidGlassTokens.GlareHardness / 10f
+            falloff = LiquidGlassTokens.GlareHardness / 10f,
         ),
-        alpha = LiquidGlassTokens.GlareFactor
+        alpha = LiquidGlassTokens.GlareFactor,
     ),
     val shadowRadius: Dp = 0.dp,
     val shadowColor: Color = Color.Black.copy(alpha = 0.2f),
@@ -73,7 +73,7 @@ data class LiquidGlassConfig(
     val glareRange: Float = 0f,
     val glareHardness: Float = LiquidGlassTokens.GlareHardness,
     val glareFactor: Float = LiquidGlassTokens.GlareFactor * 100f,
-    val glareAngle: Float = LiquidGlassTokens.GlareAngle
+    val glareAngle: Float = LiquidGlassTokens.GlareAngle,
 )
 
 /**
@@ -91,12 +91,10 @@ object LiquidGlassPresets {
      * Internal helper to resolve theme-aware tinting.
      */
     @Composable
-    private fun resolve(config: LiquidGlassConfig): LiquidGlassConfig {
-        return if (isSystemInDarkTheme()) config else config.copy(surfaceTintAlpha = 0f)
-    }
+    private fun resolve(config: LiquidGlassConfig): LiquidGlassConfig = if (isSystemInDarkTheme()) config else config.copy(surfaceTintAlpha = 0f)
 
     /**
-     * Crisp glass tuned for top-bar icon buttons.
+     * Crisp glass tuned for icon buttons and toggle pills.
      */
     val IconButton: LiquidGlassConfig
         @Composable get() {
@@ -104,12 +102,13 @@ object LiquidGlassPresets {
             return MasterSpec.copy(
                 shadowRadius = 4.dp,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.35f
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f,
             )
         }
 
     /**
-     * Dedicated preset for the Search button (collapsed).
+     * Dedicated preset for the Search button (collapsed) — verbatim from the
+     * Android app's LiquidGlassPresets.SearchIconButton.
      */
     val SearchIconButton: LiquidGlassConfig
         @Composable get() {
@@ -117,20 +116,7 @@ object LiquidGlassPresets {
             return MasterSpec.copy(
                 shadowRadius = 4.dp,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.35f
-            )
-        }
-
-    /**
-     * Dedicated preset for the Profile button (collapsed).
-     */
-    val ProfileIconButton: LiquidGlassConfig
-        @Composable get() {
-            val isDark = isSystemInDarkTheme()
-            return MasterSpec.copy(
-                shadowRadius = 4.dp,
-                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f,
             )
         }
 
@@ -147,41 +133,7 @@ object LiquidGlassPresets {
                 shadowRadius = 12.dp,
                 shadowOffset = DpOffset(0.dp, 4.dp),
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f
-            )
-        }
-
-    /**
-     * Dedicated preset for the Search island (expanded).
-     */
-    val SearchIsland: LiquidGlassConfig
-        @Composable get() {
-            val isDark = isSystemInDarkTheme()
-            return MasterSpec.copy(
-                shape = RoundedCornerShape(48.dp),
-                blurRadius = 2.dp,
-                restRefraction = 1.05f,
-                shadowRadius = 33.dp,
-                shadowOffset = DpOffset(0.dp, 36.dp),
-                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.5f
-            )
-        }
-
-    /**
-     * Dedicated preset for the Profile island (expanded).
-     */
-    val ProfileIsland: LiquidGlassConfig
-        @Composable get() {
-            val isDark = isSystemInDarkTheme()
-            return MasterSpec.copy(
-                shape = RoundedCornerShape(48.dp),
-                blurRadius = 2.dp,
-                restRefraction = 1.05f,
-                shadowRadius = 12.dp,
-                shadowOffset = DpOffset(0.dp, 4.dp),
-                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f,
             )
         }
 
@@ -194,8 +146,8 @@ object LiquidGlassPresets {
                 blurRadius = 5.dp,
                 restRefraction = 0.8f,
                 shadowRadius = 0.dp,
-                shadowColor = Color.Black.copy(alpha = 0.6f)
-            )
+                shadowColor = Color.Black.copy(alpha = 0.6f),
+            ),
         )
 
     /**
@@ -207,8 +159,8 @@ object LiquidGlassPresets {
                 lensHeight = 0.dp,
                 lensAmount = 0.dp,
                 blurRadius = 0.dp,
-                restRefraction = 0f
-            )
+                restRefraction = 0f,
+            ),
         )
 
     /**
@@ -218,8 +170,8 @@ object LiquidGlassPresets {
         @Composable get() = resolve(
             MasterSpec.copy(
                 blurRadius = 1.dp,
-                restRefraction = 1.0f
-            )
+                restRefraction = 1.0f,
+            ),
         )
 
     /**
@@ -232,8 +184,8 @@ object LiquidGlassPresets {
                 blurRadius = 16.dp,
                 restRefraction = 1.0f,
                 shadowRadius = 16.dp,
-                shadowColor = Color.Black.copy(alpha = 0.3f)
-            )
+                shadowColor = Color.Black.copy(alpha = 0.3f),
+            ),
         )
 
     /**
@@ -253,28 +205,7 @@ object LiquidGlassPresets {
                 surfaceTintAlpha = 0.12f,
                 highlight = Highlight.Ambient,
                 shadowRadius = 12.dp,
-                shadowColor = Color.Black.copy(alpha = 0.15f)
-            )
-        )
-
-    /**
-     * Interactive version of the flat glass.
-     */
-    val FlatInteractive: LiquidGlassConfig
-        @Composable get() = resolve(
-            LiquidGlassConfig(
-                shape = CircleShape,
-                blurRadius = 16.dp,
-                lensHeight = 0.dp,
-                lensAmount = 0.dp,
-                vibrancyEnabled = false,
-                chromaticAberration = false,
-                depthEffect = false,
-                surfaceTint = Color.White,
-                surfaceTintAlpha = 0.15f,
-                highlight = Highlight.Ambient,
-                shadowRadius = 8.dp,
-                shadowColor = Color.Black.copy(alpha = 0.2f)
-            )
+                shadowColor = Color.Black.copy(alpha = 0.15f),
+            ),
         )
 }

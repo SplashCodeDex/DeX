@@ -277,7 +277,7 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
                         Icon(
                             painter = if (device.isWanPlaceholder) painterResource(Res.drawable.ic_fluent_account_circle) else painterResource(Res.drawable.ic_fluent_smartphone),
                             contentDescription = device.alias,
-                            tint = if (device.isOnline) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (device.isOnline) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -441,8 +441,15 @@ private fun DeviceEmptyState(isVisible: Boolean) {
                 val lottieProgress = remember { Animatable(0f) }
                 val lottieAlpha = remember { Animatable(1f) }
 
-                LaunchedEffect(composition) {
-                    if (composition == null) return@LaunchedEffect
+                // Keyed on visibility: while the dock card is hidden this coroutine is
+                // cancelled, so the withFrameNanos loop cannot force frame production at
+                // refresh rate behind contentAlpha = 0f. The composed Lottie view itself
+                // stays in place (same footprint) so hiding never triggers a layout jump;
+                // only the per-frame work stops.
+                LaunchedEffect(composition, isVisible) {
+                    if (composition == null || !isVisible) return@LaunchedEffect
+                    lottieProgress.snapTo(0f)
+                    lottieAlpha.snapTo(1f)
                     while (true) {
                         // 1. Play frames 0..455, decelerating while the DeX pops in
                         var lastNanos = withFrameNanos { it }

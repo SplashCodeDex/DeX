@@ -38,6 +38,7 @@ import com.dexstudios.dex.window.components.DeviceListPanel
 import com.dexstudios.dex.window.components.TopActionsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
+import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -54,6 +55,7 @@ import java.awt.datatransfer.StringSelection
 @Composable
 fun MainMenuColumn(
     controller: DockedWindowStateController,
+    cardBackdrop: Backdrop,
     onExpandFileExplorer: () -> Unit,
     onExpandSettings: () -> Unit,
     onContract: () -> Unit,
@@ -186,6 +188,7 @@ fun MainMenuColumn(
         ) {
             TopActionsPanel(
                 controller = controller,
+                cardBackdrop = cardBackdrop,
                 isDndActive = isDndActive,
                 onToggleDnd = { deviceConfig.dndEnabled = !isDndActive },
                 isMirroringActive = isMirroringActive,
@@ -355,6 +358,7 @@ fun MainMenuColumn(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 hasActiveTransfers = isUploading,
                 isMirroringActive = isMirroringActive,
+                isPanelVisible = controller.isVisible,
             )
         }
     }

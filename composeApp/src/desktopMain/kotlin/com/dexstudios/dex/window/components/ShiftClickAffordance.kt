@@ -24,15 +24,23 @@ import kotlinx.coroutines.withContext
 
 /**
  * Live Shift+Click affordance pinned to the far right of the Exit Engine button. Polls
- * the global Shift modifier while composed — the combo only exists while the dock menu
- * is open, so there is no idle cost — and reflects it in real time: the Shift arrow
+ * the global Shift modifier while [enabled] and reflects it in real time: the Shift arrow
  * fills and the mouse's primary button blinks/ripples the moment Shift is held,
  * previewing the exact gesture right where it applies.
+ *
+ * The dock menu keeps this row composed even while hidden (visibility is painted via
+ * graphicsLayer alpha, not composition removal), so [enabled] must track the card's
+ * visibility - passing false cancels the poller entirely instead of burning a 64ms
+ * GetAsyncKeyState wake-up forever behind an invisible surface.
  */
 @Composable
-internal fun rememberShiftHeld(pollIntervalMs: Long = 64L): Boolean {
+internal fun rememberShiftHeld(pollIntervalMs: Long = 64L, enabled: Boolean = true): Boolean {
     var shiftHeld by remember { mutableStateOf(false) }
-    LaunchedEffect(pollIntervalMs) {
+    LaunchedEffect(pollIntervalMs, enabled) {
+        if (!enabled) {
+            shiftHeld = false // Never reopen with a stale filled glyph from the last session.
+            return@LaunchedEffect
+        }
         while (true) {
             shiftHeld = withContext(Dispatchers.IO) { ShiftKeyState.isShiftHeldNow() }
             delay(pollIntervalMs)
@@ -42,8 +50,8 @@ internal fun rememberShiftHeld(pollIntervalMs: Long = 64L): Boolean {
 }
 
 @Composable
-internal fun ShiftClickCombo(modifier: Modifier = Modifier) {
-    val shiftHeld = rememberShiftHeld()
+internal fun ShiftClickCombo(modifier: Modifier = Modifier, isPanelVisible: Boolean = true) {
+    val shiftHeld = rememberShiftHeld(enabled = isPanelVisible)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,

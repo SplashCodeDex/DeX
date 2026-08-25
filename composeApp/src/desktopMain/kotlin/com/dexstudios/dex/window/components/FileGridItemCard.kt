@@ -41,11 +41,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
 
-private val CardSelectedHoverColor = Color(0xFF3D3647)
-private val CardSelectedColor = Color(0xFF332D3B)
-
 /**
  * 100x115dp File & Folder Grid Card with hover lift, press sink, and micro-thumbnail decoding.
+ *
+ * Selection paints with the theme's primaryContainer so it stays legible in both themes;
+ * hover over a selected card layers a subtle onSurface wash instead of a second hardcoded tone.
  */
 @Composable
 internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onClick: () -> Unit) {
@@ -81,10 +81,16 @@ internal fun FileGridItemCard(item: ExplorerFileItem, isSelected: Boolean, onCli
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when {
-                    isSelected && isHovered -> CardSelectedHoverColor
-                    isSelected -> CardSelectedColor
+                    isSelected -> MaterialTheme.colorScheme.primaryContainer
                     isHovered -> MaterialTheme.colorScheme.surfaceVariant
                     else -> Color.Transparent
+                },
+            )
+            .background(
+                if (isSelected && isHovered) {
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f)
+                } else {
+                    Color.Transparent
                 },
             )
             .clickable(

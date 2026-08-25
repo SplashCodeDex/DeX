@@ -97,7 +97,9 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF0F0C13)),
+                    // Video letterbox stays pure black in both themes (cinema standard);
+                    // the old purple-tinted hex was a dark-theme-only artifact.
+                    .background(Color.Black),
             ) {
                 // Local capture: delegated property cannot be smart-cast to non-null.
                 val currentFrame = latestFrame

@@ -253,6 +253,9 @@ fun MainScreen(
                         .background(MaterialTheme.colorScheme.background)
                 )
 
+                // Ambient purple/violet/pink haze drifting behind all content
+                AmbientSmokeBackground(modifier = Modifier.fillMaxSize())
+
                     val discoveredDevicesList = discoveredDevices
                     val deviceConfig: DeviceConfig = koinInject()
 

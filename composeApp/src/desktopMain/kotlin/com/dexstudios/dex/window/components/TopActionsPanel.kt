@@ -32,6 +32,7 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.DockedWindowStateController
+import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -47,6 +48,7 @@ import java.awt.datatransfer.StringSelection
 @Composable
 fun TopActionsPanel(
     controller: DockedWindowStateController,
+    cardBackdrop: Backdrop,
     isDndActive: Boolean,
     onToggleDnd: () -> Unit,
     isMirroringActive: Boolean,
@@ -87,6 +89,7 @@ fun TopActionsPanel(
             contentAlignment = Alignment.Center,
         ) {
             QuickActionBar(
+                cardBackdrop = cardBackdrop,
                 isDndActive = isDndActive,
                 isMirroringActive = isMirroringActive,
                 isTransfersActive = isTransfersActive,
@@ -109,7 +112,7 @@ fun TopActionsPanel(
         ) {
             Column {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.outlineVariant,
                     thickness = 1.dp,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
@@ -167,7 +170,7 @@ fun TopActionsPanel(
         }
 
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.outlineVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp),
         )

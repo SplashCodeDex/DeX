@@ -1,0 +1,98 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import BrandMark from './BrandMark.astro';
+
+/**
+ * Spline 3D showcase section. Renders only when the compiled scene export
+ * exists, so the site never ships a section pointing at a missing asset:
+ * drop the Spline editor export (Export -> Spline Viewer -> scene.splinecode)
+ * at public/assets/spline/bot.splinecode and rebuild to bring it online.
+ */
+const SCENE_URL = '/assets/spline/bot.splinecode';
+const sceneReady = fs.existsSync(path.resolve('public/assets/spline/bot.splinecode'));
+---
+
+{
+  sceneReady && (
+    <section id="bot" class="relative px-4 py-24">
+      <div class="mx-auto max-w-5xl">
+        <div class="landing-reveal mb-12 text-center">
+          <p class="mb-3 font-brand text-lg font-semibold text-primary-600 dark:text-primary-400">Spline</p>
+          <h2 class="text-balance text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            Say hello to R-4X.
+          </h2>
+          <p class="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
+            Our resident 3D bot, rendered live in your browser.
+          </p>
+        </div>
+        <div
+          class="landing-reveal relative mx-auto aspect-[4/3] w-full max-w-4xl overflow-hidden rounded-3xl glass-card shadow-2xl sm:aspect-video"
+          data-spline-stage
+        >
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-4" data-spline-poster>
+            <BrandMark class="h-20 w-20" />
+            <p class="text-sm text-muted-foreground" data-spline-poster-text>
+              Loading live 3D&hellip;
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  const STAGE_SELECTOR = '[data-spline-stage]';
+  const SCENE_URL = '/assets/spline/bot.splinecode';
+  const LOAD_TIMEOUT_MS = 20000;
+
+  const initStage = (stage: HTMLElement) => {
+    const poster = stage.querySelector<HTMLElement>('[data-spline-poster]');
+    const posterText = stage.querySelector<HTMLElement>('[data-spline-poster-text]');
+    if (!poster) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (posterText) posterText.textContent = 'Live 3D preview is disabled by reduced-motion.';
+      return;
+    }
+
+    const showPosterNote = (note: string) => {
+      if (posterText) posterText.textContent = note;
+      poster.style.opacity = '1';
+    };
+
+    import('@splinetool/viewer')
+      .then(() => {
+        const viewer = document.createElement('spline-viewer');
+        viewer.setAttribute('url', SCENE_URL);
+        viewer.setAttribute('events-target', 'local');
+        viewer.setAttribute('loading', 'eager');
+        viewer.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+        viewer.addEventListener('load-complete', () => {
+          poster.style.transition = 'opacity 0.5s ease';
+          poster.style.opacity = '0';
+          window.setTimeout(() => poster.remove(), 600);
+        });
+        viewer.addEventListener('error', () => showPosterNote('Live 3D preview is unavailable right now.'));
+        stage.appendChild(viewer);
+        window.setTimeout(() => {
+          if (poster.isConnected) showPosterNote('Live 3D preview is taking a while to load.');
+        }, LOAD_TIMEOUT_MS);
+      })
+      .catch(() => showPosterNote('Live 3D preview is unavailable right now.'));
+  };
+
+  const stages = document.querySelectorAll<HTMLElement>(STAGE_SELECTOR);
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        obs.disconnect();
+        initStage(entry.target as HTMLElement);
+      });
+    },
+    { rootMargin: '600px 0px' },
+  );
+  stages.forEach((stage) => observer.observe(stage));
+</script>

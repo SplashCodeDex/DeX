@@ -93,6 +93,8 @@ kotlin {
             implementation(libs.ktor.server.content.negotiation)
             implementation(libs.jna)
             implementation(libs.jna.platform)
+            // SLF4J API for the Kermit bridge; Ktor/jmDNS logs route through it.
+            implementation(libs.slf4j.api)
         }
 
         commonTest.dependencies {
@@ -101,6 +103,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
     }
+}
+
+// JDK 24+ (JEP 472) warns on JNI native access and will deny it in a future release;
+// JNA (global mouse hook, clipboard sync) and Skiko require an explicit grant.
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 compose.desktop {

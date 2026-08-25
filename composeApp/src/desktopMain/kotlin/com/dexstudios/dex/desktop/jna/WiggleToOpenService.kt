@@ -9,6 +9,20 @@ import kotlin.math.abs
 object WiggleToOpenService {
     private var job: Job? = null
 
+    // Full-rate sampling cadence while the primary button is held (66Hz) - mirrors the
+    // WPF poller so wiggle detection thresholds behave identically.
+    private const val SAMPLE_INTERVAL_MS = 15L
+
+    // Cadence while wiggle is armed but no button is held: a single key-state probe per
+    // tick instead of five native calls at 66Hz. An always-on DeX must not keep waking
+    // the CPU for a gesture that cannot exist without a press; worst-case press
+    // detection lag is bounded by this interval and is imperceptible against the
+    // 150ms minimum-drag requirement.
+    private const val IDLE_POLL_INTERVAL_MS = 50L
+
+    // Cadence while wiggle is disabled entirely (sleep/wake detector only).
+    private const val DISABLED_POLL_INTERVAL_MS = 250L
+
     private data class MouseSample(val timeMs: Long, val x: Int, val y: Int, val isPrimaryDown: Boolean, val fgWindowX: Int, val fgWindowY: Int)
 
     fun start(deviceConfig: com.dexstudios.dex.core.network.DeviceConfig, onWake: (() -> Unit)? = null, onTrigger: () -> Unit) {
@@ -16,7 +30,7 @@ object WiggleToOpenService {
             Logger.i("WiggleToOpenService: Not on Windows. Skipping JNA mouse hook.")
             return
         }
-        if (job?.isActive == true) return // Already running — never stack a second 66Hz poller
+        if (job?.isActive == true) return // Already running — never stack a second poller
 
         job = CoroutineScope(Dispatchers.IO).launch {
             val bufferSize = 60 // 60 samples @ 15ms = 900ms of history
@@ -26,75 +40,88 @@ object WiggleToOpenService {
             // SM_SWAPBUTTON (23). If non-zero, mouse buttons are swapped (left-handed mode).
             fun getPrimaryButtonCode(): Int = if (User32.INSTANCE.GetSystemMetrics(23) != 0) 0x02 else 0x01
 
+            fun resetBuffer() {
+                index = 0
+                for (i in 0 until bufferSize) {
+                    buffer[i] = MouseSample(0L, 0, 0, false, 0, 0)
+                }
+            }
+
             while (isActive) {
                 val loopStartTime = System.currentTimeMillis()
 
+                var intervalMs = if (deviceConfig.wiggleEnabled) IDLE_POLL_INTERVAL_MS else DISABLED_POLL_INTERVAL_MS
+
                 if (deviceConfig.wiggleEnabled) {
-                    val point = POINT()
-                    if (User32.INSTANCE.GetCursorPos(point)) {
-                        val primaryBtn = getPrimaryButtonCode()
-                        val isDown = (User32.INSTANCE.GetAsyncKeyState(primaryBtn).toInt() and 0x8000) != 0
+                    val primaryBtn = getPrimaryButtonCode()
+                    val isDown = (User32.INSTANCE.GetAsyncKeyState(primaryBtn).toInt() and 0x8000) != 0
 
-                        val hwnd = User32.INSTANCE.GetForegroundWindow()
-                        val rect = com.sun.jna.platform.win32.WinDef.RECT()
-                        if (hwnd != null) {
-                            User32.INSTANCE.GetWindowRect(hwnd, rect)
-                        }
+                    if (!isDown) {
+                        // No press, no drag: drop stale samples so a fresh press starts clean.
+                        if (index > 0) resetBuffer()
+                    } else {
+                        intervalMs = SAMPLE_INTERVAL_MS
 
-                        buffer[index % bufferSize] = MouseSample(loopStartTime, point.x, point.y, isDown, rect.left, rect.top)
-                        index++
-
-                        if (index >= bufferSize) {
-                            // Prevent integer overflow for long sessions
-                            if (index >= bufferSize * 2) {
-                                index -= bufferSize
+                        val point = POINT()
+                        if (User32.INSTANCE.GetCursorPos(point)) {
+                            val hwnd = User32.INSTANCE.GetForegroundWindow()
+                            val rect = com.sun.jna.platform.win32.WinDef.RECT()
+                            if (hwnd != null) {
+                                User32.INSTANCE.GetWindowRect(hwnd, rect)
                             }
 
-                            // Collect the contiguous segment where mouse is DOWN within the buffer
-                            val segment = mutableListOf<MouseSample>()
-                            for (i in 0 until bufferSize) {
-                                // Traverse from newest to oldest
-                                val sample = buffer[(index - 1 - i + bufferSize) % bufferSize]
-                                if (!sample.isPrimaryDown) break
-                                segment.add(sample)
-                            }
-                            segment.reverse() // Order from oldest to newest
+                            buffer[index % bufferSize] = MouseSample(loopStartTime, point.x, point.y, isDown, rect.left, rect.top)
+                            index++
 
-                            if (segment.size >= 10) { // At least 150ms of continuous dragging
-                                var minX = segment[0].x
-                                var maxX = segment[0].x
-                                var minY = segment[0].y
-                                var maxY = segment[0].y
-
-                                for (p in segment) {
-                                    minX = minOf(minX, p.x)
-                                    maxX = maxOf(maxX, p.x)
-                                    minY = minOf(minY, p.y)
-                                    maxY = maxOf(maxY, p.y)
+                            if (index >= bufferSize) {
+                                // Prevent integer overflow for long sessions
+                                if (index >= bufferSize * 2) {
+                                    index -= bufferSize
                                 }
 
-                                val boundsX = maxX - minX
-                                val boundsY = maxY - minY
+                                // Every buffered sample was recorded mid-press, so scanning
+                                // newest-to-oldest yields the contiguous in-press window.
+                                val segment = mutableListOf<MouseSample>()
+                                for (i in 0 until bufferSize) {
+                                    // Traverse from newest to oldest
+                                    val sample = buffer[(index - 1 - i + bufferSize) % bufferSize]
+                                    if (!sample.isPrimaryDown) break
+                                    segment.add(sample)
+                                }
+                                segment.reverse() // Order from oldest to newest
 
-                                val windowMovedX = abs(segment.last().fgWindowX - segment.first().fgWindowX)
-                                val windowMovedY = abs(segment.last().fgWindowY - segment.first().fgWindowY)
-                                val isWindowDrag = windowMovedX > 5 || windowMovedY > 5
+                                if (segment.size >= 10) { // At least 150ms of continuous dragging
+                                    var minX = segment[0].x
+                                    var maxX = segment[0].x
+                                    var minY = segment[0].y
+                                    var maxY = segment[0].y
 
-                                // Bounding box constraint (rejects massive full-screen long drags)
-                                if (boundsX <= 300 && boundsY <= 300 && !isWindowDrag) {
-                                    val reversalsX = countReversals(segment) { it.x }
-                                    val reversalsY = countReversals(segment) { it.y }
+                                    for (p in segment) {
+                                        minX = minOf(minX, p.x)
+                                        maxX = maxOf(maxX, p.x)
+                                        minY = minOf(minY, p.y)
+                                        maxY = maxOf(maxY, p.y)
+                                    }
 
-                                    // Trigger if enough reversals on either X or Y axis
-                                    if (reversalsX >= 3 || reversalsY >= 3) {
-                                        withContext(Dispatchers.Main) { onTrigger() }
+                                    val boundsX = maxX - minX
+                                    val boundsY = maxY - minY
+                                    val windowMovedX = abs(segment.last().fgWindowX - segment.first().fgWindowX)
+                                    val windowMovedY = abs(segment.last().fgWindowY - segment.first().fgWindowY)
+                                    val isWindowDrag = windowMovedX > 5 || windowMovedY > 5
 
-                                        // Reset buffer logically and physically to prevent stale reads
-                                        index = 0
-                                        for (i in 0 until bufferSize) {
-                                            buffer[i] = MouseSample(0L, 0, 0, false, 0, 0)
+                                    // Bounding box constraint (rejects massive full-screen long drags)
+                                    if (boundsX <= 300 && boundsY <= 300 && !isWindowDrag) {
+                                        val reversalsX = countReversals(segment) { it.x }
+                                        val reversalsY = countReversals(segment) { it.y }
+
+                                        // Trigger if enough reversals on either X or Y axis
+                                        if (reversalsX >= 3 || reversalsY >= 3) {
+                                            withContext(Dispatchers.Main) { onTrigger() }
+
+                                            // Reset buffer logically and physically to prevent stale reads
+                                            resetBuffer()
+                                            delay(1000) // Cooldown to prevent double-firing
                                         }
-                                        delay(1000) // Cooldown to prevent double-firing
                                     }
                                 }
                             }
@@ -102,24 +129,14 @@ object WiggleToOpenService {
                     }
                 } else {
                     // If disabled, reset index so buffer is clean when re-enabled
-                    if (index > 0) {
-                        index = 0
-                        for (i in 0 until bufferSize) {
-                            buffer[i] = MouseSample(0L, 0, 0, false, 0, 0)
-                        }
-                    }
+                    if (index > 0) resetBuffer()
                 }
 
-                // Full-rate sampling only while enabled; a disabled wiggle still wakes for
-                // the sleep/wake detector below but has no reason to spin at 66Hz.
-                delay(if (deviceConfig.wiggleEnabled) 15 else 250)
+                delay(intervalMs)
 
                 // Wake up detector (if thread hung for 5000ms+ due to sleep/suspend)
                 if (System.currentTimeMillis() - loopStartTime > 5000L) {
-                    index = 0
-                    for (i in 0 until bufferSize) {
-                        buffer[i] = MouseSample(0L, 0, 0, false, 0, 0)
-                    }
+                    resetBuffer()
                     withContext(Dispatchers.Main) { onWake?.invoke() }
                 }
             }

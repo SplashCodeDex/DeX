@@ -1,9 +1,11 @@
 package com.dexstudios.dex.platform
 
+import co.touchlab.kermit.Logger
 import com.sun.jna.Callback
 import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import com.sun.jna.platform.win32.Kernel32
 import com.sun.jna.platform.win32.WinDef
 import com.sun.jna.platform.win32.WinUser
 import kotlinx.coroutines.channels.BufferOverflow
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Process-wide Windows low-level mouse hook (WH_MOUSE_LL) that emits an event the instant
@@ -30,6 +33,7 @@ object GlobalMouseButtonHook {
 
     private const val WH_MOUSE_LL = 14
     private const val WM_LBUTTONUP = 0x0202
+    private const val TAG = "GlobalMouseButtonHook"
 
     private interface HookProc : Callback {
         fun callback(nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
@@ -42,7 +46,15 @@ object GlobalMouseButtonHook {
         fun UnhookWindowsHookEx(hhk: Pointer): Boolean
         fun CallNextHookEx(hhk: Pointer?, nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
         fun GetMessageW(lpMsg: WinUser.MSG?, hWnd: Pointer?, wMsgFilterMin: Int, wMsgFilterMax: Int): Int
-        fun GetCurrentThreadId(): Int
+    }
+
+    // Logged once per process; repeated install attempts stay silent but still return false.
+    private val failureLogged = AtomicBoolean(false)
+
+    private fun logFailureOnce(t: Throwable) {
+        if (failureLogged.compareAndSet(false, true)) {
+            Logger.e(TAG, t, "Global mouse hook unavailable; callers fall back to input polling")
+        }
     }
 
     private val user32: User32HookLib? by lazy {
@@ -51,7 +63,8 @@ object GlobalMouseButtonHook {
         } else {
             try {
                 Native.load("user32", User32HookLib::class.java)
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
+                logFailureOnce(t)
                 null
             }
         }
@@ -90,39 +103,50 @@ object GlobalMouseButtonHook {
 
         val installLatch = CountDownLatch(1)
         val pump = Thread({
-            val proc = object : HookProc {
-                override fun callback(nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT {
-                    if (nCode >= 0 && wParam.toInt() == WM_LBUTTONUP) {
-                        _leftButtonUp.tryEmit(Unit)
+            var handle: Pointer? = null
+            try {
+                val proc = object : HookProc {
+                    override fun callback(nCode: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT {
+                        if (nCode >= 0 && wParam.toInt() == WM_LBUTTONUP) {
+                            _leftButtonUp.tryEmit(Unit)
+                        }
+                        return lib.CallNextHookEx(hookHandle, nCode, wParam, lParam)
                     }
-                    return lib.CallNextHookEx(hookHandle, nCode, wParam, lParam)
                 }
-            }
-            // Keep the callback strongly reachable for the process lifetime.
-            hookProcRef = proc
+                // Keep the callback strongly reachable for the process lifetime.
+                hookProcRef = proc
 
-            val handle = try {
-                lib.SetWindowsHookExW(WH_MOUSE_LL, proc, null, 0)
-            } catch (_: Throwable) {
-                null
-            }
-            if (handle == null) {
+                // GetCurrentThreadId is exported by kernel32, NOT user32 - resolving it against
+                // user32 throws UnsatisfiedLinkError AFTER the hook was installed, killing this
+                // thread uncaught, leaking the live native hook, and re-triggering on every
+                // retry. Resolve the thread id BEFORE installing so any failure leaves nothing.
+                val threadId = Kernel32.INSTANCE.GetCurrentThreadId()
+
+                handle = lib.SetWindowsHookExW(WH_MOUSE_LL, proc, null, 0)
+                if (handle == null) return@Thread
+
+                hookHandle = handle
+                hookThreadId = threadId
+                installed = true
                 installLatch.countDown()
-                return@Thread
-            }
-            hookHandle = handle
-            hookThreadId = lib.GetCurrentThreadId()
-            installed = true
-            installLatch.countDown()
 
-            // Message pump: required for low-level hooks to receive callbacks. Runs until
-            // WM_QUIT is posted (never in practice - see lifecycle note above).
-            val msg = WinUser.MSG()
-            while (lib.GetMessageW(msg, null, 0, 0) > 0) {
-                // No translation/dispatch needed: WH_MOUSE_LL is notification-only.
+                // Message pump: required for low-level hooks to receive callbacks. Runs until
+                // WM_QUIT is posted (never in practice - see lifecycle note above).
+                val msg = WinUser.MSG()
+                while (lib.GetMessageW(msg, null, 0, 0) > 0) {
+                    // No translation/dispatch needed: WH_MOUSE_LL is notification-only.
+                }
+            } catch (t: Throwable) {
+                // Never let the pump thread die with an uncaught exception; degrade to polling.
+                logFailureOnce(t)
+            } finally {
+                handle?.let { h ->
+                    runCatching { lib.UnhookWindowsHookEx(h) }
+                }
+                hookHandle = null
+                installed = false
+                installLatch.countDown()
             }
-            lib.UnhookWindowsHookEx(handle)
-            installed = false
         }, "dex-global-mouse-hook")
         pump.isDaemon = true
         pump.start()

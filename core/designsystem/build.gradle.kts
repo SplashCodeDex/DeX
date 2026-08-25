@@ -16,6 +16,9 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
+            // api, not implementation: glass components expose kyant Backdrop
+            // types in their public signatures.
+            api(libs.backdrop)
             api(libs.compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(project.dependencies.platform(libs.koin.bom))

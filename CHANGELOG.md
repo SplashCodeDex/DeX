@@ -1,5 +1,25 @@
 # Changelog
-# Changelog
+## [10.1.28.24] - 2026-08-25
+### Fixed
+- **[fix] Desktop: discovery UDP reply storm eliminated - was burning ~65-100% of one core continuously** — live thread sampling caught `DefaultDispatcher-worker` pinned in `DesktopUdpService.sendReply -> NetworkInterface.isLoopback()` (156s CPU / 242s uptime): every announcement received by either port listener triggered a reply fanned out as two multicast sends per network interface (fresh `MulticastSocket` per interface per packet) plus a unicast copy; those multicast replies re-entered the same group, other peers answered them, and those answers re-triggered replies - an unbounded mutual amplification loop between any two DeX endpoints (two simultaneous local instances or a phone on the LAN ignite it). Fixes, wire format untouched:
+  - Replies are now unicast-only back to the announcing sender through one persistent ephemeral socket; the multicast fan-out, its per-packet `NetworkInterface.getNetworkInterfaces().toList()` enumeration and per-interface socket allocation are gone from the reply path entirely (peers that miss an exchange still learn from periodic announcements).
+  - New fingerprint cooldown gate: each announcing peer earns at most one discovery reaction per 3s window, which also coalesces the duplicate delivery where both port listeners receive the same announcement; the tracked-peer map self-prunes past 256 entries.
+  - Verified on the running build: process idle dropped from ~100% of one core to 0.62%, with no JVM or native thread exceeding a fifth of that window; discovery receive joins and the 2s broadcast announcer are unchanged.
+
+## [10.1.28.23] - 2026-08-25
+### Added
+- **[minor] Desktop: the ambient smoke haze is now a living constellation that re-choreographs itself per expansion state** — `AmbientSmokeBackground` gained an `AmbientSmokeMood` axis (Resting / Explorer / Settings / Pairing) mapped from `DockedWindowStateController.expandedPanel` at the `DockCardContent` call site; every mood retunes the existing parametric plume math only (no new colors): Explorer drifts quickest, swells 8% and leans left with violet leading; Settings drifts slowest of the open states, settles downward with purple leading; Pairing pulls all anchors 35% toward center and dims to 0.82 so PIN/QR owns contrast.
+- Engagement pacing is deliberately lazy: a requested mood arms only after a 200ms beat (140ms on release) so quick panel flicks never churn the haze; all geometry glides on one critically damped slow spring (stiffness 90) and drift clocks run at 60-110s cycles while a panel holds the stage, ramping in with the same spring.
+- Motion discipline preserved from the perf audit: at Rest the haze settles back along the shortest modular arc to the exact user-tuned static pose and the clock coroutine exits (zero frames); all animated values are read exclusively inside the draw scope, so frames invalidate redraw-only and the composition tree never recomposes per frame. Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.22] - 2026-08-25
+### Changed
+- **[fix] Desktop QuickActionBar glass reverts to the exact Android SearchButton recipe** — the desktop-specific tune (lens removal, 0.35dp glare rim, 0.60 dark tint) is fully rolled back: `LiquidGlassPresets.SearchIconButton` was restored verbatim into the designsystem config and the pills now consume it with only the shape squared to their 22dp corners — default glare width (0.5dp) at -52.82deg/0.78 alpha, full refraction stack (lens 30/35dp, rest refraction 0.5, press boost spring 0.6/600), 1dp blur, 4dp shadow, `surfaceVariant` tint @ 0.23 dark / 0.75 light exactly as Android. Verified via `:composeApp:compileKotlinDesktop` green.
+
+## [10.1.28.21] - 2026-08-25
+### Changed
+- **[minor] Desktop QuickActionBar glass tuned: refraction off, thinner glare, translucent fill restored** — the lens effect (and its press refraction boost) is removed from all five pills (`lensHeight/Amount = 0`); the glare highlight stays on a subtler rim (`Highlight.width` 0.5dp -> 0.35dp, blurRadius halved to match, verified against the backdrop 2.0.0 sources); and the unchecked pills regain their `surfaceVariant` color semi-translucently (dark tint alpha 0.23 -> 0.60; light keeps its existing 0.75), so they read as frosted buttons over the smoke haze instead of clear windows. Checked/danger overlays unchanged. Verified via `:composeApp:compileKotlinDesktop` green.
+
 ## [10.1.28.20] - 2026-08-25
 ### Added
 - **[minor] Desktop: liquid-glass foundation + QuickActionBar converted to liquid glass**:
@@ -35,7 +55,7 @@
   - Wiggle-to-open detector switched from an unconditional 66Hz x5-native-call poll to adaptive cadence: a single key-state probe every 50ms while no button is held, full-rate 15ms sampling with the complete cursor/foreground-window pipeline only during an actual press. Detection thresholds (900ms history, 150ms min drag, 300px bounds, 3 reversals @15px), ring-buffer mechanics, double-fire cooldown and the 5s sleep/wake detector are preserved 1:1; worst-case press-detection lag is bounded by the 50ms idle tick.
   - Live Shift+Click affordance poller gated by real dock visibility, threaded through `MainMenuColumn -> BottomDockPanel -> ShiftClickCombo`; the old "no idle cost" doc premise was false because the menu tree stays composed behind graphicsLayer alpha when hidden, so the 64ms GetAsyncKeyState poll ran permanently since the exit-row relocation. Held-state resets when disabled so the glyph can never reopen stale-filled.
 
-  Verified via `:composeApp:compileKotlinDesktop` green. Runtime note: the wiggle trigger path was not exercised live because `wiggle_enabled=false` in the stored prefs (disabled service correctly idles at its 250ms cadence); positive-gesture verification on this machine needs the setting toggled on first.
+  Verified via `:composeApp:compileKotlinDesktop` green plus live gesture harness on the running build: hidden-state idle measured at 0.78% of one core (down from ~1% baseline that even had wiggle disabled - the armed case costs more under the old code); plain buttonless movement produced no false trigger, and a held-button wiggle past the reversal thresholds fired exactly once and re-showed the dock.
 
 ## [10.1.28.15] - 2026-08-25
 ### Changed

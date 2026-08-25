@@ -24,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +67,8 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
         modifier = modifier
             .fillMaxWidth(0.92f)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF141118))
+            // Raised white toast above the porcelain explorer canvas (surfaceContainerLowest).
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
             .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {

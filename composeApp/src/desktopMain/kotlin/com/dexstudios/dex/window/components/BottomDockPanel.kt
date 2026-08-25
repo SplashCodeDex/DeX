@@ -81,6 +81,10 @@ fun BottomDockPanel(
     onExitEngine: () -> Unit,
     hasActiveTransfers: Boolean = false,
     isMirroringActive: Boolean = false,
+    // Tracks the dock card's real visibility. The panel stays composed while the card
+    // is hidden (alpha-painted), so time-based affordances (Shift poll) need this to
+    // switch themselves off instead of idling forever behind an invisible surface.
+    isPanelVisible: Boolean = true,
     modifier: Modifier = Modifier,
     // Live engines for the click-time re-check below; the rendered props are only a
     // paint-time snapshot and an upload can settle between render and click.
@@ -141,7 +145,7 @@ fun BottomDockPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.outlineVariant,
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
@@ -326,7 +330,7 @@ fun BottomDockPanel(
                     // the "Transfer Active! Click to Force Exit" stage, where a plain click
                     // already exits and a Shift hint would contradict the label.
                     if (confirmationStage == ExitConfirmationStage.Idle || !(hasActiveTransfers || isMirroringActive)) {
-                        ShiftClickCombo(modifier = Modifier.padding(start = 6.dp))
+                        ShiftClickCombo(modifier = Modifier.padding(start = 6.dp), isPanelVisible = isPanelVisible)
                     }
                 }
             }

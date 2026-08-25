@@ -17,3 +17,8 @@ val DarkPrimary = Color(0xFFFFFFFF)
 val DarkOnPrimary = Color(0xFF000000)
 val DarkText = Color(0xFFE3E2E6)
 val DarkSecondaryText = Color(0xFFC4C6CF)
+
+// Ambient smoke plumes (main background haze)
+val SmokePurple = Color(0xC6FF8BEA)
+val SmokeViolet = Color(0xFFA226FF)
+val SmokePink = Color(0xFF673AB7)
