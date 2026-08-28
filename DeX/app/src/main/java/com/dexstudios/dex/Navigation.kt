@@ -121,8 +121,7 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
 
     val isDimmed by remember {
         derivedStateOf {
-            TopAppBarState.isProfileExpanded ||
-            TopAppBarState.isOnboardingVisible || incomingPairRequest != null
+            TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded
         }
     }
     val globalDimAlpha by animateFloatAsState(
@@ -299,6 +298,8 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
             expectedPin = req.pin,
             onAccept = { enteredPin ->
                 req.deferred.complete(enteredPin)
+            },
+            onFinished = {
                 com.dexstudios.dex.network.AuthState.incomingPairRequest.value = null
                 Toast.makeText(context, resources.getString(R.string.paired_successfully), Toast.LENGTH_SHORT).show()
             },
@@ -309,7 +310,8 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
             deadlineElapsedMs = req.deadlineElapsedMs,
             onDigitEntered = { count ->
                 messageHandler.sendPinDigitEntered(count)
-            }
+            },
+            modifier = Modifier.zIndex(100f)
         )
     }
 
@@ -318,7 +320,8 @@ fun MainNavigation(windowSizeClass: WindowSizeClass) {
             onDismiss = {
                 onboardingPrefs.edit { putBoolean("onboarding_done", true) }
                 showOnboarding = false
-            }
+            },
+            modifier = Modifier.zIndex(100f)
         )
     }
   }

@@ -335,6 +335,19 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                              */
                             "relay-transfer" -> handleRelayTransfer(fingerprint, dataObj)
 
+                            "mirror-config" -> {
+                                val width = dataObj?.get("width")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 720
+                                val height = dataObj?.get("height")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1280
+                                val fps = dataObj?.get("fps")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 15
+                                mirrorEngine.updateConfig(width, height, fps)
+                                Logger.i("Mirror stream config updated: ${width}x$height @ ${fps}fps")
+                            }
+
+                            "mirror-stop" -> {
+                                mirrorEngine.stop()
+                                Logger.i("Mirror stream stopped by peer $fingerprint")
+                            }
+
                             else -> {
                                 Logger.i("Unhandled WS message type: $type from FP: $fingerprint")
                             }
@@ -453,7 +466,7 @@ private suspend fun handleTrustCheck(callerFingerprint: String?, dataObj: JsonOb
             put("type", "trust-check")
             putJsonObject("data") {
                 put("isTrusted", actuallyTrusted)
-                put("fingerprint", subjectFingerprint)
+                put("fingerprint", deviceConfig.fingerprint)
             }
         }.toString(),
     )

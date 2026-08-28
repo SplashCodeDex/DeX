@@ -454,4 +454,38 @@ class MessageHandlerTest {
         awaitUntil { TransferState.pendingPrompts.isEmpty() }
         assertTrue(engine.downloads.isEmpty(), "a rejected offer must never reach downloadBatch")
     }
+
+    // === Trust check ===
+
+    @Test
+    fun `trust-check with isTrusted=false removes paired fingerprint from local store`() = runBlocking {
+        AuthState.updateFingerprints(setOf("pc-fp-1"))
+        handler.handleMessage(frame("trust-check", """{"isTrusted":false,"fingerprint":"pc-fp-1"}"""), "10.0.0.1", 1)
+        awaitUntil { !AuthState.pairedFingerprints.value.contains("pc-fp-1") }
+        assertFalse(AuthState.pairedFingerprints.value.contains("pc-fp-1"))
+    }
+
+    @Test
+    fun `trust-check with isTrusted=true preserves paired fingerprint in local store`() = runBlocking {
+        AuthState.updateFingerprints(setOf("pc-fp-1"))
+        handler.handleMessage(frame("trust-check", """{"isTrusted":true,"fingerprint":"pc-fp-1"}"""), "10.0.0.1", 1)
+        delay(50)
+        assertTrue(AuthState.pairedFingerprints.value.contains("pc-fp-1"))
+    }
+
+    // === Screen Mirroring ===
+
+    @Test
+    fun `mirror-start dispatches handleMirrorStart to platform engine`() = runBlocking {
+        handler.handleMessage(frame("mirror-start", "{}"), "10.0.0.1", 1)
+        awaitUntil { engine.mirrorStarts == 1 }
+        assertEquals(1, engine.mirrorStarts)
+    }
+
+    @Test
+    fun `mirror-stop dispatches handleMirrorStop to platform engine`() = runBlocking {
+        handler.handleMessage(frame("mirror-stop", "{}"), "10.0.0.1", 1)
+        awaitUntil { engine.mirrorStops == 1 }
+        assertEquals(1, engine.mirrorStops)
+    }
 }

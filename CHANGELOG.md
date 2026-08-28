@@ -1,4 +1,64 @@
 # Changelog
+## [10.1.28.53] - 2026-08-28
+### Fixed
+- **[fix] Cross-Platform Pairing Synchronization & Silent Re-Authentication**:
+  - **Immediate Outbound Wire Dispatch (`ErrorDialogs.kt` & `Navigation.kt`)**: Decoupled network transmission of `pair-response` from local client-side animations on Android. When PIN entry completes, `onAccept(enteredPin)` is called immediately over WebSocket without waiting for the 1.5s domino animation to finish, eliminating race conditions against Desktop 60s TTL expiry.
+  - **Android `pair-accepted` Dispatcher (`MessageHandler.kt`)**: Added missing `"pair-accepted"` handler to Android's WebSocket message dispatcher, ensuring the PC's minted UUID pairing token is persisted to `DeviceManager` so future reconnects authenticate silently.
+  - **Desktop Drawer Collision Resolution (`DockCardContent.kt`)**: Guarded `ConnectionEvent.Connected` handling so it does not hijack `ExpandedPanel.Pairing` while pairing is active. `PinPairingPanel` smoothly renders the green `"Devices connected"` state for 1200ms before cleanly collapsing and resetting.
+  - **Reactive Connected Session Tracking (`WebSocketConnectionManager.kt` & `DeviceStatusPanel.kt`)**: Added `connectedFingerprintsFlow: StateFlow<Set<String>>` to provide reactive session state to Compose UI, eliminating stale device resolution and fallback strings in `DeviceStatusPanel`.
+  - **Bidirectional `trust-check` Identification (`WebSocketRoutes.kt` & `WebSocketClientService.kt`)**: Desktop returns its own fingerprint in `trust-check` responses so Android accurately knows which PC's trust state is being reported; client includes its own fingerprint in queries.
+  - **DataStore Access Safety (`DeviceManager.kt`)**: Guarded preference writes with `if (::dataStore.isInitialized)` to guarantee safe in-memory state manipulation during tests and startup sequences.
+
+## [10.1.28.52] - 2026-08-28
+### Fixed
+- **[fix] Android DeX: Elevated PIN & Modal Dialog Layering Above Dim Overlays**:
+  - **Z-Index Elevation**: Elevated `PairingRequestDialog`, `OnboardingDialog`, and `NetworkErrorDialog` to `zIndex(100f)` in `ErrorDialogs.kt` and `Navigation.kt`, eliminating layer collision where the navigation-level scrim (`zIndex 2f`) and top app bar (`zIndex 3f`) were rendering over the dialogs.
+  - **Scoped Global Dimming**: Restricted `isDimmed` in `Navigation.kt` to top bar profile and search expansions, preventing double-dimming and click interception when full-screen modal dialogs are presented.
+  - **Soft Keyboard (IME) Repositioning**: Moved `.imePadding()` to the dialog container in `PairingRequestDialog` so the dim background covers the entire screen seamlessly while the PIN card smoothly floats above the on-screen keyboard during entry.
+
+## [10.1.28.51] - 2026-08-28
+### Fixed
+- **[fix] Desktop Compose DeX: Streamlined Pairing Screen & Lifecycle Contract Alignment**:
+  - **Single Action Button in PIN Mode**: Removed the *"Show QR Code"* toggle button from the PIN view for both phone-initiated and desktop-initiated pairing flows (one-way progression from QR to PIN). The PIN pairing view now exclusively renders the single centered primary *"Cancel"* action button.
+  - **QR Mode Actions**: Preserves the QR-first view for desktop-initiated offers with quiet *"Cancel"* and filled accent *"Use PIN Code"*.
+  - **Timer Expiry Contracts**:
+    - **QR Code Screen Expiry**: Auto-dismisses and collapses the pairing panel back to the dock card upon 60s timeout.
+    - **PIN Code Screen Expiry**: Auto-dismisses and collapses the pairing panel silently without toast notifications upon 60s timeout, safely resetting the pairing engine to `Idle`.
+  - **Clean Wire Rejection (`rejectInboundPairing`)**: Cancelling an active PIN offer from the Desktop pushes a standard `pair-cancelled` frame over WebSocket, immediately dismissing the phone's PIN dialog.
+  - **Pairing UI Typography & Layout Refinement**:
+    - Truncated device title to a single line with ellipsis (`maxLines = 1, TextOverflow.Ellipsis`) for long peer aliases and added top breathing room (`padding(top = 4.dp)`).
+    - Removed redundant header subtitles in both QR and PIN views.
+    - Replaced multi-line glyph soup and copy chip with a clean formatted instruction: *"Enter this **PIN** on Pairing Device"* without icons.
+    - Reordered hierarchy so the countdown timer text (*"Expires in 60s"*) sits cleanly above the instruction message.
+    - Removed the horizontal draining progress bar, keeping the crisp timer readout.
+
+## [10.1.28.50] - 2026-08-28
+### Added
+- **[minor] Desktop FileExplorer: Spacebar Quick Look Modal & Double-Click to Open** — native macOS/Windows-style instant preview and double-click file opening for History and remote SAF file items:
+  - **Fluid Quick Look Modal (`QuickLookModal.kt`)**:
+    - Pressing `Spacebar` while any history/remote item is selected immediately opens a centered modal with `frostedSurface`, `bubbleFluidity`, `RoundedCornerShape(24.dp)`, shiny glare rim, and backdrop dim.
+    - Pressing `Spacebar` or `Escape` dismisses the Quick Look preview.
+    - `←` / `→` (and `↑` / `↓`) arrow keys smoothly step through adjacent files, updating the preview dynamically in real-time.
+    - `Enter` / `Return` key or the primary "Open with App" tactile button launches the active file natively in the OS default application.
+    - **Image Preview**: Asynchronously decodes and scales high-res images (`jpg`, `png`, `webp`, `gif`, `bmp`) with aspect-ratio preservation.
+    - **Text / Code Preview**: Displays scrollable monospace source code / log / document preview with line numbering (up to 120 lines / 16KB).
+    - **Binary / Audio / Video / APK / Folder Preview**: Stylized icon glyph, detailed metadata breakdown (file size, exact timestamp, full path), and fast *"Open File"* / *"Show in File Location"* actions.
+  - **Responsive Double-Click Launch**:
+    - Double-clicking any history file card instantly opens it in the OS default viewer/application via `openFileNative()` (with executable security protection).
+    - Double-clicking directories drills down into the folder in both History and SAF modes.
+  - **Adaptive Modal Aspect-Ratio Morphing & Razor-Thin 2dp Bezels**:
+    - Calculates the natural aspect-ratio geometry of images upon asynchronous decode.
+    - Dynamically morphs the modal window dimensions: portrait mobile format (`310-480dp x 580dp`), square/standard format (`520dp x 400-540dp`), widescreen landscape format (`660dp x 360-480dp`), code/log document format (`600dp x 460dp`), and compact metadata format (`440dp x 300dp`).
+    - Ultra-narrowed container bezels down to razor-thin `2.dp` at the sides and bottom with concentric corner curvature (`22.dp` outer frame with `20.dp` bottom inner clip, `10.dp` top inner clip), maximizing the active media preview canvas to edge-to-edge frosted glass.
+    - Smoothly animates size changes via spring kinematics (`spring(dampingRatio = 0.82f, stiffness = 380f)`) and cross-fades content between file stepping (`tween(220ms)`).
+  - **ViewModel & Test Coverage**:
+    - Added `quickLookItem`, `openQuickLook()`, `closeQuickLook()`, `toggleQuickLook()`, `quickLookNext()`, and `quickLookPrevious()` to `FileExplorerViewModel.kt`.
+    - Added unit test suite in `FileExplorerViewModelTest.kt` verifying opening, closing, and toggling logic.
+### Fixed
+- **[fix] Quick Look UI streamlined & borderless image preview** — removed the extra inner container, dark outline borders, and footer pagination/hint text (`Spacebar or Esc...`, `N of Total`) from `QuickLookModal.kt` so the preview surface seamlessly expands across the full height of the modal card; added directional `shinyGlare` lighting rim to the 24dp rounded frosted surface.
+- **[fix] Quick Look modal placement & history deletion cleanup** — `AnimatedVisibility` for `QuickLookModal` was accidentally nested inside the `if (isClearHistoryConfirmOpen || isBatchDeleteConfirmOpen || itemToDelete != null)` conditional block, causing Spacebar to appear unresponsive during normal browsing (since the block was bypassed) and popping the modal behind the confirmation prompt whenever a delete action made the condition true. Unnested the preview modal so it renders independently as a sibling of the confirmation overlay, and ensured `FileExplorerViewModel` resets active `_quickLookItem` upon single/batch deletion or history clearing.
+- **[fix] Quick Look keyboard wiring: focus ownership consolidated in the panel root** — Space/Escape/arrows/Enter were dead for four stacked reasons, the decisive one last: (1) `QuickLookModal` stole Compose focus via its own `FocusRequester` on open, and since the panel root's capture-phase `onPreviewKeyEvent` consumes all Quick Look keys first, the modal's internal `onKeyEvent` was unreachable dead code — and when `AnimatedVisibility` removed the focused modal on close, Compose dropped focus entirely (plain `focusable()` has no restoration), leaving every subsequent Space press unrouted until a file click; (2) the card `onClick` and grid Final-pass press handler called `focusRequester.requestFocus()` BEFORE `focusManager.clearFocus()`, so any click made while the search field was focused ended with nothing focused at all — order inverted in both places; (3) the panel's initial focus was a single `LaunchedEffect(Unit)` request that raced the drawer's enter animation inside `AnimatedVisibility` and could silently lose; (4) **the decisive bug**: `onPreviewKeyEvent` sat AFTER `.focusable()` in the root Box's modifier chain, placing its node BELOW the focus target — Compose key dispatch only visits KeyInputModifierNodes that are ANCESTORS of the focused node, so the handler never fired when the Box itself held focus (exactly the state every file click produced via `requestFocus()`), and only worked when a descendant (e.g. the search field) happened to hold focus. Fixes: the modifier chain reordered to `.onPreviewKeyEvent {}` BEFORE `.focusRequester().focusable()` so the key-input node is an ancestor of the focus target; the modal no longer claims focus or handles keys (it is purely visual; backdrop-click dismiss retained); the click handlers clear search focus before requesting it; and the panel re-acquires focus keyed on `isExpanded`/`expandedPanel`/`quickLookItem` transitions (one `withFrameNanos` tick after the state change) so keys work on first open, while the modal is open, and immediately after it closes. Additionally, Space no longer lifts the Quick Look while a delete/clear-history confirmation dialog is active — the confirmation overlay (`zIndex 99f`) outranks the preview (`zIndex 95f`), so opening the preview beneath an active prompt is now blocked at the key handler instead of producing a layered glitch.
+
 ## [10.1.28.49] - 2026-08-28
 ### Added
 - **[minor] Tests: MessageHandler control-channel contract suite (20 tests) + TokenCodec persistence suite (5 tests)** — first coverage for the client-side WebSocket protocol layer, pinning docs/PROTOCOL.md behavior:

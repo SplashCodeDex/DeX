@@ -125,7 +125,7 @@ fun DeviceStatusPanel(
     val pairedFingerprints by AuthState.pairedFingerprints.collectAsState()
 
     // Resolve connected device
-    val connectedFps = WebSocketConnectionManager.connectedFingerprints()
+    val connectedFps by WebSocketConnectionManager.connectedFingerprintsFlow.collectAsState()
     val activeDevice = remember(devicesMap, pairedFingerprints, connectedFps) {
         val connectedMatch = devicesMap.values.firstOrNull { it.info.fingerprint in connectedFps }
         connectedMatch

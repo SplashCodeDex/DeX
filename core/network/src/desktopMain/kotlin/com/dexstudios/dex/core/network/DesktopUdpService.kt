@@ -192,15 +192,14 @@ class DesktopUdpService : IDiscoveryService {
 
                         // 2. Send Directed Broadcasts (Subnet broadcasts)
                         runCatching {
-                            DatagramSocket().use { bcastSocket ->
-                                bcastSocket.broadcast = true
-                                NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
-                                    if (ni.isUp && !ni.isLoopback) {
-                                        ni.interfaceAddresses.forEach { ia ->
-                                            ia.broadcast?.let { bcastAddr ->
-                                                runCatching { bcastSocket.send(DatagramPacket(replyData, replyData.size, bcastAddr, DeXPorts.HTTPS)) }
-                                                runCatching { bcastSocket.send(DatagramPacket(replyData, replyData.size, bcastAddr, 28424)) }
-                                            }
+                            val bcastSocket = replySocket ?: return@runCatching
+                            bcastSocket.broadcast = true
+                            NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
+                                if (ni.isUp && !ni.isLoopback) {
+                                    ni.interfaceAddresses.forEach { ia ->
+                                        ia.broadcast?.let { bcastAddr ->
+                                            runCatching { bcastSocket.send(DatagramPacket(replyData, replyData.size, bcastAddr, DeXPorts.HTTPS)) }
+                                            runCatching { bcastSocket.send(DatagramPacket(replyData, replyData.size, bcastAddr, 28424)) }
                                         }
                                     }
                                 }

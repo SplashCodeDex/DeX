@@ -111,7 +111,9 @@ class BatchDownloadWorker(
         } catch (_: Exception) {
             return@withContext Result.failure()
         }
-        if ((files.isEmpty() || httpsPort == -1 || tcpPort == -1)) return@withContext Result.failure()
+        val resolvedHttpsPort = if (httpsPort != -1) httpsPort else DeXPorts.HTTPS
+        val resolvedTcpPort = if (tcpPort != -1) tcpPort else DeXPorts.PULL
+        if (files.isEmpty()) return@withContext Result.failure()
         val dirUri = destDirUri?.toUri()
 
         setForeground(createForegroundInfo(0, "Preparing download..."))
@@ -129,7 +131,7 @@ class BatchDownloadWorker(
                         semaphore.acquire()
                         try {
                             val outcome = downloadOne(
-                                file, ip, httpsPort, tcpPort, dirUri,
+                                file, ip, resolvedHttpsPort, resolvedTcpPort, dirUri,
                                 totalReceived, doneCount, files.size, totalBytes, createdDocs
                             )
                             outcomes.add(outcome)

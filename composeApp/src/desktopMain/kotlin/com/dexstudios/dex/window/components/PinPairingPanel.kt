@@ -50,9 +50,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.PairingEngine
@@ -61,12 +64,8 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard_checkmark
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
 import com.dexstudios.dex.ui.modifiers.shake
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
@@ -75,8 +74,6 @@ import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import org.jetbrains.skia.Image as SkiaImage
 
 sealed interface PinPairingUiState {
@@ -123,19 +120,11 @@ private const val COPY_FEEDBACK_RESET_MS = 1500L
  * - 168x168dp QR code view on a hairline-bordered white card, same countdown treatment
  * - QR <-> PIN horizontal flip transition (+-140dp slide, 250ms)
  * - 15px error shake animation
- * - Action hierarchy: quiet Cancel, strong method toggle, Accept/Accept Once for peer offers
+ * - Action hierarchy: quiet Cancel + strong method toggle for desktop-initiated offers;
+ *   centered primary Cancel for phone-initiated offers (no Accept / Accept Once / QR toggle).
  */
 @Composable
-fun PinPairingPanel(
-    state: PinPairingUiState,
-    onToggleQrPin: () -> Unit,
-    onAccept: () -> Unit,
-    onAcceptOnce: () -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-    showAcceptActions: Boolean = true,
-    statusMessage: String? = null,
-) {
+fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier, statusMessage: String? = null) {
     val isError = (state as? PinPairingUiState.PinView)?.isError == true
 
     // Newest real snapshot per view kind. The AnimatedContent below keys on the view KIND,
@@ -186,7 +175,9 @@ fun PinPairingPanel(
     ) {
         // Header: identity line + status line, close affordance pinned top-right.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -200,21 +191,24 @@ fun PinPairingPanel(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = when (state) {
-                        is PinPairingUiState.PinView -> state.subtitle
-                        is PinPairingUiState.QrView -> state.subtitle
-                        is PinPairingUiState.Success -> "Device paired successfully"
-                    },
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val subtitle = when (state) {
+                    is PinPairingUiState.PinView -> state.subtitle
+                    is PinPairingUiState.QrView -> state.subtitle
+                    is PinPairingUiState.Success -> "Device paired successfully"
+                }
+                if (subtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -317,9 +311,9 @@ fun PinPairingPanel(
             }
         }
 
-        // Action Buttons Row: quiet Cancel + strong method toggle, Accept for peer offers.
-        // Legacy grid parity: natural-width buttons gathered center (Auto columns between
-        // star spacers), NOT a full-width stretch; AnimatedActionBtn metrics below.
+        // Action Buttons Row:
+        // - QR View (Desktop-initiated): quiet Cancel + primary "Use PIN Code".
+        // - PIN View (Phone or Desktop-initiated): single centered primary "Cancel" button.
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -329,68 +323,26 @@ fun PinPairingPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Cancel is intentionally the QUIET affordance: the common path ends on the
-                // phone, so cancel must never out-shout the method toggle.
-                PairingActionButton(
-                    label = "Cancel",
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    onClick = onCancel,
-                )
-
-                // Method toggle. Legacy parity: no leading glyph while it reads "PIN CODE"
-                // (txtQrBtnIcon collapsed), QR glyph only when heading back to the QR view.
-                // With a peer offer on screen, Accept owns the filled accent instead.
-                val isQrView = state is PinPairingUiState.QrView
-                val toggleFilled = !showAcceptActions
-                PairingActionButton(
-                    label = if (isQrView) "Use PIN Code" else "Show QR Code",
-                    background = if (toggleFilled) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.secondaryContainer
-                    },
-                    contentColor = if (toggleFilled) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    },
-                    onClick = onToggleQrPin,
-                    leadingIcon = if (isQrView) null else painterResource(Res.drawable.ic_fluent_qr_code),
-                )
-
-                // Accept Button — legacy force-collapsed it for desktop-initiated pairing;
-                // only peer-started offers may be granted manually.
-                if (showAcceptActions) {
+                if (state is PinPairingUiState.QrView) {
                     PairingActionButton(
-                        label = "Accept",
+                        label = "Cancel",
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = onCancel,
+                    )
+
+                    PairingActionButton(
+                        label = "Use PIN Code",
                         background = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        onClick = onAccept,
+                        onClick = onToggleQrPin,
                     )
-                }
-            }
-
-            // Accept Once (Guest) Button — full-width bordered row beneath (WPF btnPinAcceptOnce)
-            if (showAcceptActions) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .bubbleFluidity()
-                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(12.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                        .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                        .shinyGlare(shape = RoundedCornerShape(12.dp))
-                        .clickable { onAcceptOnce() }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Accept Once (Guest)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                } else if (state is PinPairingUiState.PinView) {
+                    PairingActionButton(
+                        label = "Cancel",
+                        background = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        onClick = onCancel,
                     )
                 }
             }
@@ -399,21 +351,10 @@ fun PinPairingPanel(
 }
 
 /**
- * PIN phase content: the code is the hero, the instruction block explains WHERE to type it
- * (phone first, computer second), a copy chip serves the PC-to-PC flow, and the shared
- * countdown communicates urgency as the offer drains.
+ * PIN phase content: 5-digit PIN display, countdown timer, and instruction message.
  */
 @Composable
 private fun PinContentView(pinState: PinPairingUiState.PinView, liveSeconds: Int, statusMessage: String?) {
-    var pinCopied by remember { mutableStateOf(false) }
-
-    LaunchedEffect(pinCopied) {
-        if (pinCopied) {
-            delay(COPY_FEEDBACK_RESET_MS)
-            pinCopied = false
-        }
-    }
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -438,89 +379,27 @@ private fun PinContentView(pinState: PinPairingUiState.PinView, liveSeconds: Int
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Instruction block: one action per line instead of the legacy inline glyph run
-        // "Enter This Pin On Your Phone <E8EA> or PC <E7F4>".
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_fluent_smartphone),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(15.dp),
-            )
-            Text(
-                text = "Enter this code on your phone",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_fluent_computer),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(13.dp),
-            )
-            Text(
-                text = "or on the connecting computer",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Copy affordance for the PC-to-PC flow; "Copied" only shows after a verified
-        // clipboard write (a locked clipboard must never fake success).
-        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-        Row(
-            modifier = Modifier
-                .bubbleFluidity()
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                .clickable {
-                    val copied = try {
-                        clipboard.setContents(StringSelection(pinState.pinCode), null)
-                        true
-                    } catch (_: IllegalStateException) {
-                        false
-                    }
-                    pinCopied = copied
-                }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(
-                    if (pinCopied) Res.drawable.ic_fluent_clipboard_checkmark else Res.drawable.ic_fluent_clipboard,
-                ),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = if (pinCopied) "Copied" else "Copy code",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Timer comes before the message
         PairingCountdown(remainingSeconds = liveSeconds)
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Message: "Enter this PIN on Pairing Device" (with "PIN" bold, no glyph/icons)
+        Text(
+            text = buildAnnotatedString {
+                append("Enter this ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {
+                    append("PIN")
+                }
+                append(" on Pairing Device")
+            },
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
 
         PairingStatusMessage(message = statusMessage)
     }
@@ -528,8 +407,7 @@ private fun PinContentView(pinState: PinPairingUiState.PinView, liveSeconds: Int
 
 /**
  * QR phase content: a larger, hairline-framed code with a single scan instruction, the same
- * countdown treatment as the PIN view (the idle-QR deadline is real and re-arms), and the
- * inline failure slot for an undeliverable PIN request.
+ * countdown treatment as the PIN view, and the inline failure slot for an undeliverable PIN request.
  */
 @Composable
 private fun QrContentView(qrState: PinPairingUiState.QrView, statusMessage: String?) {
@@ -553,81 +431,41 @@ private fun QrContentView(qrState: PinPairingUiState.QrView, statusMessage: Stri
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_fluent_smartphone),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(15.dp),
-            )
-            Text(
-                text = "Open DeX on your phone and scan",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         PairingCountdown(remainingSeconds = qrState.remainingSeconds)
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "Open DeX on your phone and scan",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
 
         PairingStatusMessage(message = statusMessage)
     }
 }
 
 /**
- * Shared countdown: a draining bar plus label so remaining time is perceived at a glance,
- * switching to the error accent once the offer is about to lapse.
+ * Shared countdown timer label, switching to the error accent once the offer is about to lapse.
  */
 @Composable
 private fun PairingCountdown(remainingSeconds: Int, modifier: Modifier = Modifier) {
-    val fraction by animateFloatAsState(
-        targetValue = (remainingSeconds.toFloat() / PairingEngine.PIN_TTL_SECONDS).coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
-        label = "countdownFraction",
-    )
-
     val urgent = remainingSeconds in 1..URGENT_COUNTDOWN_SECONDS
-    val accentColor = if (urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-
-    Column(
+    Text(
+        text = "Expires in ${remainingSeconds}s",
+        fontSize = 12.sp,
+        fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
+        color = if (urgent) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        },
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .width(180.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(fraction)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accentColor),
-            )
-        }
-
-        Text(
-            text = "Expires in ${remainingSeconds}s",
-            fontSize = 12.sp,
-            fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (urgent) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            },
-        )
-    }
+    )
 }
 
 /** Inline failure slot (e.g. a PIN push that never reached the phone); reserves no space when idle. */
@@ -754,16 +592,12 @@ private fun StyledQrMatrixCanvas(payload: String, modifier: Modifier = Modifier)
 /**
  * PairingEngine integration overload.
  *
- * Legacy WPF parity for clicking a discovered device (Bindings_Window.ps1 guest-list path):
- * - The panel ALWAYS opens on the QR view ("Open DeX on your phone and scan") with the
- *   toggle reading "Use PIN Code" — never the masked digit placeholder.
- * - Tapping "Use PIN Code" runs the server-side pair-initiate port
- *   ([PairingEngine.requestPinForActiveDevice]): mints the 5-digit PIN, pushes `pair-prompt`
- *   to the phone, then flips to the digits view with "Expires in 60s". A failed push keeps
- *   the QR view and surfaces an inline status.
- * - Tapping "Show QR Code" reverts locally (never unpairing) and re-arms the 60s idle expiry.
- * - Accept / Accept Once render only when the offer was peer-initiated; desktop-initiated
- *   pairing is PIN-proof-only (legacy force-collapsed both buttons).
+ * Legacy WPF parity for pairing initiation flows:
+ * - Desktop-initiated (clicking a discovered device): panel opens on the QR view ("Open DeX on your phone and scan")
+ *   with the toggle reading "Use PIN Code". Tapping "Use PIN Code" requests a PIN from the phone and flips to digits view
+ *   with "Show QR Code" toggle available.
+ * - Phone-initiated (Android taps Connect): panel surfaces directly on the PIN digits view with ONLY the "Cancel"
+ *   button (legacy WPF -HideAcceptButtons and -ShowQrToggle omitted).
  */
 @Composable
 fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -801,22 +635,22 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
 
     val uiState: PinPairingUiState = when (val s = engineState) {
         is PairingState.Idle -> PinPairingUiState.PinView(
-            subtitle = "Preparing a pairing code",
+            subtitle = "",
             pinCode = "-".repeat(PairingEngine.PIN_LENGTH),
             remainingSeconds = remainingSeconds,
         )
 
-        // QR-first: the click flow lands here before anything else happens.
+        // QR-first: the desktop-initiated flow lands here before anything else happens.
         is PairingState.QrPhase -> PinPairingUiState.QrView(
             title = pairingTitle(s.alias),
-            subtitle = "Scan with the DeX app on your phone",
+            subtitle = "",
             qrPayload = QrPayloadGenerator.generateLocalPayload(),
             remainingSeconds = remainingSeconds,
         )
 
         is PairingState.PinPhase -> PinPairingUiState.PinView(
             title = pairingTitle(s.alias),
-            subtitle = "Waiting for the code to be entered",
+            subtitle = "",
             pinCode = s.pinCode,
             enteredDigitCount = s.digitCount,
             isError = s.isError,
@@ -835,24 +669,15 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
     PinPairingPanel(
         state = uiState,
         onToggleQrPin = {
-            when (val s = engineState) {
-                is PairingState.QrPhase -> scope.launch {
+            if (engineState is PairingState.QrPhase) {
+                scope.launch {
                     pinRequestFailed = !pairingEngine.requestPinForActiveDevice()
                 }
-
-                is PairingState.PinPhase -> pairingEngine.revertToQrPhase()
-
-                else -> Unit
             }
         },
-        onAccept = { pairingEngine.acceptInboundPairing(isOneTime = false) },
-        onAcceptOnce = { pairingEngine.acceptInboundPairing(isOneTime = true) },
         onCancel = {
-            // Peer-started offers get a real rejection over the wire; our own offers are
-            // cancelled locally (the phone's prompt simply expires) — a cancel must never
-            // send trust-revoking traffic.
             val s = engineState
-            if (s is PairingState.PinPhase && s.manualAcceptAvailable) {
+            if (s is PairingState.PinPhase) {
                 pairingEngine.rejectInboundPairing()
             } else {
                 pairingEngine.reset()
@@ -860,7 +685,6 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
             onClose()
         },
         modifier = modifier,
-        showAcceptActions = (engineState as? PairingState.PinPhase)?.manualAcceptAvailable == true,
         statusMessage = if (pinRequestFailed) {
             "The phone has no active connection. Open DeX on the phone and try again."
         } else {

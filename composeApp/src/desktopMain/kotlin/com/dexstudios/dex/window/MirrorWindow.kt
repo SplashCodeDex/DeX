@@ -81,6 +81,7 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
 
     DisposableEffect(Unit) {
         onDispose {
+            mirrorEngine.stop()
             mirrorScope.launch {
                 com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-stop","data":{}}""")
             }

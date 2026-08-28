@@ -257,6 +257,7 @@ class WebSocketClientService(
                     put("type", "trust-check")
                     putJsonObject("data") {
                         put("isTrusted", isTrusted)
+                        put("fingerprint", fingerprint)
                     }
                 }.toString()
                 sendMessage(trustCheck)

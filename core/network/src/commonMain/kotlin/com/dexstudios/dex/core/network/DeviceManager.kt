@@ -67,9 +67,11 @@ object DeviceManager {
             AuthState.updateTimes(newTimes)
         }
 
-        dataStore.edit { prefs ->
-            prefs[KEY_PAIRED_FINGERPRINTS] = newFingerprints
-            prefs[KEY_PAIRED_TIMES] = Json.encodeToString(newTimes)
+        if (::dataStore.isInitialized) {
+            dataStore.edit { prefs ->
+                prefs[KEY_PAIRED_FINGERPRINTS] = newFingerprints
+                prefs[KEY_PAIRED_TIMES] = Json.encodeToString(newTimes)
+            }
         }
     }
 
@@ -77,8 +79,10 @@ object DeviceManager {
         val newTokens = AuthState.pairedTokens.value.toMutableMap()
         newTokens[fingerprint] = token
         AuthState.updateTokens(newTokens)
-        dataStore.edit { prefs ->
-            prefs[KEY_PAIRED_TOKENS] = TokenCodec.encode(newTokens)
+        if (::dataStore.isInitialized) {
+            dataStore.edit { prefs ->
+                prefs[KEY_PAIRED_TOKENS] = TokenCodec.encode(newTokens)
+            }
         }
     }
 
@@ -95,10 +99,12 @@ object DeviceManager {
         newTimes.remove(fingerprint)
         AuthState.updateTimes(newTimes)
 
-        dataStore.edit { prefs ->
-            prefs[KEY_PAIRED_FINGERPRINTS] = newFingerprints
-            prefs[KEY_PAIRED_TOKENS] = TokenCodec.encode(newTokens)
-            prefs[KEY_PAIRED_TIMES] = Json.encodeToString(newTimes)
+        if (::dataStore.isInitialized) {
+            dataStore.edit { prefs ->
+                prefs[KEY_PAIRED_FINGERPRINTS] = newFingerprints
+                prefs[KEY_PAIRED_TOKENS] = TokenCodec.encode(newTokens)
+                prefs[KEY_PAIRED_TIMES] = Json.encodeToString(newTimes)
+            }
         }
     }
 }

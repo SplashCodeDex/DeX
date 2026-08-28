@@ -1063,46 +1063,46 @@ fun FileExplorerPanel(
                     )
                 }
             }
+        }
 
-            // Quick Look Modal Overlay
-            AnimatedVisibility(
-                visible = quickLookItem != null,
-                enter = fadeIn(tween(200)),
-                exit = fadeOut(tween(150)),
-                modifier = Modifier.fillMaxSize().zIndex(95f),
-            ) {
-                quickLookItem?.let { qlItem ->
-                    val validFiles = displayedFiles.filterNot { it.isAddFolderButton }
-                    val idx = validFiles.indexOfFirst { it.id == qlItem.id }.coerceAtLeast(0)
-                    QuickLookModal(
-                        item = qlItem,
-                        currentIndex = idx,
-                        totalCount = validFiles.size.coerceAtLeast(1),
-                        isPhoneConnected = isPhoneConnected,
-                        onDismiss = { viewModel.closeQuickLook() },
-                        onOpenNative = {
+        // Quick Look Modal Overlay
+        AnimatedVisibility(
+            visible = quickLookItem != null,
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(150)),
+            modifier = Modifier.fillMaxSize().zIndex(95f),
+        ) {
+            quickLookItem?.let { qlItem ->
+                val validFiles = displayedFiles.filterNot { it.isAddFolderButton }
+                val idx = validFiles.indexOfFirst { it.id == qlItem.id }.coerceAtLeast(0)
+                QuickLookModal(
+                    item = qlItem,
+                    currentIndex = idx,
+                    totalCount = validFiles.size.coerceAtLeast(1),
+                    isPhoneConnected = isPhoneConnected,
+                    onDismiss = { viewModel.closeQuickLook() },
+                    onOpenNative = {
+                        if (qlItem.isDirectory) {
+                            viewModel.drillDown(qlItem.path, qlItem.name, qlItem.uri)
+                        } else {
+                            openFileNative(qlItem.path)
+                        }
+                    },
+                    onOpenLocation = {
+                        openFolderAndSelectNative(qlItem.path)
+                    },
+                    onNext = { viewModel.quickLookNext() },
+                    onPrevious = { viewModel.quickLookPrevious() },
+                    onSendToPhone = {
+                        coroutineScope.launch(Dispatchers.IO) {
                             if (qlItem.isDirectory) {
-                                viewModel.drillDown(qlItem.path, qlItem.name, qlItem.uri)
+                                fileSender.sendFolders(listOf(java.io.File(qlItem.path)))
                             } else {
-                                openFileNative(qlItem.path)
+                                fileSender.sendFiles(listOf(java.io.File(qlItem.path)))
                             }
-                        },
-                        onOpenLocation = {
-                            openFolderAndSelectNative(qlItem.path)
-                        },
-                        onNext = { viewModel.quickLookNext() },
-                        onPrevious = { viewModel.quickLookPrevious() },
-                        onSendToPhone = {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                if (qlItem.isDirectory) {
-                                    fileSender.sendFolders(listOf(java.io.File(qlItem.path)))
-                                } else {
-                                    fileSender.sendFiles(listOf(java.io.File(qlItem.path)))
-                                }
-                            }
-                        },
-                    )
-                }
+                        }
+                    },
+                )
             }
         }
     }

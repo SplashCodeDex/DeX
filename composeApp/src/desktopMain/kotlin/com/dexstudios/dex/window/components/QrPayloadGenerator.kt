@@ -15,19 +15,19 @@ object QrPayloadGenerator {
                 .map { it.hostAddress }
 
             if (ips.isEmpty()) {
-                return "http://127.0.0.1:${DeXPorts.HTTPS}"
+                return "https://127.0.0.1:${DeXPorts.HTTPS}"
             }
 
             val mainIp = ips.first()
             val extraIps = if (ips.size > 1) ips.drop(1).joinToString(",") else ""
 
-            val payload = StringBuilder("http://$mainIp:${DeXPorts.HTTPS}")
+            val payload = StringBuilder("https://$mainIp:${DeXPorts.HTTPS}")
             if (extraIps.isNotEmpty()) {
                 payload.append("?ips=$extraIps")
             }
             payload.toString()
         } catch (e: Exception) {
-            "http://127.0.0.1:${DeXPorts.HTTPS}"
+            "https://127.0.0.1:${DeXPorts.HTTPS}"
         }
     }
 }

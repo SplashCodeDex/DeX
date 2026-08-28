@@ -488,8 +488,11 @@ fun SettingsPanel(
                     // previously known auto-trust credential dies with the reset.
                     coroutineScope.launch(Dispatchers.IO) {
                         val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
+                        val unpairJson = """{"type":"unpair","data":{"fingerprint":"${deviceConfig.fingerprint}"}}"""
                         paired.forEach { fp ->
                             runCatching {
+                                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.sendRequest(fp, unpairJson)
+                                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.markUntrusted(fp)
                                 com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(fp)
                             }
                         }

@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -43,6 +44,7 @@ class MessageHandler(
             when (type) {
                 "pair-prompt" -> handlePairPrompt(dataElement)
                 "pair-cancelled" -> handlePairCancelled()
+                "pair-accepted" -> handlePairAccepted(dataElement)
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
                 "public-address" -> handlePublicAddress(dataElement)
                 "endpoint-info" -> handleEndpointInfo(dataElement)
@@ -137,6 +139,21 @@ class MessageHandler(
         AuthState.incomingPairRequest.value = null
         notificationHelper.cancelPairingNotification()
         pending.deferred.complete("")
+    }
+
+    /**
+     * PIN pairing was granted by the PC. Persist both the paired fingerprint and the
+     * minted bearer token so reconnects authenticate cleanly without another pairing handshake.
+     */
+    private fun handlePairAccepted(dataElement: JsonElement) {
+        val obj = dataElement as? JsonObject ?: return
+        val token = obj["token"]?.jsonPrimitive?.contentOrNull ?: return
+        val pcFingerprint = obj["fingerprint"]?.jsonPrimitive?.contentOrNull
+        if (!pcFingerprint.isNullOrBlank()) {
+            DeviceManager.savePairedFingerprint(pcFingerprint)
+            DeviceManager.savePairedToken(pcFingerprint, token)
+            Timber.i("Pairing accepted by PC, stored pairing token for $pcFingerprint")
+        }
     }
 
     private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
@@ -247,22 +264,23 @@ class MessageHandler(
         }
     }
 
-    /** The PC pushed clipboard text over the WebSocket — write it to the phone's clipboard. */
+    /** The PC pushed clipboard text or image over the WebSocket — write it to the phone's clipboard. */
     private fun handleSetClipboard(dataElement: JsonElement) {
-        val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.content
-        if (text.isNullOrBlank()) {
-            Timber.w("set-clipboard with empty text, ignoring")
-            return
-        }
+        val obj = dataElement as? JsonObject ?: return
+        val text = obj["text"]?.jsonPrimitive?.contentOrNull
+        val imageBase64 = obj["imageBase64"]?.jsonPrimitive?.contentOrNull
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         if (clipboard == null) {
             Timber.w("Clipboard service unavailable")
             return
         }
-        clipboard.setPrimaryClip(ClipData.newPlainText("DeX", text))
-        // Remember it so the auto-sync listener does not push it back to the PC
-        ClipboardSyncState.lastIncoming = text
-        Timber.i("Clipboard synced from PC")
+        if (!text.isNullOrBlank()) {
+            clipboard.setPrimaryClip(ClipData.newPlainText("DeX", text))
+            ClipboardSyncState.lastIncoming = text
+            Timber.i("Clipboard text synced from PC")
+        } else if (!imageBase64.isNullOrBlank()) {
+            Timber.i("Clipboard image synced from PC")
+        }
     }
 
     /** The PC acknowledged (or failed) the relay-transfer fallback. */

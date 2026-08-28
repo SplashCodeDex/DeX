@@ -88,8 +88,15 @@ object ClipboardSyncService {
 
                 if (hash != lastHash) {
                     lastHash = hash
-                    // Send image base64 JSON
-                    val jsonPayload = """{"type":"image", "mime":"image/png", "imageBase64":"$b64Image"}"""
+                    // Send image base64 in canonical set-clipboard envelope
+                    val jsonPayload = buildJsonObject {
+                        put("type", "set-clipboard")
+                        putJsonObject("data") {
+                            put("text", "")
+                            put("imageMime", "image/png")
+                            put("imageBase64", b64Image)
+                        }
+                    }.toString()
                     sendToPhone(jsonPayload)
                 }
             }

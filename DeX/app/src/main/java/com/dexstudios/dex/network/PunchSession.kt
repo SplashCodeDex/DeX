@@ -67,7 +67,10 @@ class PunchSession(
     fun start() {
         if (serverSocket != null) return
         try {
-            serverSocket = ServerSocket(0)
+            serverSocket = ServerSocket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress(0))
+            }
             Timber.i("Punch listener open on port ${serverSocket!!.localPort}")
         } catch (e: Exception) {
             Timber.e(e, "Cannot open punch listener")
@@ -105,8 +108,10 @@ class PunchSession(
         try {
             val pcIp = wsService.connectedIp ?: PcMemory.ip(context) ?: return@withContext
             val localPort = ss.localPort
-            val socket = Socket()
-            socket.bind(InetSocketAddress("0.0.0.0", localPort))
+            val socket = Socket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress("0.0.0.0", localPort))
+            }
             socket.connect(InetSocketAddress(pcIp, wsService.connectedPort), 5000)
             val ssl = sslContext.socketFactory.createSocket(socket, pcIp, wsService.connectedPort, true) as SSLSocket
             ssl.startHandshake()
@@ -443,8 +448,10 @@ class PunchSession(
         while (System.currentTimeMillis() < deadline && !isCancelled()) {
             // Outbound simultaneous-open attempt, source port = listener port
             try {
-                val s = Socket()
-                s.bind(InetSocketAddress("0.0.0.0", localPort))
+                val s = Socket().apply {
+                    reuseAddress = true
+                    bind(InetSocketAddress("0.0.0.0", localPort))
+                }
                 s.connect(InetSocketAddress(ip, port), 800)
                 s.tcpNoDelay = true
                 Timber.i("Punch connect succeeded to $ip:$port")

@@ -87,8 +87,7 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
         map.values.firstOrNull { paired.contains(it.info.fingerprint) } ?: map.values.firstOrNull()
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    val activeFingerprint = combine(devicesMap, pairedFingerprints) { map, paired ->
-        val connected = WebSocketConnectionManager.connectedFingerprints()
+    val activeFingerprint = combine(devicesMap, pairedFingerprints, WebSocketConnectionManager.connectedFingerprintsFlow) { map, paired, connected ->
         paired.firstOrNull { it in connected }
             ?: map.values.firstOrNull { !it.viaWan && it.info.fingerprint in paired }?.info?.fingerprint
             ?: map.values.firstOrNull()?.info?.fingerprint
@@ -471,6 +470,9 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
 
     fun removeFromHistory(id: String, path: String? = null) {
         viewModelScope.launch {
+            if (_quickLookItem.value?.id == id || (!path.isNullOrBlank() && _quickLookItem.value?.path == path)) {
+                _quickLookItem.value = null
+            }
             TransferHistory.delete(id)
             if (!path.isNullOrBlank()) {
                 val matching = TransferHistory.items.value.filter { it.uri == path || it.name == File(path).name }.map { it.id }
@@ -486,6 +488,9 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
         val idsToDelete = _selectedItemIds.value
         if (idsToDelete.isEmpty()) return
         viewModelScope.launch {
+            if (_quickLookItem.value?.id in idsToDelete) {
+                _quickLookItem.value = null
+            }
             TransferHistory.deleteAll(idsToDelete.toList())
             val matchingPaths = displayedFiles.value
                 .filter { it.id in idsToDelete }
@@ -499,6 +504,7 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
 
     fun clearAllHistory() {
         viewModelScope.launch {
+            _quickLookItem.value = null
             TransferHistory.clear()
             val currentItems = displayedFiles.value.map { it.id } + displayedFiles.value.map { it.path }
             _hiddenHistoryIds.update { it + currentItems }

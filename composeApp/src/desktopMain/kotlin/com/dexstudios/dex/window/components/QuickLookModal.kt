@@ -1,7 +1,10 @@
 package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -42,15 +46,12 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_article
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_inventory
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_photo
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.mirror.toImageBitmap
-import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,14 +72,14 @@ import javax.imageio.ImageIO
 @Composable
 fun QuickLookModal(
     item: ExplorerFileItem,
-    currentIndex: Int,
-    totalCount: Int,
+    currentIndex: Int = 0,
+    totalCount: Int = 1,
     isPhoneConnected: Boolean = false,
     onDismiss: () -> Unit,
     onOpenNative: () -> Unit,
     onOpenLocation: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
+    onNext: () -> Unit = {},
+    onPrevious: () -> Unit = {},
     onSendToPhone: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -87,6 +88,30 @@ fun QuickLookModal(
 
     val isImage = remember(ext) { ext in listOf("jpg", "jpeg", "png", "webp", "bmp", "gif") }
     val isText = remember(ext) { ext in listOf("txt", "md", "kt", "java", "py", "json", "xml", "log", "csv", "yaml", "yml", "ini", "properties", "gradle", "bat", "sh") }
+
+    var imageDimensions by remember(item.id) { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    val (targetWidth, targetHeight) = remember(item.id, imageDimensions, isImage, isText) {
+        calculateModalDimensions(imageDimensions, isImage, isText)
+    }
+
+    val animatedWidth by animateDpAsState(
+        targetValue = targetWidth,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = 380f,
+        ),
+        label = "modalWidthMorph",
+    )
+
+    val animatedHeight by animateDpAsState(
+        targetValue = targetHeight,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = 380f,
+        ),
+        label = "modalHeightMorph",
+    )
 
     // Dim Backdrop + Centered Card
     Box(
@@ -99,9 +124,8 @@ fun QuickLookModal(
     ) {
         Box(
             modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 20.dp)
-                .widthIn(min = 460.dp, max = 560.dp)
-                .heightIn(min = 340.dp, max = 460.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .size(animatedWidth, animatedHeight)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -109,30 +133,33 @@ fun QuickLookModal(
                 )
                 .shadow(
                     elevation = 28.dp,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     spotColor = Color.Black.copy(alpha = 0.6f),
                     ambientColor = Color.Black.copy(alpha = 0.35f),
                 )
                 .frostedSurface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                     opacity = 0.98f,
                 )
                 .border(
                     width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                    shape = RoundedCornerShape(22.dp),
                 )
-                .clip(RoundedCornerShape(24.dp)),
+                .shinyGlare(shape = RoundedCornerShape(22.dp))
+                .clip(RoundedCornerShape(22.dp)),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(18.dp),
+                    .padding(start = 2.dp, end = 2.dp, bottom = 2.dp, top = 8.dp),
             ) {
                 // === Header: Item Name, Action Button & Close ===
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val iconResource = when {
@@ -146,15 +173,15 @@ fun QuickLookModal(
                         painter = painterResource(iconResource),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.name,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
@@ -186,30 +213,30 @@ fun QuickLookModal(
                                 scaleY = openScale
                             }
                             .bubbleFluidity()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(9.dp))
                             .background(MaterialTheme.colorScheme.primary)
                             .clickable(
                                 interactionSource = openInteraction,
                                 indication = null,
                                 onClick = onOpenNative,
                             )
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .padding(horizontal = 11.dp, vertical = 5.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = if (item.isDirectory) "Open Folder" else "Open App",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     // Close Button
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(26.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                             .clickable(onClick = onDismiss),
@@ -219,107 +246,59 @@ fun QuickLookModal(
                             painter = painterResource(Res.drawable.ic_fluent_close),
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(15.dp),
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // === Middle: Content Preview Pane ===
+                // === Middle: Content Preview Pane (Takes all remaining vertical space) ===
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                            shape = RoundedCornerShape(14.dp),
-                        ),
+                        .weight(1f),
                     contentAlignment = Alignment.Center,
                 ) {
-                    when {
-                        isImage && file.exists() -> {
-                            ImagePreviewPane(file = file)
+                    Crossfade(
+                        targetState = item,
+                        animationSpec = tween(220),
+                        modifier = Modifier.fillMaxSize(),
+                    ) { currentItem ->
+                        val currentFile = remember(currentItem.path) { File(currentItem.path) }
+                        val currentExt = remember(currentItem.name) { currentItem.name.substringAfterLast('.', "").lowercase() }
+                        val currentIsImage = remember(currentExt) { currentExt in listOf("jpg", "jpeg", "png", "webp", "bmp", "gif") }
+                        val currentIsText = remember(currentExt) {
+                            currentExt in
+                                listOf("txt", "md", "kt", "java", "py", "json", "xml", "log", "csv", "yaml", "yml", "ini", "properties", "gradle", "bat", "sh")
                         }
 
-                        isText && file.exists() -> {
-                            TextPreviewPane(file = file)
-                        }
+                        when {
+                            currentIsImage && currentFile.exists() -> {
+                                ImagePreviewPane(
+                                    file = currentFile,
+                                    onDimensionsLoaded = { w, h ->
+                                        if (currentItem.id == item.id) {
+                                            imageDimensions = w to h
+                                        }
+                                    },
+                                )
+                            }
 
-                        else -> {
-                            GenericMetadataPreviewPane(
-                                item = item,
-                                file = file,
-                                ext = ext,
-                                onOpenLocation = onOpenLocation,
-                            )
-                        }
-                    }
-                }
+                            currentIsText && currentFile.exists() -> {
+                                TextPreviewPane(file = currentFile)
+                            }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // === Footer: Navigation Stepper & Hints ===
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Previous Button
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                                .clickable(onClick = onPrevious),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_fluent_arrow_back),
-                                contentDescription = "Previous",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = "${currentIndex + 1} of $totalCount",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Next Button (Arrow back rotated 180)
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                                .clickable(onClick = onNext),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_fluent_arrow_back),
-                                contentDescription = "Next",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(14.dp).graphicsLayer { rotationZ = 180f },
-                            )
+                            else -> {
+                                GenericMetadataPreviewPane(
+                                    item = currentItem,
+                                    file = currentFile,
+                                    ext = currentExt,
+                                    onOpenLocation = onOpenLocation,
+                                )
+                            }
                         }
                     }
-
-                    Text(
-                        text = "Spacebar or Esc to close • ← → to step",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    )
                 }
             }
         }
@@ -333,16 +312,25 @@ private sealed interface ImagePreviewState {
 }
 
 @Composable
-private fun ImagePreviewPane(file: File) {
+private fun ImagePreviewPane(file: File, onDimensionsLoaded: (Int, Int) -> Unit = { _, _ -> }) {
     val state by produceState<ImagePreviewState>(initialValue = ImagePreviewState.Loading, key1 = file.absolutePath) {
         value = withContext(Dispatchers.IO) {
             val result = runCatching {
                 val buffered = ImageIO.read(file)
-                buffered?.toComposeImageBitmap()
+                if (buffered != null) {
+                    Pair(buffered.width to buffered.height, buffered.toComposeImageBitmap())
+                } else {
+                    null
+                }
             }.getOrNull()
 
             if (result != null) {
-                ImagePreviewState.Success(result)
+                val (dims, bitmap) = result
+                val (w, h) = dims
+                withContext(Dispatchers.Main) {
+                    onDimensionsLoaded(w, h)
+                }
+                ImagePreviewState.Success(bitmap)
             } else {
                 ImagePreviewState.Error
             }
@@ -365,8 +353,14 @@ private fun ImagePreviewPane(file: File) {
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(
+                        RoundedCornerShape(
+                            bottomStart = 20.dp,
+                            bottomEnd = 20.dp,
+                            topStart = 10.dp,
+                            topEnd = 10.dp,
+                        ),
+                    ),
             )
         }
 
@@ -415,28 +409,39 @@ private fun TextPreviewPane(file: File) {
     } else {
         val scrollState = rememberScrollState()
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp)
+                .clip(
+                    RoundedCornerShape(
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp,
+                        topStart = 10.dp,
+                        topEnd = 10.dp,
+                    ),
+                )
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                .padding(12.dp)
                 .verticalScroll(scrollState),
         ) {
-            lines.forEachIndexed { index, line ->
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "${index + 1}".padStart(3, ' '),
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.width(32.dp),
-                    )
-                    Text(
-                        text = line,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        lineHeight = 15.sp,
-                    )
+            Column {
+                lines.forEachIndexed { index, line ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "${index + 1}".padStart(3, ' '),
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.width(32.dp),
+                        )
+                        Text(
+                            text = line,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 15.sp,
+                        )
+                    }
                 }
             }
         }
@@ -520,4 +525,53 @@ private fun formatTimestamp(millis: Long): String {
     if (millis <= 0) return "Unknown date"
     val sdf = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
     return sdf.format(Date(millis))
+}
+
+private fun calculateModalDimensions(dimensions: Pair<Int, Int>?, isImage: Boolean, isText: Boolean): Pair<Dp, Dp> {
+    if (isImage && dimensions != null && dimensions.first > 0 && dimensions.second > 0) {
+        val (imgW, imgH) = dimensions
+        val aspect = imgW.toFloat() / imgH.toFloat()
+        val headerAllowance = 48f
+        val horizontalBezel = 4f
+
+        return when {
+            // Portrait (e.g. 9:16 mobile photo or tall document screenshot)
+            aspect < 0.85f -> {
+                val targetHeight = 580f
+                val availableImgHeight = targetHeight - headerAllowance
+                val idealImgWidth = availableImgHeight * aspect
+                val targetWidth = (idealImgWidth + horizontalBezel).coerceIn(310f, 480f)
+                targetWidth.dp to targetHeight.dp
+            }
+
+            // Square / Standard 4:3 / 3:2 photos
+            aspect in 0.85f..1.35f -> {
+                val targetWidth = 520f
+                val availableImgWidth = targetWidth - horizontalBezel
+                val idealImgHeight = availableImgWidth / aspect
+                val targetHeight = (idealImgHeight + headerAllowance).coerceIn(400f, 540f)
+                targetWidth.dp to targetHeight.dp
+            }
+
+            // Widescreen 16:9 / 21:9 landscapes & desktop captures
+            else -> {
+                val targetWidth = 660f
+                val availableImgWidth = targetWidth - horizontalBezel
+                val idealImgHeight = availableImgWidth / aspect
+                val targetHeight = (idealImgHeight + headerAllowance).coerceIn(360f, 480f)
+                targetWidth.dp to targetHeight.dp
+            }
+        }
+    }
+
+    if (isText) {
+        return 600.dp to 460.dp
+    }
+
+    if (isImage) {
+        return 480.dp to 460.dp
+    }
+
+    // Folders, binary executables, unknown file formats
+    return 440.dp to 300.dp
 }

@@ -52,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DeviceConfig
@@ -71,11 +72,16 @@ import org.koin.compose.koinInject
 fun NetworkErrorDialog(
     error: String,
     onDismiss: () -> Unit,
-    title: String = stringResource(R.string.error_network_title)
+    title: String = stringResource(R.string.error_network_title),
+    modifier: Modifier = Modifier
 ) {
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(100f)
+    ) {
         // 1. Capture the Dim Background
         Box(
             modifier = Modifier
@@ -96,7 +102,9 @@ fun NetworkErrorDialog(
 
         // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             contentAlignment = Alignment.Center
         ) {
             DeXGlareCard(
@@ -127,7 +135,10 @@ fun NetworkErrorDialog(
 }
 
 @Composable
-fun OnboardingDialog(onDismiss: () -> Unit) {
+fun OnboardingDialog(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val deviceConfig: DeviceConfig = koinInject()
@@ -195,7 +206,11 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
 
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(100f)
+    ) {
         // 1. Capture the Dim Background
         Box(
             modifier = Modifier
@@ -216,7 +231,9 @@ fun OnboardingDialog(onDismiss: () -> Unit) {
 
         // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(
@@ -628,9 +645,11 @@ fun PairingRequestDialog(
     alias: String,
     expectedPin: String,
     onAccept: (String) -> Unit,
+    onFinished: () -> Unit = {},
     onReject: () -> Unit,
     deadlineElapsedMs: Long = 0L,
     onDigitEntered: (Int) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     var enteredPin by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(value = false) }
@@ -645,15 +664,17 @@ fun PairingRequestDialog(
 
     LaunchedEffect(isSuccess) {
         if (isSuccess) {
-            // Domino effect: 100ms per slot
+            // Transmit pair-response immediately so the PC verifies the PIN proof without animation latency
+            onAccept(enteredPin)
+            // Domino effect: 80ms per slot
             repeat(5) {
                 delay(80.milliseconds)
                 greenSlotsCount++
             }
             delay(200.milliseconds) // pause for merging
             // The morph happens via AnimatedContent triggered by isSuccess later
-            delay(1200.milliseconds) // Allow full animation to play
-            onAccept(enteredPin)
+            delay(1000.milliseconds) // Allow full animation to play before dismissal
+            onFinished()
         }
     }
 
@@ -687,7 +708,11 @@ fun PairingRequestDialog(
 
     val dialogBackdrop = rememberLayerBackdrop()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(100f)
+    ) {
         // 1. Capture the Dim Background
         Box(
             modifier = Modifier
@@ -698,7 +723,6 @@ fun PairingRequestDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = dimAlpha))
-                    .imePadding()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -709,7 +733,9 @@ fun PairingRequestDialog(
 
         // 2. Dialog sits ON TOP as a sibling, not being captured. Safe.
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(

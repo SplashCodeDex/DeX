@@ -29,19 +29,8 @@ sealed interface PairingState {
         val alias: String = "",
     ) : PairingState
 
-    data class PinPhase(
-        val ip: String,
-        val fingerprint: String,
-        val pinCode: String,
-        val digitCount: Int,
-        val isError: Boolean = false,
-        val expiresAtMillis: Long = 0L,
-        val alias: String = "",
-        // True only for offers the PEER started (pair-request / digits-typed-first): those
-        // may still be granted manually. Offers minted by our own "PIN CODE" request are
-        // PIN-proof-only, matching the legacy panel which force-hid Accept/AcceptOnce.
-        val manualAcceptAvailable: Boolean = false,
-    ) : PairingState
+    data class PinPhase(val ip: String, val fingerprint: String, val pinCode: String, val digitCount: Int, val isError: Boolean = false, val expiresAtMillis: Long = 0L, val alias: String = "") :
+        PairingState
 
     data object Success : PairingState
     data class Error(val message: String) : PairingState
@@ -134,7 +123,6 @@ class PairingEngine(
             digitCount = 0,
             expiresAtMillis = nowMillis() + PIN_TTL_MS,
             alias = current.alias,
-            manualAcceptAvailable = false,
         )
         armExpiry(current.fingerprint)
         pinOfferNotifier(pinCode, current.alias)
@@ -149,6 +137,13 @@ class PairingEngine(
     fun revertToQrPhase() {
         val current = _state.value
         if (current is PairingState.PinPhase) {
+            scope.launch {
+                val payload = buildJsonObject {
+                    put("type", "pair-cancelled")
+                    putJsonObject("data") {}
+                }
+                outboundSender(current.fingerprint, payload.toString())
+            }
             _state.value = PairingState.QrPhase(
                 ip = current.ip,
                 fingerprint = current.fingerprint,
@@ -161,24 +156,8 @@ class PairingEngine(
 
     fun handlePinDigitEntered(digitCount: Int) {
         val current = _state.value
-        if (current is PairingState.QrPhase) {
-            // No PIN exists yet in this phase (the remote device is typing before its pair-request
-            // reached us), so render the masked placeholder instead of fake digits.
-            _state.value = PairingState.PinPhase(
-                current.ip,
-                current.fingerprint,
-                // No PIN exists yet in this phase (the remote device is typing before its pair-request
-                // reached us), so render the masked placeholder instead of fake digits.
-                "-".repeat(PIN_LENGTH),
-                digitCount,
-                expiresAtMillis = current.expiresAtMillis,
-                alias = current.alias,
-                // The remote is actively connecting to US; manual grant stays possible.
-                manualAcceptAvailable = true,
-            )
-            armExpiry(current.fingerprint)
-        } else if (current is PairingState.PinPhase) {
-            _state.value = current.copy(digitCount = digitCount)
+        if (current is PairingState.PinPhase) {
+            _state.value = current.copy(digitCount = digitCount.coerceIn(0, PIN_LENGTH))
         }
     }
 
@@ -194,7 +173,6 @@ class PairingEngine(
             digitCount = 0,
             expiresAtMillis = nowMillis() + PIN_TTL_MS,
             alias = alias,
-            manualAcceptAvailable = true,
         )
         armExpiry(fingerprint)
         return pinCode
@@ -239,10 +217,8 @@ class PairingEngine(
         if (current is PairingState.PinPhase) {
             scope.launch {
                 val payload = buildJsonObject {
-                    put("type", "pair-response")
-                    putJsonObject("data") {
-                        put("accepted", false)
-                    }
+                    put("type", "pair-cancelled")
+                    putJsonObject("data") {}
                 }
                 outboundSender(current.fingerprint, payload.toString())
                 reset()

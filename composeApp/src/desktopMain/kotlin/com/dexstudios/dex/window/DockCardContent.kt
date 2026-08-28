@@ -106,7 +106,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
             }
 
             is com.dexstudios.dex.auth.PairingState.Success -> {
-                kotlinx.coroutines.delay(800)
+                kotlinx.coroutines.delay(1200)
                 controller.collapsePanel()
                 pairingEngine.reset()
             }
@@ -121,14 +121,16 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
         }
     }
 
-    // Auto-surface device connected status screen when a device connects
+    // Auto-surface device connected status screen when a device connects (when not in an active pairing flow)
     LaunchedEffect(Unit) {
         com.dexstudios.dex.core.network.server.WebSocketConnectionManager.events.collect { event ->
             if (event is com.dexstudios.dex.core.network.server.ConnectionEvent.Connected) {
-                if (!controller.isVisible) {
-                    controller.show()
+                if (!controller.isPairingActive && pairingEngine.state.value == com.dexstudios.dex.auth.PairingState.Idle) {
+                    if (!controller.isVisible) {
+                        controller.show()
+                    }
+                    controller.expandPanel(ExpandedPanel.DeviceStatus)
                 }
-                controller.expandPanel(ExpandedPanel.DeviceStatus)
             }
         }
     }

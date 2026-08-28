@@ -5,7 +5,10 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
@@ -35,6 +38,17 @@ object WebSocketConnectionManager {
     private val _events = MutableSharedFlow<ConnectionEvent>(extraBufferCapacity = 64)
     val events = _events.asSharedFlow()
 
+    private val _connectedFingerprintsFlow = MutableStateFlow<Set<String>>(emptySet())
+    val connectedFingerprintsFlow: StateFlow<Set<String>> = _connectedFingerprintsFlow.asStateFlow()
+
+    private val _trustedFingerprintsFlow = MutableStateFlow<Set<String>>(emptySet())
+    val trustedFingerprintsFlow: StateFlow<Set<String>> = _trustedFingerprintsFlow.asStateFlow()
+
+    private fun syncFlows() {
+        _connectedFingerprintsFlow.value = sessions.keys.toSet()
+        _trustedFingerprintsFlow.value = sessions.filterValues { it.trusted }.keys.toSet()
+    }
+
     /**
      * Registers a session for [fingerprint]. Returns false when an active session for the
      * same fingerprint already exists — the caller must refuse the new connection instead
@@ -43,8 +57,11 @@ object WebSocketConnectionManager {
      */
     fun register(fingerprint: String, session: WebSocketSession, trusted: Boolean, identityToken: String? = null): Boolean {
         val added = sessions.putIfAbsent(fingerprint, SessionHolder(session, trusted, identityToken)) == null
-        if (added && trusted) {
-            _events.tryEmit(ConnectionEvent.Connected(fingerprint))
+        if (added) {
+            syncFlows()
+            if (trusted) {
+                _events.tryEmit(ConnectionEvent.Connected(fingerprint))
+            }
         }
         return added
     }
@@ -54,6 +71,7 @@ object WebSocketConnectionManager {
         sessions.computeIfPresent(fingerprint) { _, holder ->
             SessionHolder(holder.session, true, identityToken ?: holder.identityToken, holder.mutex)
         }
+        syncFlows()
         _events.tryEmit(ConnectionEvent.Connected(fingerprint))
     }
 
@@ -62,10 +80,12 @@ object WebSocketConnectionManager {
         sessions.computeIfPresent(fingerprint) { _, holder ->
             if (!holder.trusted) holder else SessionHolder(holder.session, false, null, holder.mutex)
         }
+        syncFlows()
     }
 
     fun unregister(fingerprint: String) {
         if (sessions.remove(fingerprint) != null) {
+            syncFlows()
             _events.tryEmit(ConnectionEvent.Disconnected(fingerprint))
         }
     }

@@ -92,7 +92,6 @@ class PairingEngineTest {
         assertEquals(fingerprint, state.fingerprint)
         assertEquals(pin, state.pinCode)
         assertEquals(0, state.digitCount)
-        assertTrue(state.manualAcceptAvailable, "Peer-started offers stay manually grantable")
     }
 
     @Test
@@ -113,7 +112,6 @@ class PairingEngineTest {
         assertIs<PairingState.PinPhase>(state)
         assertEquals("qr-fp", state.fingerprint)
         assertEquals(0, state.digitCount)
-        assertTrue(!state.manualAcceptAvailable, "Desktop-initiated offers hide Accept actions")
         assertTrue(engine.verifyInboundPin("qr-fp", state.pinCode), "Minted PIN must be provable")
 
         assertEquals(1, sent.size)
@@ -196,6 +194,13 @@ class PairingEngineTest {
         state = pairingEngine.state.value
         assertIs<PairingState.PinPhase>(state)
         assertEquals(PairingEngine.PIN_LENGTH, state.digitCount)
+    }
+
+    @Test
+    fun `handlePinDigitEntered in QrPhase or Idle is safely ignored`() = runTest {
+        assertEquals(PairingState.Idle, pairingEngine.state.value)
+        pairingEngine.handlePinDigitEntered(3)
+        assertEquals(PairingState.Idle, pairingEngine.state.value)
     }
 
     @Test
