@@ -33,6 +33,11 @@ composeApp (desktop app entry; jvm("desktop") target)
 Server wiring lives in `core/network/src/desktopMain/.../server/DeXServer.kt`; route groups under
 `server/routes/` (device, share, control, webSocket, fileExplorer, clipboard, settings).
 
+`/local/` routes (share-target, the `/local/dex` file-explorer proxy, `/local/settings`) are
+LOOPBACK-ONLY by contract (plan 021) — `guardLoopback()` in `server/AccessControl.kt` answers
+403 off a loopback binding, and Bearer resolution for every HTTP surface is centralized in
+`server/BearerTrust`.
+
 ## Trust model (strict priority — highest wins)
 
 A peer's bearer token is resolved in this order (see `ClientEngine.authToken`,

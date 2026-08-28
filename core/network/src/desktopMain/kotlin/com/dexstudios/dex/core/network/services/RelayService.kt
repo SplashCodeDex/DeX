@@ -46,6 +46,25 @@ object RelayService {
     val relaySessionAliases = ConcurrentHashMap<String, String>() // sessionId -> alias
     private val relaySessionTime = ConcurrentHashMap<String, Long>()
 
+    /**
+     * Expected relay arrival counts, recorded by ShareRoutes at prepare-upload time.
+     *
+     * The upload session record itself is removed the moment its LAST file lands
+     * (finishIncomingSession), but the sender's `relay-transfer` request arrives only
+     * AFTER that — so the count must live in a map that outlives the session record.
+     * Without it, relayUploadedSession resolved 0 expected files from a vanished session
+     * and answered relay-error for every fully-successful relay upload.
+     */
+    class ExpectedRelay(val expectedCount: Int, val createdAt: Long = System.currentTimeMillis())
+
+    val relaySessionExpected = ConcurrentHashMap<String, ExpectedRelay>()
+
+    /** Records how many files the sender will actually upload for a relay session. */
+    fun trackRelayExpected(sessionId: String, expectedCount: Int) {
+        relaySessionExpected[sessionId] = ExpectedRelay(expectedCount)
+        ensureMaintenanceLoop()
+    }
+
     // Push bookkeeping for delivery confirmation callbacks (H1: never fake "sent")
     private val pushes = ConcurrentHashMap<String, HostedPush>()
 
@@ -90,12 +109,19 @@ object RelayService {
                         relaySessionFiles.remove(id)
                         relaySessionAliases.remove(id)
                         relaySessionTime.remove(id)
+                        relaySessionExpected.remove(id)
                     }
 
-                    if (hostedFileLastAccess.isEmpty() && relaySessionTime.isEmpty() && pushes.isEmpty()) {
+                    // Expected counts with no staging yet (all-deduped sessions) still expire
+                    val staleExpected = relaySessionExpected.entries
+                        .filter { now - it.value.createdAt > RELAY_TTL_MS }
+                        .map { it.key }
+                    for (id in staleExpected) relaySessionExpected.remove(id)
+
+                    if (hostedFileLastAccess.isEmpty() && relaySessionTime.isEmpty() && relaySessionExpected.isEmpty() && pushes.isEmpty()) {
                         maintenanceStarted.set(0)
                         // Re-check under race: a producer may have arrived between the check and reset
-                        if (hostedFileLastAccess.isEmpty() && relaySessionTime.isEmpty() && pushes.isEmpty()) break
+                        if (hostedFileLastAccess.isEmpty() && relaySessionTime.isEmpty() && relaySessionExpected.isEmpty() && pushes.isEmpty()) break
                         ensureMaintenanceLoop()
                         return@launch
                     }
@@ -157,13 +183,19 @@ object RelayService {
      * Completes the A->PC->B fallback: verifies session [sessionId] fully arrived at this PC,
      * then hosts every staged file and pushes a prepare-upload prompt to the target.
      *
+     * The expected arrival count comes from the prepare-time record
+     * ([trackRelayExpected]) — the upload session record is already gone by the time the
+     * sender's relay-transfer request arrives, because ShareRoutes removes it the moment
+     * the last file lands. The live-session lookup is kept only as a legacy fallback.
+     *
      * Returns true when the prompt was delivered to the target's trusted session.
      */
     suspend fun relayUploadedSession(sessionId: String, targetFingerprint: String): Boolean {
         // Deduped files ([SKIP] at prepare time) are never re-uploaded, so the arrival wait
         // must count only files that were actually minted an upload token.
         val session = com.dexstudios.dex.core.network.server.routes.activeUploadSessions[sessionId]
-        val expectedCount = session?.issuedTokens?.size
+        val expectedCount = relaySessionExpected[sessionId]?.expectedCount
+            ?: session?.issuedTokens?.size
             ?: session?.request?.files?.size
             ?: return false
         val alias = relaySessionAliases[sessionId] ?: "Phone"

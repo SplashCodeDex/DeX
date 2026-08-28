@@ -1,6 +1,8 @@
 package com.dexstudios.dex.core.network.server.routes
 
 import com.dexstudios.dex.core.network.ClipboardSyncState
+import com.dexstudios.dex.core.network.server.BearerTrust
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -12,6 +14,14 @@ import java.awt.datatransfer.StringSelection
 fun Route.clipboardRoutes() {
     route("/api/dex") {
         post("/clipboard") {
+            // The sender authenticates with the same bearer tiers as the /ws handshake
+            // (googleSub / identityHash / any paired token — see BearerTrust). This gate
+            // used to be missing entirely, letting any LAN peer inject clipboard content.
+            val bearer = call.request.header(HttpHeaders.Authorization)?.removePrefix("Bearer ")?.trim()
+            if (!BearerTrust.isTrustedBearer(bearer)) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@post
+            }
             try {
                 val text = call.receiveText()
                 if (text.isNotBlank()) {

@@ -6,6 +6,7 @@ import com.dexstudios.dex.core.network.PrepareUploadResponseDto
 import com.dexstudios.dex.core.network.RegisterDto
 import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.server.ReceiveStorage
+import com.dexstudios.dex.core.network.server.guardLoopback
 import com.dexstudios.dex.core.network.services.RelayService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
@@ -137,12 +138,7 @@ fun Route.shareRoutes() {
             // OS share-target integration is a LOCAL automation surface; it must never be
             // reachable from the network listeners. The TLS listener serves 0.0.0.0, the
             // maintenance listener 127.0.0.1 — gate on the local bind address.
-            if (call.request.local.serverHost != "127.0.0.1" && call.request.local.serverHost != "::1" &&
-                call.request.local.serverHost != "0:0:0:0:0:0:0:1"
-            ) {
-                call.respond(HttpStatusCode.Forbidden)
-                return@post
-            }
+            if (!guardLoopback()) return@post
             try {
                 val payload = call.receive<ShareTargetPayload>()
 
@@ -223,6 +219,10 @@ fun Route.shareRoutes() {
                     ownerToken = token?.takeIf { it.isNotEmpty() },
                 )
                 ensureSessionJanitor()
+                // The relay fallback needs the expected arrival count AFTER this session
+                // record dies: finishIncomingSession removes it the moment the last file
+                // lands, while the sender's relay-transfer request arrives only afterwards.
+                RelayService.trackRelayExpected(sessionId, issuedTokens.size)
 
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
                     sessionId,

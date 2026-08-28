@@ -40,6 +40,7 @@ class RelayServiceTest {
         RelayService.hostedFileLastAccess.clear()
         RelayService.relaySessionFiles.clear()
         RelayService.relaySessionAliases.clear()
+        RelayService.relaySessionExpected.clear()
     }
 
     @After
@@ -51,6 +52,7 @@ class RelayServiceTest {
         RelayService.hostedFileLastAccess.clear()
         RelayService.relaySessionFiles.clear()
         RelayService.relaySessionAliases.clear()
+        RelayService.relaySessionExpected.clear()
     }
 
     private fun startKoinWithDeviceConfig(fingerprint: String = "") {
@@ -215,5 +217,29 @@ class RelayServiceTest {
         RelayService.markPulled("file-x")
 
         assertTrue(RelayService.hostedFileLastAccess.containsKey("file-x"))
+    }
+
+    @Test
+    fun `relayUploadedSession delivers the prompt even after the upload session record was removed`() = runTest {
+        // Regression: ShareRoutes.finishIncomingSession removes activeUploadSessions[sessionId]
+        // the moment the LAST file lands, while the sender's relay-transfer request arrives
+        // only AFTER its uploads complete. The expected count must come from the
+        // prepare-time record, not the (already dead) session entry.
+        startKoinWithDeviceConfig()
+        stubTrustedSession("fp_target")
+        val tempDir = Files.createTempDirectory("dex_relay").toFile()
+        val staged = Files.write(tempDir.resolve("a.bin").toPath(), byteArrayOf(1)).toFile()
+
+        // prepare-upload recorded the expectation; the file arrived; the session record died
+        RelayService.trackRelayExpected("sess-relay", 1)
+        RelayService.trackRelayFile("sess-relay", "a.bin", staged.absolutePath, "Pixel")
+
+        val delivered = RelayService.relayUploadedSession("sess-relay", "fp_target")
+        assertTrue(delivered, "relay-transfer must be honored after the upload session record was removed")
+    }
+
+    @Test
+    fun `relayUploadedSession fails closed when no expected count was ever recorded`() = runTest {
+        assertFalse(RelayService.relayUploadedSession("ghost-session", "fp_target"))
     }
 }

@@ -118,7 +118,10 @@ object DeXServer {
             ) {
                 host = "0.0.0.0"
                 port = DeXPorts.HTTPS
-                keyStorePath = java.io.File(System.getProperty("java.io.tmpdir"), "dex_cert.jks")
+                // SSL material comes ONLY from the `keyStore` instance above
+                // (CertificateGenerator -> ~/.dex/security/dex_cert.jks). Ktor's Netty
+                // engine never reads `keyStorePath`, so none is set — a path pointing at
+                // %TEMP%\dex_cert.jks used to live here and silently mislead readers.
             }
         }, module = baseModule).start(wait = false)
 

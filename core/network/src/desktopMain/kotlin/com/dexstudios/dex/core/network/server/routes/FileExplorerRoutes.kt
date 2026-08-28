@@ -2,6 +2,7 @@ package com.dexstudios.dex.core.network.server.routes
 
 import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.network.server.guardLoopback
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -13,11 +14,21 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import java.util.UUID
 
+/**
+ * File-explorer over WS proxy: the desktop UI drives a connected phone's SAF surfaces.
+ * LOOPBACK-ONLY by the `/local/` contract (plan 021) — every handler gates on
+ * [guardLoopback] because these routes are also mounted on the LAN-facing TLS listener
+ * via DeXServer's baseModule, and an unguarded mount would let any LAN peer drive
+ * list/browse/grant requests into a phone's session (grant pops a user-facing dialog
+ * that hangs up to 190 s).
+ */
 fun Route.fileExplorerRoutes() {
     route("/local/dex") {
         post("/list-folders") {
+            if (!guardLoopback()) return@post
             val fp = call.request.queryParameters["fingerprint"]
             if (fp == null) {
                 call.respond(HttpStatusCode.BadRequest)
@@ -27,7 +38,9 @@ fun Route.fileExplorerRoutes() {
             val requestId = UUID.randomUUID().toString()
             val requestJson = buildJsonObject {
                 put("type", "list-shared-folders")
-                put("requestId", requestId)
+                putJsonObject("data") {
+                    put("requestId", requestId)
+                }
             }.toString()
 
             val deferred = DexRequestStore.createRequest(requestId)
@@ -48,6 +61,7 @@ fun Route.fileExplorerRoutes() {
         }
 
         post("/browse") {
+            if (!guardLoopback()) return@post
             val fp = call.request.queryParameters["fingerprint"]
             val folderUri = call.request.queryParameters["folderUri"]
             if (fp == null || folderUri == null) {
@@ -58,8 +72,10 @@ fun Route.fileExplorerRoutes() {
             val requestId = UUID.randomUUID().toString()
             val requestJson = buildJsonObject {
                 put("type", "browse-folder")
-                put("requestId", requestId)
-                put("folderUri", folderUri)
+                putJsonObject("data") {
+                    put("requestId", requestId)
+                    put("folderUri", folderUri)
+                }
             }.toString()
 
             val deferred = DexRequestStore.createRequest(requestId)
@@ -80,6 +96,7 @@ fun Route.fileExplorerRoutes() {
         }
 
         post("/grant-folder") {
+            if (!guardLoopback()) return@post
             val fp = call.request.queryParameters["fingerprint"]
             if (fp == null) {
                 call.respond(HttpStatusCode.BadRequest)
@@ -89,7 +106,9 @@ fun Route.fileExplorerRoutes() {
             val requestId = UUID.randomUUID().toString()
             val requestJson = buildJsonObject {
                 put("type", "grant-shared-folder")
-                put("requestId", requestId)
+                putJsonObject("data") {
+                    put("requestId", requestId)
+                }
             }.toString()
 
             val deferred = DexRequestStore.createRequest(requestId)

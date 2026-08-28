@@ -89,3 +89,8 @@ battery?, isCharging?, wifiBand?, wifiSsid?`
 Canonical definition: `core/data/src/commonMain/.../protocol/ProtocolDto.kt`. HTTP routes under
 `/api/localsend/v2` require a Bearer token resolved by trust priority:
 googleSub → identityHash → paired token (constant-time comparisons throughout).
+
+The same Bearer rule applies to `POST /api/dex/clipboard` (401 otherwise; token resolution
+lives in `server/BearerTrust`). All `/local/` routes (share-target, the `/local/dex` file
+explorer proxy, `/local/settings`) are LOOPBACK-ONLY by contract: `guardLoopback()` answers
+403 unless the request arrived on a loopback-bound listener.
