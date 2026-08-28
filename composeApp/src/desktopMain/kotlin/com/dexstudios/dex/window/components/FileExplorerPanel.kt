@@ -192,8 +192,6 @@ fun FileExplorerPanel(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .focusRequester(focusRequester)
-            .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
                     val isSpace = event.key == Key.Spacebar || event.utf16CodePoint == ' '.code
@@ -256,7 +254,9 @@ fun FileExplorerPanel(
                     }
                 }
                 false
-            },
+            }
+            .focusRequester(focusRequester)
+            .focusable(),
     ) {
         Column(
             modifier =
