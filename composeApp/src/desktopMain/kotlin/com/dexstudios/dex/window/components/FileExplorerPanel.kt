@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -49,7 +50,9 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -58,6 +61,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -159,8 +163,20 @@ fun FileExplorerPanel(
     val activeFingerprint by viewModel.activeFingerprint.collectAsState()
     val isTransferring by viewModel.isTransferring.collectAsState()
     val explorerError by viewModel.explorerError.collectAsState()
+    val quickLookItem by viewModel.quickLookItem.collectAsState()
 
-    LaunchedEffect(Unit) {
+    var isSearchFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+
+    // The panel root owns the keyboard surface (Quick Look, select-all, Escape, Delete), so it
+    // must always hold focus while the drawer is open. A single Unit-keyed request races the
+    // drawer's enter animation and silently loses, leaving keys dead until a file click — so
+    // re-acquire focus on every expansion change and again when the Quick Look modal closes.
+    // While the modal is open the root's onPreviewKeyEvent keeps handling all keys; the modal
+    // itself never claims focus.
+    LaunchedEffect(controller?.isExpanded, controller?.expandedPanel, quickLookItem) {
+        if (controller?.isExpanded != true || quickLookItem != null) return@LaunchedEffect
+        withFrameNanos { }
         focusRequester.requestFocus()
     }
 
@@ -173,7 +189,75 @@ fun FileExplorerPanel(
         activeFingerprint.isNotBlank() && (WebSocketConnectionManager.isConnected(activeFingerprint) || activePhone != null)
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    val isSpace = event.key == Key.Spacebar || event.utf16CodePoint == ' '.code
+
+                    if (isSpace && !isSearchFocused) {
+                        viewModel.toggleQuickLook()
+                        return@onPreviewKeyEvent true
+                    }
+
+                    if (quickLookItem != null) {
+                        when (event.key) {
+                            Key.Escape -> {
+                                viewModel.closeQuickLook()
+                                return@onPreviewKeyEvent true
+                            }
+
+                            Key.DirectionRight, Key.DirectionDown -> {
+                                viewModel.quickLookNext()
+                                return@onPreviewKeyEvent true
+                            }
+
+                            Key.DirectionLeft, Key.DirectionUp -> {
+                                viewModel.quickLookPrevious()
+                                return@onPreviewKeyEvent true
+                            }
+
+                            Key.Enter -> {
+                                quickLookItem?.let { ql ->
+                                    if (ql.isDirectory) {
+                                        viewModel.drillDown(ql.path, ql.name, ql.uri)
+                                    } else {
+                                        openFileNative(ql.path)
+                                    }
+                                }
+                                return@onPreviewKeyEvent true
+                            }
+                        }
+                    } else if (!isSearchFocused) {
+                        if ((event.isKeyCtrlPressed || event.isKeyMetaPressed) && event.key == Key.A) {
+                            if (mode == ExplorerMode.History) {
+                                viewModel.selectAll()
+                                return@onPreviewKeyEvent true
+                            }
+                        } else if (event.key == Key.Escape) {
+                            if (mode == ExplorerMode.History) {
+                                viewModel.clearSelection()
+                                return@onPreviewKeyEvent true
+                            }
+                        } else if (event.key == Key.Delete || event.key == Key.Backspace) {
+                            if (mode == ExplorerMode.History && selectedItemIds.isNotEmpty()) {
+                                if (selectedItemIds.size > 1) {
+                                    isBatchDeleteConfirmOpen = true
+                                } else {
+                                    val item = displayedFiles.find { it.id in selectedItemIds }
+                                    if (item != null) itemToDelete = item
+                                }
+                                return@onPreviewKeyEvent true
+                            }
+                        }
+                    }
+                }
+                false
+            },
+    ) {
         Column(
             modifier =
             Modifier.fillMaxSize().padding(start = 24.dp, top = 28.dp, end = 16.dp, bottom = 16.dp),
@@ -311,7 +395,9 @@ fun FileExplorerPanel(
                             ),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                             singleLine = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { isSearchFocused = it.isFocused },
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) {
                                     val hint =
@@ -447,34 +533,6 @@ fun FileExplorerPanel(
                     .onGloballyPositioned { coordinates ->
                         gridBoundsInRoot = coordinates.boundsInRoot()
                     }
-                    .focusRequester(focusRequester)
-                    .focusable()
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
-                            if ((event.isKeyCtrlPressed || event.isKeyMetaPressed) && event.key == Key.A) {
-                                if (mode == ExplorerMode.History) {
-                                    viewModel.selectAll()
-                                    return@onKeyEvent true
-                                }
-                            } else if (event.key == Key.Escape) {
-                                if (mode == ExplorerMode.History) {
-                                    viewModel.clearSelection()
-                                    return@onKeyEvent true
-                                }
-                            } else if (event.key == Key.Delete || event.key == Key.Backspace) {
-                                if (mode == ExplorerMode.History && selectedItemIds.isNotEmpty()) {
-                                    if (selectedItemIds.size > 1) {
-                                        isBatchDeleteConfirmOpen = true
-                                    } else {
-                                        val item = displayedFiles.find { it.id in selectedItemIds }
-                                        if (item != null) itemToDelete = item
-                                    }
-                                    return@onKeyEvent true
-                                }
-                            }
-                        }
-                        false
-                    }
                     .pointerInput(mode) {
                         awaitPointerEventScope {
                             while (true) {
@@ -482,6 +540,12 @@ fun FileExplorerPanel(
                                 val change = event.changes.firstOrNull() ?: continue
 
                                 if (event.type == PointerEventType.Press) {
+                                    // Clear search focus FIRST — clearFocus() wipes the whole
+                                    // tree and would undo a requestFocus() issued before it.
+                                    if (isSearchFocused) {
+                                        focusManager.clearFocus()
+                                    }
+                                    focusRequester.requestFocus()
                                     if (!change.isConsumed) {
                                         if (event.button == PointerButton.Secondary) {
                                             if (mode == ExplorerMode.History) {
@@ -657,6 +721,12 @@ fun FileExplorerPanel(
                                     itemBoundsMap[id] = bounds
                                 },
                                 onClick = { isCtrlOrMeta, isShift ->
+                                    // Clear search focus FIRST — clearFocus() wipes the whole
+                                    // tree and would undo a requestFocus() issued before it.
+                                    if (isSearchFocused) {
+                                        focusManager.clearFocus()
+                                    }
+                                    focusRequester.requestFocus()
                                     if (item.isAddFolderButton) {
                                         viewModel.grantNewFolder()
                                         return@FileGridItemCard
@@ -986,6 +1056,47 @@ fun FileExplorerPanel(
                         },
                         onDismiss = {
                             itemToDelete = null
+                        },
+                    )
+                }
+            }
+
+            // Quick Look Modal Overlay
+            AnimatedVisibility(
+                visible = quickLookItem != null,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(150)),
+                modifier = Modifier.fillMaxSize().zIndex(95f),
+            ) {
+                quickLookItem?.let { qlItem ->
+                    val validFiles = displayedFiles.filterNot { it.isAddFolderButton }
+                    val idx = validFiles.indexOfFirst { it.id == qlItem.id }.coerceAtLeast(0)
+                    QuickLookModal(
+                        item = qlItem,
+                        currentIndex = idx,
+                        totalCount = validFiles.size.coerceAtLeast(1),
+                        isPhoneConnected = isPhoneConnected,
+                        onDismiss = { viewModel.closeQuickLook() },
+                        onOpenNative = {
+                            if (qlItem.isDirectory) {
+                                viewModel.drillDown(qlItem.path, qlItem.name, qlItem.uri)
+                            } else {
+                                openFileNative(qlItem.path)
+                            }
+                        },
+                        onOpenLocation = {
+                            openFolderAndSelectNative(qlItem.path)
+                        },
+                        onNext = { viewModel.quickLookNext() },
+                        onPrevious = { viewModel.quickLookPrevious() },
+                        onSendToPhone = {
+                            coroutineScope.launch(Dispatchers.IO) {
+                                if (qlItem.isDirectory) {
+                                    fileSender.sendFolders(listOf(java.io.File(qlItem.path)))
+                                } else {
+                                    fileSender.sendFiles(listOf(java.io.File(qlItem.path)))
+                                }
+                            }
                         },
                     )
                 }
