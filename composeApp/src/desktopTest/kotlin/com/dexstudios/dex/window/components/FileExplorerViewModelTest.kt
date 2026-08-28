@@ -175,4 +175,43 @@ class FileExplorerViewModelTest {
         viewModel.setSelectedIds(setOf("item_1", "item_2", "item_3"))
         assertEquals(setOf("item_1", "item_2", "item_3"), viewModel.selectedItemIds.value)
     }
+
+    @Test
+    fun `test openQuickLook and closeQuickLook`() = runTest {
+        val testItem = ExplorerFileItem(
+            id = "photo_1",
+            name = "beach.jpg",
+            path = "C:/Downloads/beach.jpg",
+            size = 1024L,
+            isDirectory = false,
+            timestamp = System.currentTimeMillis(),
+        )
+
+        assertEquals(null, viewModel.quickLookItem.value)
+
+        viewModel.openQuickLook(testItem)
+        assertEquals(testItem, viewModel.quickLookItem.value)
+        assertEquals(setOf("photo_1"), viewModel.selectedItemIds.value)
+
+        viewModel.closeQuickLook()
+        assertEquals(null, viewModel.quickLookItem.value)
+    }
+
+    @Test
+    fun `test toggleQuickLook opens and closes`() = runTest {
+        val testItem = ExplorerFileItem(
+            id = "doc_1",
+            name = "notes.txt",
+            path = "C:/Downloads/notes.txt",
+            size = 512L,
+            isDirectory = false,
+            timestamp = System.currentTimeMillis(),
+        )
+
+        viewModel.toggleQuickLook(testItem)
+        assertEquals(testItem, viewModel.quickLookItem.value)
+
+        viewModel.toggleQuickLook(testItem)
+        assertEquals(null, viewModel.quickLookItem.value)
+    }
 }

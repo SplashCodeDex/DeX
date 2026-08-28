@@ -160,6 +160,7 @@ internal fun FileGridItemCard(
                                     isContextMenuOpen = true
                                 }
                             } else if (event.button == PointerButton.Primary) {
+                                change.consume()
                                 val isCtrl = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
                                 val isShift = event.keyboardModifiers.isShiftPressed
                                 onClick(isCtrl, isShift)

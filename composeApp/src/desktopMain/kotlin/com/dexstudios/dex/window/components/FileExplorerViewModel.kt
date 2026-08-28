@@ -360,6 +360,64 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
         selectionAnchorId = null
     }
 
+    private val _quickLookItem = MutableStateFlow<ExplorerFileItem?>(null)
+    val quickLookItem = _quickLookItem.asStateFlow()
+
+    fun openQuickLook(item: ExplorerFileItem? = null) {
+        val target = item ?: run {
+            val selected = _selectedItemIds.value.lastOrNull()
+            displayedFiles.value.find { it.id == selected }
+        } ?: displayedFiles.value.firstOrNull { !it.isAddFolderButton }
+        _quickLookItem.value = target
+        if (target != null && target.id !in _selectedItemIds.value) {
+            selectSingle(target.id)
+        }
+    }
+
+    fun closeQuickLook() {
+        _quickLookItem.value = null
+    }
+
+    fun toggleQuickLook(item: ExplorerFileItem? = null) {
+        if (_quickLookItem.value != null) {
+            closeQuickLook()
+        } else {
+            openQuickLook(item)
+        }
+    }
+
+    fun quickLookNext() {
+        val current = _quickLookItem.value ?: return
+        val validItems = displayedFiles.value.filterNot { it.isAddFolderButton }
+        if (validItems.isEmpty()) return
+        val currentIndex = validItems.indexOfFirst { it.id == current.id }
+        if (currentIndex != -1 && currentIndex < validItems.size - 1) {
+            val next = validItems[currentIndex + 1]
+            _quickLookItem.value = next
+            selectSingle(next.id)
+        } else if (currentIndex == validItems.size - 1) {
+            val first = validItems.first()
+            _quickLookItem.value = first
+            selectSingle(first.id)
+        }
+    }
+
+    fun quickLookPrevious() {
+        val current = _quickLookItem.value ?: return
+        val validItems = displayedFiles.value.filterNot { it.isAddFolderButton }
+        if (validItems.isEmpty()) return
+        val currentIndex = validItems.indexOfFirst { it.id == current.id }
+        if (currentIndex > 0) {
+            val prev = validItems[currentIndex - 1]
+            _quickLookItem.value = prev
+            selectSingle(prev.id)
+        } else if (currentIndex == 0) {
+            val last = validItems.last()
+            _quickLookItem.value = last
+            selectSingle(last.id)
+        }
+    }
+
     fun grantNewFolder() {
         viewModelScope.launch {
             val fp = activeFingerprint.value
