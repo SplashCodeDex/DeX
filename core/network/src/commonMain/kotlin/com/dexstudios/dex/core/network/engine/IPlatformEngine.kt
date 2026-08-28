@@ -8,6 +8,13 @@ interface IPlatformEngine {
     fun cancelPairingNotification()
     fun showIncomingFileNotification(sessionId: String, notificationId: Int, fileCount: Int)
 
+    /**
+     * Legacy WPF parity: when the desktop issues a PIN for a phone to type, a system toast
+     * announced "Enter PIN {pin} on {alias}". Default no-op so platform backends without a
+     * notification surface stay silent.
+     */
+    fun showPairingPinNotification(pin: String, alias: String) {}
+
     fun setClipboardText(text: String)
 
     fun downloadBatch(senderIp: String, port: Int, tcpFallbackPort: Int, files: List<PullFileDto>, fingerprint: String, sourceAlias: String)

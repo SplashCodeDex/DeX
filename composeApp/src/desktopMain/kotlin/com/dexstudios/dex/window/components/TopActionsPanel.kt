@@ -32,7 +32,6 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.window.DockedWindowStateController
-import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -48,7 +47,6 @@ import java.awt.datatransfer.StringSelection
 @Composable
 fun TopActionsPanel(
     controller: DockedWindowStateController,
-    cardBackdrop: Backdrop,
     isDndActive: Boolean,
     onToggleDnd: () -> Unit,
     isMirroringActive: Boolean,
@@ -62,6 +60,7 @@ fun TopActionsPanel(
     serverIpPort: String = "",
     showTelemetry: Boolean = true,
     modifier: Modifier = Modifier,
+    overlayManager: com.dexstudios.dex.overlay.OverlayManager = org.koin.compose.koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     var isCopied by remember { mutableStateOf(false) }
@@ -81,6 +80,14 @@ fun TopActionsPanel(
                 controller = controller,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            OverlayTestingButton(
+                overlayManager = overlayManager,
+                controller = controller,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp),
+            )
         }
 
         // 2. Tactile Quick Actions Row (56x44dp Pills + Dynamic Danger Close)
@@ -89,7 +96,6 @@ fun TopActionsPanel(
             contentAlignment = Alignment.Center,
         ) {
             QuickActionBar(
-                cardBackdrop = cardBackdrop,
                 isDndActive = isDndActive,
                 isMirroringActive = isMirroringActive,
                 isTransfersActive = isTransfersActive,
@@ -119,50 +125,55 @@ fun TopActionsPanel(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     val displayText = if (serverIpPort.isNotBlank()) {
-                        "Status: $statusTelemetryText ($serverIpPort)"
+                        "$statusTelemetryText ($serverIpPort)"
                     } else {
-                        "Status: $statusTelemetryText"
+                        statusTelemetryText
                     }
 
-                    Text(
-                        text = displayText,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        lineHeight = 13.sp,
-                        maxLines = 1,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = displayText,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            lineHeight = 12.sp,
+                            maxLines = 1,
+                        )
 
-                    if (serverIpPort.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .clickable {
-                                    try {
-                                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                            StringSelection(serverIpPort),
-                                            null,
-                                        )
-                                    } catch (_: Exception) {}
-                                    isCopied = true
-                                    scope.launch {
-                                        delay(1500)
-                                        isCopied = false
+                        if (serverIpPort.isNotBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable {
+                                        try {
+                                            Toolkit.getDefaultToolkit().systemClipboard.setContents(
+                                                StringSelection(serverIpPort),
+                                                null,
+                                            )
+                                        } catch (_: Exception) {}
+                                        isCopied = true
+                                        scope.launch {
+                                            delay(1500)
+                                            isCopied = false
+                                        }
                                     }
-                                }
-                                .padding(4.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = if (isCopied) painterResource(Res.drawable.ic_fluent_check) else painterResource(Res.drawable.ic_fluent_clipboard),
-                                contentDescription = "Copy IP",
-                                tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp),
-                            )
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = if (isCopied) painterResource(Res.drawable.ic_fluent_check) else painterResource(Res.drawable.ic_fluent_clipboard),
+                                    contentDescription = "Copy IP",
+                                    tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                            }
                         }
                     }
                 }

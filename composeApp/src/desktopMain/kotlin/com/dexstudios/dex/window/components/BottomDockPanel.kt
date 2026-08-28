@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -53,7 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
@@ -168,6 +171,7 @@ fun BottomDockPanel(
             // 34x34dp Profile Avatar Button
             Box(
                 modifier = Modifier
+                    .zIndex(if (avatarHovered) 1f else 0f)
                     .padding(start = 16.dp, end = 8.dp)
                     .size(34.dp)
                     .graphicsLayer {
@@ -175,7 +179,9 @@ fun BottomDockPanel(
                         scaleY = avatarScale * avatarHoverScale
                     }
                     .bubbleFluidity()
+                    .shadow(elevation = 4.dp, shape = CircleShape, spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
                     .clip(CircleShape)
+                    .shinyGlare(shape = CircleShape)
                     .clickable(
                         interactionSource = avatarInteraction,
                         indication = null,
@@ -200,6 +206,7 @@ fun BottomDockPanel(
             // 2-Stage Exit Button Container
             Box(
                 modifier = Modifier
+                    .zIndex(if (exitHovered) 1f else 0f)
                     .weight(1f)
                     .padding(horizontal = 6.dp, vertical = 1.dp)
                     .height(exitHeight)
@@ -220,8 +227,10 @@ fun BottomDockPanel(
                         scaleY = exitHoverScale
                     }
                     .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.05f)
+                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
                     .clip(RoundedCornerShape(30.dp))
                     .background(exitButtonBgColor)
+                    .shinyGlare(shape = RoundedCornerShape(30.dp))
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {

@@ -6,7 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.dexstudios.dex.core.designsystem.theme.SmokePink
 import com.dexstudios.dex.core.designsystem.theme.SmokePurple
 import com.dexstudios.dex.core.designsystem.theme.SmokeViolet
@@ -77,9 +78,9 @@ private val SmokePlumes = listOf(
 // normalized cycle, so this constant picks the resting arrangement of the haze.
 private const val StaticSmokePhase = 0.35f
 
-// Peak center opacity per plume — the user-tuned Android values, kept 1:1.
-private const val DarkPlumeAlpha = 0.40f
-private const val LightPlumeAlpha = 0.40f
+// Peak center opacity per plume — reduced for desktop.
+private const val DarkPlumeAlpha = 0.10f
+private const val LightPlumeAlpha = 0.20f
 
 // Radial falloff shaping: solid-ish core that dissolves well before the edge,
 // which makes each plume read as pre-blurred smoke without any real blur pass.
@@ -161,7 +162,8 @@ private fun emphasisTargetFor(lead: Int?, plumeIndex: Int): Float = when (lead) 
  */
 @Composable
 fun AmbientSmokeBackground(modifier: Modifier = Modifier, mood: AmbientSmokeMood = AmbientSmokeMood.Resting) {
-    val plumeAlpha = if (isSystemInDarkTheme()) DarkPlumeAlpha else LightPlumeAlpha
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val plumeAlpha = if (isDark) DarkPlumeAlpha else LightPlumeAlpha
 
     // Delayed engagement: the requested mood is only "armed" after a short beat, so
     // quick panel flicks never churn the haze and every response reads as deliberate.

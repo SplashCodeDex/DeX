@@ -31,6 +31,12 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
         showSystemNotification("Pairing Request", "$alias wants to connect.", java.awt.TrayIcon.MessageType.INFO)
     }
 
+    override fun showPairingPinNotification(pin: String, alias: String) {
+        Logger.i("[DesktopPlatformEngine] Pairing PIN issued for $alias")
+        // Exact legacy toast copy (Show-PinPanel path B, WPF tray balloon).
+        showSystemNotification("DeX Pairing PIN", "Enter PIN $pin on $alias", java.awt.TrayIcon.MessageType.INFO)
+    }
+
     override fun cancelPairingNotification() {
         Logger.i("[DesktopPlatformEngine] Cancel pairing notification")
     }

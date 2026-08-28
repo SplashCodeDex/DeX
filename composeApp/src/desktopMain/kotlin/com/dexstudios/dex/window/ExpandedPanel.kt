@@ -10,5 +10,13 @@ import com.dexstudios.dex.platform.DockCardMetrics
 enum class ExpandedPanel(val expandedWidth: Int) {
     FileExplorer(DockCardMetrics.FILE_EXPLORER_WIDTH_EXPANDED),
     Settings(DockCardMetrics.SETTINGS_WIDTH_EXPANDED),
-    Pairing(DockCardMetrics.PAIRING_WIDTH_EXPANDED),
+    Pairing(DockCardMetrics.CARD_WIDTH_CONTRACTED),
+    DeviceStatus(DockCardMetrics.CARD_WIDTH_CONTRACTED),
+    DeviceStatusTablet(DockCardMetrics.CARD_WIDTH_CONTRACTED),
+    DeviceStatusWatch(DockCardMetrics.CARD_WIDTH_CONTRACTED),
+    DeviceStatusLaptop(DockCardMetrics.CARD_WIDTH_CONTRACTED),
+    ;
+
+    val isContractedHeight: Boolean
+        get() = this == Pairing || this == DeviceStatus || this == DeviceStatusTablet || this == DeviceStatusWatch || this == DeviceStatusLaptop
 }

@@ -24,9 +24,24 @@ sealed interface PairingState {
         val fingerprint: String,
         // Absolute wall-clock deadline; the panel countdown and the expiry sweep both honor it.
         val expiresAtMillis: Long = 0L,
+        // Peer display name captured at click time so the panel can title itself
+        // "Pairing with {alias}" without re-resolving discovery.
+        val alias: String = "",
     ) : PairingState
 
-    data class PinPhase(val ip: String, val fingerprint: String, val pinCode: String, val digitCount: Int, val isError: Boolean = false, val expiresAtMillis: Long = 0L) : PairingState
+    data class PinPhase(
+        val ip: String,
+        val fingerprint: String,
+        val pinCode: String,
+        val digitCount: Int,
+        val isError: Boolean = false,
+        val expiresAtMillis: Long = 0L,
+        val alias: String = "",
+        // True only for offers the PEER started (pair-request / digits-typed-first): those
+        // may still be granted manually. Offers minted by our own "PIN CODE" request are
+        // PIN-proof-only, matching the legacy panel which force-hid Accept/AcceptOnce.
+        val manualAcceptAvailable: Boolean = false,
+    ) : PairingState
 
     data object Success : PairingState
     data class Error(val message: String) : PairingState
@@ -50,6 +65,19 @@ class PairingEngine(
     var deviceFingerprintProvider: (() -> String)? = null
 
     /**
+     * Supplies OUR display alias for pair-prompt payloads (legacy WPF server put its own
+     * alias in every prompt it pushed). Wired by the server assembly.
+     */
+    var deviceAliasProvider: (() -> String)? = null
+
+    /**
+     * Fired after a desktop-initiated PIN offer was delivered, mirroring the legacy Windows
+     * toast "Enter PIN {pin} on {alias}". Wired by the server assembly to the platform
+     * notification layer; DND policy lives there.
+     */
+    var pinOfferNotifier: suspend (pin: String, alias: String) -> Unit = { _, _ -> }
+
+    /**
      * Persists a pairing and returns the credential stored for it. Default mints a fresh
      * UUID token through [DeviceManager]; tests override to stay off real storage.
      */
@@ -63,10 +91,72 @@ class PairingEngine(
     private var expiryJob: Job? = null
 
     fun initiatePairing(device: DiscoveredDevice) {
-        _state.value = PairingState.QrPhase(device.ip, device.info.fingerprint, nowMillis() + PIN_TTL_MS)
+        _state.value = PairingState.QrPhase(
+            ip = device.ip,
+            fingerprint = device.info.fingerprint,
+            expiresAtMillis = nowMillis() + PIN_TTL_MS,
+            alias = device.info.alias,
+        )
         armExpiry(device.info.fingerprint)
         // If the Android phone is already connected and discovering the PC, it will send pair-request
         // when the user scans the QR code or clicks Connect.
+    }
+
+    /**
+     * Desktop-initiated "PIN CODE" request — the port of the legacy WPF flow where tapping
+     * the toggle POSTed /local/pair-initiate: the SERVER mints a fresh 5-digit PIN, pushes
+     * `pair-prompt{pin, alias, fingerprint}` to the phone's live WebSocket session so its
+     * entry dialog opens, and only then does this side flip to the digit view with a fresh
+     * 60s TTL. Returns false (state untouched) when there is no QR offer to upgrade or the
+     * prompt could not be delivered — an undeliverable PIN must never be displayed.
+     */
+    suspend fun requestPinForActiveDevice(): Boolean {
+        val current = _state.value
+        if (current !is PairingState.QrPhase) return false
+
+        val pinCode = mintPin()
+        val payload = buildJsonObject {
+            put("type", "pair-prompt")
+            putJsonObject("data") {
+                put("pin", pinCode)
+                put("alias", deviceAliasProvider?.invoke().orEmpty().ifBlank { "DeX Desktop" })
+                put("fingerprint", deviceFingerprintProvider?.invoke().orEmpty())
+            }
+        }.toString()
+        // Deliver FIRST, transition SECOND: a failed push leaves the panel in the reachable
+        // QR view instead of advertising a PIN the phone can never type.
+        if (!outboundSender(current.fingerprint, payload)) return false
+
+        _state.value = PairingState.PinPhase(
+            ip = current.ip,
+            fingerprint = current.fingerprint,
+            pinCode = pinCode,
+            digitCount = 0,
+            expiresAtMillis = nowMillis() + PIN_TTL_MS,
+            alias = current.alias,
+            manualAcceptAvailable = false,
+        )
+        armExpiry(current.fingerprint)
+        pinOfferNotifier(pinCode, current.alias)
+        return true
+    }
+
+    /**
+     * Back-switch to the QR view (legacy "QR CODE" toggle): cancels the pending PIN offer
+     * LOCALLY — never unpairing existing trust — keeps the device context so "PIN CODE"
+     * works again, and re-arms the idle-QR expiry exactly like Start-QrPhaseTimer did.
+     */
+    fun revertToQrPhase() {
+        val current = _state.value
+        if (current is PairingState.PinPhase) {
+            _state.value = PairingState.QrPhase(
+                ip = current.ip,
+                fingerprint = current.fingerprint,
+                expiresAtMillis = nowMillis() + PIN_TTL_MS,
+                alias = current.alias,
+            )
+            armExpiry(current.fingerprint)
+        }
     }
 
     fun handlePinDigitEntered(digitCount: Int) {
@@ -82,6 +172,9 @@ class PairingEngine(
                 "-".repeat(PIN_LENGTH),
                 digitCount,
                 expiresAtMillis = current.expiresAtMillis,
+                alias = current.alias,
+                // The remote is actively connecting to US; manual grant stays possible.
+                manualAcceptAvailable = true,
             )
             armExpiry(current.fingerprint)
         } else if (current is PairingState.PinPhase) {
@@ -89,19 +182,19 @@ class PairingEngine(
         }
     }
 
-    fun handleInboundPairingRequest(ip: String, fingerprint: String): String {
+    fun handleInboundPairingRequest(ip: String, fingerprint: String, alias: String = ""): String {
         // Concurrency model: one pairing offer at a time (last-wins). A superseded peer can
         // never gain trust from its stale offer — verifyInboundPin matches the exact
         // fingerprint AND honors the TTL — so overwriting is safe without a pending-map.
-        // 5-digit range mirrors the legacy WPF server (Random().Next(10000, 99999)); the
-        // phone-side entry dialog enforces exactly this length.
-        val pinCode = (10000..99999).random().toString()
+        val pinCode = mintPin()
         _state.value = PairingState.PinPhase(
-            ip,
-            fingerprint,
-            pinCode,
+            ip = ip,
+            fingerprint = fingerprint,
+            pinCode = pinCode,
             digitCount = 0,
             expiresAtMillis = nowMillis() + PIN_TTL_MS,
+            alias = alias,
+            manualAcceptAvailable = true,
         )
         armExpiry(fingerprint)
         return pinCode
@@ -220,7 +313,9 @@ class PairingEngine(
 
     companion object {
         /** Server-side pairing offers expire; the panel countdown mirrors this deadline. */
-        private const val PIN_TTL_MS = 60_000L
+        const val PIN_TTL_SECONDS = 60
+
+        private val PIN_TTL_MS = PIN_TTL_SECONDS * 1000L
 
         /**
          * Canonical PIN length. The legacy WPF server minted Random().Next(10000, 99999) —
@@ -228,5 +323,8 @@ class PairingEngine(
          * producer/consumer (engine, panels, dialogs, tests) shares this constant.
          */
         const val PIN_LENGTH = 5
+
+        /** 5-digit range mirrors the legacy WPF server (Random().Next(10000, 99999)). */
+        private fun mintPin(): String = (10000..99999).random().toString()
     }
 }

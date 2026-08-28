@@ -11,13 +11,13 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,42 +29,37 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassIconButton
-import com.dexstudios.dex.core.designsystem.components.glass.LiquidGlassPresets
+import androidx.compose.ui.zIndex
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.icons.AnimatedClipboardIcon
 import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.highlight.HighlightStyle
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Centered row of 4 primary liquid-glass pill buttons + 1 dynamic Danger Close pill.
+ * Centered row of 4 flat 62x48dp pill buttons + 1 dynamic Danger Close pill.
  *
- * Micro-interactions:
- * - Hover scale 1.08x / translateY -3dp (300ms HoverEase)
- * - Press blur softening inside the glass (spring 0.6 / 600); no refraction
- * - State fill drawn over the glass: checked = primary, danger hover = error,
- *   idle hover = soft ink wash (200ms morphs)
- * - Contrast-inverted badge counter for notifications/sync items
- * - Collapsible Danger Close button (0 to 62dp when expanded)
+ * Flat surface treatment (no liquid glass): state-morphing background
+ * (checked = primary, danger hover = error, idle = surfaceVariant), soft ink
+ * hover wash, contrast-inverted badge counter, bubbleFluidity press feel and
+ * the hover scale 1.08x / translateY -3dp lift (500ms HoverEase).
  */
 @Composable
 fun QuickActionBar(
-    cardBackdrop: Backdrop,
     isDndActive: Boolean,
     isMirroringActive: Boolean,
     isTransfersActive: Boolean,
@@ -85,7 +80,6 @@ fun QuickActionBar(
     ) {
         // 1. Do Not Disturb Pill with Animated Lottie Bell
         DeXQuickActionButton(
-            cardBackdrop = cardBackdrop,
             tooltip = "Do Not Disturb",
             isChecked = isDndActive,
             onClick = onToggleDnd,
@@ -103,7 +97,6 @@ fun QuickActionBar(
 
         // 2. Screen Mirror Pill
         DeXQuickActionButton(
-            cardBackdrop = cardBackdrop,
             icon = painterResource(Res.drawable.ic_fluent_smartphone),
             tooltip = "Mirror Phone",
             isChecked = isMirroringActive,
@@ -114,7 +107,6 @@ fun QuickActionBar(
 
         // 3. History Pill (opens FileExplorerPanel in History mode)
         DeXQuickActionButton(
-            cardBackdrop = cardBackdrop,
             icon = painterResource(Res.drawable.ic_fluent_history),
             tooltip = "History",
             isChecked = isTransfersActive,
@@ -125,7 +117,6 @@ fun QuickActionBar(
 
         // 4. Clipboard Sync Pill
         DeXQuickActionButton(
-            cardBackdrop = cardBackdrop,
             tooltip = "Clipboard",
             isChecked = isClipboardActive,
             badgeCount = clipboardBadgeCount,
@@ -154,7 +145,6 @@ fun QuickActionBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
                 DeXQuickActionButton(
-                    cardBackdrop = cardBackdrop,
                     icon = painterResource(Res.drawable.ic_fluent_close),
                     tooltip = "Close",
                     isChecked = false,
@@ -167,18 +157,8 @@ fun QuickActionBar(
 }
 
 @Composable
-fun DeXQuickActionButton(
-    cardBackdrop: Backdrop,
-    icon: Painter,
-    tooltip: String,
-    isChecked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isDanger: Boolean = false,
-    badgeCount: Int = 0,
-) {
+fun DeXQuickActionButton(icon: Painter, tooltip: String, isChecked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, isDanger: Boolean = false, badgeCount: Int = 0) {
     DeXQuickActionButton(
-        cardBackdrop = cardBackdrop,
         tooltip = tooltip,
         isChecked = isChecked,
         onClick = onClick,
@@ -198,7 +178,6 @@ fun DeXQuickActionButton(
 
 @Composable
 fun DeXQuickActionButton(
-    cardBackdrop: Backdrop,
     tooltip: String,
     isChecked: Boolean,
     onClick: () -> Unit,
@@ -225,17 +204,22 @@ fun DeXQuickActionButton(
         label = "btnTransY",
     )
 
-    // State fill drawn OVER the glass surface, under the icon:
-    // checked -> primary wash, danger hover -> error, idle hover -> soft ink wash.
-    val surfaceOverlayColor by animateColorAsState(
+    // State Morphing Background Color — semi-transparent for glassmorphism;
+    // the ambient smoke haze bleeds through, creating a frosted look without blur.
+    val backgroundColor by animateColorAsState(
         targetValue = when {
             isDanger && (isHovered || isPressed) -> androidx.compose.material3.MaterialTheme.colorScheme.error
             isChecked -> androidx.compose.material3.MaterialTheme.colorScheme.primary
-            isHovered -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-            else -> Color.Transparent
+            else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
         },
         animationSpec = tween(200),
-        label = "btnStateOverlay",
+        label = "btnBgColor",
+    )
+
+    val hoverOverlayColor by animateColorAsState(
+        targetValue = if (isHovered && !isChecked && !isDanger) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
+        animationSpec = tween(200),
+        label = "btnHoverOverlay",
     )
 
     // Icon Color Morphing
@@ -249,66 +233,56 @@ fun DeXQuickActionButton(
         label = "btnIconColor",
     )
 
-    // Exact Android SearchButton glass (LiquidGlassPresets.SearchIconButton),
-    // with one desktop-density compensation: at ~1x display density the glare
-    // stroke ceils to a 2px rim, fattening the mirrored bottom-left bounce
-    // lobe. Raising the falloff pinches both arcs into thin crisp lines while
-    // the top-right lobe keeps full brightness. Shape squared to the pill —
-    // geometry (62x48dp, 22dp corners) stays desktop.
-    val searchGlass = LiquidGlassPresets.SearchIconButton
-    val glassConfig = searchGlass.copy(
-        shape = RoundedCornerShape(22.dp),
-        highlight = searchGlass.highlight.copy(
-            style = (searchGlass.highlight.style as HighlightStyle.Default).copy(falloff = 5f),
-        ),
-    )
-
     Box(
-        modifier = modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-            this.translationY = translateY.toPx()
-        },
+        modifier = modifier
+            .zIndex(if (isHovered || isPressed) 1f else 0f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.translationY = translateY.toPx()
+            }
+            .size(width = 62.dp, height = 48.dp)
+            .bubbleFluidity()
+            .shadow(elevation = 4.dp, shape = RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
+            .clip(RoundedCornerShape(22.dp))
+            .background(backgroundColor, RoundedCornerShape(22.dp))
+            .background(hoverOverlayColor, RoundedCornerShape(22.dp))
+            .shinyGlare(shape = RoundedCornerShape(22.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        LiquidGlassIconButton(
-            onClick = onClick,
-            width = 62.dp,
-            height = 48.dp,
-            config = glassConfig,
-            backdrop = cardBackdrop,
-            surfaceOverlay = surfaceOverlayColor,
-            interactionSource = interactionSource,
-        ) {
-            iconContent(iconColor)
+        iconContent(iconColor)
 
-            if (badgeCount > 0) {
-                // Contrast Inversion for Badge Counter
-                val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
-                val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
-                val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
+        if (badgeCount > 0) {
+            // Contrast Inversion for Badge Counter
+            val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
+            val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+            val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
 
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 2.dp, end = 4.dp)
-                        .then(
-                            if (badgeBorder != null) {
-                                Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .background(badgeBgColor, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = badgeCount.toString(),
-                        color = badgeTextColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 4.dp)
+                    .then(
+                        if (badgeBorder != null) {
+                            Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
+                        } else {
+                            Modifier
+                        },
                     )
-                }
+                    .background(badgeBgColor, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = badgeCount.toString(),
+                    color = badgeTextColor,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

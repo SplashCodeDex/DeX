@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -24,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.isSpecified
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -79,15 +77,6 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
         }
     }
 
-    val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
-    val effectiveTint = if (!isDndActive) {
-        // Bell pill is OFF (unchecked, dark surface) — White for contrast in dark mode
-        if (isDark) Color.White else tint
-    } else {
-        // Bell pill is ON (checked, Emerald surface) — Black for contrast in dark mode
-        if (isDark) Color.Black else tint
-    }
-
     val activeJson = if (isDndActive) dndOnJson else dndOffJson
 
     Box(
@@ -118,11 +107,11 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
                     Icon(
                         painter = painterResource(DeXIcons.AlertFilled),
                         contentDescription = contentDescription,
-                        tint = effectiveTint,
+                        tint = tint,
                         modifier = Modifier.size(size),
                     )
                 } else {
-                    val colorFilter = if (effectiveTint.isSpecified) ColorFilter.tint(effectiveTint) else null
+                    val colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null
 
                     Image(
                         painter = rememberLottiePainter(
@@ -161,13 +150,6 @@ fun AnimatedClipboardIcon(
     tint: Color = MaterialTheme.colorScheme.onSurface,
     contentDescription: String? = "Clipboard Sync",
 ) {
-    val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
-    val effectiveTint = if (isClipboardActive) {
-        if (isDark) Color.Black else tint
-    } else {
-        tint
-    }
-
     val iconResource = if (isClipboardActive) DeXIcons.ClipboardCheckmark else DeXIcons.ClipboardOff
 
     Crossfade(
@@ -183,7 +165,7 @@ fun AnimatedClipboardIcon(
             Icon(
                 painter = painterResource(res),
                 contentDescription = contentDescription,
-                tint = effectiveTint,
+                tint = tint,
                 modifier = Modifier.size(size),
             )
         }
@@ -231,9 +213,6 @@ fun AnimatedSearchToXIcon(
         label = "SearchToXProgress",
     )
 
-    val isDark = isSystemInDarkTheme() || (MaterialTheme.colorScheme.surface.luminance() < 0.5f)
-    val effectiveTint = if (isDark) Color.White else tint
-
     val clickModifier = if (onClick != null && isSearching) {
         Modifier
             .pointerHoverIcon(PointerIcon.Hand)
@@ -258,7 +237,7 @@ fun AnimatedSearchToXIcon(
                 LottieCompositionSpec.JsonString(json)
             }
 
-            val colorFilter = if (effectiveTint.isSpecified) ColorFilter.tint(effectiveTint) else null
+            val colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null
 
             Image(
                 painter = rememberLottiePainter(
@@ -274,7 +253,7 @@ fun AnimatedSearchToXIcon(
             Icon(
                 painter = painterResource(if (isSearching) DeXIcons.Close else DeXIcons.Search),
                 contentDescription = contentDescription,
-                tint = effectiveTint,
+                tint = tint,
                 modifier = Modifier.size(size),
             )
         }

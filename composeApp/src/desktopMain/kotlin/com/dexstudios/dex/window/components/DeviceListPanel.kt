@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
@@ -111,6 +112,7 @@ fun DeviceListPanel(
     pairedDevices: List<DeviceItemUiModel>,
     isPanelVisible: Boolean = true,
     onPairDevice: (DeviceItemUiModel) -> Unit,
+    onViewDeviceStatus: (DeviceItemUiModel?) -> Unit = {},
     onSendFile: (DeviceItemUiModel) -> Unit = {},
     onSendClipboard: (DeviceItemUiModel) -> Unit = {},
     onMirrorScreen: (DeviceItemUiModel) -> Unit = {},
@@ -124,7 +126,10 @@ fun DeviceListPanel(
     LazyColumn(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (discoveredDevices.isEmpty() && pairedDevices.isEmpty()) {
             item(key = "empty_state") {
-                DeviceEmptyState(isVisible = isPanelVisible)
+                DeviceEmptyState(
+                    isVisible = isPanelVisible,
+                    onViewDeviceStatus = { onViewDeviceStatus(null) },
+                )
             }
         }
 
@@ -137,7 +142,7 @@ fun DeviceListPanel(
                     lineHeight = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp),
                 )
             }
 
@@ -145,7 +150,7 @@ fun DeviceListPanel(
                 ContextMenuArea(
                     items = {
                         listOf(
-                            ContextMenuItem("PIN CODE (Pair)") { onPairDevice(device) },
+                            ContextMenuItem("Pair with PIN") { onPairDevice(device) },
                             ContextMenuItem("Connect ADB") { onConnectAdb(device) },
                             ContextMenuItem("Copy IP Address") { onCopyIp(device.ip) },
                             ContextMenuItem("Forget Device") { onForgetDevice(device) },
@@ -178,6 +183,7 @@ fun DeviceListPanel(
             ContextMenuArea(
                 items = {
                     buildList {
+                        add(ContextMenuItem("Device Status") { onViewDeviceStatus(device) })
                         add(ContextMenuItem("Send Clipboard") { onSendClipboard(device) })
                         add(ContextMenuItem("Mirror Screen") { onMirrorScreen(device) })
                         add(ContextMenuItem("Copy IP Address") { onCopyIp(device.ip) })
@@ -234,6 +240,7 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
             .bubbleFluidity()
             .clip(RoundedCornerShape(12.dp))
             .background(cardBg)
+            .shinyGlare(shape = RoundedCornerShape(12.dp))
             .hoverable(interactionSource = interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -413,7 +420,7 @@ private object LottieAssets {
 }
 
 @Composable
-private fun DeviceEmptyState(isVisible: Boolean) {
+private fun DeviceEmptyState(isVisible: Boolean, onViewDeviceStatus: () -> Unit = {}) {
     // Asset load is deferred until the dock card is actually visible; while hidden the
     // empty state stays composed behind contentAlpha = 0f and must not do work. The
     // process-wide LottieAssets cache makes repeat appearances free after the first.
@@ -510,6 +517,26 @@ private fun DeviceEmptyState(isVisible: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
             )
+
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
+
+            // Demo Action Pill
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f))
+                    .bubbleFluidity()
+                    .clickable { onViewDeviceStatus() }
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Demo Device Connected Screen",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }

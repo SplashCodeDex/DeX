@@ -80,6 +80,19 @@ object DeXServer {
                 pairingEngine.deviceFingerprintProvider = {
                     getKoin().get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint
                 }
+                pairingEngine.deviceAliasProvider = {
+                    getKoin().get<com.dexstudios.dex.core.network.DeviceConfig>().alias
+                }
+                // Legacy parity: issuing a desktop-side PIN popped the Windows toast
+                // "Enter PIN {pin} on {alias}"; the notification layer owns DND policy.
+                val platformEngine = runCatching {
+                    getKoin().get<com.dexstudios.dex.core.network.engine.IPlatformEngine>()
+                }.getOrNull()
+                if (platformEngine != null) {
+                    pairingEngine.pinOfferNotifier = { pin, alias ->
+                        platformEngine.showPairingPinNotification(pin, alias)
+                    }
+                }
 
                 deviceRoutes(discoveryEngine = discoveryEngine)
                 shareRoutes()

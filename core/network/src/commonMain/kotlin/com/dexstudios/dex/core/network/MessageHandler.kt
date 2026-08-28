@@ -312,9 +312,8 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             return
         }
         engine.setClipboardText(text)
-        // Remember it so the auto-sync listener does not push it back to the PC
-        ClipboardSyncState.lastIncoming = text
-        Logger.i("Clipboard synced from PC")
+        ClipboardSyncState.emitReceived(text)
+        Logger.i("Clipboard synced from Phone")
     }
 
     /** The PC acknowledged (or failed) the relay-transfer fallback. */

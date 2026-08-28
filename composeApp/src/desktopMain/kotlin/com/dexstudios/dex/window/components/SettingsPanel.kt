@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
@@ -139,6 +140,7 @@ fun SettingsPanel(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .shinyGlare(shape = RoundedCornerShape(18.dp))
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -161,6 +163,7 @@ fun SettingsPanel(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .shinyGlare(shape = RoundedCornerShape(18.dp))
                     .clickable {
                         try {
                             Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
@@ -200,6 +203,7 @@ fun SettingsPanel(
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .shinyGlare(shape = RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
                 Row(
@@ -592,6 +596,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             .padding(bottom = 10.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .shinyGlare(shape = RoundedCornerShape(14.dp))
             .padding(4.dp),
         content = content,
     )

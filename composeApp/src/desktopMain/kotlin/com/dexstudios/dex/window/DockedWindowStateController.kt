@@ -101,11 +101,11 @@ class DockedWindowStateController(
 
     private fun currentContentWidth(): Int = expandedPanel?.expandedWidth ?: DockCardMetrics.CARD_WIDTH_CONTRACTED
 
-    private fun currentContentHeight(): Int = if (expandedPanel != null && expandedPanel != ExpandedPanel.Pairing) {
+    private fun currentContentHeight(): Int = if (expandedPanel != null && !expandedPanel!!.isContractedHeight) {
         DockCardMetrics.CARD_HEIGHT_EXPANDED
     } else {
-        // WPF parity: the pairing view slides into the fixed-size column without growing
-        // the card, so window placement math must treat Pairing as contracted-height too.
+        // WPF parity: the pairing and device status views slide into the fixed-size column without growing
+        // the card, so window placement math must treat them as contracted-height too.
         DockCardMetrics.CARD_HEIGHT_CONTRACTED
     }
 
@@ -295,7 +295,12 @@ class DockedWindowStateController(
         if (preExpandY == null) preExpandY = windowState.position.y.value.toInt()
 
         val deltaW = panel.expandedWidth - currentW
-        val deltaH = DockCardMetrics.CARD_HEIGHT_EXPANDED - currentH
+        val targetH = if (panel.isContractedHeight) {
+            DockCardMetrics.CARD_HEIGHT_CONTRACTED
+        } else {
+            DockCardMetrics.CARD_HEIGHT_EXPANDED
+        }
+        val deltaH = targetH - currentH
 
         val workArea = anchoredWorkAreaInDp()
         val (targetX, targetY) = DockCardPhysics.calculateExpansionNudge(

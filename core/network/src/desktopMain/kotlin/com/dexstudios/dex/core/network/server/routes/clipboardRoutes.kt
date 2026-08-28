@@ -1,6 +1,6 @@
 package com.dexstudios.dex.core.network.server.routes
 
-import com.dexstudios.dex.core.network.ClipboardHook
+import com.dexstudios.dex.core.network.ClipboardSyncState
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -17,7 +17,7 @@ fun Route.clipboardRoutes() {
                 if (text.isNotBlank()) {
                     val selection = StringSelection(text)
                     Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
-                    ClipboardHook.onRemoteTextReceived?.invoke(text)
+                    ClipboardSyncState.emitReceived(text)
                     call.respond(HttpStatusCode.OK)
                 } else {
                     call.respond(HttpStatusCode.BadRequest)

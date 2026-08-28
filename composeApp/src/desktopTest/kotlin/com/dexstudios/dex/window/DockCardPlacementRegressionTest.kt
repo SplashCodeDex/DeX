@@ -82,8 +82,13 @@ class DockCardPlacementRegressionTest {
         for (panel in ExpandedPanel.entries) {
             when (panel) {
                 ExpandedPanel.FileExplorer -> assertEquals(DockCardAnimations.CARD_WIDTH_EXPANDED.value.toInt(), panel.expandedWidth)
+
                 ExpandedPanel.Settings -> assertEquals(DockCardAnimations.SETTINGS_WIDTH_EXPANDED.value.toInt(), panel.expandedWidth)
-                ExpandedPanel.Pairing -> assertEquals(DockCardAnimations.PAIRING_WIDTH_EXPANDED.value.toInt(), panel.expandedWidth)
+
+                ExpandedPanel.Pairing, ExpandedPanel.DeviceStatus, ExpandedPanel.DeviceStatusTablet,
+                ExpandedPanel.DeviceStatusWatch, ExpandedPanel.DeviceStatusLaptop,
+                ->
+                    assertEquals(DockCardAnimations.CARD_WIDTH_CONTRACTED.value.toInt(), panel.expandedWidth)
             }
         }
         val controller = createController()

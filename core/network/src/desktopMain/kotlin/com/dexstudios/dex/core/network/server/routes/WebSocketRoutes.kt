@@ -177,7 +177,12 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                     // notification (DesktopPlatformEngine), never the flow itself.
                                     val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
                                     val ip = call.request.local.remoteHost
-                                    val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint)
+                                    // Resolve the peer's advertised alias so the pairing panel can
+                                    // title itself "Pairing with {alias}" without a second lookup.
+                                    val peerAlias = org.koin.core.context.GlobalContext.get()
+                                        .getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
+                                        ?.devices?.value?.get(fingerprint)?.info?.alias.orEmpty()
+                                    val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint, peerAlias)
                                     val promptJson = buildJsonObject {
                                         put("type", "pair-prompt")
                                         putJsonObject("data") {

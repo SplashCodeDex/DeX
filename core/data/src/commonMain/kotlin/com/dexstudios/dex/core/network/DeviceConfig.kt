@@ -60,6 +60,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         val DND_ENABLED_KEY = booleanPreferencesKey("dnd_enabled")
         val THEME_OVERRIDE_KEY = stringPreferencesKey("theme_override")
         val DOWNLOAD_DIR_KEY = stringPreferencesKey("download_dir")
+        val NOTIFICATION_SOUND_ENABLED_KEY = booleanPreferencesKey("notification_sound_enabled")
 
         // Legal values for [THEME_OVERRIDE_KEY]; absent key means follow the OS setting.
         const val THEME_SYSTEM = "system"
@@ -81,6 +82,9 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
 
     private val _dndEnabledFlow = MutableStateFlow(false)
     val dndEnabledFlow: StateFlow<Boolean> = _dndEnabledFlow.asStateFlow()
+
+    private val _notificationSoundEnabledFlow = MutableStateFlow(true)
+    val notificationSoundEnabledFlow: StateFlow<Boolean> = _notificationSoundEnabledFlow.asStateFlow()
 
     private val _themeOverrideFlow = MutableStateFlow(THEME_SYSTEM)
     val themeOverrideFlow: StateFlow<String> = _themeOverrideFlow.asStateFlow()
@@ -208,6 +212,17 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             }
         }
 
+    var notificationSoundEnabled: Boolean
+        get() = _notificationSoundEnabledFlow.value
+        set(value) {
+            _notificationSoundEnabledFlow.value = value
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[NOTIFICATION_SOUND_ENABLED_KEY] = value
+                }
+            }
+        }
+
     val fingerprint: String
         get() = _fingerprintFlow.value
 
@@ -305,6 +320,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
             _clipboardSyncEnabledFlow.value = prefs[CLIPBOARD_SYNC_ENABLED_KEY] ?: true
             _wiggleEnabledFlow.value = prefs[WIGGLE_ENABLED_KEY] ?: true
             _dndEnabledFlow.value = prefs[DND_ENABLED_KEY] ?: false
+            _notificationSoundEnabledFlow.value = prefs[NOTIFICATION_SOUND_ENABLED_KEY] ?: true
             _themeOverrideFlow.value = when (val savedTheme = prefs[THEME_OVERRIDE_KEY]) {
                 THEME_DARK, THEME_LIGHT -> savedTheme
                 else -> THEME_SYSTEM

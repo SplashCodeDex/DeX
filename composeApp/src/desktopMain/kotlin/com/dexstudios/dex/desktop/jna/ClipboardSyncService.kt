@@ -32,16 +32,23 @@ object ClipboardSyncService {
             processClipboard()
         }
     }
-
+    private var observeJob: Job? = null
     private var deviceConfig: com.dexstudios.dex.core.network.DeviceConfig? = null
 
     fun start(config: com.dexstudios.dex.core.network.DeviceConfig) {
         if (started) return // Already listening — never stack a second FlavorListener
         started = true
         this.deviceConfig = config
-        com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = { text ->
-            updateHashFromRemote(text)
+
+        observeJob?.cancel()
+        observeJob = CoroutineScope(Dispatchers.IO).launch {
+            com.dexstudios.dex.core.network.ClipboardSyncState.events.collect { event ->
+                if (event is com.dexstudios.dex.core.network.ClipboardEvent.Received) {
+                    updateHashFromRemote(event.text)
+                }
+            }
         }
+
         try {
             Toolkit.getDefaultToolkit().systemClipboard.addFlavorListener(flavorListener)
         } catch (e: Exception) {
@@ -52,7 +59,7 @@ object ClipboardSyncService {
     fun stop() {
         started = false
         processJob?.cancel()
-        com.dexstudios.dex.core.network.ClipboardHook.onRemoteTextReceived = null
+        observeJob?.cancel()
         try {
             Toolkit.getDefaultToolkit().systemClipboard.removeFlavorListener(flavorListener)
         } catch (e: Exception) { }

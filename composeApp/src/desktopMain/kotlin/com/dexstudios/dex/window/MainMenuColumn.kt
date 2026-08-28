@@ -1,16 +1,22 @@
 package com.dexstudios.dex.window
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,12 +25,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.awtTransferable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
+import com.dexstudios.dex.core.designsystem.components.overlay.ToastVariant
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.joe_avatar
 import com.dexstudios.dex.core.network.ClientEngine
@@ -32,13 +45,14 @@ import com.dexstudios.dex.core.network.DeXPorts
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.overlay.OverlayManager
 import com.dexstudios.dex.window.components.BottomDockPanel
 import com.dexstudios.dex.window.components.DeviceItemUiModel
 import com.dexstudios.dex.window.components.DeviceListPanel
+import com.dexstudios.dex.window.components.LocalExternalDragState
 import com.dexstudios.dex.window.components.TopActionsPanel
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
-import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -52,10 +66,10 @@ import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MainMenuColumn(
     controller: DockedWindowStateController,
-    cardBackdrop: Backdrop,
     onExpandFileExplorer: () -> Unit,
     onExpandSettings: () -> Unit,
     onContract: () -> Unit,
@@ -67,6 +81,7 @@ fun MainMenuColumn(
     deviceConfig: DeviceConfig = koinInject(),
     clientEngine: ClientEngine = koinInject(),
     fileSender: com.dexstudios.dex.desktop.transfer.DesktopFileSendService = koinInject(),
+    overlayManager: OverlayManager = koinInject(),
 ) {
     val coroutineScope = rememberCoroutineScope()
     val devicesMap by discoveryEngine.devices.collectAsState()
@@ -188,7 +203,6 @@ fun MainMenuColumn(
         ) {
             TopActionsPanel(
                 controller = controller,
-                cardBackdrop = cardBackdrop,
                 isDndActive = isDndActive,
                 onToggleDnd = { deviceConfig.dndEnabled = !isDndActive },
                 isMirroringActive = isMirroringActive,
@@ -224,6 +238,67 @@ fun MainMenuColumn(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        val externalDragState = LocalExternalDragState.current
+
+        val deviceDropTarget = remember(pairedList, discoveredList) {
+            object : DragAndDropTarget {
+                override fun onStarted(event: DragAndDropEvent) {
+                    externalDragState.isExternalDragActive = true
+                }
+
+                override fun onEntered(event: DragAndDropEvent) {
+                    externalDragState.isDeviceSectionHovered = true
+                }
+
+                override fun onExited(event: DragAndDropEvent) {
+                    externalDragState.isDeviceSectionHovered = false
+                }
+
+                override fun onEnded(event: DragAndDropEvent) {
+                    externalDragState.isExternalDragActive = false
+                    externalDragState.isDeviceSectionHovered = false
+                }
+
+                override fun onDrop(event: DragAndDropEvent): Boolean {
+                    externalDragState.isExternalDragActive = false
+                    externalDragState.isDeviceSectionHovered = false
+                    val transferable = event.awtTransferable
+                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        @Suppress("UNCHECKED_CAST")
+                        val files = (transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<java.io.File>).orEmpty()
+                        if (files.isNotEmpty()) {
+                            val targetDevice = (pairedList + discoveredList).firstOrNull { it.isOnline }
+                            if (targetDevice != null) {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    fileSender.sendFiles(files, targetDevice.fingerprint)
+                                }
+                                return true
+                            } else {
+                                overlayManager.showToast(
+                                    message = "No device connected to receive files",
+                                    variant = ToastVariant.Warning,
+                                )
+                                return false
+                            }
+                        }
+                    }
+                    return false
+                }
+            }
+        }
+
+        val isDropZoneHovered = externalDragState.isDeviceSectionHovered
+        val dropZoneScale by animateFloatAsState(
+            targetValue = if (isDropZoneHovered) 1.03f else 1.0f,
+            animationSpec = tween(durationMillis = 200, easing = DockCardPhysics.HoverEase),
+            label = "deviceDropZoneScale",
+        )
+        val dropZoneBorderColor by animateColorAsState(
+            targetValue = if (isDropZoneHovered) MaterialTheme.colorScheme.primary else Color.Transparent,
+            animationSpec = tween(200),
+            label = "deviceDropZoneBorder",
+        )
+
         // Device List - occupies flexible viewport
         Box(
             modifier = Modifier
@@ -232,7 +307,21 @@ fun MainMenuColumn(
                 .graphicsLayer {
                     translationY = contentTranslateY.toPx()
                     alpha = contentAlpha
-                },
+                    scaleX = dropZoneScale
+                    scaleY = dropZoneScale
+                }
+                .border(
+                    width = if (isDropZoneHovered) 1.5.dp else 0.dp,
+                    color = dropZoneBorderColor,
+                    shape = RoundedCornerShape(16.dp),
+                )
+                .clip(RoundedCornerShape(16.dp))
+                .dragAndDropTarget(
+                    shouldStartDragAndDrop = { event ->
+                        event.awtTransferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)
+                    },
+                    target = deviceDropTarget,
+                ),
         ) {
             DeviceListPanel(
                 discoveredDevices = discoveredList,
@@ -241,6 +330,9 @@ fun MainMenuColumn(
                 onPairDevice = { item ->
                     val selectedDevice = item.rawDevice ?: devices.find { it.info.fingerprint == item.fingerprint }
                     selectedDevice?.let { onPairDevice(it) }
+                },
+                onViewDeviceStatus = {
+                    controller.expandPanel(ExpandedPanel.DeviceStatus)
                 },
                 onSendFile = { item ->
                     // Pin this device as the default drop target, then send picked files

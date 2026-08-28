@@ -1,12 +1,20 @@
 package com.dexstudios.dex.core.network.server
 
+import com.dexstudios.dex.core.network.RegisterDto
 import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
 import java.util.concurrent.ConcurrentHashMap
+
+sealed class ConnectionEvent {
+    data class Connected(val fingerprint: String) : ConnectionEvent()
+    data class Disconnected(val fingerprint: String) : ConnectionEvent()
+}
 
 /**
  * A connected control-plane session.
@@ -24,20 +32,29 @@ class SessionHolder(val session: WebSocketSession, val trusted: Boolean, val ide
 object WebSocketConnectionManager {
     private val sessions = ConcurrentHashMap<String, SessionHolder>()
 
+    private val _events = MutableSharedFlow<ConnectionEvent>(extraBufferCapacity = 64)
+    val events = _events.asSharedFlow()
+
     /**
      * Registers a session for [fingerprint]. Returns false when an active session for the
      * same fingerprint already exists — the caller must refuse the new connection instead
      * of silently replacing the slot, otherwise any LAN peer that knows a victim's
      * (publicly broadcast) fingerprint could hijack its prompts and pull tokens.
      */
-    fun register(fingerprint: String, session: WebSocketSession, trusted: Boolean, identityToken: String? = null): Boolean =
-        sessions.putIfAbsent(fingerprint, SessionHolder(session, trusted, identityToken)) == null
+    fun register(fingerprint: String, session: WebSocketSession, trusted: Boolean, identityToken: String? = null): Boolean {
+        val added = sessions.putIfAbsent(fingerprint, SessionHolder(session, trusted, identityToken)) == null
+        if (added && trusted) {
+            _events.tryEmit(ConnectionEvent.Connected(fingerprint))
+        }
+        return added
+    }
 
     /** Upgrades a session to trusted after the pairing PIN has been proven. */
     fun markTrusted(fingerprint: String, identityToken: String? = null) {
         sessions.computeIfPresent(fingerprint) { _, holder ->
             SessionHolder(holder.session, true, identityToken ?: holder.identityToken, holder.mutex)
         }
+        _events.tryEmit(ConnectionEvent.Connected(fingerprint))
     }
 
     /** Downgrades a session to untrusted (peer-initiated revocation); prompts stop flowing. */
@@ -48,7 +65,9 @@ object WebSocketConnectionManager {
     }
 
     fun unregister(fingerprint: String) {
-        sessions.remove(fingerprint)
+        if (sessions.remove(fingerprint) != null) {
+            _events.tryEmit(ConnectionEvent.Disconnected(fingerprint))
+        }
     }
 
     fun isConnected(fingerprint: String): Boolean = sessions.containsKey(fingerprint)

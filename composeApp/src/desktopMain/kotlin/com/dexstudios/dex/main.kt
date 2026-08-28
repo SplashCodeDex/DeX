@@ -65,6 +65,10 @@ val desktopAppModule = module {
 
     single { DeviceConfig(get(), get()) }
     single { com.dexstudios.dex.desktop.transfer.DesktopFileSendService(get(), get(), get()) }
+    single { com.dexstudios.dex.overlay.OverlaySoundService(get(), get()) }
+    single { com.dexstudios.dex.overlay.OverlayManager(get(), get()) }
+    single { com.dexstudios.dex.overlay.TransferOverlayBridge(get(), get(), get(), get()) }
+    single { com.dexstudios.dex.overlay.ClipboardOverlayBridge(get(), get()) }
 }
 
 fun main() {
@@ -150,6 +154,8 @@ fun main() {
                 controller.toggleVisibility()
             }
             com.dexstudios.dex.desktop.jna.ClipboardSyncService.start(deviceConfig)
+            koin.get<com.dexstudios.dex.overlay.TransferOverlayBridge>().start()
+            koin.get<com.dexstudios.dex.overlay.ClipboardOverlayBridge>().start()
         }
 
         // 300ms Click Debounce Filter for Tray Action
@@ -316,6 +322,21 @@ fun main() {
                     },
                 )
             }
+        }
+
+        // Dedicated Notification & Overlay Host Windows
+        val overlayManager = remember { org.koin.java.KoinJavaComponent.getKoin().get<com.dexstudios.dex.overlay.OverlayManager>() }
+        val deviceConfigForOverlay = remember { org.koin.java.KoinJavaComponent.getKoin().get<DeviceConfig>() }
+        val overlayThemeOverride by deviceConfigForOverlay.themeOverrideFlow.collectAsState()
+
+        DeXTheme(
+            darkTheme = when (overlayThemeOverride) {
+                DeviceConfig.THEME_DARK -> true
+                DeviceConfig.THEME_LIGHT -> false
+                else -> isSystemInDarkTheme()
+            },
+        ) {
+            com.dexstudios.dex.window.overlay.CornerOverlayHost(overlayManager = overlayManager)
         }
     }
 }

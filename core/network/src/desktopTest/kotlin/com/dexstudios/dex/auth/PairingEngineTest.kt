@@ -92,7 +92,87 @@ class PairingEngineTest {
         assertEquals(fingerprint, state.fingerprint)
         assertEquals(pin, state.pinCode)
         assertEquals(0, state.digitCount)
+        assertTrue(state.manualAcceptAvailable, "Peer-started offers stay manually grantable")
     }
+
+    @Test
+    fun `requestPinForActiveDevice upgrades the QR offer to a delivered PIN phase`() = runTest {
+        val engine = PairingEngine(scope = backgroundScope)
+        val sent = mutableListOf<String>()
+        engine.outboundSender = { _, json ->
+            sent.add(json)
+            true
+        }
+        engine.deviceFingerprintProvider = { "pc-fp" }
+        engine.deviceAliasProvider = { "My PC" }
+
+        engine.initiatePairing(qrDevice())
+        assertTrue(engine.requestPinForActiveDevice(), "A deliverable prompt must succeed")
+
+        val state = engine.state.value
+        assertIs<PairingState.PinPhase>(state)
+        assertEquals("qr-fp", state.fingerprint)
+        assertEquals(0, state.digitCount)
+        assertTrue(!state.manualAcceptAvailable, "Desktop-initiated offers hide Accept actions")
+        assertTrue(engine.verifyInboundPin("qr-fp", state.pinCode), "Minted PIN must be provable")
+
+        assertEquals(1, sent.size)
+        val frame = kotlinx.serialization.json.Json.parseToJsonElement(sent.single()).jsonObject
+        assertEquals("pair-prompt", frame["type"]?.toString()?.trim('"'))
+        val data = requireNotNull(frame["data"]).jsonObject
+        assertEquals(state.pinCode, data["pin"]?.toString()?.trim('"'))
+        assertEquals("My PC", data["alias"]?.toString()?.trim('"'))
+        assertEquals("pc-fp", data["fingerprint"]?.toString()?.trim('"'))
+    }
+
+    @Test
+    fun `requestPinForActiveDevice keeps the QR offer when the phone is unreachable`() = runTest {
+        val engine = PairingEngine(scope = backgroundScope)
+        // Default outboundSender returns false: no live WebSocket session for the peer.
+        engine.initiatePairing(qrDevice())
+        val before = engine.state.value
+
+        assertTrue(!engine.requestPinForActiveDevice(), "An undeliverable prompt must fail")
+        assertEquals(before, engine.state.value)
+    }
+
+    @Test
+    fun `requestPinForActiveDevice is a no-op outside the QR phase`() = runTest {
+        assertTrue(!pairingEngine.requestPinForActiveDevice(), "Idle sessions have no device to prompt")
+        assertEquals(PairingState.Idle, pairingEngine.state.value)
+    }
+
+    @Test
+    fun `revertToQrPhase cancels the pending PIN locally and keeps the device context`() = runTest {
+        val engine = PairingEngine(scope = backgroundScope)
+        engine.outboundSender = { _, _ -> true }
+        engine.initiatePairing(qrDevice())
+        engine.requestPinForActiveDevice()
+        assertIs<PairingState.PinPhase>(engine.state.value)
+
+        engine.revertToQrPhase()
+
+        val state = engine.state.value
+        assertIs<PairingState.QrPhase>(state)
+        assertEquals("qr-fp", state.fingerprint)
+        assertTrue(!engine.verifyInboundPin("qr-fp", ""), "Reverted offer leaves nothing to prove")
+    }
+
+    private fun qrDevice() = DiscoveredDevice(
+        ip = "192.168.1.100",
+        info = RegisterDto(
+            alias = "Pixel",
+            version = "2.0",
+            deviceModel = "Pixel 9",
+            deviceType = "phone",
+            fingerprint = "qr-fp",
+            port = 48424,
+            protocol = "https",
+            download = true,
+        ),
+        viaWan = false,
+        viaRoster = false,
+    )
 
     @Test
     fun `reset transitions to Idle`() = runTest {

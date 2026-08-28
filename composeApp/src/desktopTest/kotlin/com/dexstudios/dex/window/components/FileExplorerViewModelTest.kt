@@ -111,4 +111,68 @@ class FileExplorerViewModelTest {
         viewModel.navigateUp()
         assertEquals(0, viewModel.safBreadcrumb.value.size)
     }
+
+    @Test
+    fun `test removeFromHistory calls TransferHistory delete`() = runTest {
+        every { TransferHistory.delete(any()) } returns Unit
+        every { TransferHistory.deleteAll(any()) } returns Unit
+
+        viewModel.removeFromHistory("test_item_id", "test_item_path")
+        io.mockk.verify { TransferHistory.delete("test_item_id") }
+    }
+
+    @Test
+    fun `test selectSingle updates selected items`() = runTest {
+        viewModel.selectSingle("item_1")
+        assertEquals(setOf("item_1"), viewModel.selectedItemIds.value)
+        assertEquals("item_1", viewModel.selectedItemId.value)
+
+        viewModel.selectSingle("item_2")
+        assertEquals(setOf("item_2"), viewModel.selectedItemIds.value)
+        assertEquals("item_2", viewModel.selectedItemId.value)
+    }
+
+    @Test
+    fun `test toggleSelection adds and removes items`() = runTest {
+        viewModel.selectSingle("item_1")
+        assertEquals(setOf("item_1"), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelection("item_2")
+        assertEquals(setOf("item_1", "item_2"), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelection("item_1")
+        assertEquals(setOf("item_2"), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelection("item_2")
+        assertEquals(emptySet(), viewModel.selectedItemIds.value)
+    }
+
+    @Test
+    fun `test clearSelection resets selection`() = runTest {
+        viewModel.selectSingle("item_1")
+        viewModel.toggleSelection("item_2")
+        assertEquals(2, viewModel.selectedItemIds.value.size)
+
+        viewModel.clearSelection()
+        assertEquals(emptySet(), viewModel.selectedItemIds.value)
+        assertEquals(null, viewModel.selectedItemId.value)
+    }
+
+    @Test
+    fun `test removeSelectedFromHistory calls TransferHistory deleteAll`() = runTest {
+        every { TransferHistory.deleteAll(any()) } returns Unit
+
+        viewModel.selectSingle("item_1")
+        viewModel.toggleSelection("item_2")
+
+        viewModel.removeSelectedFromHistory()
+        io.mockk.verify { TransferHistory.deleteAll(listOf("item_1", "item_2")) }
+        assertEquals(emptySet(), viewModel.selectedItemIds.value)
+    }
+
+    @Test
+    fun `test setSelectedIds replaces selection set`() = runTest {
+        viewModel.setSelectedIds(setOf("item_1", "item_2", "item_3"))
+        assertEquals(setOf("item_1", "item_2", "item_3"), viewModel.selectedItemIds.value)
+    }
 }
