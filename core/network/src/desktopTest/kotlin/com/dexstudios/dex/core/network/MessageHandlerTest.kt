@@ -9,6 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -87,8 +90,14 @@ class MessageHandlerTest {
         }
     }
 
+    private val testDispatcher = StandardTestDispatcher()
+
     @Before
     fun setUp() {
+        // The pairing-prompt paths launch their dialog awaiter on Dispatchers.Main; without a
+        // test Main the launch throws an uncaught IllegalStateException that pollutes the next
+        // runTest in the suite (same convention as PairingEngineTest).
+        Dispatchers.setMain(testDispatcher)
         resetGlobalState()
         scope = CoroutineScope(Dispatchers.IO)
         val store = PreferenceDataStoreFactory.createWithPath(
@@ -102,9 +111,14 @@ class MessageHandlerTest {
 
     @After
     fun tearDown() {
-        scope.coroutineContext.cancelChildren()
+        Dispatchers.resetMain()
         resetGlobalState()
         TransferState.pendingPrompts.clear()
+        // Await in-flight DataStore edits BEFORE cancelling the persisting scope and
+        // deleting the temp dir, or a straggling write surfaces as an uncaught exception
+        // that pollutes the next runTest.
+        runBlocking { deviceConfig.flushPersistedWrites() }
+        scope.coroutineContext.cancelChildren()
         tempDir.toFile().deleteRecursively()
     }
 
