@@ -1,4 +1,11 @@
 # Changelog
+## [10.1.28.49] - 2026-08-28
+### Added
+- **[minor] Tests: MessageHandler control-channel contract suite (20 tests) + TokenCodec persistence suite (5 tests)** — first coverage for the client-side WebSocket protocol layer, pinning docs/PROTOCOL.md behavior:
+  - `MessageHandlerTest` (core/network): malformed/incomplete/unknown frames are swallowed without replies; `set-clipboard` routes to the platform clipboard and blank text is ignored; `mirror-start`/`mirror-stop` and `wallpaper-updated` route to engine/revision state; `relay-started`/`relay-error` complete and clear the pending punch-relay fallback; `endpoint-info` resolves the pending punch target; `peer-endpoint` records only valid announcements; `pair-prompt` auto-accepts pinless when already paired and resolves simultaneous-pairing races by lexicographic fingerprint tie-break; `pair-accepted` persists the token against the proven session identity (provider wins over wire claims, tokenless grants ignored); `identity-challenge` answers HMAC proof only when signed in and survives undecodable nonces; `public-address` auto-fills only a blank address; `prepare-upload` raises a prompt whose accept/reject routes downloadBatch accordingly.
+  - `TokenCodecTest` (core/data, new `commonTest` source set with kotlin-test wired): paired-token map round trip is lossless; blank, corrupt, and non-string store values all degrade to an empty map instead of killing trust hydration.
+  - Conventions: hand-rolled recording `IPlatformEngine` fake, per-test temp DataStore stores, real-time polling (`runBlocking` + `awaitUntil`) since the handler effects run on real IO threads. Full gate green (`spotlessCheck` + `:composeApp:desktopTest`).
+
 ## [10.1.28.48] - 2026-08-28
 ### Added
 - **[minor] Docs: FEATURES.md** — new repo-root feature reference documenting the full verified feature surface of the desktop app (discovery, trust, pairing, transfers, history, remote file explorer, mirroring, clipboard sync, Google account, desktop shell, settings, design system, persistence, platform layer, security) plus companion projects and verification commands. All facts traced to live code; companion to ARCHITECTURE.md and PROTOCOL.md.
