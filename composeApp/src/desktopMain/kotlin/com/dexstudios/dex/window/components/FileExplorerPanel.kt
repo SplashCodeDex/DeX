@@ -195,8 +195,11 @@ fun FileExplorerPanel(
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
                     val isSpace = event.key == Key.Spacebar || event.utf16CodePoint == ' '.code
+                    // Any open confirmation dialog outranks Quick Look (zIndex 99 vs 95) —
+                    // Space must never lift the preview above or beneath an active prompt.
+                    val isConfirmDialogOpen = isClearHistoryConfirmOpen || isBatchDeleteConfirmOpen || itemToDelete != null
 
-                    if (isSpace && !isSearchFocused) {
+                    if (isSpace && !isSearchFocused && !isConfirmDialogOpen) {
                         viewModel.toggleQuickLook()
                         return@onPreviewKeyEvent true
                     }
