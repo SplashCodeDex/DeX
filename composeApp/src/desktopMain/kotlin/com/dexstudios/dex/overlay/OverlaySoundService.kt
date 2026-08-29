@@ -11,6 +11,7 @@ import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
+import javax.sound.sampled.LineEvent
 import kotlin.math.exp
 import kotlin.math.sin
 
@@ -73,6 +74,11 @@ class OverlaySoundService(private val deviceConfig: DeviceConfig, private val sc
     private fun playAudioFile(file: File) {
         AudioSystem.getAudioInputStream(file).use { audioStream ->
             val clip: Clip = AudioSystem.getClip()
+            clip.addLineListener { event ->
+                if (event.type == LineEvent.Type.STOP) {
+                    runCatching { clip.close() }
+                }
+            }
             clip.open(audioStream)
             clip.start()
         }
@@ -86,6 +92,11 @@ class OverlaySoundService(private val deviceConfig: DeviceConfig, private val sc
             (synthesizedChimePcm.size / 2).toLong(),
         )
         val clip: Clip = AudioSystem.getClip()
+        clip.addLineListener { event ->
+            if (event.type == LineEvent.Type.STOP) {
+                runCatching { clip.close() }
+            }
+        }
         clip.open(stream)
         clip.start()
     }

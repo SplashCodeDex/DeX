@@ -21,8 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.spatialMenuEnter
 import com.dexstudios.dex.ui.theme.spatialMenuExit
@@ -35,11 +33,11 @@ import com.kyant.backdrop.Backdrop
 fun DeviceContextMenu(
     device: DiscoveredDevice,
     isTrusted: Boolean,
-    backdrop: Backdrop,
     onSendFile: () -> Unit,
     onPair: () -> Unit,
     onForget: () -> Unit,
     onDismiss: () -> Unit,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
     var showDetails by remember { mutableStateOf(false) }
@@ -81,10 +79,11 @@ fun DeviceContextMenu(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                LiquidGlassPanel(
-                    backdrop = backdrop, // Sample the underlying screen
-                    config = LiquidGlassPresets.DynamicIsland,
-                    shape = RoundedCornerShape(32.dp),
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .fillMaxWidth()

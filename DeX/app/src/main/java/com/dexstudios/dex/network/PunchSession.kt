@@ -225,7 +225,8 @@ class PunchSession(
                     }
                     if (received < header.size) break // dropped mid-file — the sender will resume
                     doneFiles++
-                    TransferHistory.log(context, file.fileName, received, "received", docUri.toString())
+                    val senderAlias = manifest.alias.ifBlank { "Device" }
+                    TransferHistory.log(context, file.fileName, received, "received", docUri.toString(), peerDevice = senderAlias)
                     TcpDownloadService.updateState(
                         DownloadState(
                             fileName = if (manifest.files.size == 1) file.fileName else "$doneFiles of ${manifest.files.size} files",
@@ -322,7 +323,8 @@ class PunchSession(
 
             // 3. Transfer with resume support; a mid-transfer drop retries the whole session
             try {
-                when (runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress)) {
+                val targetAlias = PunchState.devices.value.firstOrNull { it.info.fingerprint == targetFingerprint }?.info?.alias ?: "Device"
+                when (runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress, targetAlias)) {
                     TransferOutcome.SUCCESS -> return@withContext null
                     TransferOutcome.REJECTED -> return@withContext "The recipient declined the transfer"
                     TransferOutcome.DROP -> {
@@ -349,7 +351,8 @@ class PunchSession(
         files: List<PunchFileDto>,
         totalSize: Long,
         isCancelled: () -> Boolean,
-        onProgress: suspend (Float, String) -> Unit
+        onProgress: suspend (Float, String) -> Unit,
+        targetAlias: String = "Device"
     ): TransferOutcome = withContext(Dispatchers.IO) {
         val output = socket.getOutputStream()
         val input = socket.getInputStream()
@@ -415,7 +418,7 @@ class PunchSession(
                 }
             }
             if (!streamed) return@withContext TransferOutcome.DROP
-            TransferHistory.log(context, file.fileName, file.size, "sent", uris[index].toString())
+            TransferHistory.log(context, file.fileName, file.size, "sent", uris[index].toString(), peerDevice = targetAlias)
         }
 
         writeLine(output, json.encodeToString(PunchDoneDto(sessionId = sessionId)))

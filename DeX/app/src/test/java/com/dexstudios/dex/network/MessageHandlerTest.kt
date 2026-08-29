@@ -206,27 +206,18 @@ class MessageHandlerTest {
 
             handler.handleMessage(uploadJson, "192.168.1.10", DeXPorts.HTTPS)
 
-            val sessionSlot = slot<String>()
-            verify { notificationHelper.showIncomingFileNotification(capture(sessionSlot), any(), 2) }
-
-            val capturedSession = sessionSlot.captured
-            TransferState.pendingPrompts[capturedSession]!!.complete(true)
-
-            // The download coroutine runs on the real IO dispatcher, so poll instead of sleeping
-            val deadline = System.currentTimeMillis() + 10_000
-            while (System.currentTimeMillis() < deadline && TransferState.pendingPrompts.isNotEmpty()) {
-                Thread.sleep(100)
-            }
-            assertTrue("coroutine should have consumed the pending prompt", TransferState.pendingPrompts.isEmpty())
-
-            verify(timeout = 10_000, exactly = 1) {
-                TcpDownloadService.downloadBatch(any(), "192.168.1.10", DeXPorts.HTTPS, any(), match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+            verify(exactly = 1) {
+                TcpDownloadService.downloadBatch(
                     any(),
+                    "192.168.1.10",
+                    48424,
                     any(),
-                    any()
+                    match { files -> files.size == 2 && files.any { it.fileId == "f1" } && files.any { it.fileId == "f2" } },
+                    any(),
+                    "pc_fp",
+                    "PC-1"
                 )
             }
-            assertNull(TransferState.pendingPrompts[sessionSlot.captured])
         } finally {
             unmockkObject(TcpDownloadService)
             unmockkObject(SafStorage)

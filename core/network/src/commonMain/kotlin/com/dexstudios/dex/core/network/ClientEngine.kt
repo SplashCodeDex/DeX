@@ -134,21 +134,35 @@ class ClientEngine(
         token: String,
         stream: java.io.InputStream,
         fileSize: Long,
+        resumeOffset: Long = 0L,
         onProgress: (Long) -> Unit = {},
     ): UploadOutcome = withContext(Dispatchers.IO) {
         try {
+            val remainingLength = (fileSize - resumeOffset).coerceAtLeast(0L)
+            if (resumeOffset > 0L) {
+                var skipped = 0L
+                while (skipped < resumeOffset) {
+                    val n = stream.skip(resumeOffset - skipped)
+                    if (n <= 0) break
+                    skipped += n
+                }
+            }
+
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
                     parameters.append("fileId", fileId)
                     parameters.append("token", token)
+                    if (resumeOffset > 0L) {
+                        parameters.append("offset", resumeOffset.toString())
+                    }
                 }
                 onUpload { bytesSentTotal, _ ->
-                    onProgress(bytesSentTotal)
+                    onProgress(resumeOffset + bytesSentTotal)
                 }
                 setBody(object : OutgoingContent.WriteChannelContent() {
                     override val contentType = ContentType.Application.OctetStream
-                    override val contentLength = fileSize
+                    override val contentLength = remainingLength
                     override suspend fun writeTo(channel: ByteWriteChannel) {
                         withContext(Dispatchers.IO) {
                             val buffer = ByteArray(81920)
@@ -231,7 +245,7 @@ class ClientEngine(
                 },
             )
             if (request == null) {
-                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1))
+                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1, ""))
             } else {
                 cont.invokeOnCancellation {
                     try {
@@ -269,6 +283,7 @@ data class UploadState(
     val error: String? = null,
     val protocol: String = "",
     val speedBps: Long = 0L,
+    val etaSeconds: Long? = null,
     val targetFingerprint: String? = null,
     val peerName: String? = null,
     val peerPicture: String? = null,

@@ -148,6 +148,8 @@ class PunchSendWorker(
         val sent = java.util.concurrent.atomic.AtomicLong(0L)
         val failures = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+        val targetAlias = PunchState.devices.value.firstOrNull { it.info.fingerprint == targetFingerprint }?.info?.alias ?: "Device"
+
         // Parallel streams (cap 3) — parity with the other transfer workers
         kotlinx.coroutines.coroutineScope {
             val semaphore = kotlinx.coroutines.sync.Semaphore(3)
@@ -158,12 +160,20 @@ class PunchSendWorker(
                         if (isStopped) return@launch
                         val token_ = response.files[key] ?: run {
                             failures[d.second] = "session expired"
+                            TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
                             return@launch
                         }
-                        if (token_ == "[SKIP]") return@launch
+                        if (token_ == "[SKIP]") {
+                            TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
+                            return@launch
+                        }
 
                         val stream = applicationContext.contentResolver.openInputStream(d.first)
-                            ?: run { failures[d.second] = "cannot read ${d.second}"; return@launch }
+                            ?: run {
+                                failures[d.second] = "cannot read ${d.second}"
+                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
+                                return@launch
+                            }
                         stream.use { input ->
                             val perFile = java.util.concurrent.atomic.AtomicLong(0L)
                             val outcome = if (client.quicAvailable()) {
@@ -179,8 +189,12 @@ class PunchSendWorker(
                                     reportProgress(sent.get().toFloat() / total, d.second, "http/1.1", metaById.size)
                                 }
                             }
-                            if (!outcome.ok) failures[d.second] = "upload failed (HTTP ${outcome.httpStatus})"
-                            else TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString())
+                            if (!outcome.ok) {
+                                failures[d.second] = "upload failed (HTTP ${outcome.httpStatus})"
+                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
+                            } else {
+                                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
+                            }
                         }
                     } finally {
                         semaphore.release()
@@ -212,7 +226,7 @@ class PunchSendWorker(
         null
     }
 
-    private suspend fun reportProgress(progress: Float, fileName: String, protocol: String, totalFiles: Int) {
+    private fun reportProgress(progress: Float, fileName: String, protocol: String, totalFiles: Int) {
         val targetFingerprint = inputData.getString("targetFingerprint")
         try {
             client.updateUploadState(
@@ -226,7 +240,9 @@ class PunchSendWorker(
                     targetFingerprint = targetFingerprint
                 )
             )
-            setForeground(createForegroundInfo((progress * 100).toInt(), "Sending: $fileName"))
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                setForeground(createForegroundInfo((progress * 100).toInt(), "Sending: $fileName"))
+            }
         } catch (e: Exception) {
             // UI updates must never kill the transfer
         }

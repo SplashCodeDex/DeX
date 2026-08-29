@@ -31,6 +31,15 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
+    }
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -99,6 +108,9 @@ dependencies {
   // Liquid Glass Backdrop
   implementation(libs.backdrop)
 
+  // Lottie Animation Engine
+  implementation(libs.lottie.compose)
+
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests
@@ -132,8 +144,10 @@ dependencies {
   // OkHttp (WebSocket client)
   implementation(libs.okhttp)
 
-  // Cronet (HTTP/3 + QUIC) — 143+ embedded is fully self-contained (API + native stack)
-  implementation(libs.cronet.embedded)
+  // Cronet (HTTP/3 + QUIC) — backed by Google Play Services system Chromium engine (-15MB APK size)
+  implementation(libs.play.services.cronet) {
+      exclude(group = "org.chromium.net", module = "cronet-shared")
+  }
 
     // Storage
     implementation(libs.androidx.datastore.preferences)

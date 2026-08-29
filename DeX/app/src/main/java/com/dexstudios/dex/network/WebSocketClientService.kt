@@ -148,13 +148,27 @@ class WebSocketClientService(
         return ssid to info.rssi
     }
 
+    private var lastReportedBattery = -1
+    private var lastReportedSsid: String? = null
+
     /** Reports device telemetry (battery + WiFi) to the connected PC over the WebSocket. */
-    fun sendTelemetry() {
+    fun sendTelemetry(force: Boolean = false) {
         val level = batteryLevel()
         val (ssid, rssi) = wifiInfo()
+
+        val batteryDelta = kotlin.math.abs(level - lastReportedBattery)
+        val ssidChanged = ssid != lastReportedSsid
+
+        // Only send if forced (initial connect), or battery changed by >= 15%, or SSID changed
+        if (!force && lastReportedBattery != -1 && batteryDelta < 15 && !ssidChanged) {
+            return
+        }
+
         val payload = buildTelemetryPayload(level, ssid, rssi) ?: return
         sendMessage(payload)
-        Timber.d("Telemetry sent: battery $level%, wifi $ssid ($rssi dBm)")
+        lastReportedBattery = level
+        lastReportedSsid = ssid
+        Timber.d("Telemetry sent: battery $level% (delta $batteryDelta%), wifi $ssid ($rssi dBm)")
     }
 
     private fun findTargetPc(devices: Collection<DiscoveredDevice>): DiscoveredDevice? {
@@ -206,7 +220,9 @@ class WebSocketClientService(
 
     private fun connectToPC(pcDevice: DiscoveredDevice, onConnected: (() -> Unit)? = null) {
         val fingerprint = deviceConfig.fingerprint
-        val alias = java.net.URLEncoder.encode(getDeviceName(context), "UTF-8")
+        val alias = java.net.URLEncoder.encode(deviceConfig.alias.ifBlank { getDeviceName(context) }, "UTF-8")
+        val deviceModel = java.net.URLEncoder.encode(android.os.Build.MODEL ?: "Android", "UTF-8")
+        val deviceType = if (context.resources.configuration.smallestScreenWidthDp >= 600) "tablet" else "mobile"
         val pcFingerprint = pcDevice.info.fingerprint
 
         // Auto-trust rules: the Google account sub is the highest priority authentication token
@@ -225,7 +241,7 @@ class WebSocketClientService(
         val tokenParam = if (!token.isNullOrEmpty()) "&token=${java.net.URLEncoder.encode(token, "UTF-8")}" else ""
 
         // The PC serves TLS on port 48424, so we must use wss:// (plain ws:// fails TLS negotiation)
-        val url = "wss://${pcDevice.ip}:${pcDevice.info.port}/ws?fingerprint=$fingerprint&alias=$alias$tokenParam"
+        val url = "wss://${pcDevice.ip}:${pcDevice.info.port}/ws?fingerprint=$fingerprint&alias=$alias&deviceModel=$deviceModel&deviceType=$deviceType$tokenParam"
         Timber.i("Connecting to PC via WebSocket: ${pcDevice.ip}:${pcDevice.info.port}")
 
         val request = Request.Builder().url(url).build()
@@ -263,7 +279,8 @@ class WebSocketClientService(
                 sendMessage(trustCheck)
 
                 // Report battery immediately so the PC has telemetry on connect, not after 60s
-                sendTelemetry()
+                sendTelemetry(force = true)
+                discoveryEngine.setConnected(true)
                 Timber.i("WebSocket connected to PC: ${pcDevice.ip}")
                 onConnected?.invoke()
             }
@@ -282,6 +299,7 @@ class WebSocketClientService(
                     _connectedFingerprint = null
                     connectedViaWan = false
                     connectedIp = null
+                    discoveryEngine.setConnected(false)
                     // Do not reset connectedPort here so background TTL refreshes still have a port to try
                     // The PC is gone: never keep capturing/streaming into a dead socket
                     MirrorSession.stop()
@@ -296,6 +314,7 @@ class WebSocketClientService(
                     _connectedFingerprint = null
                     connectedViaWan = false
                     connectedIp = null
+                    discoveryEngine.setConnected(false)
                     MirrorSession.stop()
                     scheduleReconnect()
                 }

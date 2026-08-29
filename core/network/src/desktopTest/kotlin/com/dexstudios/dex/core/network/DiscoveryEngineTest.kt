@@ -265,4 +265,31 @@ class DiscoveryEngineTest {
 
         assertTrue(discovery.devices.value.isEmpty())
     }
+
+    @Test
+    fun `updateTelemetry updates battery charging and wifi state`() = runBlocking {
+        val discovery = newEngine()
+        val device = DiscoveredDevice(
+            ip = "192.168.1.100",
+            info = RegisterDto(
+                alias = "Pixel Phone",
+                version = "2.0",
+                deviceModel = "Pixel",
+                deviceType = "mobile",
+                fingerprint = "phone-fp-1",
+                port = 48424,
+                protocol = "https",
+                download = false,
+            ),
+        )
+        discovery.addDevice(device)
+        assertEquals("Pixel Phone", discovery.devices.value["phone-fp-1"]?.info?.alias)
+        assertNull(discovery.devices.value["phone-fp-1"]?.info?.battery)
+
+        discovery.updateTelemetry("phone-fp-1", battery = 85, isCharging = true, wifiSsid = "Home-5G")
+        val updated = discovery.devices.value["phone-fp-1"]
+        assertEquals(85, updated?.info?.battery)
+        assertEquals(true, updated?.info?.isCharging)
+        assertEquals("Home-5G", updated?.info?.wifiSsid)
+    }
 }

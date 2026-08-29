@@ -231,4 +231,57 @@ object SafStorage {
         walk(treeUri, "")
         return result
     }
+
+    // --- Share-target sandbox fallback ---
+
+    /** Resolves a display name for [uri], falling back to a generated name. */
+    fun queryFileName(context: Context, uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (index >= 0) {
+                        result = cursor.getString(index)
+                    }
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/') ?: -1
+            if (cut != -1) {
+                result = result?.substring(cut + 1)
+            }
+        }
+        return result ?: "SharedFile_${System.currentTimeMillis()}"
+    }
+
+    /**
+     * Persists [uris] into the Downloads/DeX sandbox (SAF tree when granted,
+     * MediaStore otherwise). Returns the number of successfully saved files so
+     * callers can surface partial failures.
+     */
+    fun saveUrisToSandbox(context: Context, uris: List<Uri>): Int {
+        val dirUri = getDownloadsDexUri(context)
+        var successCount = 0
+        try {
+            uris.forEach { uri ->
+                val fileName = queryFileName(context, uri)
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val ok = if (dirUri != null) {
+                        writeFile(context, dirUri, fileName, input)
+                    } else {
+                        val mediaUri = createMediaStoreUri(context, fileName)
+                        if (mediaUri != null) {
+                            context.contentResolver.openOutputStream(mediaUri)?.use { out -> input.copyTo(out) }
+                            true
+                        } else false
+                    }
+                    if (ok) successCount++
+                }
+            }
+        } catch (_: Exception) {}
+        return successCount
+    }
 }

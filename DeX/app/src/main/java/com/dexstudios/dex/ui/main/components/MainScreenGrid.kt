@@ -2,20 +2,17 @@ package com.dexstudios.dex.ui.main.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DiscoveredDevice
-import com.dexstudios.dex.ui.components.DeviceListItem
 
 @Composable
 fun MainScreenGrid(
@@ -24,24 +21,16 @@ fun MainScreenGrid(
     search: String,
     showHelpHint: Boolean,
     onTrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
+    onTrustedDeviceLongClick: (DiscoveredDevice) -> Unit,
     onUntrustedDeviceButtonClick: (DiscoveredDevice) -> Unit,
-    onDeviceLongClick: (DiscoveredDevice) -> Unit,
     onScanClick: () -> Unit,
     modifier: Modifier = Modifier,
+    gridState: LazyGridState = rememberLazyGridState(),
+    columns: GridCells = GridCells.Adaptive(minSize = 260.dp),
     statusBarHeight: androidx.compose.ui.unit.Dp = 0.dp
 ) {
-    val gridState = rememberLazyGridState()
-
-    // Optimization: logic moved outside the LazyVerticalGrid builder
-    val dummyMatchCount = remember(search) {
-        listOf("Gaming PC", "Home Server", "Work Laptop").count { it.contains(search, ignoreCase = true) }
-    }
-    val showGamingPC = remember(search) { "Gaming PC".contains(search, ignoreCase = true) }
-    val showHomeServer = remember(search) { "Home Server".contains(search, ignoreCase = true) }
-    val showWorkLaptop = remember(search) { "Work Laptop".contains(search, ignoreCase = true) }
-
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 300.dp),
+        columns = columns,
         state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -53,58 +42,8 @@ fun MainScreenGrid(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. "My Devices" Section
-        if (consolidatedTrusted.isNotEmpty() || dummyMatchCount > 0) {
-            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                Text(
-                    text = "My Devices",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            items(consolidatedTrusted, key = { it.info.fingerprint }) { device ->
-                DeviceListItem(
-                    device = device,
-                    isTrusted = true,
-                    onClick = { },
-                    onButtonClick = { onTrustedDeviceButtonClick(device) },
-                    onLongClick = { onDeviceLongClick(device) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Dummy Devices in Grid
-            if (showGamingPC) {
-                item {
-                    DummyDeviceCard(
-                        alias = "Gaming PC",
-                        model = "Custom Build (RTX 4090)",
-                        wallpaper = R.drawable.wallpaper_gaming
-                    )
-                }
-            }
-            if (showHomeServer) {
-                item {
-                    DummyDeviceCard(
-                        alias = "Home Server",
-                        model = "TrueNAS Core",
-                        wallpaper = R.drawable.wallpaper_server
-                    )
-                }
-            }
-            if (showWorkLaptop) {
-                item {
-                    DummyDeviceCard(
-                        alias = "Work Laptop",
-                        model = "MacBook Pro M3",
-                        wallpaper = R.drawable.wallpaper_laptop
-                    )
-                }
-            }
-        } else if (search.isNotBlank() && untrustedDevices.isEmpty()) {
-            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        if (search.isNotBlank()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -112,42 +51,9 @@ fun MainScreenGrid(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No devices matching \"$search\"",
+                        text = "Searching: \"$search\"",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // 2. "Discovered" Section
-        if (untrustedDevices.isNotEmpty() || search.isBlank()) {
-            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                Text(
-                    text = "Discovered",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            items(untrustedDevices, key = { it.info.fingerprint }) { device ->
-                DeviceListItem(
-                    device = device,
-                    isTrusted = false,
-                    onClick = { },
-                    onButtonClick = { onUntrustedDeviceButtonClick(device) },
-                    onLongClick = { onDeviceLongClick(device) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            if (search.isBlank()) {
-                item {
-                    ScanToAddDeviceCard(
-                        showHelpHint = showHelpHint,
-                        onScanClick = onScanClick
                     )
                 }
             }

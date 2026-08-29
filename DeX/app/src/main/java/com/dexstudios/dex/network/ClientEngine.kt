@@ -148,21 +148,35 @@ class ClientEngine(
     suspend fun uploadFile(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: suspend (Long) -> Unit = {}
+        resumeOffset: Long = 0L,
+        onProgress: (Long) -> Unit = {}
     ): UploadOutcome = withContext(Dispatchers.IO) {
         try {
+            val remainingLength = (fileSize - resumeOffset).coerceAtLeast(0L)
+            if (resumeOffset > 0L) {
+                var skipped = 0L
+                while (skipped < resumeOffset) {
+                    val n = stream.skip(resumeOffset - skipped)
+                    if (n <= 0) break
+                    skipped += n
+                }
+            }
+
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
                     parameters.append("fileId", fileId)
                     parameters.append("token", token)
+                    if (resumeOffset > 0L) {
+                        parameters.append("offset", resumeOffset.toString())
+                    }
                 }
                 onUpload { bytesSentTotal, _ ->
-                    kotlinx.coroutines.runBlocking { onProgress(bytesSentTotal) }
+                    onProgress(resumeOffset + bytesSentTotal)
                 }
-setBody(object : OutgoingContent.WriteChannelContent() {
+                setBody(object : OutgoingContent.WriteChannelContent() {
                     override val contentType = ContentType.Application.OctetStream
-                    override val contentLength = fileSize
+                    override val contentLength = remainingLength
                     override suspend fun writeTo(channel: ByteWriteChannel) {
                         withContext(Dispatchers.IO) {
                             val buffer = ByteArray(81920)
@@ -179,7 +193,7 @@ setBody(object : OutgoingContent.WriteChannelContent() {
             }
             UploadOutcome(response.status.isSuccess(), response.status.value)
         } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e // Let the cancellation bubble up
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
             UploadOutcome(false, -1)
@@ -195,13 +209,13 @@ setBody(object : OutgoingContent.WriteChannelContent() {
     suspend fun uploadFileQuic(
         ip: String, port: Int, sessionId: String, fileId: String, fileName: String,
         token: String, stream: java.io.InputStream, fileSize: Long,
-        onProgress: suspend (Long) -> Unit = {}
+        onProgress: (Long) -> Unit = {}
     ): UploadOutcome {
         val qc = quicClient ?: return UploadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.uploadFile(
                 ip, port, sessionId, fileId, fileName, token, stream, fileSize,
-                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status ->
                     if (!cont.isCancelled) cont.resume(UploadOutcome(ok, status))
                 }
@@ -209,7 +223,11 @@ setBody(object : OutgoingContent.WriteChannelContent() {
             if (request == null) {
                 if (!cont.isCancelled) cont.resume(UploadOutcome(false, -1))
             } else {
-                cont.invokeOnCancellation { request.cancel() }
+                cont.invokeOnCancellation {
+                    try {
+                        request.javaClass.getMethod("cancel").invoke(request)
+                    } catch (e: Exception) {}
+                }
             }
         }
     }
@@ -220,30 +238,46 @@ setBody(object : OutgoingContent.WriteChannelContent() {
      * means the transport failed (e.g. Cronet engine unavailable). protocol is the
      * negotiated ALPN ("h3", "http/1.1", ...) and is empty when unknown.
      */
-    suspend fun downloadFileQuic(
-        ip: String,
-        port: Int,
-        fileId: String,
-        token: String?,
-        output: java.nio.channels.WritableByteChannel,
-        onProgress: suspend (Long) -> Unit = {}
-    ): DownloadOutcome {
+    suspend fun downloadFileQuic(ip: String, port: Int, fileId: String, token: String?, output: java.nio.channels.WritableByteChannel, onProgress: (Long) -> Unit = {}): DownloadOutcome {
         val qc = quicClient ?: return DownloadOutcome(false, -1)
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val request = qc.downloadFile(
                 ip, port, fileId, token, output,
-                onProgress = { bytes -> kotlinx.coroutines.runBlocking { onProgress(bytes) } },
+                onProgress = { bytes -> onProgress(bytes) },
                 onResult = { ok, status, protocol ->
                     if (!cont.isCancelled) cont.resume(DownloadOutcome(ok, status, protocol))
                 }
             )
             if (request == null) {
-                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1))
+                if (!cont.isCancelled) cont.resume(DownloadOutcome(false, -1, ""))
             } else {
-                cont.invokeOnCancellation { request.cancel() }
+                cont.invokeOnCancellation {
+                    try {
+                        request.javaClass.getMethod("cancel").invoke(request)
+                    } catch (e: Exception) {}
+                }
             }
         }
     }
+
+    /**
+     * Shares plain text with the remote device via HTTP POST /api/dex/clipboard.
+     * Used for instant link and text dispatch.
+     */
+    suspend fun sendText(ip: String, port: Int, text: String, token: String? = null): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("https://$ip:$port/api/dex/clipboard") {
+                contentType(ContentType.Text.Plain)
+                if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(text)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null, targetGoogleSub: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
@@ -271,6 +305,7 @@ data class UploadState(
     val error: String? = null,
     val protocol: String = "",
     val speedBps: Long = 0L,
+    val etaSeconds: Long? = null,
     val targetFingerprint: String? = null,
     val peerName: String? = null,
     val peerPicture: String? = null

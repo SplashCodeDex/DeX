@@ -40,16 +40,17 @@ object TransferHistory : KoinComponent {
     private val dataStore: DataStore<Preferences> by inject()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutationMutex = Mutex()
+    private var isLoaded = false
 
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
 
     fun init() {
-        scope.launch { reloadIfEmpty() }
+        scope.launch { reload() }
     }
 
     fun refresh() {
-        scope.launch { reloadIfEmpty() }
+        scope.launch { reload() }
     }
 
     fun delete(id: String) {
@@ -92,15 +93,19 @@ object TransferHistory : KoinComponent {
         }
     }
 
-    private suspend fun reloadIfEmpty() {
+    private suspend fun reload() {
         mutationMutex.withLock {
-            if (_items.value.isEmpty()) {
-                _items.value = read()
-            }
+            val loaded = read()
+            _items.value = loaded
+            isLoaded = true
         }
     }
 
     private suspend fun mutateLocked(transform: (List<TransferRecord>) -> List<TransferRecord>) {
+        if (!isLoaded) {
+            _items.value = read()
+            isLoaded = true
+        }
         val updated = transform(_items.value)
         _items.value = updated
         write(updated)

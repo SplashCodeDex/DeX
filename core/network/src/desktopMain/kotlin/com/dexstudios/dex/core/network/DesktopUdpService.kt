@@ -54,26 +54,39 @@ class DesktopUdpService : IDiscoveryService {
         startBroadcasting()
     }
 
-    private fun CoroutineScope.startListening(port: Int, socketIndex: Int) {
-        runCatching {
-            val socket = MulticastSocket(port).apply {
-                reuseAddress = true
-                val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), port)
-                NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
-                    runCatching {
-                        if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
-                            joinGroup(groupAddr, ni)
+    private suspend fun CoroutineScope.startListening(port: Int, socketIndex: Int) {
+        while (isActive) {
+            var socket: MulticastSocket? = null
+            try {
+                socket = MulticastSocket(port).apply {
+                    reuseAddress = true
+                    val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), port)
+                    NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
+                        runCatching {
+                            if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
+                                joinGroup(groupAddr, ni)
+                            }
                         }
                     }
                 }
-            }
-            if (socketIndex == 0) httpsSocket = socket else legacySocket = socket
+                if (socketIndex == 0) httpsSocket = socket else legacySocket = socket
 
-            val buffer = ByteArray(2048)
-            while (isActive) {
-                val packet = DatagramPacket(buffer, buffer.size)
-                socket.receive(packet)
-                handleIncomingPacket(packet)
+                val buffer = ByteArray(2048)
+                while (isActive) {
+                    try {
+                        val packet = DatagramPacket(buffer, buffer.size)
+                        socket.receive(packet)
+                        handleIncomingPacket(packet)
+                    } catch (e: Exception) {
+                        if (!isActive) break
+                        if (socket.isClosed) break
+                    }
+                }
+            } catch (e: Exception) {
+                if (!isActive) break
+                kotlinx.coroutines.delay(1000)
+            } finally {
+                runCatching { socket?.close() }
             }
         }
     }
@@ -179,9 +192,13 @@ class DesktopUdpService : IDiscoveryService {
                         val mcastPacketLegacy = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), 28424)
 
                         // 1. Send Multicast
+                        val groupAddrHttps = InetSocketAddress(InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+                        val groupAddrLegacy = InetSocketAddress(InetAddress.getByName("224.0.0.167"), 28424)
                         NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                             runCatching {
                                 if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
+                                    runCatching { httpsSocket?.joinGroup(groupAddrHttps, ni) }
+                                    runCatching { legacySocket?.joinGroup(groupAddrLegacy, ni) }
                                     httpsSocket?.networkInterface = ni
                                     httpsSocket?.send(mcastPacketHttps)
                                     legacySocket?.networkInterface = ni

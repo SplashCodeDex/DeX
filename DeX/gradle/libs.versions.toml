@@ -36,11 +36,15 @@ datastore = "1.2.1"
 timber = "5.0.1"
 okhttp = "5.5.0"
 cronet = "500.0.1"
+playServicesCronet = "18.1.1"
+cronetApi = "119.6045.31"
 coil = "3.5.0"
 playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
+lottie = "6.6.2"
 
 [libraries]
+lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
 compose-native-tray = { module = "dev.nucleusframework:composenativetray", version.ref = "composeNativeTray" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version = "16.1.0" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
@@ -100,6 +104,8 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 cronet-embedded = { module = "org.chromium.net:cronet-embedded", version.ref = "cronet" }
+play-services-cronet = { module = "com.google.android.gms:play-services-cronet", version.ref = "playServicesCronet" }
+cronet-api = { module = "org.chromium.net:cronet-api", version.ref = "cronetApi" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }

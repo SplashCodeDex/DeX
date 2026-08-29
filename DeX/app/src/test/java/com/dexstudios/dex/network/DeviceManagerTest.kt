@@ -2,6 +2,7 @@ package com.dexstudios.dex.network
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.dexstudios.dex.ShortcutHelper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -27,8 +28,12 @@ class DeviceManagerTest {
         every { TokenCodec.encode(any()) } returns """{"fp":"token"}"""
         every { TokenCodec.decode(any()) } returns emptyMap()
 
+        // removePairedFingerprint funnels into ShortcutHelper's share-sheet teardown
+        mockkObject(ShortcutHelper)
+
         AuthState.pairedFingerprints.clear()
         AuthState.pairedTokens.clear()
+        AuthState.pairedAliases.clear()
 
         every { mockContext.getSharedPreferences("dex_device_prefs", Context.MODE_PRIVATE) } returns mockPrefs
         every { mockPrefs.edit() } returns mockEditor
@@ -41,8 +46,10 @@ class DeviceManagerTest {
     @After
     fun tearDown() {
         unmockkObject(TokenCodec)
+        unmockkObject(ShortcutHelper)
         AuthState.pairedFingerprints.clear()
         AuthState.pairedTokens.clear()
+        AuthState.pairedAliases.clear()
     }
 
     @Test
@@ -102,5 +109,42 @@ class DeviceManagerTest {
         assertEquals(2, AuthState.pairedFingerprints.size)
         assertTrue(AuthState.pairedFingerprints.contains("fp_stored_1"))
         assertTrue(AuthState.pairedFingerprints.contains("fp_stored_2"))
+    }
+
+    @Test
+    fun `savePairedAlias stores alias in AuthState and persists to SharedPreferences`() {
+        DeviceManager.savePairedAlias("fp_alpha_123", "Work PC")
+
+        assertEquals("Work PC", DeviceManager.pairedAliases["fp_alpha_123"])
+
+        val capturedAliases = slot<String>()
+        verify { mockEditor.putString("paired_aliases", capture(capturedAliases)) }
+    }
+
+    @Test
+    fun `savePairedAlias is idempotent for unchanged alias`() {
+        DeviceManager.savePairedAlias("fp_alpha_123", "Work PC")
+        DeviceManager.savePairedAlias("fp_alpha_123", "Work PC")
+
+        // Second write with an identical alias must not re-persist
+        verify(exactly = 1) { mockEditor.putString("paired_aliases", any()) }
+    }
+
+    @Test
+    fun `savePairedAlias ignores blank alias`() {
+        DeviceManager.savePairedAlias("fp_alpha_123", "  ")
+
+        assertFalse(DeviceManager.pairedAliases.containsKey("fp_alpha_123"))
+        verify(exactly = 0) { mockEditor.putString("paired_aliases", any()) }
+    }
+
+    @Test
+    fun `removePairedFingerprint purges the Direct Share shortcut`() {
+        val fingerprint = "fp_target_456"
+        AuthState.pairedFingerprints.add(fingerprint)
+
+        DeviceManager.removePairedFingerprint(fingerprint)
+
+        verify { ShortcutHelper.removeShortcut(mockContext, fingerprint) }
     }
 }

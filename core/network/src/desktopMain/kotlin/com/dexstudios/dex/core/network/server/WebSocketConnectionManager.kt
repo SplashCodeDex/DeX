@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
@@ -56,6 +57,14 @@ object WebSocketConnectionManager {
      * (publicly broadcast) fingerprint could hijack its prompts and pull tokens.
      */
     fun register(fingerprint: String, session: WebSocketSession, trusted: Boolean, identityToken: String? = null): Boolean {
+        // Evict dead or cancelled prior sessions so reconnecting peers aren't locked out
+        val existing = sessions[fingerprint]
+        if (existing != null) {
+            val isInactive = runCatching { !existing.session.isActive }.getOrDefault(false)
+            if (isInactive) {
+                sessions.remove(fingerprint)
+            }
+        }
         val added = sessions.putIfAbsent(fingerprint, SessionHolder(session, trusted, identityToken)) == null
         if (added) {
             syncFlows()

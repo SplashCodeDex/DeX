@@ -22,5 +22,6 @@ object AuthState {
     val pairedFingerprints = androidx.compose.runtime.mutableStateSetOf<String>()
     val pairedTokens = mutableMapOf<String, String>()
     val pairedTimes = mutableMapOf<String, Long>()
+    val pairedAliases = mutableMapOf<String, String>()
     val incomingPairRequest = kotlinx.coroutines.flow.MutableStateFlow<PairRequestInfo?>(null)
 }

@@ -48,6 +48,7 @@ class FileShareManager(
     private val context: Context,
 ) : KoinComponent {
     private val wsService: WebSocketClientService by inject()
+    private val discoveryEngine: DiscoveryEngine by inject()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -227,6 +228,8 @@ class FileShareManager(
         // Hold a foreground service so Android doesn't kill the process mid-pull.
         PullForegroundService.start(context, requestId, fileMeta.size)
 
+        val pcAlias = wsService.connectedFingerprint?.let { fp -> discoveryEngine.devices.value[fp]?.info?.alias } ?: "PC"
+
         coroutineScope {
             val jobs = fileMeta.map { (key, m) ->
                 launch(Dispatchers.IO) {
@@ -239,7 +242,7 @@ class FileShareManager(
                         if (fileToken == null || fileToken == "[SKIP]") {
                             saved.add(m.name)
                             doneCount.incrementAndGet()
-                            TransferHistory.log(context, m.name, m.size, "sent", m.uri)
+                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
                             reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
                             return@launch
                         }
@@ -271,9 +274,10 @@ class FileShareManager(
                         doneCount.incrementAndGet()
                         if (ok) {
                             saved.add(m.name)
-                            TransferHistory.log(context, m.name, m.size, "sent", m.uri)
+                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
                         } else {
                             failed[m.name] = reason
+                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias, status = "failed")
                         }
                         reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
                     } finally {

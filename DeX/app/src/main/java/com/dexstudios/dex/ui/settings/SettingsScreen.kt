@@ -29,7 +29,6 @@ import com.dexstudios.dex.BuildConfig
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.ClipboardSyncTileService
 import com.dexstudios.dex.network.DeviceConfig
-import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -73,8 +72,8 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = 104.dp, // Below FloatingTopAppBar
-                    bottom = 88.dp - navBarInset
+                    top = 24.dp,
+                    bottom = 88.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
@@ -242,12 +241,6 @@ fun SettingsScreen(
                 }
             }
         }
-
-        FloatingTopAppBar(
-            modifier = Modifier.align(Alignment.TopCenter),
-            backdrop = contentBackdrop,
-            showSearch = false
-        )
     }
 
     if (showAliasDialog) {

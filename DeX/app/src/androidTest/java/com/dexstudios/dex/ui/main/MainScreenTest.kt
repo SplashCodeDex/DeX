@@ -26,7 +26,7 @@ class MainScreenTest {
   }
 
   @Test
-  fun myDevicesHeader_exists() {
-    composeTestRule.onNodeWithText("My Devices").assertExists()
+  fun scanToAddCard_exists() {
+    composeTestRule.onNodeWithText("Scan to add Device").assertExists()
   }
 }

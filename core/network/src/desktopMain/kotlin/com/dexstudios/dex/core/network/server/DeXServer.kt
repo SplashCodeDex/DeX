@@ -13,6 +13,7 @@ import com.dexstudios.dex.core.network.server.routes.hostedDownloadRoutes
 import com.dexstudios.dex.core.network.server.routes.oauthCallbackRoutes
 import com.dexstudios.dex.core.network.server.routes.settingsRoutes
 import com.dexstudios.dex.core.network.server.routes.shareRoutes
+import com.dexstudios.dex.core.network.server.routes.wallpaperRoutes
 import com.dexstudios.dex.core.network.server.routes.webSocketRoutes
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
@@ -106,6 +107,7 @@ object DeXServer {
                 )
                 fileExplorerRoutes()
                 clipboardRoutes()
+                wallpaperRoutes()
             }
         }
 
@@ -149,6 +151,10 @@ object DeXServer {
             }
         }).start(wait = false)
 
+        runCatching {
+            getKoin().getOrNull<com.dexstudios.dex.core.network.services.DesktopWallpaperWatcherService>()?.start()
+        }
+
         Logger.i(
             "DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), HTTP 48426 " +
                 "(pull fallback, downloads only), HTTP 48425 (loopback OAuth callback)",
@@ -160,6 +166,10 @@ object DeXServer {
      * `stop(1000, 2000)` per server blocked Quit for up to ~9s with live connections.
      */
     fun stop(gracePeriodMillis: Long = 500L, timeoutMillis: Long = 1_500L) {
+        runCatching {
+            getKoin().getOrNull<com.dexstudios.dex.core.network.services.DesktopWallpaperWatcherService>()?.stop()
+        }
+
         val servers = listOfNotNull(server1, server2, server3, oauthServer)
         server1 = null
         server2 = null

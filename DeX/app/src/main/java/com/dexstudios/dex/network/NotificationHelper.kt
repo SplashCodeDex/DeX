@@ -14,26 +14,46 @@ class NotificationHelper(private val context: Context) {
 
     companion object {
         const val ACTION_STOP_MIRRORING = "com.dexstudios.dex.STOP_MIRRORING"
+        const val ACTION_CANCEL_PENDING_SHARE = "com.dexstudios.dex.CANCEL_PENDING_SHARE"
     }
 
-    private val channelId = "dex_service_channel"
+    private val serviceChannelId = "dex_service_channel"
+    private val transfersChannelId = "dex_transfers_channel"
+    private val pendingShareChannelId = "dex_share_pending_channel"
 
     init {
-        createChannel()
+        createChannels()
     }
 
-    private fun createChannel() {
-        val channel = NotificationChannel(
-            channelId,
+    private fun createChannels() {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val serviceChannel = NotificationChannel(
+            serviceChannelId,
             context.getString(R.string.notif_channel_bg),
             NotificationManager.IMPORTANCE_LOW
         )
-        val manager = context.getSystemService(NotificationManager::class.java)
-        manager?.createNotificationChannel(channel)
+        val transfersChannel = NotificationChannel(
+            transfersChannelId,
+            "DeX Transfers & Pairing",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifications for incoming transfers, pairing requests, and transfer completion"
+            enableVibration(true)
+            setShowBadge(true)
+        }
+        manager.createNotificationChannel(serviceChannel)
+        manager.createNotificationChannel(transfersChannel)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                pendingShareChannelId,
+                context.getString(R.string.notif_channel_pending_share),
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+        )
     }
 
     fun getForegroundServiceNotification(): Notification {
-        val builder = NotificationCompat.Builder(context, channelId)
+        val builder = NotificationCompat.Builder(context, serviceChannelId)
             .setContentTitle(context.getString(R.string.notif_bg_title))
             .setContentText(context.getString(R.string.notif_bg_desc))
             .setSmallIcon(R.drawable.ic_stat_dex)
@@ -71,7 +91,7 @@ class NotificationHelper(private val context: Context) {
             context, notificationId + 1, rejectIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val notification = NotificationCompat.Builder(context, transfersChannelId)
             .setContentTitle(context.getString(R.string.notif_incoming_title))
             .setContentText(context.resources.getQuantityString(R.plurals.notif_incoming_desc, fileCount, fileCount))
             .setSmallIcon(R.drawable.ic_stat_dex)
@@ -101,7 +121,7 @@ class NotificationHelper(private val context: Context) {
             setTextViewText(R.id.notification_device_name, alias)
         }
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val notification = NotificationCompat.Builder(context, transfersChannelId)
             .setSmallIcon(R.drawable.ic_stat_dex)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
@@ -130,11 +150,11 @@ class NotificationHelper(private val context: Context) {
             context, fileName.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val notification = NotificationCompat.Builder(context, transfersChannelId)
             .setContentTitle("Transfer Complete")
             .setContentText("Successfully received $fileName")
             .setSmallIcon(R.drawable.ic_stat_dex)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(openPendingIntent)
             .addAction(android.R.drawable.ic_menu_view, "Open", openPendingIntent)
             .setAutoCancel(true)
@@ -143,4 +163,50 @@ class NotificationHelper(private val context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(fileName.hashCode(), notification)
     }
+
+    /**
+     * Ongoing "waiting for the PC" notice for a queued Direct Share. Silent-ish by
+     * channel (IMPORTANCE_DEFAULT — no vibration); the user can cancel the wait
+     * from the shade.
+     */
+    fun showPendingShareNotification(alias: String, fingerprint: String) {
+        val cancelIntent = Intent(context, FileTransferReceiver::class.java).apply {
+            action = ACTION_CANCEL_PENDING_SHARE
+            putExtra("FINGERPRINT", fingerprint)
+        }
+        val cancelPendingIntent = PendingIntent.getBroadcast(
+            context, fingerprint.hashCode(), cancelIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, pendingShareChannelId)
+            .setContentTitle(context.getString(R.string.notif_pending_share_title, alias))
+            .setContentText(context.getString(R.string.notif_pending_share_desc, alias))
+            .setSmallIcon(R.drawable.ic_stat_dex)
+            .setOngoing(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, context.getString(R.string.cancel), cancelPendingIntent)
+            .build()
+
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(pendingShareNotificationId(fingerprint), notification)
+    }
+
+    fun cancelPendingShareNotification(fingerprint: String) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel(pendingShareNotificationId(fingerprint))
+    }
+
+    /** Terminal notice when a queued share expired without the PC ever appearing. */
+    fun showPendingShareSavedNotification(savedCount: Int, totalCount: Int) {
+        val notification = NotificationCompat.Builder(context, pendingShareChannelId)
+            .setContentTitle(context.getString(R.string.notif_pending_share_saved_title))
+            .setContentText(context.getString(R.string.notif_pending_share_saved_desc, savedCount, totalCount))
+            .setSmallIcon(R.drawable.ic_stat_dex)
+            .setAutoCancel(true)
+            .build()
+
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify("pending_share_saved".hashCode(), notification)
+    }
+
+    private fun pendingShareNotificationId(fingerprint: String): Int = "pending_share_$fingerprint".hashCode()
 }

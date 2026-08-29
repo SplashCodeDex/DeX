@@ -18,6 +18,8 @@ import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.components.overlay.ToastVariant
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.network.ClientEngine
+import com.dexstudios.dex.core.network.TransferSpeedCalculator
+import com.dexstudios.dex.core.network.TransferStateMonitor
 import com.dexstudios.dex.core.network.services.FileExplorerService
 import com.dexstudios.dex.window.components.formatFileSize
 import com.dexstudios.dex.window.components.getDeXDownloadDirectory
@@ -54,21 +56,27 @@ class TransferOverlayBridge(
 ) {
     private var uploadCollectorJob: Job? = null
     private var pullCollectorJob: Job? = null
+    private var incomingCollectorJob: Job? = null
 
     private var activeUploadBannerId: String? = null
     private var activePullBannerId: String? = null
+    private var activeIncomingBannerId: String? = null
+    private val shownIncomingCompletionSessions = mutableSetOf<String>()
 
     fun start() {
         Logger.i("TransferOverlayBridge: Starting live transfer stream collectors")
         startUploadCollector()
         startPullCollector()
+        startIncomingCollector()
     }
 
     fun stop() {
         uploadCollectorJob?.cancel()
         pullCollectorJob?.cancel()
+        incomingCollectorJob?.cancel()
         uploadCollectorJob = null
         pullCollectorJob = null
+        incomingCollectorJob = null
     }
 
     private fun startUploadCollector() {
@@ -77,11 +85,18 @@ class TransferOverlayBridge(
             clientEngine.uploadState.collectLatest { state ->
                 if (state.isUploading) {
                     val fileName = state.fileName.ifBlank { "Files" }.truncateMiddle(32)
-                    val speedText = if (state.speedBps > 0) {
+                    val speedStr = TransferSpeedCalculator.formatSpeed(state.speedBps)
+                    val etaStr = TransferSpeedCalculator.formatEta(state.etaSeconds)
+                    val metricsStr = listOfNotNull(
+                        speedStr.takeIf { it.isNotBlank() },
+                        etaStr.takeIf { it.isNotBlank() },
+                    ).joinToString(" • ")
+
+                    val speedText = if (metricsStr.isNotBlank()) {
                         if (state.totalFiles > 1) {
-                            "${state.currentFileIndex}/${state.totalFiles} files • ${formatFileSize(state.speedBps)}/s"
+                            "${state.currentFileIndex}/${state.totalFiles} files • $metricsStr"
                         } else {
-                            "${formatFileSize(state.speedBps)}/s"
+                            metricsStr
                         }
                     } else {
                         if (state.totalFiles > 1) "${state.currentFileIndex}/${state.totalFiles} files" else null
@@ -158,7 +173,20 @@ class TransferOverlayBridge(
             fileExplorerService.pullProgress.collectLatest { state ->
                 if (state.isPulling) {
                     val fileName = state.activeFileName.ifBlank { "File" }.truncateMiddle(32)
-                    val subtitleText = if (state.totalBytes > 0) {
+                    val speedStr = TransferSpeedCalculator.formatSpeed(state.speedBps)
+                    val etaStr = TransferSpeedCalculator.formatEta(state.etaSeconds)
+                    val metricsStr = listOfNotNull(
+                        speedStr.takeIf { it.isNotBlank() },
+                        etaStr.takeIf { it.isNotBlank() },
+                    ).joinToString(" • ")
+
+                    val subtitleText = if (metricsStr.isNotBlank()) {
+                        if (state.totalFiles > 1) {
+                            "${state.completedFiles}/${state.totalFiles} files • $metricsStr"
+                        } else {
+                            metricsStr
+                        }
+                    } else if (state.totalBytes > 0) {
                         if (state.totalFiles > 1) {
                             "${state.completedFiles}/${state.totalFiles} files • ${formatFileSize(state.bytesTransferred)} / ${formatFileSize(state.totalBytes)}"
                         } else {
@@ -279,6 +307,102 @@ class TransferOverlayBridge(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private fun startIncomingCollector() {
+        incomingCollectorJob?.cancel()
+        incomingCollectorJob = scope.launch {
+            TransferStateMonitor.activeTransfers.collectLatest { transfers ->
+                val activeList = transfers.values.toList()
+                val runningSession = activeList.firstOrNull { !it.isComplete }
+                val completedSessions = activeList.filter { it.isComplete && it.sessionId !in shownIncomingCompletionSessions }
+
+                if (runningSession != null) {
+                    val alias = runningSession.senderAlias.ifBlank { "Device" }
+                    val progressPercent = if (runningSession.totalBytes > 0 && runningSession.bytesReceived > 0) {
+                        (runningSession.bytesReceived.toFloat() / runningSession.totalBytes.toFloat()).coerceIn(0f, 1f)
+                    } else if (runningSession.totalFiles > 0) {
+                        (runningSession.filesReceived.toFloat() / runningSession.totalFiles.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+
+                    val titleText = if (runningSession.currentFileName.isNotBlank()) {
+                        runningSession.currentFileName.truncateMiddle(32)
+                    } else {
+                        "Receiving from $alias"
+                    }
+
+                    val speedStr = TransferSpeedCalculator.formatSpeed(runningSession.speedBps)
+                    val etaStr = TransferSpeedCalculator.formatEta(runningSession.etaSeconds)
+                    val metricsStr = listOfNotNull(
+                        speedStr.takeIf { it.isNotBlank() },
+                        etaStr.takeIf { it.isNotBlank() },
+                    ).joinToString(" • ")
+
+                    val subtitle = if (metricsStr.isNotBlank()) {
+                        if (runningSession.totalFiles > 1) {
+                            "${runningSession.filesReceived}/${runningSession.totalFiles} files • $metricsStr"
+                        } else {
+                            metricsStr
+                        }
+                    } else if (runningSession.totalFiles > 1) {
+                        "${runningSession.filesReceived}/${runningSession.totalFiles} files"
+                    } else {
+                        null
+                    }
+
+                    val currentId = activeIncomingBannerId
+                    if (currentId == null) {
+                        activeIncomingBannerId = overlayManager.showBanner(
+                            title = titleText,
+                            subtitle = subtitle,
+                            badgeText = "Receiving",
+                            iconResource = DeXIcons.ArrowDownloadArrow,
+                            progress = progressPercent,
+                            autoDismissTimeoutMs = null,
+                        )
+                    } else {
+                        overlayManager.updateBanner(
+                            id = currentId,
+                            title = titleText,
+                            subtitle = subtitle,
+                            badgeText = "Receiving",
+                            progress = progressPercent,
+                        )
+                    }
+                } else {
+                    activeIncomingBannerId?.let { id ->
+                        overlayManager.dismiss(id)
+                        activeIncomingBannerId = null
+                    }
+                }
+
+                for (completed in completedSessions) {
+                    shownIncomingCompletionSessions.add(completed.sessionId)
+                    val downloadDir = getDeXDownloadDirectory()
+                    val count = completed.totalFiles
+                    val alias = completed.senderAlias.ifBlank { "Device" }
+
+                    overlayManager.showAlert(
+                        title = if (count <= 1) "Received File from $alias" else "Received $count Files from $alias",
+                        message = "Saved to Downloads/DeX",
+                        iconResource = DeXIcons.FileDownload,
+                        positiveButtonText = "Open Folder",
+                        negativeButtonText = "Dismiss",
+                        onPositiveAction = {
+                            if (File(downloadDir).exists()) {
+                                openFolderAndSelectNative(downloadDir)
+                            } else {
+                                overlayManager.showToast("Downloads folder not found", ToastVariant.Error)
+                            }
+                        },
+                        onNegativeAction = {},
+                        playSound = true,
+                    )
                 }
             }
         }

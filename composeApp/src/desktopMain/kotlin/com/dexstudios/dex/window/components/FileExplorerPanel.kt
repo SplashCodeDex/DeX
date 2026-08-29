@@ -133,6 +133,7 @@ fun FileExplorerPanel(
 
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+    val searchFocusRequester = remember { FocusRequester() }
     var lastClickTime by remember { mutableStateOf(0L) }
     var lastClickedItemId by remember { mutableStateOf<String?>(null) }
     var isCanvasContextMenuOpen by remember { mutableStateOf(false) }
@@ -177,7 +178,11 @@ fun FileExplorerPanel(
     LaunchedEffect(controller?.isExpanded, controller?.expandedPanel, quickLookItem) {
         if (controller?.isExpanded != true || quickLookItem != null) return@LaunchedEffect
         withFrameNanos { }
-        focusRequester.requestFocus()
+        if (controller.expandedPanel == com.dexstudios.dex.window.ExpandedPanel.FileExplorer) {
+            runCatching { searchFocusRequester.requestFocus() }
+        } else {
+            runCatching { focusRequester.requestFocus() }
+        }
     }
 
     LaunchedEffect(displayedFiles) {
@@ -400,7 +405,22 @@ fun FileExplorerPanel(
                             singleLine = true,
                             modifier = Modifier
                                 .weight(1f)
-                                .onFocusChanged { isSearchFocused = it.isFocused },
+                                .focusRequester(searchFocusRequester)
+                                .onFocusChanged { isSearchFocused = it.isFocused }
+                                .onPreviewKeyEvent { keyEvent ->
+                                    if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Escape) {
+                                        if (searchQuery.isNotEmpty()) {
+                                            viewModel.updateSearchQuery("")
+                                            true
+                                        } else {
+                                            focusManager.clearFocus()
+                                            focusRequester.requestFocus()
+                                            true
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                },
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) {
                                     val hint =

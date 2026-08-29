@@ -2,6 +2,7 @@ package com.dexstudios.dex.window
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -107,7 +108,8 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
 
             is com.dexstudios.dex.auth.PairingState.Success -> {
                 kotlinx.coroutines.delay(1200)
-                controller.collapsePanel()
+                controller.isPairingActive = false
+                controller.expandPanel(ExpandedPanel.DeviceStatus)
                 pairingEngine.reset()
             }
 
@@ -290,118 +292,147 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                         label = "historyBlurRadius",
                     )
 
-                    // Left Drawer Panel (Animated Visibility with spring slide + smooth fade)
+                    // Left Drawer Panel (Clean stationary fade in sync with card spring expansion)
                     AnimatedVisibility(
                         visible = controller.isExpanded && !controller.expandedPanel!!.isContractedHeight,
-                        enter = slideInHorizontally(
-                            initialOffsetX = { it },
-                            animationSpec = DockCardPhysics.ElasticIntOffsetSpec,
-                        ) + fadeIn(animationSpec = DockCardAnimations.SmoothEase),
-                        exit = slideOutHorizontally(
-                            targetOffsetX = { it },
-                            animationSpec = DockCardPhysics.ElasticIntOffsetSpec,
-                        ) + fadeOut(animationSpec = DockCardAnimations.SmoothEase),
+                        enter = fadeIn(animationSpec = tween(280, easing = FastOutSlowInEasing)),
+                        exit = fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)),
                         modifier = Modifier.weight(1f).fillMaxSize(),
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(24.dp)),
+                            contentAlignment = Alignment.CenterEnd,
                         ) {
-                            when (controller.expandedPanel) {
-                                ExpandedPanel.FileExplorer -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .then(
-                                                if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier,
-                                            ),
-                                    ) {
-                                        FileExplorerPanel(
-                                            controller = controller,
-                                            onClose = { controller.collapsePanel() },
-                                        )
-                                    }
-
-                                    // Frosted Glass Blur Dim & "Drop on a device to send" center badge
-                                    androidx.compose.animation.AnimatedVisibility(
-                                        visible = isBlurActive,
-                                        enter = fadeIn(tween(250)),
-                                        exit = fadeOut(tween(200)),
-                                        modifier = Modifier.fillMaxSize(),
-                                    ) {
+                            AnimatedContent(
+                                targetState = controller.expandedPanel,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing)) togetherWith
+                                        fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
+                                },
+                                contentAlignment = Alignment.CenterEnd,
+                                modifier = Modifier.fillMaxSize(),
+                                label = "LeftDrawerPanelContent",
+                            ) { panel ->
+                                when (panel) {
+                                    ExpandedPanel.FileExplorer -> {
                                         Box(
                                             modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(24.dp))
-                                                .background(
-                                                    if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
-                                                        Color.White.copy(alpha = 0.45f)
-                                                    } else {
-                                                        Color.Black.copy(alpha = 0.45f)
-                                                    },
-                                                )
-                                                .verticalFadingEdge(topFadeHeight = 24.dp, bottomFadeHeight = 24.dp),
-                                            contentAlignment = Alignment.Center,
+                                                .width((DockCardMetrics.FILE_EXPLORER_WIDTH_EXPANDED - DockCardMetrics.CARD_WIDTH_CONTRACTED).dp)
+                                                .fillMaxHeight(),
+                                            contentAlignment = Alignment.CenterEnd,
                                         ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Center,
+                                            Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(18.dp))
-                                                    .frostedSurface(
-                                                        shape = RoundedCornerShape(18.dp),
-                                                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                                                        opacity = 0.95f,
-                                                    )
-                                                    .border(
-                                                        width = 1.dp,
-                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                                        shape = RoundedCornerShape(18.dp),
-                                                    )
-                                                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                                                    .fillMaxSize()
+                                                    .then(
+                                                        if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier,
+                                                    ),
                                             ) {
-                                                Icon(
-                                                    painter = painterResource(Res.drawable.ic_fluent_smartphone),
-                                                    contentDescription = "Drop on device",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(36.dp),
+                                                FileExplorerPanel(
+                                                    controller = controller,
+                                                    onClose = { controller.collapsePanel() },
                                                 )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                    text = "Drop on a device to send",
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                )
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = "Drag files to the device column on the right",
-                                                    fontSize = 12.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
+                                            }
+
+                                            // Frosted Glass Blur Dim & "Drop on a device to send" center badge
+                                            androidx.compose.animation.AnimatedVisibility(
+                                                visible = isBlurActive,
+                                                enter = fadeIn(tween(250)),
+                                                exit = fadeOut(tween(200)),
+                                                modifier = Modifier.fillMaxSize(),
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .background(
+                                                            if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+                                                                Color.White.copy(alpha = 0.45f)
+                                                            } else {
+                                                                Color.Black.copy(alpha = 0.45f)
+                                                            },
+                                                        )
+                                                        .verticalFadingEdge(topFadeHeight = 24.dp, bottomFadeHeight = 24.dp),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Column(
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center,
+                                                        modifier = Modifier
+                                                            .clip(RoundedCornerShape(18.dp))
+                                                            .frostedSurface(
+                                                                shape = RoundedCornerShape(18.dp),
+                                                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                                opacity = 0.95f,
+                                                            )
+                                                            .border(
+                                                                width = 1.dp,
+                                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                                shape = RoundedCornerShape(18.dp),
+                                                            )
+                                                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.ic_fluent_smartphone),
+                                                            contentDescription = "Drop on device",
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(36.dp),
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                            text = "Drop on a device to send",
+                                                            fontSize = 15.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                        )
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text(
+                                                            text = "Drag files to the device column on the right",
+                                                            fontSize = 12.sp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
+
+                                    ExpandedPanel.Settings -> {
+                                        Box(
+                                            modifier = Modifier
+                                                .width((DockCardMetrics.SETTINGS_WIDTH_EXPANDED - DockCardMetrics.CARD_WIDTH_CONTRACTED).dp)
+                                                .fillMaxHeight(),
+                                            contentAlignment = Alignment.CenterEnd,
+                                        ) {
+                                            SettingsPanel(
+                                                controller = controller,
+                                                onClose = { controller.collapsePanel() },
+                                            )
+                                        }
+                                    }
+
+                                    else -> {}
                                 }
-
-                                ExpandedPanel.Settings -> SettingsPanel(
-                                    controller = controller,
-                                    onClose = { controller.collapsePanel() },
-                                )
-
-                                else -> {}
                             }
                         }
                     }
 
                     // Right Column: Wrapper of the contracted card width to prevent layout jumps,
-                    // centering the main-menu content width
+                    // centering the main-menu content width.
+                    // Only sub-panels that replace the right column (Pairing, DeviceStatus) trigger the slide.
+                    // Expanding/contracting History or Settings keeps MainMenuColumn steady on the right.
+                    val rightColumnPanel = if (controller.expandedPanel?.isContractedHeight == true) {
+                        controller.expandedPanel
+                    } else {
+                        null
+                    }
+
                     AnimatedContent(
-                        targetState = controller.expandedPanel,
+                        targetState = rightColumnPanel,
                         transitionSpec = {
-                            val isEnteringSubPanel = targetState?.isContractedHeight == true
-                            if (isEnteringSubPanel) {
+                            if (targetState != null) {
                                 // Slide sub-panel in from right, MainMenuColumn out to left
                                 (
                                     slideInHorizontally(initialOffsetX = { DockCardMetrics.MAIN_MENU_WIDTH }, animationSpec = DockCardAnimations.PanelSlideOffsetSpec) +

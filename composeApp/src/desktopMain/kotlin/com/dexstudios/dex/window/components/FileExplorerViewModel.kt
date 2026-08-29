@@ -182,40 +182,38 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
         val hiddenIds = historySnap.hiddenIds
         val history = historySnap.historyItems
         val rawItems = if (m == ExplorerMode.History) {
-            val folder = File(path)
-            val diskFiles = if (folder.exists() && folder.isDirectory) {
-                folder.listFiles()?.map { f ->
-                    ExplorerFileItem(
-                        id = f.absolutePath,
-                        name = f.name,
-                        path = f.absolutePath,
-                        size = if (f.isDirectory) 0L else f.length(),
-                        isDirectory = f.isDirectory,
-                        timestamp = f.lastModified(),
-                        // Local files have no phone-side thumb producer; generate one
-                        // for images so History cards show real previews (cached).
-                        thumbBase64 = if (f.isDirectory) null else localFileThumbBase64(f.absolutePath, f.lastModified()),
-                    )
-                } ?: emptyList()
-            } else {
-                emptyList()
-            }
-
-            if (diskFiles.isEmpty() && history.isNotEmpty()) {
+            if (history.isNotEmpty()) {
                 history.map { record ->
+                    val file = record.uri?.let { File(it) }
+                    val isDir = file != null && file.exists() && file.isDirectory
                     ExplorerFileItem(
                         id = record.id,
                         name = record.name,
                         path = record.uri ?: "",
                         size = record.size,
-                        isDirectory = false,
+                        isDirectory = isDir,
                         timestamp = record.timestamp,
                         uri = record.uri,
                         thumbBase64 = localFileThumbBase64(record.uri, record.timestamp),
                     )
                 }
             } else {
-                diskFiles
+                val folder = File(path)
+                if (folder.exists() && folder.isDirectory) {
+                    folder.listFiles()?.map { f ->
+                        ExplorerFileItem(
+                            id = f.absolutePath,
+                            name = f.name,
+                            path = f.absolutePath,
+                            size = if (f.isDirectory) 0L else f.length(),
+                            isDirectory = f.isDirectory,
+                            timestamp = f.lastModified(),
+                            thumbBase64 = if (f.isDirectory) null else localFileThumbBase64(f.absolutePath, f.lastModified()),
+                        )
+                    } ?: emptyList()
+                } else {
+                    emptyList()
+                }
             }
         } else {
             if (saf.breadcrumb.isEmpty()) {
@@ -517,6 +515,7 @@ class FileExplorerViewModel(private val clientEngine: ClientEngine, private val 
     fun refreshHistory() {
         _hiddenHistoryIds.value = emptySet()
         _isHistoryLoading.value = true
+        TransferHistory.refresh()
         _historyReloadTrigger.value = System.currentTimeMillis()
     }
 }

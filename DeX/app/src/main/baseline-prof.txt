@@ -1,0 +1,43 @@
+# Baseline Profile for DeX Android (AOT Optimization)
+# Core App Entry & Lifecycle
+HSPLcom/dexstudios/dex/DeXApplication;->onCreate()V
+HSPLcom/dexstudios/dex/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/dexstudios/dex/MainActivity;->onResume()V
+HSPLcom/dexstudios/dex/MainActivity;->onPause()V
+
+# Compose Navigation & High-Level Architecture
+HSPLcom/dexstudios/dex/NavigationKt;->MainNavigation(Landroidx/compose/material3/windowsizeclass/WindowSizeClass;Landroidx/compose/runtime/Composer;I)V
+HSPLcom/dexstudios/dex/NavigationKt;->MainNavigation(Landroidx/compose/material3/windowsizeclass/WindowSizeClass;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/components/FloatingTopAppBarKt;->FloatingTopAppBar(Landroidx/compose/ui/Modifier;Lcom/kyant/backdrop/Backdrop;ZLandroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/components/FloatingPillNavBarKt;->FloatingPillNavBar(Ljava/util/List;Lcom/kyant/backdrop/Backdrop;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+
+# Main & Discovery Screens
+HSPLcom/dexstudios/dex/ui/main/MainScreenKt;->MainScreen(Landroidx/compose/ui/Modifier;Landroidx/compose/foundation/lazy/LazyListState;Landroidx/compose/material3/windowsizeclass/WindowSizeClass;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/main/components/MainScreenCompactKt;->MainScreenCompact(Landroidx/compose/foundation/lazy/LazyListState;Ljava/util/List;Ljava/util/List;Ljava/lang/String;ZLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;FLandroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/main/components/MainScreenGridKt;->MainScreenGrid(Ljava/util/List;Ljava/util/List;Ljava/lang/String;ZLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;FLandroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/components/DeviceListItemKt;->DeviceListItem(Lcom/dexstudios/dex/network/DiscoveredDevice;Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Lkotlin/jvm/functions/Function0;ZLjava/lang/Object;Lkotlin/jvm/functions/Function0;ZLkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ZLandroidx/compose/animation/SharedTransitionScope;Landroidx/compose/animation/AnimatedVisibilityScope;Landroidx/compose/runtime/Composer;III)V
+
+# Liquid Glass & Backdrops
+HSPLcom/dexstudios/dex/ui/components/glass/LiquidGlassPanelKt;->LiquidGlassPanel(Landroidx/compose/ui/Modifier;Lcom/kyant/backdrop/Backdrop;Landroidx/compose/ui/graphics/Shape;Lcom/dexstudios/dex/ui/components/glass/LiquidGlassConfig;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/components/glass/LiquidGlassIconButtonKt;->LiquidGlassIconButton(Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Lcom/kyant/backdrop/Backdrop;FFLandroidx/compose/ui/graphics/Shape;Lcom/dexstudios/dex/ui/components/glass/LiquidGlassConfig;ZLkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/components/glass/ModifierUtilsKt;->shinyGlare(Landroidx/compose/ui/Modifier;Landroidx/compose/ui/graphics/Shape;FFFF)Landroidx/compose/ui/Modifier;
+
+# History & Settings
+HSPLcom/dexstudios/dex/ui/history/HistoryScreenKt;->HistoryScreen(Landroidx/compose/ui/Modifier;Landroidx/compose/foundation/lazy/LazyListState;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/settings/SettingsScreenKt;->SettingsScreen(Landroidx/compose/ui/Modifier;Lcom/dexstudios/dex/network/DeviceConfig;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/settings/SettingsComponentsKt;->SettingsGroup(Ljava/lang/String;Landroidx/compose/ui/Modifier;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/settings/SettingsComponentsKt;->SettingsClickableRow(Ljava/lang/String;Landroidx/compose/ui/Modifier;Ljava/lang/String;Landroidx/compose/ui/graphics/vector/ImageVector;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/dexstudios/dex/ui/settings/SettingsComponentsKt;->SettingsSwitchRow(Ljava/lang/String;ZLkotlin/jvm/functions/Function1;Landroidx/compose/ui/Modifier;Ljava/lang/String;Landroidx/compose/ui/graphics/vector/ImageVector;Landroidx/compose/runtime/Composer;II)V
+
+# Network & Service Daemons
+HSPLcom/dexstudios/dex/network/DiscoveryEngine;-><init>(Landroid/content/Context;Lcom/dexstudios/dex/network/DeviceConfig;)V
+HSPLcom/dexstudios/dex/network/DiscoveryEngine;->start()V
+HSPLcom/dexstudios/dex/network/DiscoveryEngine;->setConnected(Z)V
+HSPLcom/dexstudios/dex/network/UdpMulticastManager;->startMulticast()V
+HSPLcom/dexstudios/dex/network/UdpMulticastManager;->setConnected(Z)V
+HSPLcom/dexstudios/dex/network/WebSocketClientService;->onStartCommand(Landroid/content/Intent;II)I
+HSPLcom/dexstudios/dex/network/QuicClient;-><init>(Landroid/content/Context;)V
+HSPLcom/dexstudios/dex/network/QuicClient;->available()Z
+HSPLcom/dexstudios/dex/network/DeviceManager;-><clinit>()V
+HSPLcom/dexstudios/dex/network/TransferHistory;-><clinit>()V
+HSPLcom/dexstudios/dex/network/AuthState;-><clinit>()V

@@ -15,6 +15,16 @@
     <!-- Share Target -->
     <string name="share_no_files">No files to share</string>
     <string name="share_pc_offline">PC offline. Saved to Sandbox instead.</string>
+    <string name="share_direct_send_to">Send to %1$s</string>
+    <string name="share_enable_overlay_title">Send over other apps</string>
+    <string name="share_enable_overlay_desc">Show the send panel floating over any app, like AirDrop</string>
+
+    <!-- Pending Share (send-when-online) -->
+    <string name="notif_channel_pending_share">Pending Shares</string>
+    <string name="notif_pending_share_title">Waiting for %1$s</string>
+    <string name="notif_pending_share_desc">Share will start automatically when %1$s comes online</string>
+    <string name="notif_pending_share_saved_title">PC never came online</string>
+    <string name="notif_pending_share_saved_desc">%1$d of %2$d file(s) saved to DeX Sandbox</string>
 
     <!-- Main Screen -->
     <string name="downloading">Downloading…</string>

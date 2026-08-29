@@ -1,6 +1,7 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import com.google.android.gms.net.CronetProviderInstaller
 import org.chromium.net.CronetEngine
 import org.chromium.net.CronetException
 import org.chromium.net.UploadDataProvider
@@ -45,9 +46,14 @@ class QuicClient(private val context: Context) : java.io.Closeable {
     @Volatile
     var lastUploadProtocol: String = ""
 
+    init {
+        executor.execute { init() }
+    }
+
     fun init() {
         if (engine != null) return
         try {
+            runCatching { CronetProviderInstaller.installProvider(context) }
             val builder = CronetEngine.Builder(context)
                 .enableQuic(true)
                 .enableHttp2(false)
@@ -59,6 +65,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
                 builder.addQuicHint(ip, PcMemory.quicPort(context), PcMemory.port(context))
             }
             engine = builder.build()
+            Timber.i("Cronet Play Services engine initialized successfully")
         } catch (t: Throwable) {
             Timber.e(t, "Cronet engine init failed; QUIC unavailable")
             engine = null
@@ -104,17 +111,16 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         }
 
         val provider = object : UploadDataProvider() {
-            private val chunk = ByteArray(65536)
+            private val inChannel = java.nio.channels.Channels.newChannel(stream)
             override fun getLength(): Long = fileSize
 
             override fun read(sink: UploadDataSink, buffer: ByteBuffer) {
-                val toRead = minOf(buffer.remaining().toLong(), fileSize - sentBytes, chunk.size.toLong()).toInt()
-                if (toRead <= 0) {
+                if (buffer.remaining() <= 0 || sentBytes >= fileSize) {
                     sink.onReadSucceeded(false)
                     return
                 }
                 val read = try {
-                    stream.read(chunk, 0, toRead)
+                    inChannel.read(buffer)
                 } catch (e: Exception) {
                     sink.onReadError(e)
                     return
@@ -123,10 +129,9 @@ class QuicClient(private val context: Context) : java.io.Closeable {
                     sink.onReadSucceeded(false)
                     return
                 }
-                buffer.put(chunk, 0, read)
                 sentBytes += read
                 onProgress(sentBytes)
-                sink.onReadSucceeded(sentBytes >= fileSize || read == chunk.size)
+                sink.onReadSucceeded(sentBytes >= fileSize)
             }
 
             override fun rewind(sink: UploadDataSink) {
@@ -141,10 +146,11 @@ class QuicClient(private val context: Context) : java.io.Closeable {
             }
 
             override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
-                request.read(ByteBuffer.allocateDirect(16384))
+                request.read(ByteBuffer.allocateDirect(65536))
             }
 
             override fun onReadCompleted(request: UrlRequest, info: UrlResponseInfo, byteBuffer: ByteBuffer) {
+                byteBuffer.flip()
                 byteBuffer.clear()
                 request.read(byteBuffer)
             }
@@ -201,7 +207,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
 
         var receivedBytes = 0L
         var reported = false
-        val buffer = ByteBuffer.allocateDirect(16384)
+        val buffer = ByteBuffer.allocateDirect(65536)
 
         fun report(ok: Boolean, status: Int, protocol: String) {
             if (!reported) {

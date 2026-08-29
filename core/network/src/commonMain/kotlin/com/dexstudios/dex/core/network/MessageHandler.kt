@@ -204,30 +204,15 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
         Logger.i("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
 
-        val sessionId = generateNonceBlocking()
-        val deferred = CompletableDeferred<Boolean>()
-        TransferState.pendingPrompts[sessionId] = deferred
-        val notificationId = sessionId.hashCode()
-        engine.showIncomingFileNotification(sessionId, notificationId, uploadReq.files.size)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS.milliseconds) { deferred.await() } == true
-            TransferState.pendingPrompts.remove(sessionId)
-            if (!accepted) {
-                Logger.i("Incoming transfer rejected or timed out")
-                return@launch
-            }
-
-            val files = uploadReq.files.map { (fileId, file) -> com.dexstudios.dex.core.network.PullFileDto(fileId, file.fileName, file.size, file.token) }
-            engine.downloadBatch(
-                senderIp,
-                uploadReq.info.port,
-                uploadReq.info.tcpFallbackPort,
-                files,
-                uploadReq.info.fingerprint,
-                uploadReq.info.alias,
-            )
-        }
+        val files = uploadReq.files.map { (fileId, file) -> com.dexstudios.dex.core.network.PullFileDto(fileId, file.fileName, file.size, file.token) }
+        engine.downloadBatch(
+            senderIp,
+            uploadReq.info.port,
+            uploadReq.info.tcpFallbackPort,
+            files,
+            uploadReq.info.fingerprint,
+            uploadReq.info.alias,
+        )
     }
 
     /** The PC tells us its public IP so WAN transfers work without manual configuration.

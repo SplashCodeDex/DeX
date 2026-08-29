@@ -1,6 +1,7 @@
 package com.dexstudios.dex.window.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -25,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,22 +38,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.FluidSegmentedPicker
+import com.dexstudios.dex.core.designsystem.components.FluidSwitch
+import com.dexstudios.dex.core.designsystem.components.SegmentOption
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_do_not_disturb
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_info
+import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_notifications
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_palette
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_settings
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_touch_app
@@ -79,12 +98,11 @@ import javax.swing.JFileChooser
  * - Profile & Account header (avatar — Google picture when signed in, display name, email,
  *   Sign Out; neutral placeholders when signed out, never fabricated account data)
  * - Categorized preferences:
- *   1. Connection (Do Not Disturb switch, UPnP Port Forwarding toggle)
+ *   1. Connection (Do Not Disturb switch, Notification Sounds switch, Clipboard Sync switch)
  *   2. Dev Tools (ADB Connect & Auto-Connect Hotspot)
  *   3. Identity (Device Name editor, Google OAuth loopback sign-in)
  *   4. Appearance (Theme: System / Dark / Light)
- *   5. Interaction (Wiggle-to-Open Menu + read-only shortcut reference card: global
- *      Show/Hide toggle, Shift+Click instant exit, force-exit during transfers)
+ *   5. Interaction (Wiggle-to-Open Menu switch + read-only shortcut reference card)
  *   6. Storage (Download Location folder chooser — persisted via DeviceConfig.downloadDir;
  *      the modal-dialog guard is raised during pick)
  *   7. About & Maintenance (version from AppBuildConfig, GitHub link, Reset Identity & Trust
@@ -101,11 +119,12 @@ fun SettingsPanel(
     val coroutineScope = rememberCoroutineScope()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
     val isDndActive by deviceConfig.dndEnabledFlow.collectAsState()
+    val isNotificationSoundEnabled by deviceConfig.notificationSoundEnabledFlow.collectAsState()
+    val isClipboardSyncEnabled by deviceConfig.clipboardSyncEnabledFlow.collectAsState()
     val themeOverride by deviceConfig.themeOverrideFlow.collectAsState()
     val isWiggleEnabled by deviceConfig.wiggleEnabledFlow.collectAsState()
     val downloadDirPref by deviceConfig.downloadDirFlow.collectAsState()
     val deviceAlias by deviceConfig.aliasFlow.collectAsState()
-    var showAliasEditor by remember { mutableStateOf(false) }
     var showResetConfirm by remember { mutableStateOf(false) }
     var showAdbPicker by remember { mutableStateOf(false) }
 
@@ -280,12 +299,11 @@ fun SettingsPanel(
             // Connection Settings
             SettingsSectionHeader("Connection")
             SettingsCard {
-                SettingsItem(
+                SettingsToggleItem(
                     title = "Do Not Disturb",
                     subtitle = "Mute alerts — files still arrive silently",
-                    badge = if (isDndActive) "ON" else "OFF",
-                    isBadgeDanger = isDndActive,
-                    onClick = { deviceConfig.dndEnabled = !isDndActive },
+                    checked = isDndActive,
+                    onCheckedChange = { deviceConfig.dndEnabled = it },
                     iconContent = { tint ->
                         AnimatedDndBell(
                             isDndActive = isDndActive,
@@ -294,6 +312,20 @@ fun SettingsPanel(
                             contentDescription = "Do Not Disturb",
                         )
                     },
+                )
+                SettingsToggleItem(
+                    icon = painterResource(Res.drawable.ic_fluent_notifications),
+                    title = "Notification Sounds",
+                    subtitle = "Play chime when files and transfers arrive",
+                    checked = isNotificationSoundEnabled,
+                    onCheckedChange = { deviceConfig.notificationSoundEnabled = it },
+                )
+                SettingsToggleItem(
+                    icon = painterResource(Res.drawable.ic_fluent_clipboard),
+                    title = "Clipboard Sync",
+                    subtitle = "Seamlessly sync copied text and images with phone",
+                    checked = isClipboardSyncEnabled,
+                    onCheckedChange = { deviceConfig.clipboardSyncEnabled = it },
                 )
             }
 
@@ -311,12 +343,188 @@ fun SettingsPanel(
             // Identity
             SettingsSectionHeader("Identity")
             SettingsCard {
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_settings),
-                    title = "Device Name",
-                    subtitle = deviceAlias.ifBlank { "Not set — phones see this name while pairing" },
-                    onClick = { showAliasEditor = true },
-                )
+                var isEditingAlias by remember { mutableStateOf(false) }
+                var aliasDraft by remember(deviceAlias, isEditingAlias) { mutableStateOf(deviceAlias) }
+                val focusRequester = remember { FocusRequester() }
+
+                LaunchedEffect(isEditingAlias) {
+                    if (isEditingAlias) {
+                        focusRequester.requestFocus()
+                    }
+                }
+
+                if (isEditingAlias) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "Edit Device Name",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = "${aliasDraft.length}/32",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            // Sleek Input Field
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                                        RoundedCornerShape(8.dp),
+                                    )
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                BasicTextField(
+                                    value = aliasDraft,
+                                    onValueChange = { aliasDraft = it.take(32) },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(focusRequester)
+                                        .onKeyEvent { keyEvent ->
+                                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                                when (keyEvent.key) {
+                                                    Key.Enter -> {
+                                                        deviceConfig.alias = aliasDraft.trim()
+                                                        isEditingAlias = false
+                                                        true
+                                                    }
+
+                                                    Key.Escape -> {
+                                                        isEditingAlias = false
+                                                        true
+                                                    }
+
+                                                    else -> false
+                                                }
+                                            } else {
+                                                false
+                                            }
+                                        },
+                                    decorationBox = { innerTextField ->
+                                        if (aliasDraft.isEmpty()) {
+                                            Text(
+                                                text = "e.g. My Studio PC",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                fontSize = 13.sp,
+                                            )
+                                        }
+                                        innerTextField()
+                                    },
+                                )
+                            }
+
+                            // Save Button
+                            Box(
+                                modifier = Modifier
+                                    .height(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
+                                    .pointerHoverIcon(PointerIcon.Hand)
+                                    .clickable {
+                                        deviceConfig.alias = aliasDraft.trim()
+                                        isEditingAlias = false
+                                    }
+                                    .padding(horizontal = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "Save",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+
+                            // Cancel Button
+                            Box(
+                                modifier = Modifier
+                                    .height(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                        RoundedCornerShape(8.dp),
+                                    )
+                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
+                                    .pointerHoverIcon(PointerIcon.Hand)
+                                    .clickable {
+                                        isEditingAlias = false
+                                    }
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "Cancel",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    SettingsItem(
+                        icon = painterResource(Res.drawable.ic_fluent_settings),
+                        title = "Device Name",
+                        subtitle = deviceAlias.ifBlank { "Not set — phones see this name while pairing" },
+                        trailing = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                        RoundedCornerShape(6.dp),
+                                    )
+                                    .shinyGlare(shape = RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                            ) {
+                                Text(
+                                    text = "Edit",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        },
+                        onClick = { isEditingAlias = true },
+                    )
+                }
+
                 SettingsItem(
                     icon = painterResource(Res.drawable.ic_fluent_account_circle),
                     title = "Sign in with Google",
@@ -336,34 +544,68 @@ fun SettingsPanel(
             // Appearance
             SettingsSectionHeader("Appearance")
             SettingsCard {
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_palette),
-                    title = "Theme",
-                    subtitle = when (themeOverride) {
-                        DeviceConfig.THEME_DARK -> "Dark"
-                        DeviceConfig.THEME_LIGHT -> "Light"
-                        else -> "System"
-                    },
-                    onClick = {
-                        // Cycle System -> Dark -> Light; persisted and honored app-wide
-                        // by the DeXTheme composition in main.kt.
-                        deviceConfig.themeOverride = when (themeOverride) {
-                            DeviceConfig.THEME_SYSTEM -> DeviceConfig.THEME_DARK
-                            DeviceConfig.THEME_DARK -> DeviceConfig.THEME_LIGHT
-                            else -> DeviceConfig.THEME_SYSTEM
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_fluent_palette),
+                                contentDescription = "Theme",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
                         }
-                    },
-                )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Theme Mode",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = when (themeOverride) {
+                                    DeviceConfig.THEME_DARK -> "Dark — high contrast sleek dark mode"
+                                    DeviceConfig.THEME_LIGHT -> "Light — clean daylight palette"
+                                    else -> "System — follows OS theme automatically"
+                                },
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+
+                    FluidSegmentedPicker(
+                        options = listOf(
+                            SegmentOption(value = DeviceConfig.THEME_SYSTEM, label = "System"),
+                            SegmentOption(value = DeviceConfig.THEME_LIGHT, label = "Light"),
+                            SegmentOption(value = DeviceConfig.THEME_DARK, label = "Dark"),
+                        ),
+                        selectedOption = themeOverride,
+                        onOptionSelected = { deviceConfig.themeOverride = it },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             // Interaction
             SettingsSectionHeader("Interaction")
             SettingsCard {
-                SettingsItem(
+                SettingsToggleItem(
                     icon = painterResource(Res.drawable.ic_fluent_touch_app),
                     title = "Wiggle-to-Open Menu",
-                    subtitle = if (isWiggleEnabled) "Enabled" else "Disabled",
-                    onClick = { deviceConfig.wiggleEnabled = !isWiggleEnabled },
+                    subtitle = if (isWiggleEnabled) "Shake cursor horizontally to reveal dock" else "Disabled",
+                    checked = isWiggleEnabled,
+                    onCheckedChange = { deviceConfig.wiggleEnabled = it },
                 )
             }
             // Shortcut reference (read-only): surfaces gestures that have no visible
@@ -395,37 +637,186 @@ fun SettingsPanel(
             // Storage
             SettingsSectionHeader("Storage")
             SettingsCard {
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_folder),
-                    title = "Download Location",
-                    subtitle = downloadDirPref.ifBlank { getDeXDownloadDirectory() },
-                    onClick = {
-                        coroutineScope.launch {
-                            controller?.isModalDialogOpen = true
-                            try {
-                                val selectedDir = withContext(Dispatchers.IO) {
-                                    val chooser = JFileChooser(downloadDirPref.ifBlank { getDeXDownloadDirectory() }).apply {
-                                        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                                        dialogTitle = "Select DeX Download Location"
-                                        isAcceptAllFileFilterUsed = false
-                                    }
-                                    val result = chooser.showOpenDialog(null)
-                                    if (result == JFileChooser.APPROVE_OPTION) {
-                                        chooser.selectedFile?.absolutePath
-                                    } else {
-                                        null
+                val effectiveDownloadDir = downloadDirPref.ifBlank { getDeXDownloadDirectory() }
+                val isCustomPath = downloadDirPref.isNotBlank()
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_fluent_folder),
+                                contentDescription = "Download Location",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    text = "Download Location",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                if (isCustomPath) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                                    ) {
+                                        Text(
+                                            text = "Custom",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
                                     }
                                 }
-                                if (selectedDir != null) {
-                                    // Persisted: transfers land here immediately and the choice survives restarts.
-                                    deviceConfig.downloadDir = selectedDir
-                                }
-                            } finally {
-                                controller?.isModalDialogOpen = false
+                            }
+                            Text(
+                                text = effectiveDownloadDir,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+
+                    // Action Buttons: Open Folder & Change Location
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // Open Folder Button
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                    RoundedCornerShape(8.dp),
+                                )
+                                .shinyGlare(shape = RoundedCornerShape(8.dp))
+                                .pointerHoverIcon(PointerIcon.Hand)
+                                .clickable {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        try {
+                                            val dir = File(effectiveDownloadDir)
+                                            if (!dir.exists()) dir.mkdirs()
+                                            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                                                Desktop.getDesktop().open(dir)
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Open Folder",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+
+                        // Change Button
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                    RoundedCornerShape(8.dp),
+                                )
+                                .shinyGlare(shape = RoundedCornerShape(8.dp))
+                                .pointerHoverIcon(PointerIcon.Hand)
+                                .clickable {
+                                    coroutineScope.launch {
+                                        controller?.isModalDialogOpen = true
+                                        try {
+                                            val selectedDir = withContext(Dispatchers.IO) {
+                                                val chooser = JFileChooser(effectiveDownloadDir).apply {
+                                                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                                                    dialogTitle = "Select DeX Download Location"
+                                                    isAcceptAllFileFilterUsed = false
+                                                }
+                                                val result = chooser.showOpenDialog(null)
+                                                if (result == JFileChooser.APPROVE_OPTION) {
+                                                    chooser.selectedFile?.absolutePath
+                                                } else {
+                                                    null
+                                                }
+                                            }
+                                            if (selectedDir != null) {
+                                                deviceConfig.downloadDir = selectedDir
+                                            }
+                                        } finally {
+                                            controller?.isModalDialogOpen = false
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Change",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+
+                        if (isCustomPath) {
+                            // Reset Button
+                            Box(
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                        RoundedCornerShape(8.dp),
+                                    )
+                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
+                                    .pointerHoverIcon(PointerIcon.Hand)
+                                    .clickable {
+                                        deviceConfig.downloadDir = ""
+                                    }
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "Reset",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
                             }
                         }
-                    },
-                )
+                    }
+                }
             }
 
             // Maintenance
@@ -442,17 +833,6 @@ fun SettingsPanel(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-
-    if (showAliasEditor) {
-        AliasEditorDialog(
-            current = deviceAlias,
-            onDismiss = { showAliasEditor = false },
-            onSave = { value ->
-                deviceConfig.alias = value
-                showAliasEditor = false
-            },
-        )
     }
 
     if (showAdbPicker) {
@@ -507,29 +887,6 @@ fun SettingsPanel(
             },
         )
     }
-}
-
-@Composable
-private fun AliasEditorDialog(current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    var draft by remember(current) { mutableStateOf(current) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Device Name") },
-        text = {
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it.take(32) },
-                singleLine = true,
-                label = { Text("Shown to your phone while pairing") },
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(draft.trim()) }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
 
 /**
@@ -702,4 +1059,43 @@ private fun SettingsItem(
             }
         }
     }
+}
+
+@Composable
+private fun SettingsToggleItem(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    icon: Painter? = null,
+    iconContent: (@Composable (tint: Color) -> Unit)? = null,
+    activeTrackColor: Color = com.dexstudios.dex.core.designsystem.components.SwitchActiveGreen,
+    enabled: Boolean = true,
+) {
+    val finalIconContent: @Composable (tint: Color) -> Unit = iconContent ?: { tint ->
+        if (icon != null) {
+            Icon(
+                painter = icon,
+                contentDescription = title,
+                tint = tint,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+
+    SettingsItem(
+        title = title,
+        subtitle = subtitle,
+        onClick = { if (enabled) onCheckedChange(!checked) },
+        iconContent = finalIconContent,
+        trailing = {
+            FluidSwitch(
+                checked = checked,
+                onCheckedChange = if (enabled) onCheckedChange else null,
+                enabled = enabled,
+                activeTrackColor = activeTrackColor,
+            )
+        },
+    )
 }

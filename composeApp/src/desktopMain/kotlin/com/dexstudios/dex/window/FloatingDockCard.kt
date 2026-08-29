@@ -1,5 +1,6 @@
 package com.dexstudios.dex.window
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,9 +12,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -55,6 +61,13 @@ fun FloatingDockCard(
 
     val isMacOS = remember { com.dexstudios.dex.platform.DesktopEnvironment.isMacOS }
 
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(controller.isVisible) {
+        if (controller.isVisible) {
+            runCatching { focusRequester.requestFocus() }
+        }
+    }
+
     // Last card rect sent to the OS hit-tester. onGloballyPositioned fires on EVERY layout
     // pass — i.e., every frame of the width/height spring animations — and each native
     // Window#shape assignment recomputes the OS window region. Updates are therefore
@@ -65,12 +78,42 @@ fun FloatingDockCard(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
             .onPreviewKeyEvent { event ->
-                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && !controller.isPairingActive) {
-                    controller.hide()
-                    true
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+
+                val isCmdOrCtrl = event.isCtrlPressed || event.isMetaPressed
+
+                when {
+                    event.key == Key.Escape && !controller.isPairingActive -> {
+                        if (controller.isExpanded) {
+                            controller.collapsePanel()
+                        } else {
+                            controller.hide()
+                        }
+                        true
+                    }
+
+                    isCmdOrCtrl && event.key == Key.H -> {
+                        if (controller.expandedPanel == ExpandedPanel.FileExplorer) {
+                            controller.collapsePanel()
+                        } else {
+                            controller.expandPanel(ExpandedPanel.FileExplorer)
+                        }
+                        true
+                    }
+
+                    isCmdOrCtrl && (event.key == Key.Comma || (event.isAltPressed && event.key == Key.S)) -> {
+                        if (controller.expandedPanel == ExpandedPanel.Settings) {
+                            controller.collapsePanel()
+                        } else {
+                            controller.expandPanel(ExpandedPanel.Settings)
+                        }
+                        true
+                    }
+
+                    else -> false
                 }
             },
     ) {

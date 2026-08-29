@@ -45,6 +45,7 @@ class MessageHandler(
                 "pair-prompt" -> handlePairPrompt(dataElement)
                 "pair-cancelled" -> handlePairCancelled()
                 "pair-accepted" -> handlePairAccepted(dataElement)
+                "identity-challenge" -> handleIdentityChallenge(dataElement)
                 "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
                 "public-address" -> handlePublicAddress(dataElement)
                 "endpoint-info" -> handleEndpointInfo(dataElement)
@@ -58,7 +59,7 @@ class MessageHandler(
                 "wallpaper-updated" -> WallpaperState.notifyUpdated()
                 "mirror-start" -> MirrorSession.requestStart()
                 "mirror-stop" -> MirrorSession.stop()
-                "list-shared-folders", "browse-folder", "pull-files", "grant-shared-folder" ->
+                "list-shared-folders", "browse-folder", "pull-files", "pull-cancel", "grant-shared-folder" ->
                     fileShareManager.handleRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
                 else -> {
                     Timber.w("Unknown message type received: $type")
@@ -118,6 +119,8 @@ class MessageHandler(
             val accepted = enteredPin != null && enteredPin == pairReq.pin
             if (accepted) {
                 DeviceManager.savePairedFingerprint(pairReq.fingerprint)
+                // Alias feeds the Direct Share target label for this PC
+                DeviceManager.savePairedAlias(pairReq.fingerprint, pairReq.alias)
                 pairReq.token?.let { DeviceManager.savePairedToken(pairReq.fingerprint, it) }
                 Timber.i("Pairing accepted with ${pairReq.alias}")
             } else {
@@ -156,40 +159,44 @@ class MessageHandler(
         }
     }
 
+    /**
+     * Same-account proof-of-possession: the PC challenges with a random nonce; we answer
+     * HMAC(nonce, googleSub). Our googleSub never crosses the wire.
+     */
+    private fun handleIdentityChallenge(dataElement: JsonElement) {
+        val nonce = (dataElement as? JsonObject)?.get("nonce")?.jsonPrimitive?.contentOrNull ?: return
+        val sub = deviceConfig.googleSub
+        if (sub.isBlank() || nonce.isBlank()) return
+
+        runCatching {
+            val mac = HashUtils.hmacSha256Base64(sub, android.util.Base64.decode(nonce, android.util.Base64.NO_WRAP))
+            onSendMessage?.invoke(
+                buildJsonObject {
+                    put("type", "identity-proof")
+                    putJsonObject("data") { put("mac", mac) }
+                }.toString(),
+            )
+        }.onFailure { Timber.e(it, "Failed to answer identity challenge") }
+    }
+
     private fun handlePrepareUpload(dataElement: JsonElement, senderIp: String) {
         val uploadReq = json.decodeFromJsonElement<PrepareUploadRequestDto>(dataElement)
         Timber.i("Incoming prepare-upload via WebSocket from ${uploadReq.info.alias} for ${uploadReq.files.size} files")
 
-        val sessionId = UUID.randomUUID().toString()
-        val deferred = CompletableDeferred<Boolean>()
-        TransferState.pendingPrompts[sessionId] = deferred
-        val notificationId = sessionId.hashCode()
-        notificationHelper.showIncomingFileNotification(sessionId, notificationId, uploadReq.files.size)
+        val dirUri = SafStorage.getDownloadsDexUri(context)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val accepted = withTimeoutOrNull(PROMPT_TIMEOUT_MS.milliseconds) { deferred.await() } == true
-            TransferState.pendingPrompts.remove(sessionId)
-            if (!accepted) {
-                Timber.i("Incoming transfer rejected or timed out")
-                return@launch
-            }
-
-            val dirUri = SafStorage.getDownloadsDexUri(context)
-
-            // Pull mode: download the whole session in one work item (QUIC streams, aggregate progress).
-            // The HTTPS port comes from the PC's advertised info; the TCP port is the legacy fallback.
-            val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size, file.token) }
-            TcpDownloadService.downloadBatch(
-                context,
-                senderIp,
-                uploadReq.info.port,
-                uploadReq.info.tcpFallbackPort,
-                files,
-                dirUri,
-                fingerprint = uploadReq.info.fingerprint,
-                sourceAlias = uploadReq.info.alias
-            )
-        }
+        // Pull mode: download the whole session immediately without prompt for paired/trusted peers
+        val files = uploadReq.files.map { (fileId, file) -> PullFileDto(fileId, file.fileName, file.size, file.token) }
+        TcpDownloadService.downloadBatch(
+            context,
+            senderIp,
+            uploadReq.info.port,
+            uploadReq.info.tcpFallbackPort,
+            files,
+            dirUri,
+            fingerprint = uploadReq.info.fingerprint,
+            sourceAlias = uploadReq.info.alias,
+        )
     }
 
     /** The PC tells us its public IP so WAN transfers work without manual configuration.

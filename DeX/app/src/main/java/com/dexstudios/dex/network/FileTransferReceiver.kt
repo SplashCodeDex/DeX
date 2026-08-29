@@ -17,6 +17,12 @@ class FileTransferReceiver : BroadcastReceiver() {
             return
         }
 
+        if (action == NotificationHelper.ACTION_CANCEL_PENDING_SHARE) {
+            val fingerprint = intent.getStringExtra("FINGERPRINT") ?: return
+            PendingShareForwarder.cancel(fingerprint)
+            return
+        }
+
         val sessionId = intent.getStringExtra("SESSION_ID") ?: return
 
         TransferState.pendingPrompts.remove(sessionId)?.complete(action == "com.dexstudios.dex.ACCEPT_TRANSFER")

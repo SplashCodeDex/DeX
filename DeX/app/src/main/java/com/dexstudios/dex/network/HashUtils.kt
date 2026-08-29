@@ -58,4 +58,10 @@ object HashUtils {
             null
         }
     }
+
+    fun hmacSha256Base64(secret: String, data: ByteArray): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(javax.crypto.spec.SecretKeySpec(secret.toByteArray(), "HmacSHA256"))
+        return android.util.Base64.encodeToString(mac.doFinal(data), android.util.Base64.NO_WRAP)
+    }
 }

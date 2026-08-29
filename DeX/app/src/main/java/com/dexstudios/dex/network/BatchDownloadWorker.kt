@@ -86,9 +86,7 @@ class BatchDownloadWorker(
     )
 
     private val lastUiUpdate = AtomicLong(0L)
-    private val speedBytes = AtomicLong(0L)
-    private val speedTime = AtomicLong(0L)
-    private val smoothedSpeed = AtomicLong(0L)
+    private val speedCalculator = TransferSpeedCalculator()
 
     // Negotiated protocol of the transfer ("h3", "http", ...) once any file has completed
     @Volatile
@@ -181,6 +179,10 @@ class BatchDownloadWorker(
             } else {
                 // Keep successful files, remove only partial/failed ones
                 deleteDocs(failed.mapNotNull { it.docUri })
+                val succeeded = outcomes.filter { it.ok }
+                succeeded.forEach { outcome ->
+                    TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", outcome.docUri.toString(), peerDevice = sourceAlias)
+                }
                 failed.forEach { outcome ->
                     TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", null, peerDevice = sourceAlias, status = "failed")
                 }
@@ -235,7 +237,7 @@ class BatchDownloadWorker(
                 val fos = java.io.FileOutputStream(descriptor.fileDescriptor)
                 val channel = fos.channel
                 val perFileReceived = AtomicLong(0L)
-                val onBytes: suspend (Long) -> Unit = { bytes ->
+                val onBytes: (Long) -> Unit = { bytes ->
                     val delta = bytes - perFileReceived.getAndSet(bytes)
                     reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
                 }
@@ -284,7 +286,7 @@ class BatchDownloadWorker(
         httpsPort: Int,
         file: PullFileDto,
         out: java.nio.channels.WritableByteChannel,
-        onBytes: suspend (Long) -> Unit
+        onBytes: (Long) -> Unit
     ): DownloadResult {
         val result = client.downloadFileQuic(
             ip, httpsPort, file.fileId, file.token, out,
@@ -321,7 +323,7 @@ class BatchDownloadWorker(
         port: Int,
         file: PullFileDto,
         out: java.nio.channels.WritableByteChannel,
-        onBytes: suspend (Long) -> Unit
+        onBytes: (Long) -> Unit
     ): DownloadResult = withContext(Dispatchers.IO) {
         var downloaded = 0L
         try {
@@ -339,22 +341,22 @@ class BatchDownloadWorker(
                     )
                 }
 
-                val body = response.body ?: return@withContext DownloadResult(ok = false, error = "Empty response body")
+                val body = response.body
                 val input = body.byteStream()
-                val readBuffer = ByteArray(81920)
-                val ioBuffer = java.nio.ByteBuffer.wrap(readBuffer)
+                val inChannel = java.nio.channels.Channels.newChannel(input)
+                val directBuffer = java.nio.ByteBuffer.allocateDirect(65536)
 
                 while (true) {
                     if (isStopped) {
                         return@withContext DownloadResult(ok = false, error = "Download cancelled", retryable = false)
                     }
-                    val read = input.read(readBuffer, 0, readBuffer.size)
+                    directBuffer.clear()
+                    val read = inChannel.read(directBuffer)
                     if (read == -1) break
-                    ioBuffer.position(0)
-                    ioBuffer.limit(read)
+                    directBuffer.flip()
                     downloaded += read
-                    while (ioBuffer.hasRemaining()) {
-                        out.write(ioBuffer)
+                    while (directBuffer.hasRemaining()) {
+                        out.write(directBuffer)
                     }
                     onBytes(downloaded)
                 }
@@ -369,25 +371,16 @@ class BatchDownloadWorker(
         }
     }
 
-    private suspend fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String) {
+    private fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String) {
         val sourceFingerprint = inputData.getString("sourceFingerprint")
         val now = System.currentTimeMillis()
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
         lastUiUpdate.set(now)
 
-        val lastBytes = speedBytes.get()
-        val lastTime = speedTime.get()
-        if (lastTime != 0L && now - lastTime > 200) {
-            val instant = ((sentBytes - lastBytes) * 1000L) / (now - lastTime)
-            val prev = smoothedSpeed.get()
-            smoothedSpeed.set(if (prev == 0L) instant else (prev * 7 + instant * 3) / 10)
-        }
-        speedBytes.set(sentBytes)
-        speedTime.set(now)
-
+        val sample = speedCalculator.sample(sentBytes, totalBytes, now)
         val progress = when {
-            totalBytes > 0 -> sentBytes.toFloat() / totalBytes
-            totalFiles > 0 -> doneFiles.toFloat() / totalFiles
+            totalBytes > 0 -> (sentBytes.toFloat() / totalBytes).coerceIn(0f, 1f)
+            totalFiles > 0 -> (doneFiles.toFloat() / totalFiles).coerceIn(0f, 1f)
             else -> 0f
         }
         val displayName = if (totalFiles == 1) currentFile else "$doneFiles of $totalFiles files"
@@ -400,7 +393,8 @@ class BatchDownloadWorker(
                     doneFiles = doneFiles,
                     totalFiles = totalFiles,
                     protocol = transferProtocol,
-                    speedBps = smoothedSpeed.get(),
+                    speedBps = sample.speedBps,
+                    etaSeconds = sample.etaSeconds,
                     sourceFingerprint = sourceFingerprint
                 )
             )
@@ -409,7 +403,15 @@ class BatchDownloadWorker(
             val percent = (progress * 100).toInt()
             if (percent != lastForegroundPercent) {
                 lastForegroundPercent = percent
-                setForeground(createForegroundInfo(percent, "Downloading: $displayName"))
+                val speedEtaText = listOfNotNull(
+                    sample.formattedSpeed.takeIf { it.isNotBlank() },
+                    sample.formattedEta.takeIf { it.isNotBlank() }
+                ).joinToString(" • ")
+
+                val notifText = if (speedEtaText.isNotBlank()) "Downloading: $displayName ($speedEtaText)" else "Downloading: $displayName"
+                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                    setForeground(createForegroundInfo(percent, notifText))
+                }
             }
         } catch (e: Exception) {
             // UI updates must never kill the transfer

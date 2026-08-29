@@ -1,69 +1,79 @@
 package com.dexstudios.dex
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
+import android.provider.Settings
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.dexstudios.dex.network.*
-import com.dexstudios.dex.ui.components.DeXButton
-import com.dexstudios.dex.ui.components.DeXTextButton
-import com.dexstudios.dex.ui.components.DeviceListItem
-import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
-import com.dexstudios.dex.ui.icons.MaterialSymbols
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.dexstudios.dex.ui.share.ShareOverlayWindow
+import com.dexstudios.dex.ui.share.ShareTargetSheetContent
+import com.dexstudios.dex.ui.share.UploadProgressContent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 
+/**
+ * Share-sheet trampoline. Three presentation modes, picked at launch:
+ * 1. Direct-send (shortcut tap with a target fingerprint) — no UI, enqueue and exit.
+ * 2. Overlay panel ([ShareOverlayWindow]) when `SYSTEM_ALERT_WINDOW` is granted —
+ *    the activity turns into an invisible, non-touchable trampoline and the picker
+ *    floats over the source app.
+ * 3. In-activity translucent bottom sheet otherwise — plus an opt-in row that
+ *    deep-links to the overlay permission once.
+ *
+ * The task is excluded from Recents (manifest) so the picker never lingers in the
+ * recent-apps list like a regular activity.
+ */
 class ShareTargetActivity : ComponentActivity() {
+
+    private companion object {
+        // Bounded wait for a Direct Share target to appear in discovery before
+        // falling back to the sandbox save. Long enough to cover a cold discovery
+        // cycle, short enough to keep the tap-to-result feel responsive.
+        const val DIRECT_TARGET_DISCOVERY_TIMEOUT_MS = 6_000L
+    }
 
     private val sharedUris = mutableStateListOf<Uri>()
     private val discoveryEngine: DiscoveryEngine by inject()
     private val clientEngine: ClientEngine by inject()
     private val deviceConfig: DeviceConfig by inject()
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    private var overlayWindow: ShareOverlayWindow? = null
+
+    // True only while a visual presentation (overlay panel or bottom sheet) is on
+    // screen. The headless direct-send path must never finish on STOP — leaving the
+    // app during its bounded discovery wait should let the transfer proceed.
+    private var presentationActive = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -104,31 +114,58 @@ class ShareTargetActivity : ComponentActivity() {
             return
         }
 
-        val targetFingerprint = intent?.getStringExtra("EXTRA_TARGET_FINGERPRINT")
+        val targetFingerprint = intent?.getStringExtra(ShortcutHelper.EXTRA_TARGET_FINGERPRINT)
+            // Direct Share launches always carry the tapped shortcut's ID — the system
+            // injects it into the merged share intent. It is the authoritative routing
+            // key when the chooser drops custom extras. (Constant is an inlined string.)
+            ?: intent?.getStringExtra("android.intent.extra.SHORTCUT_ID")
         if (targetFingerprint != null) {
-            val device = discoveryEngine.devices.value[targetFingerprint]
-            if (device != null) {
-                sendUrisToDevice(device, sharedUris)
-                finish()
-            } else {
-                Toast.makeText(this, getString(R.string.share_pc_offline), Toast.LENGTH_LONG).show()
-                saveToSandbox()
-            }
+            resolveDirectTarget(targetFingerprint)
             return
         }
 
+        if (ShareOverlayWindow.canShowOverlay(this)) {
+            presentAsOverlay()
+        } else {
+            presentAsBottomSheet()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Leaving the app (HOME gesture, task switch) exits the share picker exactly
+        // like the back gesture: the panel is torn down immediately instead of
+        // lingering over the launcher or rotting inside a backgrounded task.
+        if (presentationActive) {
+            overlayWindow?.dismiss()
+            finish()
+        }
+    }
+
+    override fun onDestroy() {
+        // The overlay outlives nothing: if the system tears the trampoline down,
+        // the floating panel must go with it.
+        overlayWindow?.dismiss()
+        overlayWindow = null
+        super.onDestroy()
+    }
+
+    /**
+     * Fallback presentation: translucent activity hosting a ModalBottomSheet.
+     * Also the discovery surface for the overlay capability while the permission
+     * is missing.
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    private fun presentAsBottomSheet() {
+        presentationActive = true
         setContent {
             MaterialTheme {
                 val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 var showSheet by remember { mutableStateOf(true) }
                 val discoveredDevices by discoveryEngine.devices.collectAsStateWithLifecycle()
                 val uploadState by clientEngine.uploadState.collectAsStateWithLifecycle()
-
                 val (trustedLocal, untrustedDevices) = remember(discoveredDevices) {
-                    discoveredDevices.values.partition { device ->
-                        AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
-                                (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash)
-                    }
+                    partitionDevices(discoveredDevices)
                 }
 
                 if (showSheet) {
@@ -143,11 +180,19 @@ class ShareTargetActivity : ComponentActivity() {
                         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                     ) {
                         if (uploadState.isUploading || uploadState.isSuccess || uploadState.error != null) {
-                            UploadProgressScreen(uploadState)
+                            UploadProgressContent(
+                                uploadState = uploadState,
+                                onCancel = { clientEngine.cancelUpload(this@ShareTargetActivity) },
+                                onDone = { finish() },
+                                onRetry = { clientEngine.resetUploadState() }
+                            )
                         } else {
-                            ShareTargetScreen(
+                            ShareTargetSheetContent(
+                                sharedUris = sharedUris,
                                 trustedDevices = trustedLocal,
                                 untrustedDevices = untrustedDevices,
+                                showOverlayOptIn = true,
+                                onEnableOverlay = { requestOverlayPermission() },
                                 onSaveToSandbox = {
                                     saveToSandbox()
                                     showSheet = false
@@ -166,209 +211,97 @@ class ShareTargetActivity : ComponentActivity() {
         }
     }
 
-    @Composable
-    fun ShareTargetScreen(
-        trustedDevices: List<DiscoveredDevice>,
-        untrustedDevices: List<DiscoveredDevice>,
-        onSaveToSandbox: () -> Unit,
-        onSendToDevice: (DiscoveredDevice) -> Unit
-    ) {
-        val totalSize = remember(sharedUris) { sharedUris.sumOf { getFileSize(it) } }
-        val sizeStr = remember(totalSize) { formatSize(totalSize) }
+    /**
+     * Overlay presentation: the activity window becomes fully transparent,
+     * non-dimming and non-touchable, so the source app stays visible and keeps
+     * receiving touches while the system overlay panel carries the picker.
+     */
+    private fun presentAsOverlay() {
+        presentationActive = true
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp, top = 24.dp)
-        ) {
-            Text(
-                text = "Send to Device",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "${sharedUris.size} file(s) • $sizeStr",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (trustedDevices.isNotEmpty()) {
-                Text("Trusted Devices", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                Spacer(modifier = Modifier.height(12.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(trustedDevices, key = { it.info.fingerprint }) { device ->
-                        CompactDeviceCard(device, onClick = { onSendToDevice(device) })
-                    }
+        overlayWindow = ShareOverlayWindow(this, onDismissRequest = { finish() }).also { overlay ->
+            overlay.show {
+                val discoveredDevices by discoveryEngine.devices.collectAsStateWithLifecycle()
+                val uploadState by clientEngine.uploadState.collectAsStateWithLifecycle()
+                val (trustedLocal, untrustedDevices) = remember(discoveredDevices) {
+                    partitionDevices(discoveredDevices)
                 }
-            }
 
-            if (untrustedDevices.isNotEmpty()) {
-                Text("Discovered", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                Spacer(modifier = Modifier.height(12.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(untrustedDevices, key = { it.info.fingerprint }) { device ->
-                        CompactDeviceCard(device, onClick = { onSendToDevice(device) })
-                    }
-                }
-            }
-
-            if (trustedDevices.isEmpty() && untrustedDevices.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    Text("No devices found on LAN", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            DeXButton(
-                onClick = onSaveToSandbox,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
-            ) {
-                Icon(MaterialSymbols.Folder, contentDescription = null)
-                Spacer(Modifier.width(12.dp))
-                Text("Save to Local DeX Sandbox", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-
-    @Composable
-    private fun CompactDeviceCard(device: DiscoveredDevice, onClick: () -> Unit) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .width(100.dp)
-                .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.02f)
-                .clickable(onClick = onClick)
-                .padding(8.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
-            ) {
-                Icon(
-                    imageVector = if (device.info.deviceType == "desktop") MaterialSymbols.Computer else MaterialSymbols.Smartphone,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = device.info.alias,
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-
-    @Composable
-    fun UploadProgressScreen(uploadState: UploadState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp, top = 24.dp)
-        ) {
-            if (uploadState.isUploading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(pluralStringResource(R.plurals.uploading_progress, uploadState.totalFiles, uploadState.currentFileIndex, uploadState.totalFiles), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    DeXTextButton(onClick = { clientEngine.cancelUpload(this@ShareTargetActivity) }) {
-                        Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(uploadState.fileName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                Spacer(modifier = Modifier.height(20.dp))
-                LinearProgressIndicator(
-                    progress = { uploadState.aggregateProgress },
-                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("${(uploadState.aggregateProgress * 100).toInt()}% Total", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.End), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            } else if (uploadState.isSuccess) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Icon(MaterialSymbols.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(64.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Transfer Complete", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(modifier = Modifier.height(24.dp))
-                    DeXButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Done")
-                    }
-                }
-            } else if (uploadState.error != null) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Icon(MaterialSymbols.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(64.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Upload Failed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Text(uploadState.error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(24.dp))
-                    DeXButton(onClick = { clientEngine.resetUploadState() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Try Again")
-                    }
+                if (uploadState.isUploading || uploadState.isSuccess || uploadState.error != null) {
+                    UploadProgressContent(
+                        uploadState = uploadState,
+                        onCancel = { clientEngine.cancelUpload(this@ShareTargetActivity) },
+                        onDone = { finish() },
+                        onRetry = { clientEngine.resetUploadState() }
+                    )
+                } else {
+                    ShareTargetSheetContent(
+                        sharedUris = sharedUris,
+                        trustedDevices = trustedLocal,
+                        untrustedDevices = untrustedDevices,
+                        showOverlayOptIn = false,
+                        onEnableOverlay = {},
+                        onSaveToSandbox = {
+                            saveToSandbox()
+                            finish()
+                        },
+                        onSendToDevice = { device ->
+                            sendUrisToDevice(device, sharedUris)
+                            clientEngine.resetUploadState()
+                        }
+                    )
                 }
             }
         }
     }
 
-    private fun saveToSandbox() {
-        val dirUri = SafStorage.getDownloadsDexUri(this)
+    private fun requestOverlayPermission() {
+        // One-time trip to system settings; the next share after granting renders
+        // as the floating overlay panel. The sheet stays open for the current share.
+        startActivity(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+        )
+    }
+
+    private fun partitionDevices(
+        discovered: Map<String, DiscoveredDevice>
+    ): Pair<List<DiscoveredDevice>, List<DiscoveredDevice>> = discovered.values.partition { device ->
+        AuthState.pairedFingerprints.contains(device.info.fingerprint) ||
+                (device.info.identityHash != null && device.info.identityHash == deviceConfig.identityHash)
+    }
+
+    /**
+     * Routing for a Direct Share tap on a specific shortcut. Discovery gets a short
+     * window to surface the target — the PC is frequently already broadcasting but not
+     * yet in the map when the sheet resolves (cold process, wake from sleep). Falls
+     * back to the sandbox save when the PC genuinely never appears.
+     */
+    private fun resolveDirectTarget(fingerprint: String) {
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    var successCount = 0
-                    sharedUris.forEach { uri ->
-                        val fileName = getFileName(uri)
-                        contentResolver.openInputStream(uri)?.use { input ->
-                            val ok = if (dirUri != null) {
-                                SafStorage.writeFile(this@ShareTargetActivity, dirUri, fileName, input)
-                            } else {
-                                val mediaUri = SafStorage.createMediaStoreUri(this@ShareTargetActivity, fileName)
-                                if (mediaUri != null) {
-                                    contentResolver.openOutputStream(mediaUri)?.use { out -> input.copyTo(out) }
-                                    true
-                                } else false
-                            }
-                            if (ok) successCount++
-                        }
-                    }
-                    withContext(Dispatchers.Main) {
-                        if (successCount == sharedUris.size) {
-                            Toast.makeText(this@ShareTargetActivity, "Saved to DeX Sandbox", Toast.LENGTH_SHORT).show()
-                        } else if (successCount > 0) {
-                            Toast.makeText(this@ShareTargetActivity, "Saved $successCount of ${sharedUris.size} files", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(this@ShareTargetActivity, "Failed to save files. Grant folder access in Settings.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ShareTargetActivity, "Failed to save files", Toast.LENGTH_SHORT).show()
-                    }
-                }
+            val device = withTimeoutOrNull(DIRECT_TARGET_DISCOVERY_TIMEOUT_MS) {
+                discoveryEngine.devices
+                    .firstOrNull { it.containsKey(fingerprint) }
+                    ?.getValue(fingerprint)
             }
-            finish()
+            if (device != null) {
+                sendUrisToDevice(device, sharedUris)
+                finish()
+            } else {
+                // True AirDrop behavior: keep the share alive behind an ongoing
+                // notification and fire it the moment the PC appears, instead of
+                // dumping the files into the sandbox. The alias comes from the
+                // persisted Direct Share store when known.
+                PendingShareForwarder.enqueue(
+                    this@ShareTargetActivity,
+                    fingerprint,
+                    DeviceManager.pairedAliases[fingerprint] ?: "PC",
+                    sharedUris.toList()
+                )
+                finish()
+            }
         }
     }
 
@@ -399,49 +332,19 @@ class ShareTargetActivity : ComponentActivity() {
         WorkManager.getInstance(this).enqueue(workRequest)
     }
 
-    private fun getFileName(uri: Uri): String {
-        var result: String? = null
-        if (uri.scheme == "content") {
-            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (index >= 0) {
-                        result = cursor.getString(index)
-                    }
-                }
+    private fun saveToSandbox() {
+        lifecycleScope.launch {
+            val successCount = withContext(Dispatchers.IO) {
+                SafStorage.saveUrisToSandbox(this@ShareTargetActivity, sharedUris.toList())
             }
-        }
-        if (result == null) {
-            result = uri.path
-            val cut = result?.lastIndexOf('/') ?: -1
-            if (cut != -1) {
-                result = result?.substring(cut + 1)
+            if (successCount == sharedUris.size) {
+                Toast.makeText(this@ShareTargetActivity, "Saved to DeX Sandbox", Toast.LENGTH_SHORT).show()
+            } else if (successCount > 0) {
+                Toast.makeText(this@ShareTargetActivity, "Saved $successCount of ${sharedUris.size} files", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@ShareTargetActivity, "Failed to save files. Grant folder access in Settings.", Toast.LENGTH_LONG).show()
             }
+            finish()
         }
-        return result ?: "SharedFile_${System.currentTimeMillis()}"
-    }
-
-    private fun getFileSize(uri: Uri): Long {
-        var result: Long = 0
-        if (uri.scheme == "content") {
-            try {
-                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val index = cursor.getColumnIndex(OpenableColumns.SIZE)
-                        if (index >= 0) {
-                            result = cursor.getLong(index)
-                        }
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-        return result
-    }
-
-    private fun formatSize(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-        return java.util.Locale.ROOT.let { String.format(it, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups]) }
     }
 }

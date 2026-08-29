@@ -28,6 +28,8 @@ data class PullProgressState(
     val bytesTransferred: Long = 0L,
     val totalBytes: Long = 0L,
     val progress: Float = 0f,
+    val speedBps: Long = 0L,
+    val etaSeconds: Long? = null,
     val isPulling: Boolean = false,
     val isDone: Boolean = false,
 )

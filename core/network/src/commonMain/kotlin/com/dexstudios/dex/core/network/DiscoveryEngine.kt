@@ -132,6 +132,21 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
         }
     }
 
+    /** Updates live battery, charging, and Wi-Fi telemetry for an active device. */
+    fun updateTelemetry(fingerprint: String, battery: Int? = null, isCharging: Boolean? = null, wifiSsid: String? = null) {
+        val existing = seenDevices[fingerprint] ?: _devices.value[fingerprint] ?: return
+        val updatedInfo = existing.info.copy(
+            battery = battery ?: existing.info.battery,
+            isCharging = isCharging ?: existing.info.isCharging,
+            wifiSsid = wifiSsid ?: existing.info.wifiSsid,
+        )
+        val updatedDevice = existing.copy(
+            info = updatedInfo,
+            lastSeenTimestamp = System.currentTimeMillis(),
+        )
+        addDevice(updatedDevice)
+    }
+
     fun stopDiscovery() {
         discoveryServices.forEach { it.stop() }
         cleanupJob?.cancel()
@@ -167,36 +182,44 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
                 }
             }
 
-            // 2. Direct HTTP REST Probe Fallback (fail fast: LAN probe must never hang the caller)
-            runCatching {
-                val response: HttpResponse = httpClient.get("http://$ip:$port/api/localsend/v2/info") {
-                    timeout { requestTimeoutMillis = 3_000 }
-                }
-                if (response.status.value == 200) {
-                    val responseText = response.bodyAsText()
-                    val json = lenientJson.parseToJsonElement(responseText).jsonObject
-
-                    val fp = json["fingerprint"]?.jsonPrimitive?.content ?: ""
-                    val alias = json["alias"]?.jsonPrimitive?.content ?: "PC Engine"
-                    if (fp.isNotBlank()) {
-                        val dto = RegisterDto(
-                            alias = alias,
-                            version = json["version"]?.jsonPrimitive?.contentOrNull ?: "2.0",
-                            deviceModel = json["deviceModel"]?.jsonPrimitive?.contentOrNull ?: "Windows PC",
-                            deviceType = json["deviceType"]?.jsonPrimitive?.contentOrNull ?: "desktop",
-                            fingerprint = fp,
-                            port = json["port"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: port,
-                            quicPort = json["quicPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.QUIC,
-                            tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.PULL,
-                            protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: "https",
-                            download = json["download"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
-                                ?: (json["download"]?.jsonPrimitive?.booleanOrNull ?: true),
-                            identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
-                            googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
-                        )
-                        addDevice(DiscoveredDevice(ip = ip, info = dto))
+            // 2. Direct HTTPS / HTTP REST Probe Fallback (fail fast: LAN probe must never hang the caller)
+            for (scheme in listOf("https", "http")) {
+                val success = runCatching {
+                    val response: HttpResponse = httpClient.get("$scheme://$ip:$port/api/localsend/v2/info") {
+                        timeout { requestTimeoutMillis = 2_500 }
                     }
-                }
+                    if (response.status.value == 200) {
+                        val responseText = response.bodyAsText()
+                        val json = lenientJson.parseToJsonElement(responseText).jsonObject
+
+                        val fp = json["fingerprint"]?.jsonPrimitive?.content ?: ""
+                        val alias = json["alias"]?.jsonPrimitive?.content ?: "PC Engine"
+                        if (fp.isNotBlank()) {
+                            val dto = RegisterDto(
+                                alias = alias,
+                                version = json["version"]?.jsonPrimitive?.contentOrNull ?: "2.0",
+                                deviceModel = json["deviceModel"]?.jsonPrimitive?.contentOrNull ?: "Windows PC",
+                                deviceType = json["deviceType"]?.jsonPrimitive?.contentOrNull ?: "desktop",
+                                fingerprint = fp,
+                                port = json["port"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: port,
+                                quicPort = json["quicPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.QUIC,
+                                tcpFallbackPort = json["tcpFallbackPort"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: DeXPorts.PULL,
+                                protocol = json["protocol"]?.jsonPrimitive?.contentOrNull ?: scheme,
+                                download = json["download"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                                    ?: (json["download"]?.jsonPrimitive?.booleanOrNull ?: true),
+                                identityHash = json["identityHash"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
+                                googleSub = json["googleSub"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
+                            )
+                            addDevice(DiscoveredDevice(ip = ip, info = dto))
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }.getOrDefault(false)
+                if (success) break
             }
         }
     }

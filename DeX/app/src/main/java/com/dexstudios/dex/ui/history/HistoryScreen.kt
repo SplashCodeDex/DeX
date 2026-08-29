@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Size
 import com.dexstudios.dex.R
 import com.dexstudios.dex.network.TransferHistory
 import com.dexstudios.dex.network.TransferRecord
@@ -159,12 +160,6 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .layerBackdrop(contentBackdrop)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            )
-
             // Dynamic Header
             Column(
                 modifier = Modifier
@@ -318,11 +313,11 @@ fun HistoryScreen(
                             val groupItems = groupedItems[label] ?: emptyList()
                             if (groupItems.isNotEmpty()) {
                                 stickyHeader(key = label) {
-                                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 8.dp, horizontal = 8.dp)) {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 8.dp)) {
                                         Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
-                                items(groupItems, key = { it.id }) { record ->
+                                items(groupItems, key = { it.id }, contentType = { "history_row" }) { record ->
                                     var showItemMenu by remember { mutableStateOf(false) }
                                     val isSelected = selectedIds.contains(record.id)
                                     val dismissState = rememberSwipeToDismissBoxState(
@@ -333,13 +328,19 @@ fun HistoryScreen(
                                             } else if (value == SwipeToDismissBoxValue.StartToEnd) {
                                                 val uri = record.uri?.toUri()
                                                 if (uri != null) {
-                                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                                        val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
-                                                        setDataAndType(uri, mime)
-                                                        putExtra(Intent.EXTRA_STREAM, uri)
-                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    runCatching {
+                                                        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull() ?: "application/octet-stream"
+                                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                                            setDataAndType(uri, mime)
+                                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        }
+                                                        context.startActivity(Intent.createChooser(intent, "Share file").apply {
+                                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        })
+                                                    }.onFailure {
+                                                        Toast.makeText(context, "Unable to share file", Toast.LENGTH_SHORT).show()
                                                     }
-                                                    context.startActivity(Intent.createChooser(intent, "Share file"))
                                                 }
                                                 false
                                             } else false
@@ -399,11 +400,19 @@ fun HistoryScreen(
                                             DropdownMenuItem(text = { Text("Share") }, onClick = {
                                                 val uri = record.uri?.toUri()
                                                 if (uri != null) {
-                                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                                        val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
-                                                        setDataAndType(uri, mime); putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    runCatching {
+                                                        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull() ?: "application/octet-stream"
+                                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                                            setDataAndType(uri, mime)
+                                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        }
+                                                        context.startActivity(Intent.createChooser(intent, "Share file").apply {
+                                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        })
+                                                    }.onFailure {
+                                                        Toast.makeText(context, "Unable to share file", Toast.LENGTH_SHORT).show()
                                                     }
-                                                    context.startActivity(Intent.createChooser(intent, "Share file"))
                                                 }
                                                 showItemMenu = false
                                             }, leadingIcon = { Icon(DeXIcons.IosShare, null, modifier = Modifier.size(18.dp)) })
@@ -427,11 +436,11 @@ fun HistoryScreen(
                             val groupItems = groupedItems[label] ?: emptyList()
                             if (groupItems.isNotEmpty()) {
                                 item(key = "grid_header_$label", span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 8.dp, horizontal = 8.dp)) {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 8.dp)) {
                                         Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
-                                items(groupItems, key = { it.id }) { record ->
+                                items(groupItems, key = { it.id }, contentType = { "history_grid_cell" }) { record ->
                                     val isSelected = selectedIds.contains(record.id)
                                     HistoryGridItem(
                                         record = record,
@@ -564,6 +573,7 @@ private fun HistoryRow(
                 val imageRequest = remember(record.uri, context) {
                     ImageRequest.Builder(context)
                         .data(record.uri)
+                        .size(Size(192, 192))
                         .crossfade(true)
                         .build()
                 }
@@ -642,6 +652,7 @@ private fun HistoryGridItem(
                 val imageRequest = remember(record.uri, context) {
                     ImageRequest.Builder(context)
                         .data(record.uri)
+                        .size(Size(384, 384))
                         .crossfade(true)
                         .build()
                 }
@@ -719,13 +730,15 @@ private fun formatSize(bytes: Long): String {
 
 private fun openFolderOf(context: Context, fileUri: Uri) {
     try {
+        val dexFolderUri = com.dexstudios.dex.network.SafStorage.getDownloadsDexUri(context)
+        val targetUri = dexFolderUri ?: fileUri
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            // For SAF URIs, try to open the directory.
-            // Note: This works best with file manager apps that support the directory MIME type.
-            setDataAndType(fileUri, "vnd.android.document/directory")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setDataAndType(targetUri, "vnd.android.document/directory")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(Intent.createChooser(intent, "Open Folder"))
+        context.startActivity(Intent.createChooser(intent, "Open Folder").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
     } catch (e: Exception) {
         Toast.makeText(context, "No app found to open folders", Toast.LENGTH_SHORT).show()
     }

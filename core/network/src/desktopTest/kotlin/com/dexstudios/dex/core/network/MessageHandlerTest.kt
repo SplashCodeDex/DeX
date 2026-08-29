@@ -408,7 +408,7 @@ class MessageHandlerTest {
     // === Incoming transfer prompt ===
 
     @Test
-    fun `prepare-upload raises a prompt and an accepted prompt downloads the batch`() = runBlocking {
+    fun `prepare-upload immediately downloads batch without prompt for trusted peer`() = runBlocking {
         val data = """
             {
               "info": {"alias":"Pixel","version":"2.0","deviceModel":"Pixel","deviceType":"phone",
@@ -419,13 +419,6 @@ class MessageHandlerTest {
         """.trimIndent()
         handler.handleMessage(frame("prepare-upload", data), "10.0.0.9", 1)
 
-        awaitUntil { engine.incomingFileNotifications.size == 1 }
-        val (sessionId, notificationId, fileCount) = engine.incomingFileNotifications.single()
-        assertEquals(1, fileCount)
-        assertTrue(TransferState.pendingPrompts.containsKey(sessionId))
-        assertEquals(sessionId.hashCode(), notificationId)
-
-        TransferState.pendingPrompts.getValue(sessionId).complete(true)
         awaitUntil { engine.downloads.size == 1 }
         val call = engine.downloads.single()
         assertEquals("10.0.0.9", call.senderIp)
@@ -434,25 +427,6 @@ class MessageHandlerTest {
         assertEquals("phone-fp", call.fingerprint)
         assertEquals("Pixel", call.sourceAlias)
         assertEquals(listOf("f1"), call.files.map { it.fileId })
-        assertTrue(TransferState.pendingPrompts.isEmpty(), "the resolved prompt slot must be freed")
-    }
-
-    @Test
-    fun `rejected prepare-upload prompt downloads nothing`() = runBlocking {
-        val data = """
-            {
-              "info": {"alias":"Pixel","version":"2.0","deviceModel":"Pixel","deviceType":"phone",
-                       "fingerprint":"phone-fp","port":48424,"protocol":"https","download":true},
-              "files": {"f1": {"id":"f1","fileName":"a.txt","size":10,"fileType":"text/plain"}}
-            }
-        """.trimIndent()
-        handler.handleMessage(frame("prepare-upload", data), "10.0.0.9", 1)
-        awaitUntil { engine.incomingFileNotifications.size == 1 }
-        val sessionId = engine.incomingFileNotifications.single().first
-
-        TransferState.pendingPrompts.getValue(sessionId).complete(false)
-        awaitUntil { TransferState.pendingPrompts.isEmpty() }
-        assertTrue(engine.downloads.isEmpty(), "a rejected offer must never reach downloadBatch")
     }
 
     // === Trust check ===

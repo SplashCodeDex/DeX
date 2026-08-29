@@ -6,7 +6,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -28,6 +31,9 @@ object TransferHistory {
     private const val MAX_ENTRIES = 200
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val writeMutex = Mutex()
+    @Volatile
+    private var isLoaded = false
     private val _items = MutableStateFlow<List<TransferRecord>>(emptyList())
     val items: StateFlow<List<TransferRecord>> = _items.asStateFlow()
 
@@ -39,32 +45,34 @@ object TransferHistory {
 
     fun init(context: Context) {
         scope.launch {
-            _items.value = read(context)
+            val loaded = read(context)
+            _items.value = loaded
+            isLoaded = true
         }
     }
 
     fun refresh(context: Context) {
         scope.launch {
-            _items.value = read(context)
+            val loaded = read(context)
+            _items.value = loaded
+            isLoaded = true
         }
     }
 
     fun delete(context: Context, id: String) {
+        ensureLoaded(context)
         val current = _items.value
         val updated = current.filter { it.id != id }
         if (current.size != updated.size) {
             _items.value = updated
-            scope.launch {
-                write(context, updated)
-            }
+            write(context, updated)
         }
     }
 
     fun clear(context: Context) {
+        isLoaded = true
         _items.value = emptyList()
-        scope.launch {
-            write(context, emptyList())
-        }
+        write(context, emptyList())
     }
 
     fun log(
@@ -77,6 +85,7 @@ object TransferHistory {
         status: String = "success",
         timestamp: Long = System.currentTimeMillis()
     ) {
+        ensureLoaded(context)
         val record = TransferRecord(
             id = UUID.randomUUID().toString(),
             name = name,
@@ -90,8 +99,17 @@ object TransferHistory {
         val current = _items.value
         val updated = (listOf(record) + current).take(MAX_ENTRIES)
         _items.value = updated
-        scope.launch {
-            write(context, updated)
+        write(context, updated)
+    }
+
+    private fun ensureLoaded(context: Context) {
+        if (!isLoaded) {
+            synchronized(this) {
+                if (!isLoaded) {
+                    _items.value = read(context)
+                    isLoaded = true
+                }
+            }
         }
     }
 

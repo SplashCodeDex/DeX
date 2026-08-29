@@ -189,4 +189,65 @@ class TransferOverlayBridgeTest {
 
         bridge.stop()
     }
+
+    @Test
+    fun testIncomingTransferSpawnsBannerAndAirDropAlertCard() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val testScope = TestScope(testDispatcher)
+
+        val overlayManager = OverlayManager(scope = testScope, soundService = null)
+        val uploadFlow = MutableStateFlow(UploadState())
+        val pullFlow = MutableStateFlow(PullProgressState())
+
+        val clientEngine = mockk<ClientEngine>(relaxed = true) {
+            io.mockk.every { uploadState } returns uploadFlow
+        }
+        val fileExplorerService = mockk<FileExplorerService>(relaxed = true) {
+            io.mockk.every { pullProgress } returns pullFlow
+        }
+
+        val bridge = TransferOverlayBridge(
+            overlayManager = overlayManager,
+            clientEngine = clientEngine,
+            fileExplorerService = fileExplorerService,
+            scope = testScope,
+        )
+        bridge.start()
+
+        // 1. Incoming transfer starts
+        val sessionId = "session_incoming_1"
+        com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+            sessionId = sessionId,
+            alias = "Pixel 9",
+            totalFiles = 4,
+            filesReceived = 1,
+            isComplete = false,
+        )
+        testScope.advanceUntilIdle()
+
+        assertEquals(1, overlayManager.actionAlerts.value.size)
+        val banner = overlayManager.actionAlerts.value.first() as BannerNotification
+        assertEquals("Receiving from Pixel 9", banner.title)
+        assertEquals(0.25f, banner.progress)
+
+        // 2. Incoming transfer finishes
+        com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+            sessionId = sessionId,
+            alias = "Pixel 9",
+            totalFiles = 4,
+            filesReceived = 4,
+            isComplete = true,
+        )
+        testScope.advanceUntilIdle()
+
+        // Live banner is replaced by completion card
+        assertEquals(1, overlayManager.actionAlerts.value.size)
+        val alert = overlayManager.actionAlerts.value.first() as AlertNotification
+        assertEquals("Received 4 Files from Pixel 9", alert.title)
+        assertEquals("Open Folder", alert.positiveButtonText)
+        assertEquals("Dismiss", alert.negativeButtonText)
+
+        com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
+        bridge.stop()
+    }
 }

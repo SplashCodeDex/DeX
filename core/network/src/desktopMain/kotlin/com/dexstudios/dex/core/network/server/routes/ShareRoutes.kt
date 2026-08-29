@@ -4,7 +4,9 @@ import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.PrepareUploadResponseDto
 import com.dexstudios.dex.core.network.RegisterDto
+import com.dexstudios.dex.core.network.TransferCheckpointRegistry
 import com.dexstudios.dex.core.network.TransferHistory
+import com.dexstudios.dex.core.network.TransferSpeedCalculator
 import com.dexstudios.dex.core.network.server.ReceiveStorage
 import com.dexstudios.dex.core.network.server.guardLoopback
 import com.dexstudios.dex.core.network.services.RelayService
@@ -22,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -316,17 +319,22 @@ fun Route.shareRoutes() {
                     destFile = File(parent, "$originalName ($counter)$extStr")
                     counter++
                 }
-                destFile.createNewFile()
             }
+
+            val resumeOffset = call.request.queryParameters["offset"]?.toLongOrNull() ?: 0L
+            val parentDir = destFile.parentFile ?: File(System.getProperty("user.home"), "Downloads/DeX")
+            val partFile = TransferCheckpointRegistry.getOrCreatePartFile(parentDir, sessionId, fileId, safeFileName, fileMeta.size)
+            val appendMode = resumeOffset > 0L && partFile.exists() && partFile.length() == resumeOffset
+            val speedCalc = TransferSpeedCalculator()
 
             try {
                 val channel: ByteReadChannel = call.receiveChannel()
                 withContext(Dispatchers.IO) {
-                    destFile.outputStream().use { output ->
-                        // Large staged pump: bounded readRemaining packets keep syscall
-                        // counts low on multi-GB uploads
+                    java.io.FileOutputStream(partFile, appendMode).buffered().use { output ->
                         val buffer = ByteArray(256 * 1024)
-                        var received = 0L
+                        var received = if (appendMode) resumeOffset else 0L
+                        var lastReportMs = 0L
+
                         while (!channel.isClosedForRead) {
                             channel.awaitContent()
                             val packet = channel.readRemaining(buffer.size.toLong())
@@ -336,9 +344,34 @@ fun Route.shareRoutes() {
                                 output.write(buffer, 0, n)
                                 received += n
                             }
+
+                            val now = System.currentTimeMillis()
+                            if (now - lastReportMs >= 100) {
+                                lastReportMs = now
+                                val sample = speedCalc.sample(received, fileMeta.size, now)
+                                val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
+                                val expectedTotal = session.expectedUploads.takeIf { it >= 0 } ?: sessionReq.files.size
+                                val currentDone = activeUploadSessionsProgress[sessionId] ?: 0
+
+                                com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
+                                    sessionId = sessionId,
+                                    alias = senderAlias,
+                                    totalFiles = expectedTotal,
+                                    filesReceived = currentDone,
+                                    isComplete = false,
+                                    bytesReceived = received,
+                                    totalBytes = fileMeta.size,
+                                    speedBps = sample.speedBps,
+                                    etaSeconds = sample.etaSeconds,
+                                    currentFileName = safeFileName,
+                                )
+                            }
                         }
                     }
                 }
+
+                // Commit the .part staging file to its final destination file
+                TransferCheckpointRegistry.commitPartFile(sessionId, fileId, destFile)
 
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
                 RelayService.trackRelayFile(
@@ -373,9 +406,17 @@ fun Route.shareRoutes() {
 
                 call.respond(HttpStatusCode.OK)
             } catch (_: Exception) {
-                runCatching { if (destFile.exists()) destFile.delete() }
                 // A failed upload must not leave a phantom transfer on the dashboard forever
                 failIncomingSession(sessionId)
+                val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
+                TransferHistory.log(
+                    name = safeFileName,
+                    size = fileMeta.size,
+                    direction = "received",
+                    uri = null,
+                    peerDevice = senderAlias,
+                    status = "failed",
+                )
                 call.respond(HttpStatusCode.InternalServerError)
             }
         }
@@ -383,29 +424,12 @@ fun Route.shareRoutes() {
 }
 
 /**
- * Completion path for an incoming session: removes bookkeeping, shows the tray toast and
+ * Completion path for an incoming session: removes bookkeeping and
  * lets the dashboard entry linger briefly before removal.
  */
 private fun finishIncomingSession(sessionId: String, senderAlias: String, count: Int) {
     activeUploadSessions.remove(sessionId)
     activeUploadSessionsProgress.remove(sessionId)
-
-    try {
-        if (java.awt.SystemTray.isSupported()) {
-            val tray = java.awt.SystemTray.getSystemTray()
-            val image = java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-            val trayIcon = java.awt.TrayIcon(image, "DeX")
-            trayIcon.isImageAutoSize = true
-            tray.add(trayIcon)
-            trayIcon.displayMessage("DeX Transfer Complete", "Received $count file(s) from $senderAlias", java.awt.TrayIcon.MessageType.INFO)
-
-            shareRouteScope.launch {
-                delay(5000)
-                runCatching { tray.remove(trayIcon) }
-            }
-        }
-    } catch (_: Exception) {
-    }
 
     shareRouteScope.launch {
         delay(6000) // Keep in UI for 6s

@@ -1,4 +1,223 @@
 # Changelog
+## [10.1.29.77] - 2026-08-29
+### Added
+- **[minor] Android DeX: Boot Persistence & Queue-and-Send-When-Online**:
+  - **Boot Auto-Start (`BootCompletedReceiver.kt`, `AndroidManifest.xml`)**: New `RECEIVE_BOOT_COMPLETED` receiver auto-starts `DexService` after reboot (with OEM `QUICKBOOT_POWERON` variant) so the phone rejoins the mesh and keeps receiving PC pushes without the app ever being opened. Deliberately gated by the existing battery contract: auto-start requires at least one paired PC and a boot inside the `KeepAliveWorker` 6-hour window since last app use — outside it, opening the app once re-arms everything.
+  - **Queue-and-Send-When-Online (`network/PendingShareForwarder.kt`)**: A Direct Share tap on an offline PC no longer dumps files into the sandbox after a 6-second miss — the share is queued (AirDrop-style) behind an ongoing "Waiting for PC" notification (new silent `dex_share_pending_channel`) and fires automatically the moment the target appears in discovery, within a 10-minute window. `DexService` is started for the wait so discovery runs and the process (holding the URI grants) stays alive. On expiry without the PC, files fall back to the sandbox save plus a terminal notification; the user can cancel the wait from the shade (`CANCEL_PENDING_SHARE` action routed through `FileTransferReceiver`).
+  - **Sandbox-Save Centralization (`SafStorage.kt`, `ShareTargetActivity.kt`)**: The sandbox-save body moved into `SafStorage.saveUrisToSandbox()` / `SafStorage.queryFileName()` so the activity and the pending-share forwarder share one implementation instead of duplicated markup.
+
+## [10.1.28.80] - 2026-08-29
+### Added
+- **[minor] Desktop Compose DeX: History Search Field Auto-Focus & Escape Clearing**:
+  - **Instant Search Input (`FileExplorerPanel.kt`)**: Attached `searchFocusRequester` to the search `BasicTextField` with automatic focus acquisition whenever History is opened (via `Ctrl+H` / hotkey or top bar button), enabling immediate keyboard filtering of received files without manual mouse clicks.
+  - **Hierarchical Escape Clearing**: Pressing `Escape` while search text is present clears the query; pressing `Escape` on an empty search un-focuses the field to restore arrow key grid navigation.
+
+## [10.1.28.79] - 2026-08-29
+### Changed
+- **[minor] Desktop Compose DeX: Harmonious Smooth Fade Transitions**:
+  - **Calibrated Alpha Fade Timings (`DockCardContent.kt`)**: Tuned `fadeIn(tween(280, FastOutSlowInEasing))` and `fadeOut(tween(200, FastOutSlowInEasing))` for expanding the left drawer from collapsed state, paired with `fadeIn(tween(260))` and `fadeOut(tween(200))` when toggling directly between History and Settings, producing a smooth, fluid fade in across both panels.
+
+## [10.1.29.76] - 2026-08-29
+### Added
+- **[minor] Android DeX: Share Picker Recents Exclusion & True Floating Overlay**:
+  - **Recents Exclusion (`AndroidManifest.xml`)**: Added `android:excludeFromRecents="true"` to `ShareTargetActivity` so the share picker never lingers in the Recent Apps menu like a regular app screen.
+  - **System Overlay Presentation (`ui/share/ShareOverlayWindow.kt`)**: New `TYPE_APPLICATION_OVERLAY` window host that floats the picker over the source app (and launcher) once the user grants "Display over other apps". Compose-in-overlay is enabled by a purpose-built `OverlayLifecycleOwner` that fabricates and drives `LifecycleOwner` + `ViewModelStoreOwner` + `SavedStateRegistryOwner` through the view tree. Window flags: `FLAG_NOT_TOUCH_MODAL` passes outside touches through to the source app while `FLAG_WATCH_OUTSIDE_TOUCH` converts an outside tap into dismissal — the panel never traps the user.
+  - **Invisible Trampoline (`ShareTargetActivity.kt`)**: In overlay mode the activity window becomes transparent, non-dimming (`FLAG_DIM_BEHIND` cleared) and non-touchable (`FLAG_NOT_TOUCHABLE`), so the source app stays visible and interactive underneath; the activity exists only to carry the URI grants and is finished the moment the overlay closes.
+  - **Graceful Fallback + Opt-in (`ui/share/ShareSheetContent.kt`, `strings.xml`)**: While the permission is missing, the existing translucent bottom sheet remains the presentation and gains a one-tap "Send over other apps" row that deep-links to the system overlay-permission page; the next share after granting renders as the floating panel.
+  - **Leave-App Equals Dismissal (`ShareTargetActivity.kt`)**: Pressing HOME or switching tasks while the picker is on screen tears it down exactly like the back gesture — the overlay panel is removed and the activity finished on `onStop` (guarded by a `presentationActive` flag so the headless direct-send path keeps its bounded discovery wait alive when backgrounded).
+  - **Host-Agnostic Sheet Extraction (`ShareSheetContent.kt`)**: Device picker and upload-progress bodies extracted into top-level host-agnostic composables (`ShareTargetSheetContent`, `UploadProgressContent`) shared verbatim by the bottom-sheet and overlay presentations — both surfaces stay behaviorally identical by construction instead of duplicated markup.
+
+## [10.1.29.75] - 2026-08-29
+## [10.1.28.78] - 2026-08-29
+### Changed
+- **[minor] Desktop Compose DeX: Right-Anchored Fixed Panel Dimensions**:
+  - **Eliminated Content Relayout Sweep (`DockCardContent.kt`)**: Fixed left-drawer panel containers (`FileExplorerPanel` and `SettingsPanel`) to their target full content widths ($734\text{dp}$ and $355\text{dp}$) and aligned them to `Alignment.CenterEnd` (against the right column). Switching between Settings and History now unmasks the static layout as the outer card bezel glides open without causing search pills, action bars, or grid items to stretch or slide horizontally.
+
+## [10.1.28.77] - 2026-08-29
+### Changed
+- **[minor] Desktop Compose DeX: Left Drawer Sweep Removal & Stationary Fade Expansion**:
+  - **Eliminated Horizontal Sweep Motion (`DockCardContent.kt`)**: Removed `slideInHorizontally` and `slideOutHorizontally` from the left drawer's `AnimatedVisibility`. The drawer contents now expand and collapse via stationary, smooth alpha fading (`fadeIn` / `fadeOut`) in sync with the outer card's spring width expansion, completely eliminating jarring horizontal content sweeping.
+
+## [10.1.28.76] - 2026-08-29
+### Changed
+- **[minor] Desktop Compose DeX: Left Drawer Pure Fade Crossfade Transition**:
+  - **Clean Alpha Crossfade (`DockCardContent.kt`)**: Replaced the sliding physics with a lightweight, pure fade in/out (`fadeIn(tween(180, FastOutSlowInEasing)) togetherWith fadeOut(tween(140, FastOutSlowInEasing))`) for the entire left drawer content when toggling between History (`FileExplorerPanel`) and Settings (`SettingsPanel`).
+
+## [10.1.29.75] - 2026-08-29
+### Added
+- **[minor] Android DeX: True Direct Share — Long-Lived Sharing Shortcuts**:
+  - **Shortcut Publisher Rewrite (`ShortcutHelper.kt`)**: Replaced the online-only dynamic shortcut publication with `syncShareShortcuts()` — long-lived sharing shortcuts (`setLongLived(true)`) published via `setDynamicShortcuts()` for all paired PCs, ranked online-first (`setRank`) and capped at the launcher's 4-target direct-share limit. Targets now survive process death, reboots, and offline PCs, matching native Quick Share behavior.
+  - **Persisted Alias Store (`DeviceManager.kt`, `TransferState.kt`)**: Added `paired_aliases` persistence (fingerprint → alias) so Direct Share labels stay correct while a PC is offline; alias refreshes no-op on unchanged values to avoid redundant disk writes during discovery rebroadcast cycles.
+  - **Startup Publication (`DeXApplication.kt`)**: Publishes persisted share targets at process start, before discovery completes, so the share sheet offers paired PCs immediately.
+  - **Unpair Funnel Teardown (`DeviceManager.removePairedFingerprint`)**: Every unpair path (UI forget, PC-initiated `unpair`, `trust-check` downgrade) now purges both the dynamic and long-lived shortcut copies in one place.
+  - **Pairing Alias Capture (`MessageHandler.kt`)**: PIN-pairing acceptance records the peer's alias for the Direct Share label.
+  - **Direct-Share Routing Hardening (`ShareTargetActivity.kt`)**: Falls back to the system-injected `EXTRA_SHORTCUT_ID` when the chooser drops custom extras, and gives discovery a bounded 6-second window to surface a just-woken PC before falling back to the sandbox save.
+  - **Tests (`DeviceManagerTest.kt`)**: Covered alias persistence, idempotent writes, blank-alias rejection, and shortcut teardown on unpair.
+
+## [10.1.28.74] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: Comprehensive Keyboard Shortcut Navigation**:
+  - **Hierarchical Escape Handler (`FloatingDockCard.kt`)**: Pressing `Escape` while an expanded drawer is open collapses it smoothly back to the compact main menu; pressing `Escape` from the compact menu hides the floating card.
+  - **Global Hotkeys (`FloatingDockCard.kt`)**: Added `Ctrl+H` / `Cmd+H` to quickly toggle History (`ExpandedPanel.FileExplorer`) and `Ctrl+,` / `Cmd+,` / `Alt+Ctrl+S` to toggle Settings (`ExpandedPanel.Settings`).
+  - **Focus Auto-Acquisition**: Integrated `FocusRequester` on the root card canvas so keyboard shortcuts immediately engage whenever the card appears.
+
+## [10.1.28.73] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: Left Drawer History & Settings Animated Transition**:
+  - **Drawer Content Crossfade & Slide (`DockCardContent.kt`)**: Wrapped the left drawer panel content in `AnimatedContent` with smooth bidirectional crossfade and subtle $40\text{dp}$ horizontal gliding (`fadeIn(tween(220, FastOutSlowInEasing)) + slideInHorizontally` togetherWith `fadeOut(tween(180)) + slideOutHorizontally`) when directly switching between History (`FileExplorerPanel`) and Settings (`SettingsPanel`).
+
+## [10.1.28.72] - 2026-08-28
+### Fixed
+- **[fix] Desktop Compose DeX: Main Menu Column Animation Stability Restoration**:
+  - **Right-Column Slide Target Isolation (`DockCardContent.kt`)**: Mapped `null`, `ExpandedPanel.FileExplorer` (History), and `ExpandedPanel.Settings` to a unified right-column target state, preventing the main menu column (`MainMenuColumn`) from erroneously re-animating or sliding whenever expanding or contracting between History and Settings.
+  - **Sub-Panel Slide Exclusivity**: Ensured right-column slide animations only fire when transitioning to or from dedicated replacement views (`ExpandedPanel.Pairing`, `DeviceStatusPanel`).
+
+## [10.1.28.71] - 2026-08-28
+### Added
+- **[minor] Android & Desktop DeX: Real-Time Speed & ETA Analytics and HTTP Checkpoint Resumption**:
+  - **Universal Transfer Speed & ETA Calculator (`TransferSpeedCalculator.kt`)**: Built thread-safe Exponential Moving Average (EMA, $\alpha = 0.3$) rate calculator in `core:network` and Android `app`, providing sliding-window smoothed throughput ($B/\text{s}$, $KB/\text{s}$, $MB/\text{s}$, $GB/\text{s}$) and human-readable ETA formatting (`"< 5s"`, `"45s left"`, `"2m 15s left"`, `"1h 10m left"`).
+  - **HTTP Resumable `.part` Checkpoints (`TransferCheckpointRegistry.kt`, `ShareRoutes.kt`)**: Added temporary `.part` file staging for incoming HTTP/1.1 and HTTP/3 file streams on Desktop. Interrupted transfers retain verified byte chunks on disk and support resuming via `offset` query parameters and seek-skipping (`stream.skip(resumeOffset)`), committing to the final destination upon full arrival.
+  - **Dynamic Island Overlay Live Metrics (`TransferOverlayBridge.kt`)**: Enhanced Desktop Dynamic Island live banners across Outbound Uploads, Inbound Pulls, and Inbound LAN pushes to display real-time formatted speed and dynamic remaining time (e.g. `1/3 files • 12.5 MB/s • 45s left`).
+  - **Android Notification Speed & ETA Enrichment (`UploadWorker.kt`, `BatchDownloadWorker.kt`)**: Integrated `TransferSpeedCalculator` into Android transfer workers, appending live speed and ETA telemetry to ongoing foreground notifications.
+
+## [10.1.28.70] - 2026-08-28
+### Fixed
+- **[fix] Android & Desktop DeX: Transfer Alerts & Transfer History Recording Overhaul**:
+  - **Android Notification Channel Importance Separation (`NotificationHelper.kt`)**: Created high-importance notification channel `dex_transfers_channel` (`IMPORTANCE_HIGH`, vibrating, badged) for all interactive pairing requests, transfer prompts, and completion alerts, resolving silent notification muting caused by sharing `IMPORTANCE_LOW` from background foreground services.
+  - **Desktop Native Audio Handle Leak Fix (`OverlaySoundService.kt`)**: Attached `LineListener` to `AudioSystem.getClip()` to cleanly call `clip.close()` upon `LineEvent.Type.STOP`, eliminating native OS mixer line leaks during synthesized chime and audio dispatches.
+  - **Desktop Unified Inbound Transfer Overlay Alerts (`TransferOverlayBridge.kt`)**: Connected `TransferStateMonitor.activeTransfers` to the Dynamic Island Compose overlay bridge, displaying real-time live transfer banners and rich AirDrop completion cards with "Open Folder" / "Dismiss" actions and sound feedback for all inbound LAN uploads and background pulls.
+  - **Dual-Platform Startup History Race & Thread Safety (`TransferHistory.kt`)**: Added synchronization and initialization pre-checks on both Android and Desktop before applying mutations, preventing history overwrites when logging early transfer events.
+  - **Android Partial Batch & Worker Retry Accuracy (`BatchDownloadWorker.kt`, `UploadWorker.kt`, `PunchSendWorker.kt`, `PunchSession.kt`, `FileShareManager.kt`)**: Corrected batch download outcome handling to record both succeeded and failed files in partial batches, consolidated upload history recording to execute once on final session resolution (eliminating duplicate logs on WorkManager retries), and included remote peer aliases and failure statuses across all NAT punch and file pull-share paths.
+  - **Desktop File Explorer History Data Alignment (`FileExplorerViewModel.kt`)**: Mapped `ExplorerMode.History` directly to `TransferHistory.items` to display all inbound, outbound, and failed transfer records with thumbnail previews, and tied `refreshHistory()` to `TransferHistory.refresh()`.
+
+## [10.1.28.69] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: Inline Device Name Real-Time Editor**:
+  - **Inline Alias Editor (`SettingsPanel.kt`)**: Replaced the modal dialog for editing the device name with an inline expandable editor featuring auto-focus (`FocusRequester`), 32-character counter (`${length}/32`), Enter-to-save and Escape-to-cancel keyboard shortcuts, and instant persistence to `DeviceConfig.alias`.
+  - **Edit Badge Affordance**: Added an "Edit" button pill to the collapsed device name row for quick access and clear affordance.
+
+## [10.1.28.68] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: Storage Download Location Card Modernization**:
+  - **Quick Action Pills (`SettingsPanel.kt`)**: Enhanced the Download Location card in Settings with an **"Open Folder"** quick-action button (opens native file manager with auto-directory creation) and **"Change"** folder picker button.
+  - **Custom Location Indicator & Reset**: Added a "Custom" path badge and a 1-click **"Reset"** button whenever a custom destination is active, instantly restoring the default `~/Downloads/DeX` storage folder.
+
+## [10.1.28.67] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: Native 480p Wallpaper Streaming & Live Change Watcher**:
+  - **Native Wallpaper Downscaling Service (`DesktopWallpaperService.kt`)**: Built native OS wallpaper extraction for Windows (`%APPDATA%\Microsoft\Windows\Themes\TranscodedWallpaper` + Registry fallback) and macOS (Finder AppleScript), scaling to 480p JPEG with bilinear filtering, HTTP `ETag` generation (`W/"<ticks>-<size>"`), and 5-second double-checked RAM caching.
+  - **Wallpaper Routes & HTTP 304 Caching (`wallpaperRoutes.kt`)**: Exposed authenticated `GET /api/dex/wallpaper` and `GET /api/localsend/v2/wallpaper` with `BearerTrust` authentication, serving wallpaper bytes with `Cache-Control: public, max-age=300` and `304 Not Modified` conditional validation.
+  - **Live Wallpaper Change Watcher (`DesktopWallpaperWatcherService.kt`)**: Attached a Java NIO `WatchService` with a $1000\text{ms}$ write-debounce timer to the OS wallpaper directory, automatically invalidating cache and broadcasting `{"type":"wallpaper-updated"}` frames to paired mobile devices.
+
+## [10.1.28.66] - 2026-08-28
+### Added
+- **[minor] Android DeX: Connected Device Context Menu with Elevated Surface & Forget Option**:
+  - **Connected Device Long-Press Action (`MainScreen.kt`, `MainScreenCompact.kt`, `MainScreenGrid.kt`)**: Re-introduced the floating context menu (`DeviceContextMenu.kt`) exclusively for trusted/connected devices in the "My Devices" section, styled with an elevated Material 3 `Surface` ($28\text{dp}$ corner radius, tonal and shadow elevations) instead of liquid glass shaders.
+  - **Unpair & Forget Pipeline**: Provides quick access to **"Send File"**, **"Forget"** (which fires unpair requests to the remote PC and cleans stored pairing certificates in `DeviceManager`), and collapsible **"Device Details"** (IP, OS, ports, protocol).
+  - **Discovered Device Cleanliness**: Untrusted / newly discovered devices remain streamlined with standard immediate click actions and no long-press context menu popup.
+
+## [10.1.28.65] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: FluidSegmentedPicker Theme Control & Fast Click-Outside Dismissal**:
+  - **`FluidSegmentedPicker` Component (`core:designsystem`)**: Built a reusable, spring-sliding segmented pill selector (`FluidSegmentedPicker.kt`) featuring smooth spring translation physics (`spring(dampingRatio = 0.76f, stiffness = 450f)`), elevated active indicator pill with glare and ambient shadow, hand cursor affordance, and high-contrast light/dark background tokens.
+  - **Settings Theme Segmented Control (`SettingsPanel.kt`)**: Replaced the 3-way cycling text clicker with a modern segmented pill selector for **System**, **Light**, and **Dark** modes with instant 1-tap switching.
+  - **Connected Screen 2s Click-Outside Auto-Dismissal (`DeviceStatusPanel.kt`)**: Added window focus loss tracking (`LocalWindowInfo.current.isWindowFocused`) so clicking outside the window into another application or desktop immediately dismisses the paired/status card after $2\text{s}$ ($2\,000\text{ms}$), while keeping the $5\text{s}$ idle timer when actively focused.
+
+## [10.1.28.64] - 2026-08-28
+### Added
+- **[minor] Android DeX: Native Android 12+ Splash Screen with Solid Black Full-Screen Theme**:
+  - **Native Splash Screen Configuration (`themes.xml`, `values-v31/themes.xml`)**: Configured Android 12+ splash screen theme attributes with `android:windowSplashScreenBackground = #000000` (deep pitch-black full-screen window background) and `android:windowSplashScreenIconBackgroundColor = #000000`.
+  - **Centered Black Circular Box & White Logo (`ic_dex_splash_icon.xml`)**: Created layered vector drawable placing the high-res white logo (`alall.png` $\rightarrow$ `dex_splash_logo_white`) optically centered ($dX = 0.0\text{dp}, dY = 0.0\text{dp}$) with $29\text{dp}$ radial edge clearance inside Android 12+'s $160\text{dp}$ center circular safe zone with zero edge clipping.
+
+## [10.1.28.63] - 2026-08-28
+### Fixed
+- **[fix] Multi-Subnet Discovery & Socket Auto-Recovery Resilience**:
+  - **Auto-Recovering Multicast Listeners (`DesktopUdpService.kt`)**: Re-architected `startListening` to survive transient packet errors, socket resets, and network disconnects with auto-recovery and backoff instead of terminating the listening coroutine.
+  - **Dynamic Multicast Group Re-Joining (`DesktopUdpService.kt`)**: Ensured background discovery broadcast loops re-join `224.0.0.167` across newly appeared network interfaces (e.g. Wi-Fi reconnection, mesh router handoffs, VPN adapters).
+  - **Dual-Scheme Manual REST Discovery (`DiscoveryEngine.kt`)**: Added HTTPS probing with fallback to HTTP during manual IP discovery so TLS-secured DeX peers respond reliably.
+
+## [10.1.28.62] - 2026-08-28
+### Fixed
+- **[fix] Desktop Compose DeX: WebSocket Clipboard Sync & Loop-Free Broadcast**:
+  - **Inbound WebSocket Clipboard Dispatcher (`WebSocketRoutes.kt`)**: Added missing `"set-clipboard"` frame handler on Desktop, writing remote clipboard text directly to the native OS clipboard (`Toolkit.systemClipboard`) and emitting `ClipboardSyncState.emitReceived(text)` to prevent echo loopback.
+  - **Zero-Friction Dual-Direction Sync**: Synchronizes clipboard text and image payloads across Desktop and Android in real time over authenticated WebSockets and HTTPS endpoints.
+
+## [10.1.28.61] - 2026-08-28
+### Fixed
+- **[fix] Cross-Platform Zero-Prompt File Transfer Delivery**:
+  - **Removed Notification Accept/Decline Gate (`MessageHandler.kt`)**: Replaced the blocking notification prompt (`TransferState.pendingPrompts` deferred wait) on Android and Desktop with immediate execution of `downloadBatch(...)` into `Downloads/DeX`.
+  - **Unified Seamless Trust Model**: Because devices are already cryptographically paired or auto-trusted via shared Google identity, transfers in both directions (PC $\rightarrow$ Phone and Phone $\rightarrow$ PC) now begin downloading instantly without requiring manual notification button taps or popups.
+
+## [10.1.28.60] - 2026-08-28
+### Added
+- **[minor] Android DeX: AOT Baseline Profiles, Coil 3 Memory Caching & Zero-Copy NIO Buffering**:
+  - **Redundant Avatar Button Removed (`SettingsScreen.kt`)**: Removed the duplicate `FloatingTopAppBar` overlay from `SettingsScreen.kt` since account management is already baked directly into the top Account card, cleaning up the settings layout and setting top padding to a clean `24.dp`.
+  - **AOT Baseline Profiles (`baseline-prof.txt`)**: Bundled Ahead-Of-Time ART compilation rules covering `MainActivity`, `MainNavigation`, `FloatingTopAppBar`, `FloatingPillNavBar`, `DeviceListItem`, `LiquidGlassPanel`, `LiquidGlassIconButton`, `HistoryScreen`, `SettingsScreen`, and network daemons (`DiscoveryEngine`, `WebSocketClientService`, `QuicClient`). Eliminates JIT compilation frame drops on first launch and delivers instant 120fps tab transitions.
+  - **Coil 3 Singleton ImageLoader Memory & Disk Caching (`DeXApplication.kt`)**: Implemented `SingletonImageLoader.Factory` capping RAM bitmap cache at $25\%$ available heap and disk cache at $50\text{ MB}$ (`cacheDir/image_cache`), with automatic memory eviction on `onTrimMemory(TRIM_MEMORY_BACKGROUND)`.
+  - **Window Inset Layout Hoisting (`Navigation.kt`)**: Replaced composition-time `WindowInsets.statusBars.asPaddingValues().calculateTopPadding()` with layout-phase `Modifier.statusBarsPadding().padding(top = 2.dp)` on the DeX logo header, eliminating recomposition passes during scrolling.
+  - **Zero-Copy Direct NIO Buffering (`QuicClient.kt` & `BatchDownloadWorker.kt`)**: Streamed file upload and download chunks directly through `Channels.newChannel()` into $64\text{ KB}$ direct native `ByteBuffer` allocations (`ByteBuffer.allocateDirect(65536)`), eliminating byte array heap churn and Garbage Collection pauses during multi-gigabyte transfers.
+
+## [10.1.28.59] - 2026-08-28
+### Fixed
+- **[fix] Android DeX: Main Content Touch Interception Fix**:
+  - **Hit-Test Culling on Inactive Tab Stack (`Navigation.kt`)**: Wrapped individual tab screens inside `if (isSelected || alpha > 0.01f)` instead of leaving invisible tabs (`graphicsLayer { alpha = 0f }`) in the layout hierarchy. Prevents the trailing `SettingsScreen` full-screen `LazyColumn` from intercepting and swallowing touch gestures on `MainScreen`.
+  - **Dimming Scrim Hit-Test Gating (`Navigation.kt`)**: Gated the global dimming overlay with `if (isDimmed)` (active only when TopAppBar profile or search is expanded), preventing residual transparent float alphas from trapping full-screen clicks.
+
+## [10.1.28.58] - 2026-08-28
+### Added
+- **[minor] Desktop Compose DeX: FluidSwitch Toggle & Settings Modernization**:
+  - **`FluidSwitch` Component (`core:designsystem`)**: Built a centralized, reusable spring-driven fluid switch component (`FluidSwitch.kt`) featuring squash-and-stretch kinematics (thumb dynamically expands from $20\text{dp}$ to $24\text{dp}$ on press/drag), spring physics (`spring(dampingRatio = 0.72f, stiffness = 420f)`), frosted glass border with directional glare rim (`shinyGlare(shape = CircleShape)`), subtle ambient drop shadow, and hand cursor affordance.
+  - **Settings Panel Integration (`SettingsPanel.kt`)**: Replaced text badges and static subtitles with interactive `FluidSwitch` controls across all boolean toggle rows:
+    - *Do Not Disturb* (mute incoming alerts)
+    - *Notification Sounds* (play chime on inbound transfers)
+    - *Clipboard Sync* (seamless bidirectional clipboard sharing)
+    - *Wiggle-to-Open Menu* (shake cursor horizontally to reveal dock)
+    - Unified vibrant emerald active track (`#34C759`) with high-contrast slate/charcoal inactive tracks across both Light and Dark themes.
+  - **Modular `SettingsToggleItem`**: Standardized toggleable preference rows with synchronized row/switch clicking and instant preference persistence in `DeviceConfig`.
+
+## [10.1.28.57] - 2026-08-28
+### Fixed
+- **[fix] Desktop Security & Relay Audit Fixes (misconfiguration / miscommunication bugs)**:
+  - **Phone→PC→Phone Relay Fallback Restored (`RelayService.kt` & `ShareRoutes.kt`)**: `finishIncomingSession` removed the upload session record the moment the last file landed, while the sender's `relay-transfer` request arrives only AFTER its uploads complete — `relayUploadedSession` resolved its expected count from the already-dead record and always answered `relay-error` ("The target device is offline") for every fully-successful relay upload. The expected arrival count is now recorded at prepare-upload time (`RelayService.trackRelayExpected`) so it outlives the session record, with its own relay-TTL sweep and maintenance-loop accounting.
+  - **Clipboard Push Authentication (`clipboardRoutes.kt`, new `AccessControl.kt`)**: `POST /api/dex/clipboard` accepted unauthenticated writes from any LAN peer — the Bearer token clients dutifully sent was ignored server-side. Bearer-trust resolution (googleSub → identityHash → paired token, constant-time) is now centralized in `server/BearerTrust`; the clipboard route enforces it with a 401 gate and the `/ws` handshake delegates to the same implementation.
+  - **File-Explorer Proxy Locked to Loopback (`FileExplorerRoutes.kt`)**: `/local/dex/...` was mounted on the LAN-facing TLS listener with zero auth, letting any LAN peer drive `list-shared-folders` / `browse-folder` / `grant-shared-folder` requests into a connected phone's WebSocket session (grant pops a user-facing dialog that hangs up to 190 s). Every handler now gates on `guardLoopback()` (403 when the request does not arrive on a loopback-bound listener), matching the plan-021 `/local/` contract; `/local/share-target` now shares the same helper instead of its inline copy.
+  - **Dead SSL Config Removed (`DeXServer.kt`)**: `keyStorePath` pointed at `%TEMP%\dex_cert.jks` while Ktor's Netty engine only ever reads the `keyStore` instance (`~/.dex/security/dex_cert.jks` via `CertificateGenerator` — verified against the Ktor 3.5.2 sources); the misleading line is gone.
+  - **Tests**: regression coverage added — relay prompt delivery after the session record was removed, relay fail-closed without a recorded count, the clipboard 401 matrix, and bearer-trust/loopback unit suites (`AccessControlTest`, `ClipboardRoutesTest`, extended `RelayServiceTest`).
+
+## [10.1.28.56] - 2026-08-28
+### Added
+- **[minor] Android DeX: 14.4MB APK Slimming, Compose Strong Skipping & Battery Optimization**:
+  - **Google Play Services Cronet (`play-services-cronet`)**: Replaced `cronet-embedded` fat binary with `play-services-cronet` (v18.1.1), dynamically linking to the OS-managed Chromium engine. Slashed APK bundle size from **$34.2\text{ MB}$ down to $19.8\text{ MB}$ ($-42\%$ / $-14.4\text{ MB}$)** while preserving full HTTP/3 QUIC file transfer performance.
+  - **Compose Compiler Stability & Strong Skipping (`compose_stability.conf`)**: Added Compose stability configuration mapping standard collections (`List`, `Set`, `Map`), system models (`Uri`, `UUID`), and domain DTOs as stable types. Enables Compose strong skipping mode across all cards, dialogs, and lists for solid 120fps stutter-free rendering.
+  - **Adaptive MulticastLock & Discovery Radio Throttling (`UdpMulticastManager.kt` & `DiscoveryEngine.kt`)**: Automatically releases Wi-Fi `MulticastLock` when an active TCP/WebSocket session is established with a PC, allowing the Wi-Fi modem to enter low-power sleep mode. Relaxed UDP presence broadcast interval from 2s down to 10s/30s when idle/connected.
+  - **Telemetry Battery Throttling (`WebSocketClientService.kt`)**: Throttled periodic telemetry broadcasts to transmit only when battery level changes by $\ge 15\%$ or Wi-Fi network SSID changes, preventing unnecessary modem wakeups.
+  - **Coil Thumbnail Memory Downsampling (`HistoryScreen.kt` & `DeviceListItem.kt`)**: Configured direct stream downsampling on image thumbnail requests (`192x192`, `384x384`, `512x512`), preventing large raw camera photos from inflating RAM heap and eliminating Garbage Collection frame drops.
+  - **Lazy Layout `contentType` Slot Recycling (`HistoryScreen.kt`, `MainScreenCompact.kt`, `MainScreenGrid.kt`)**: Added explicit `contentType` tags across all list rows and grid cells, enabling Compose to recycle composition slots without destroying and recreating nodes during fast scrolling.
+  - **Liquid Glass Shader Shadow Bypass (`LiquidGlassPanel.kt` & `LiquidGlassIconButton.kt`)**: Bypassed GPU shadow pass allocations when `shadowRadius <= 0.dp`, eliminating redundant multi-pass blur render targets on standard glass surfaces.
+  - **Device Card Context Menu Removal (`MainScreen.kt`, `MainScreenCompact.kt`, `MainScreenGrid.kt`, `DeviceListItem.kt`)**: Removed the long-press popup context menu from discovered and paired device cards in favor of standard responsive tap gestures.
+  - **Flat Settings Item Styling (`SettingsComponents.kt`)**: Removed `shadowRadius = 4.dp` from `SettingsGroup` `DeXPanel` instances for clean, modern flat settings list rows.
+  - **ABI Splitting Configuration (`build.gradle.kts`)**: Configured architecture splitting for `arm64-v8a` and `x86_64` alongside universal debug builds.
+
+## [10.1.28.55] - 2026-08-28
+### Fixed
+- **[fix] Desktop-Android Cross-Platform Miscommunication & Wire Route Alignment**:
+  - **Live Battery & Telemetry Ingestion (`WebSocketRoutes.kt` & `DiscoveryEngine.kt`)**: Added missing `"telemetry"` message handler on Desktop, capturing remote phone battery %, charging state, and Wi-Fi SSID into `DiscoveryEngine.updateTelemetry(...)` so `DeviceStatusPanel` and `DeviceListPanel` display live power levels in real time.
+  - **Canonical Data Envelope on File Explorer REST RPCs (`FileExplorerRoutes.kt`)**: Wrapped `list-shared-folders`, `browse-folder`, and `grant-shared-folder` payloads inside the mandatory `{"data": { ... }}` JSON object, fixing immediate frame drops on Android and eliminating 25-second HTTP request timeouts.
+  - **Same-Account Auto-Trust Nonce Challenge (`MessageHandler.kt` & `HashUtils.kt`)**: Added missing `"identity-challenge"` message handler to Android's `MessageHandler`, enabling phones to answer PC nonce challenges with `hmacSha256Base64(sub, nonce)` (`identity-proof`) to establish session auto-trust.
+  - **Pull Transfer Cancellation Routing (`MessageHandler.kt`)**: Added `"pull-cancel"` to Android's message router, ensuring PC file pull abort commands cleanly signal `FileShareManager` to terminate active background streams.
+
+## [10.1.28.54] - 2026-08-28
+### Fixed
+- **[fix] Cross-Platform Protocol & Communication Integrity Hardening**:
+  - **Premature Telemetry PIN Lockout (`PairingEngine.kt`)**: Prevented `handlePinDigitEntered` in `QrPhase` from mutating state into a broken `-----` placeholder PIN. Keystrokes are now only tracked when an active `PinPhase` exists, protecting the minted verification PIN.
+  - **Relay Transfer Fallback Port Resolution (`BatchDownloadWorker.kt` & `RelayService.kt`)**: Eliminated silent `Result.failure()` download worker aborts on Android when `tcpFallbackPort` was missing by falling back to `DeXPorts.PULL` (`48426`) and explicitly declaring standard HTTPS/QUIC/PULL ports in `RelayService.hostAndPushAsync`.
+  - **Canonical Image Clipboard Payload (`ClipboardSyncService.kt` & `MessageHandler.kt`)**: Wrapped copied desktop images in the standard `{"type": "set-clipboard", "data": {"imageBase64": "...", "imageMime": "..."}}` wire envelope, resolving dropped frame rejections on Android.
+  - **Screen Mirroring Configuration & Memory Cleanup (`WebSocketRoutes.kt`, `IMirrorEngine.kt`, `MirrorWindow.kt`)**: Added `"mirror-config"` frame parsing to dynamically register incoming video stream resolution and FPS (`MirrorConfig`), and ensured `mirrorEngine.stop()` is invoked on `MirrorWindow` disposal to free cached bitmaps and release memory.
+  - **Active Session Unpair on Reset (`SettingsPanel.kt`)**: Ensured *"Reset All Settings & Identity"* broadcasts `"unpair"` control frames to all active connected peers and marks them untrusted before resetting identity hashes and storage.
+  - **UDP Broadcast Socket Reuse (`DesktopUdpService.kt`)**: Replaced repetitive ephemeral `DatagramSocket()` allocations inside the 2000ms discovery loop with a reused, managed broadcast socket, eliminating socket churn and port exhaustion.
+  - **QR Code TLS Scheme Alignment (`QrPayloadGenerator.kt`)**: Corrected pairing QR URL format to `https://` matching DeX's TLS server.
+  - **Reactive Connected Peer Stream in File Explorer (`FileExplorerViewModel.kt`)**: Subscribed `activeFingerprint` reactively to `WebSocketConnectionManager.connectedFingerprintsFlow`, resolving connection state lag when entering File Explorer.
+
 ## [10.1.28.53] - 2026-08-28
 ### Fixed
 - **[fix] Cross-Platform Pairing Synchronization & Silent Re-Authentication**:

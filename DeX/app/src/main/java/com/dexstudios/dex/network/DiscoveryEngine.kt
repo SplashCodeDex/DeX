@@ -112,9 +112,13 @@ class DiscoveryEngine(
                     AuthState.pairedFingerprints.contains(it.info.fingerprint) ||
                     (it.info.identityHash != null && it.info.identityHash == deviceConfig.identityHash)
                 }
-                ShortcutHelper.updateShareShortcuts(context, trustedOnline)
+                ShortcutHelper.syncShareShortcuts(context, trustedOnline)
             }
         }
+    }
+
+    fun setConnected(connected: Boolean) {
+        udpManager?.setConnected(connected)
     }
 
     fun addDevice(device: DiscoveredDevice) {

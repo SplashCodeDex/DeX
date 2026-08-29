@@ -2,15 +2,12 @@ package com.dexstudios.dex.network
 
 import android.content.Context
 import android.net.Uri
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.Data
-import androidx.work.BackoffPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import kotlinx.serialization.json.Json
-import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 data class DownloadState(
@@ -31,6 +31,7 @@ data class DownloadState(
     val totalFiles: Int = 1,
     val protocol: String = "",
     val speedBps: Long = 0L,
+    val etaSeconds: Long? = null,
     val sourceFingerprint: String? = null,
     val peerName: String? = null,
     val peerPicture: String? = null

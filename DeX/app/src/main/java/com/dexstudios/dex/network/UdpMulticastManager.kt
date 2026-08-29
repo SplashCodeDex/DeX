@@ -57,9 +57,16 @@ class UdpMulticastManager(
                 val buffer = ByteArray(2048)
 
                 scope.launch {
+                    var burstCount = 0
                     while (isActive) {
                         broadcastPresence()
-                        kotlinx.coroutines.delay(2000)
+                        val interval = when {
+                            isConnectedToPc -> 30_000L
+                            burstCount < 3 -> 3_000L
+                            else -> 10_000L
+                        }
+                        burstCount++
+                        kotlinx.coroutines.delay(interval)
                     }
                 }
 
@@ -73,6 +80,29 @@ class UdpMulticastManager(
                     handleIncomingPacket(packet)
                 }
             }.onFailure { Timber.e(it, "Multicast loop failed") }
+        }
+    }
+
+    @Volatile
+    private var isConnectedToPc: Boolean = false
+
+    fun setConnected(connected: Boolean) {
+        if (isConnectedToPc == connected) return
+        isConnectedToPc = connected
+        if (connected) {
+            runCatching {
+                if (multicastLock?.isHeld == true) {
+                    multicastLock?.release()
+                    Timber.d("Released MulticastLock while connected to PC")
+                }
+            }
+        } else {
+            runCatching {
+                if (multicastLock?.isHeld == false) {
+                    multicastLock?.acquire()
+                    Timber.d("Acquired MulticastLock for PC discovery")
+                }
+            }
         }
     }
 

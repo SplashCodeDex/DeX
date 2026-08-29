@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DeX" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Transparent / Translucent Window Overlay over Android OS -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <!-- Window Dimming Scrim (FLAG_DIM_BEHIND / backgroundDimAmount) -->
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+
+        <!-- Full-screen window splash background: solid black -->
+        <item name="android:windowSplashScreenBackground">#000000</item>
+        <!-- Center splash icon: white logo inside black circular box -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_dex_splash_icon</item>
+        <!-- Center icon background: solid black -->
+        <item name="android:windowSplashScreenIconBackgroundColor">#000000</item>
+    </style>
+</resources>

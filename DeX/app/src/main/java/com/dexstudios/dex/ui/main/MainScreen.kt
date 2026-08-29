@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
@@ -63,10 +65,8 @@ import com.dexstudios.dex.ui.components.NetworkErrorDialog
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.*
 import com.dexstudios.dex.ui.main.components.ScanToAddDeviceCard
-import com.dexstudios.dex.ui.main.components.DummyDeviceCard
 import com.dexstudios.dex.ui.main.components.MainScreenCompact
 import com.dexstudios.dex.ui.main.components.MainScreenGrid
-import com.dexstudios.dex.ui.components.glass.GlassScrollEdge
 import androidx.compose.ui.text.style.TextAlign
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -231,7 +231,7 @@ fun MainScreen(
     val contentBackdrop = rememberLayerBackdrop()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         // Full-window content: the scrolling content passes behind the native
         // status bar and navigation bar — the glass edge fades keep it readable.
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -246,16 +246,6 @@ fun MainScreen(
                     .fillMaxSize()
                     .layerBackdrop(contentBackdrop)
             ) {
-                // Background drawn into the backdrop so the layer is never empty
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                )
-
-                // Ambient purple/violet/pink haze drifting behind all content
-                AmbientSmokeBackground(modifier = Modifier.fillMaxSize())
-
                     val discoveredDevicesList = discoveredDevices
                     val deviceConfig: DeviceConfig = koinInject()
 
@@ -304,7 +294,7 @@ fun MainScreen(
                             onUntrustedDeviceButtonClick = { device ->
                                 connectOptionsDevice = device
                             },
-                            onDeviceLongClick = { device ->
+                            onTrustedDeviceLongClick = { device ->
                                 contextMenuDevice = device
                             },
                             onScanClick = { launchQrScanner() },
@@ -327,7 +317,7 @@ fun MainScreen(
                             onUntrustedDeviceButtonClick = { device ->
                                 connectOptionsDevice = device
                             },
-                            onDeviceLongClick = { device ->
+                            onTrustedDeviceLongClick = { device ->
                                 contextMenuDevice = device
                             },
                             onScanClick = { launchQrScanner() },
@@ -335,15 +325,6 @@ fun MainScreen(
                         )
                     }
             }
-
-            // ===== Glass overlays: drawn AFTER the captured content, sample it =====
-            GlassScrollEdge(
-                backdrop = contentBackdrop,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(statusBarHeight + 64.dp)
-            )
         }
     }
 
@@ -381,32 +362,18 @@ fun MainScreen(
     }
 
     contextMenuDevice?.let { device ->
-        val isTrusted = AuthState.pairedFingerprints.contains(device.info.fingerprint)
         DeviceContextMenu(
             device = device,
-            isTrusted = isTrusted,
+            isTrusted = true,
             backdrop = contentBackdrop,
             onSendFile = {
                 selectedDevice = device
                 filePickerLauncher.launch(arrayOf("*/*"))
             },
-            onPair = {
-                if (pairingDeviceFingerprint != device.info.fingerprint) {
-                    pairingDeviceFingerprint = device.info.fingerprint
-                    Toast.makeText(context, context.getString(R.string.pairing_with, device.info.alias), Toast.LENGTH_SHORT).show()
-                    viewModel.requestPairing(device) { success ->
-                        pairingDeviceFingerprint = null
-                        if (success) {
-                            Toast.makeText(context, context.getString(R.string.pairing_request_sent, device.info.alias), Toast.LENGTH_LONG).show()
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.pairing_failed), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            },
+            onPair = { },
             onForget = {
                 viewModel.requestUnpair(device) { success ->
-                    // Request fired off, PC should unpair shortly if online
+                    // Request fired off, PC will unpair shortly if online
                 }
                 DeviceManager.removePairedFingerprint(device.info.fingerprint)
                 Toast.makeText(context, "Forgotten ${device.info.alias}", Toast.LENGTH_SHORT).show()

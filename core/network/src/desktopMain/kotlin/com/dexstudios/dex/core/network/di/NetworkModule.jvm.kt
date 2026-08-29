@@ -33,4 +33,5 @@ val desktopNetworkModule = module {
     // Always-on core behavior — no settings surface (plan 023).
     single { DesktopUpnpService(get()) }
     single { PublicAddressService(get(), getOrNull()) }
+    single { com.dexstudios.dex.core.network.services.DesktopWallpaperWatcherService() }
 }

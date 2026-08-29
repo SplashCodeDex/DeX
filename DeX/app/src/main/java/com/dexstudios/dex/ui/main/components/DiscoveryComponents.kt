@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
@@ -40,17 +41,18 @@ import com.dexstudios.dex.ui.icons.MaterialSymbols
 @Composable
 fun ScanToAddDeviceCard(
     showHelpHint: Boolean,
-    onScanClick: () -> Unit
+    onScanClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showHelpContent by remember { mutableStateOf(false) }
 
-    val cardShape = RoundedCornerShape(48.dp)
+    val cardShape = RoundedCornerShape(40.dp)
 
     DeXGlareCard(
         shape = cardShape,
-        modifier = Modifier
-            .width(300.dp)
-            .height(340.dp)
+        modifier = modifier
+            .width(260.dp)
+            .height(300.dp)
             .bubbleFluidity(targetScale = 0.97f, pullFactor = 0.02f)
     ) {
         // 2. The Content
@@ -82,8 +84,8 @@ private fun ScanCardContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -94,7 +96,7 @@ private fun ScanCardContent(
                     textAlign = TextAlign.Center
                 )
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     DiscoveryHelpStep(number = "1", text = stringResource(R.string.discovery_help_step1))
                     DiscoveryHelpStep(number = "2", text = stringResource(R.string.discovery_help_step2))
                     DiscoveryHelpStep(number = "3", text = stringResource(R.string.discovery_help_step3))
@@ -104,7 +106,7 @@ private fun ScanCardContent(
 
                 DeXButton(
                     onClick = { onToggleHelp(false) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = CircleShape
                 ) {
                     Text(stringResource(R.string.discovery_help_close), fontWeight = FontWeight.Bold)
@@ -114,7 +116,7 @@ private fun ScanCardContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.Bottom,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -125,14 +127,14 @@ private fun ScanCardContent(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(110.dp)
+                            .size(90.dp)
                             .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = MaterialSymbols.QrCodeScanner,
                             contentDescription = "Scan",
-                            modifier = Modifier.size(56.dp),
+                            modifier = Modifier.size(44.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -140,10 +142,10 @@ private fun ScanCardContent(
 
                 Text(
                     text = "Scan to add Device",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = 6.dp),
                     textAlign = TextAlign.Center
                 )
 
@@ -182,21 +184,21 @@ private fun ScanCardContent(
                                 text = "QRCode must be triggered from PC",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 20.sp,
+                                lineHeight = 18.sp,
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 DeXButton(
                     onClick = onScanClick,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = CircleShape
                 ) {
-                    Text("Scan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Scan", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
         }
@@ -227,31 +229,5 @@ fun DiscoveryHelpStep(number: String, text: String) {
             color = MaterialTheme.colorScheme.onSurface
         )
     }
-}
-
-@Composable
-fun DummyDeviceCard(alias: String, model: String, wallpaper: Any) {
-    val dummyDevice = remember(alias, model) {
-        DiscoveredDevice(
-            ip = "0.0.0.0",
-            info = RegisterDto(
-                alias = alias,
-                version = "1.0",
-                deviceModel = model,
-                deviceType = "pc",
-                fingerprint = alias,
-                port = 0,
-                protocol = "https",
-                download = true
-            )
-        )
-    }
-    DeviceListItem(
-        device = dummyDevice,
-        onClick = {}, // Do nothing as requested
-        modifier = Modifier.width(300.dp),
-        isTrusted = true,
-        wallpaper = wallpaper
-    )
 }
 

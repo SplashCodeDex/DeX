@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +45,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +69,7 @@ import io.github.alexzhirkevich.compottie.animateLottieCompositionAsState
 import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -107,7 +110,7 @@ fun resolveDeviceCategory(device: DiscoveredDevice?, fallbackName: String = ""):
  * live telemetry (battery, Wi-Fi SSID, signal), and Exit-Engine styled Send Files button.
  *
  * Supports Phone, Tablet, Laptop, and Watch dynamic 3D animations.
- * Designed with Apple connection card ergonomics.
+ * Designed with Apple connection card ergonomics, 5s idle auto-dismissal, and 2s click-outside dismissal.
  */
 @Composable
 fun DeviceStatusPanel(
@@ -115,6 +118,7 @@ fun DeviceStatusPanel(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     overrideCategory: ConnectedDeviceType? = null,
+    autoDismissDelayMs: Long = 5_000L,
     onBrowseFiles: (DiscoveredDevice?) -> Unit = {},
     discoveryEngine: DiscoveryEngine = koinInject(),
     deviceConfig: DeviceConfig = koinInject(),
@@ -148,6 +152,28 @@ fun DeviceStatusPanel(
         ?: activeDevice?.info?.fingerprint?.take(8)
         ?: defaultDemoName
 
+    val panelInteraction = remember { MutableInteractionSource() }
+    val isPanelHovered by panelInteraction.collectIsHoveredAsState()
+    val windowInfo = LocalWindowInfo.current
+    val isWindowFocused = windowInfo.isWindowFocused
+
+    // Auto-dismiss: 2s when window loses focus (clicked outside), 5s when idle in focus (paused by hover or dialog)
+    if (autoDismissDelayMs > 0) {
+        LaunchedEffect(isPanelHovered, isWindowFocused, controller.isModalDialogOpen) {
+            if (!controller.isModalDialogOpen) {
+                if (!isWindowFocused) {
+                    // Clicked outside / lost focus: 2s fast dismiss
+                    delay(2_000L)
+                    onClose()
+                } else if (!isPanelHovered) {
+                    // Focused but idle: 5s auto-dismiss
+                    delay(autoDismissDelayMs)
+                    onClose()
+                }
+            }
+        }
+    }
+
     val batteryPercent = activeDevice?.info?.battery ?: when (activeCategory) {
         ConnectedDeviceType.Phone -> 85
         ConnectedDeviceType.Tablet -> 90
@@ -174,6 +200,7 @@ fun DeviceStatusPanel(
     Column(
         modifier = modifier
             .fillMaxHeight()
+            .hoverable(panelInteraction)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,

@@ -30,7 +30,7 @@ fun SettingsGroup(
         )
         DeXPanel(
             modifier = Modifier.fillMaxWidth(),
-            shadowRadius = 4.dp
+            shadowRadius = 0.dp
         ) {
             Column(
                 modifier = Modifier

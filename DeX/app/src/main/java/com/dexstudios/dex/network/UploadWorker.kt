@@ -60,9 +60,6 @@ class UploadWorker(
     }
 
     private val lastUiUpdate = AtomicLong(0L)
-    private val speedBytes = AtomicLong(0L)
-    private val speedTime = AtomicLong(0L)
-    private val smoothedSpeed = AtomicLong(0L)
 
     @Volatile
     private var lastForegroundPercent: Int = -1
@@ -183,8 +180,8 @@ class UploadWorker(
 
                             stream.use { input ->
                                 val useQuic = client.quicAvailable()
-                                val perFile = AtomicLong(0L)
-                                val onBytes: suspend (Long) -> Unit = { bytes ->
+                                val perFile = AtomicLong(0)
+                                val onBytes: (Long) -> Unit = { bytes ->
                                     val delta = bytes - perFile.getAndSet(bytes)
                                     reportProgress(doneCount.get(), fileData.size, totalSent.addAndGet(delta), totalBatchSize, d.second, useQuic)
                                 }
@@ -207,9 +204,6 @@ class UploadWorker(
 
                                 if (outcome.ok) {
                                     doneCount.incrementAndGet()
-                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
-                                } else {
-                                    TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
                                 }
                                 outcomes.add(id to outcome)
                             }
@@ -236,6 +230,16 @@ class UploadWorker(
             return@withContext Result.retry()
         }
 
+        val outcomeMap = outcomes.toMap()
+        fileData.forEach { (id, d) ->
+            val outcome = outcomeMap[id]
+            if (outcome?.ok == true) {
+                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
+            } else {
+                TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
+            }
+        }
+
         client.finishUpload(doneCount.get(), fileData.size)
 
         if (failed.isNotEmpty() && failed.all { it.second.httpStatus == 403 }) {
@@ -251,7 +255,9 @@ class UploadWorker(
         }
     }
 
-    private suspend fun reportProgress(
+    private val speedCalculator = TransferSpeedCalculator()
+
+    private fun reportProgress(
         doneFiles: Int,
         totalFiles: Int,
         sentBytes: Long,
@@ -264,17 +270,8 @@ class UploadWorker(
         if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
         lastUiUpdate.set(now)
 
-        val lastBytes = speedBytes.get()
-        val lastTime = speedTime.get()
-        if (lastTime != 0L && now - lastTime > 200) {
-            val instant = ((sentBytes - lastBytes) * 1000L) / (now - lastTime)
-            val prev = smoothedSpeed.get()
-            smoothedSpeed.set(if (prev == 0L) instant else (prev * 7 + instant * 3) / 10)
-        }
-        speedBytes.set(sentBytes)
-        speedTime.set(now)
-
-        val aggregate = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else 0f
+        val sample = speedCalculator.sample(sentBytes, totalBytes, now)
+        val aggregate = if (totalBytes > 0) (sentBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
         val displayName = if (totalFiles == 1) currentFile else "$doneFiles of $totalFiles files"
         try {
             client.updateUploadState(
@@ -286,7 +283,8 @@ class UploadWorker(
                     aggregateProgress = aggregate,
                     isUploading = true,
                     protocol = if (useQuic) client.lastUploadProtocol() else "http/1.1",
-                    speedBps = smoothedSpeed.get(),
+                    speedBps = sample.speedBps,
+                    etaSeconds = sample.etaSeconds,
                     targetFingerprint = targetFingerprint
                 )
             )
@@ -294,7 +292,16 @@ class UploadWorker(
             val percent = (aggregate * 100).toInt()
             if (percent != lastForegroundPercent) {
                 lastForegroundPercent = percent
-                setForeground(createForegroundInfo(percent, applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)))
+                val speedEtaText = listOfNotNull(
+                    sample.formattedSpeed.takeIf { it.isNotBlank() },
+                    sample.formattedEta.takeIf { it.isNotBlank() }
+                ).joinToString(" • ")
+
+                val baseText = applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)
+                val notifText = if (speedEtaText.isNotBlank()) "$baseText ($speedEtaText)" else baseText
+                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                    setForeground(createForegroundInfo(percent, notifText))
+                }
             }
         } catch (e: Exception) {
             // UI updates must never kill the transfer

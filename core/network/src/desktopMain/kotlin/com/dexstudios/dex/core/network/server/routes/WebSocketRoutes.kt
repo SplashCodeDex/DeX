@@ -42,28 +42,11 @@ import kotlinx.serialization.json.putJsonObject
  * them. Untrusted connections may run the pairing handshake, prove same-account identity
  * via identity-challenge/identity-proof, until the PIN is proven — they never receive
  * transfer prompts or hosted pull tokens.
+ *
+ * The matching logic itself lives in [BearerTrust] so every bearer-consuming surface
+ * (HTTP routes, clipboard push) shares one implementation.
  */
-private fun resolveHandshakeTrust(fingerprint: String, token: String?): Pair<Boolean, String?> {
-    if (token.isNullOrEmpty()) return false to null
-    val koin = org.koin.core.context.GlobalContext.get()
-    val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
-
-    // Length pre-check keeps MessageDigest.isEqual effective; isEqual alone short-circuits
-    // nothing harmful, but equal lengths avoid trivially-timed rejections.
-    fun matches(secret: String): Boolean = secret.isNotEmpty() && secret.length == token.length &&
-        java.security.MessageDigest.isEqual(token.toByteArray(), secret.toByteArray())
-
-    if (matches(deviceConfig.googleSub)) return true to deviceConfig.googleSub
-    if (matches(deviceConfig.identityHash)) return true to deviceConfig.identityHash
-
-    val pairedToken = AuthState.pairedTokens.value[fingerprint]
-    if (!pairedToken.isNullOrEmpty() && pairedToken.length == token.length &&
-        java.security.MessageDigest.isEqual(token.toByteArray(), pairedToken.toByteArray())
-    ) {
-        return true to null
-    }
-    return false to null
-}
+private fun resolveHandshakeTrust(fingerprint: String, token: String?): Pair<Boolean, String?> = com.dexstudios.dex.core.network.server.BearerTrust.resolveHandshakeTrust(fingerprint, token)
 
 /** HMAC-SHA256 over [data] keyed by [secret] — proof-of-possession without disclosure. */
 private fun hmacSha256(secret: String, data: ByteArray): ByteArray {
@@ -90,8 +73,12 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         val token = call.request.queryParameters["token"]
+        val alias = call.request.queryParameters["alias"]
+        val deviceType = call.request.queryParameters["deviceType"] ?: "mobile"
+        val deviceModel = call.request.queryParameters["deviceModel"] ?: "Phone"
 
         var registered = false
+        val pullSpeedCalc = com.dexstudios.dex.core.network.TransferSpeedCalculator()
         // Per-connection nonce for the same-account proof-of-possession exchange. Handler
         // scoped: no shared map, nothing for another peer to read or replay.
         var identityNonce: ByteArray? = null
@@ -102,6 +89,31 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
             if (!registered) {
                 close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "fingerprint already connected"))
                 return@webSocket
+            }
+
+            val discovery = org.koin.core.context.GlobalContext.get().getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
+            if (discovery != null) {
+                val existing = discovery.devices.value[fingerprint]
+                val remoteIp = call.request.local.remoteHost
+                if (existing == null) {
+                    val newDevice = com.dexstudios.dex.core.network.DiscoveredDevice(
+                        ip = remoteIp,
+                        info = com.dexstudios.dex.core.network.RegisterDto(
+                            alias = alias?.ifBlank { "Phone" } ?: "Phone",
+                            version = "2.0",
+                            deviceModel = deviceModel,
+                            deviceType = deviceType,
+                            fingerprint = fingerprint,
+                            port = com.dexstudios.dex.core.network.DeXPorts.HTTPS,
+                            protocol = "https",
+                            download = false,
+                        ),
+                        viaWan = false,
+                    )
+                    discovery.addDevice(newDevice)
+                } else if (!alias.isNullOrBlank() && existing.info.alias.isBlank()) {
+                    discovery.addDevice(existing.copy(info = existing.info.copy(alias = alias)))
+                }
             }
 
             Logger.i("WebSocket connection established: ${call.request.local.remoteHost} (FP: $fingerprint, trusted: $trusted)")
@@ -289,6 +301,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                     val sentBytes = dataObj["sentBytes"]?.jsonPrimitive?.longOrNull ?: 0L
                                     val totalBytes = dataObj["totalBytes"]?.jsonPrimitive?.longOrNull ?: 0L
                                     val currentFile = dataObj["currentFile"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                                    val speedSample = pullSpeedCalc.sample(sentBytes, totalBytes)
                                     val explorer = org.koin.core.context.GlobalContext.get()
                                         .get<com.dexstudios.dex.core.network.services.FileExplorerService>()
                                     val current = explorer.pullProgress.value
@@ -301,6 +314,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                             bytesTransferred = sentBytes,
                                             totalBytes = totalBytes,
                                             progress = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else current.progress,
+                                            speedBps = speedSample.speedBps,
+                                            etaSeconds = speedSample.etaSeconds,
                                             isPulling = state == "running",
                                             isDone = state == "done",
                                         ),
@@ -346,6 +361,30 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                             "mirror-stop" -> {
                                 mirrorEngine.stop()
                                 Logger.i("Mirror stream stopped by peer $fingerprint")
+                            }
+
+                            "telemetry" -> {
+                                val battery = dataObj?.get("battery")?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                                val isCharging = dataObj?.get("isCharging")?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                                val wifiSsid = dataObj?.get("wifiSsid")?.jsonPrimitive?.contentOrNull
+                                if (fingerprint != null) {
+                                    val discovery = org.koin.core.context.GlobalContext.get().getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
+                                    discovery?.updateTelemetry(fingerprint, battery, isCharging, wifiSsid)
+                                }
+                            }
+
+                            "set-clipboard" -> {
+                                val text = dataObj?.get("text")?.jsonPrimitive?.contentOrNull
+                                if (!text.isNullOrBlank()) {
+                                    try {
+                                        val selection = java.awt.datatransfer.StringSelection(text)
+                                        java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+                                        com.dexstudios.dex.core.network.ClipboardSyncState.emitReceived(text)
+                                        Logger.i("Clipboard text synced via WebSocket from $fingerprint")
+                                    } catch (e: Exception) {
+                                        Logger.i("Failed to set desktop clipboard text from $fingerprint: ${e.message}")
+                                    }
+                                }
                             }
 
                             else -> {

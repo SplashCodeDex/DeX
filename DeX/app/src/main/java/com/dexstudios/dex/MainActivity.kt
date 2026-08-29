@@ -149,6 +149,16 @@ WorkManager.getInstance(this).enqueueUniquePeriodicWork(
     )
 
     enableEdgeToEdge()
+    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+
+    // Native OS Window Dimming Scrim (100% universal across all Android devices)
+    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    window.setDimAmount(0.5f)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        window.attributes.blurBehindRadius = 80
+    }
 
     // When the PC asks to mirror, surface the system screen-capture consent dialog
     lifecycleScope.launch {
@@ -162,7 +172,14 @@ WorkManager.getInstance(this).enqueueUniquePeriodicWork(
 
     setContent {
       val windowSizeClass = androidx.compose.material3.windowsizeclass.calculateWindowSizeClass(this)
-      DeXTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation(windowSizeClass) } }
+      DeXTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
+          MainNavigation(
+            windowSizeClass = windowSizeClass,
+            onDismiss = { moveTaskToBack(true) }
+          )
+        }
+      }
     }
   }
 

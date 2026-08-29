@@ -9,6 +9,7 @@ import com.dexstudios.dex.ui.theme.PopInEase
 import com.dexstudios.dex.ui.theme.SpatialPhysics
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -38,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Size
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import androidx.compose.runtime.remember
 
@@ -106,11 +108,12 @@ fun DeviceListItem(
         if (resolvedWallpaper == null) return@remember null
         ImageRequest.Builder(context)
             .data(resolvedWallpaper)
+            .size(Size(512, 512))
             .crossfade(true)
             .build()
     }
 
-    val cardShape = RoundedCornerShape(48.dp)
+    val cardShape = RoundedCornerShape(40.dp)
 
     val sharedModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
         with(sharedTransitionScope) {
@@ -137,16 +140,19 @@ fun DeviceListItem(
 
     Box(
         modifier = modifier
-            .width(300.dp)
-            .height(340.dp)
+            .width(260.dp)
+            .height(300.dp)
             .then(sharedModifier)
             .graphicsLayer { alpha = contentAlpha }
             .then(if (shouldApplyFluidity) Modifier.bubbleFluidity(targetScale = 0.98f, pullFactor = 0.02f) else Modifier)
             .shinyGlare(shape = cardShape)
             .clip(cardShape)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier.clickable(onClick = onClick)
+                }
             )
     ) {
         // 1. The Background Layer (Wallpaper or Placeholder)
@@ -237,7 +243,7 @@ private fun DeviceCardUIContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(20.dp),
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.Start
     ) {
@@ -253,10 +259,10 @@ private fun DeviceCardUIContent(
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 180.dp)
+                modifier = Modifier.widthIn(max = 150.dp)
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             // Telemetry beside name
             Row(
@@ -281,16 +287,18 @@ private fun DeviceCardUIContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = device.info.deviceModel.ifBlank { stringResource(R.string.device_unknown) },
             style = MaterialTheme.typography.bodyMedium,
             color = subtitleColor,
-            lineHeight = 20.sp
+            lineHeight = 20.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         val buttonColors = if (isTrusted) {
             ButtonDefaults.buttonColors(
@@ -303,14 +311,14 @@ private fun DeviceCardUIContent(
 
         DeXButton(
             onClick = onButtonClick,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = CircleShape,
             colors = buttonColors
         ) {
             Text(
                 text = if (isTrusted) "Send File" else "Connect",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                fontSize = 15.sp
             )
         }
     }
@@ -325,17 +333,17 @@ private fun DeviceCardPairingContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Device Identity Header (Smaller version)
         Icon(
             imageVector = MaterialSymbols.Devices,
             contentDescription = null,
-            modifier = Modifier.size(32.dp).alpha(0.6f),
+            modifier = Modifier.size(28.dp).alpha(0.6f),
             tint = Color.White
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = device.info.alias,
             style = MaterialTheme.typography.titleMedium,
@@ -347,7 +355,7 @@ private fun DeviceCardPairingContent(
         Spacer(modifier = Modifier.weight(1f))
 
         // Connection Options
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             PairingOptionButton(
                 icon = MaterialSymbols.Pin,
                 label = stringResource(R.string.connect_option_pin),
@@ -370,8 +378,8 @@ private fun PairingOptionButton(
 ) {
     DeXButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(64.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.White.copy(alpha = 0.15f),
             contentColor = Color.White
@@ -383,14 +391,14 @@ private fun PairingOptionButton(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp)
                     .background(Color.White.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = label, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = label, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }
