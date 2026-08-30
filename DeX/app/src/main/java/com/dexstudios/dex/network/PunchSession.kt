@@ -28,11 +28,9 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.security.SecureRandom
-import java.security.cert.X509Certificate
 import java.util.UUID
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
-import javax.net.ssl.X509TrustManager
 
 /**
  * Direct phone-to-phone transfers over a NAT-punched TCP connection, mediated by the
@@ -53,30 +51,28 @@ class PunchSession(
     private var serverSocket: ServerSocket? = null
     private val json = Json { ignoreUnknownKeys = true }
 
-    @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
-    private val trustAllManager = object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-    }
+    // Peer phones use self-signed certs; pin each peer's cert trust-on-first-use so a
+    // changed cert (MITM on the LAN) is rejected instead of silently trusted.
+    private val pinnedTrustManager = PinnedTrustManager(context)
 
     private val sslContext: SSLContext by lazy {
         val ctx = SSLContext.getInstance("TLS")
-        ctx.init(null, arrayOf(trustAllManager), SecureRandom())
+        ctx.init(null, arrayOf(pinnedTrustManager), SecureRandom())
         ctx
     }
 
     fun start() {
         if (serverSocket != null) return
         try {
-            serverSocket = ServerSocket().apply {
+            val ss = ServerSocket().apply {
                 reuseAddress = true
                 bind(InetSocketAddress(0))
                 // accept() must never block forever: the 800ms timeout lets the
                 // punch loop (and stop()) break out of it promptly instead of hanging.
                 soTimeout = 800
             }
-            Timber.i("Punch listener open on port ${serverSocket!!.localPort}")
+            serverSocket = ss
+            Timber.i("Punch listener open on port ${ss.localPort}")
         } catch (e: Exception) {
             Timber.e(e, "Cannot open punch listener")
             return
@@ -119,6 +115,7 @@ class PunchSession(
             }
             socket.connect(InetSocketAddress(pcIp, wsService.connectedPort), 5000)
             val ssl = sslContext.socketFactory.createSocket(socket, pcIp, wsService.connectedPort, true) as SSLSocket
+            pinnedTrustManager.setExpectedHost(pcIp)
             ssl.startHandshake()
             val request = "GET /punch/endpoint?fingerprint=${URLEncoder.encode(deviceConfig.fingerprint, "UTF-8")} HTTP/1.1\r\n" +
                 "Host: $pcIp\r\nConnection: close\r\n\r\n"
@@ -223,7 +220,8 @@ class PunchSession(
                     ?: continue
                 if (existing == null) resumeMap[file.id] = ResumeEntry(docUri, 0L, file.size)
 
-                var received = resumeMap[file.id]!!.received
+                val resumeEntry = resumeMap[file.id] ?: continue
+                var received = resumeEntry.received
                 try {
                     val buffer = ByteArray(64 * 1024)
                     while (received < header.size) {
@@ -232,7 +230,7 @@ class PunchSession(
                         if (n <= 0) break
                         out.write(buffer, 0, n)
                         received += n
-                        resumeMap[file.id]!!.received = received
+                        resumeEntry.received = received
                     }
                     if (received < header.size) break // dropped mid-file — the sender will resume
                     doneFiles++

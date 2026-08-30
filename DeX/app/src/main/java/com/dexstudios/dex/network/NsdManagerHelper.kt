@@ -96,7 +96,14 @@ class NsdManagerHelper(
                         googleSub = googleSub
                     )
 
-                    val ip = serviceInfo.host?.hostAddress
+                    // host is deprecated in API 34+ in favor of hostAddresses; use the
+                    // version-appropriate accessor to avoid the deprecated call.
+                    val ip = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        serviceInfo.hostAddresses?.firstOrNull()?.hostAddress
+                    } else {
+                        @Suppress("DEPRECATION")
+                        serviceInfo.host?.hostAddress
+                    }
                     if (!ip.isNullOrEmpty()) {
                         val device = DiscoveredDevice(
                             ip = ip,
@@ -115,7 +122,11 @@ class NsdManagerHelper(
             }
         }
 
-        runCatching { nsdManager.resolveService(nextService, resolveListener) }.onFailure {
+        // resolveService is deprecated in API 34+ in favor of registerServiceInfoCallback.
+        runCatching {
+            @Suppress("DEPRECATION")
+            nsdManager.resolveService(nextService, resolveListener)
+        }.onFailure {
             Timber.e(it, "Failed to start NSD resolve")
             isResolving = false
             resolveNext()

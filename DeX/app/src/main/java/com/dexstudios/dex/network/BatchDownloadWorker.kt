@@ -148,8 +148,9 @@ class BatchDownloadWorker(
                     totalFiles = files.size
                 )
             )
-            if (outcomes.size == 1 && outcomes.first().docUri != null) {
-                notificationHelper.showTransferCompleteNotification(outcomes.first().fileName, outcomes.first().docUri!!)
+            val single = outcomes.firstOrNull()
+            if (outcomes.size == 1 && single?.docUri != null) {
+                notificationHelper.showTransferCompleteNotification(single.fileName, single.docUri!!)
             } else {
                 showCompletionNotification(files.size)
             }

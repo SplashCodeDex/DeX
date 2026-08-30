@@ -320,6 +320,9 @@ fun HistoryScreen(
                                 items(groupItems, key = { it.id }, contentType = { "history_row" }) { record ->
                                     var showItemMenu by remember { mutableStateOf(false) }
                                     val isSelected = selectedIds.contains(record.id)
+                                    // confirmValueChange is deprecated without replacement; the
+                                    // swipe-veto behavior here is intentional, so suppress the warning.
+                                    @Suppress("DEPRECATION")
                                     val dismissState = rememberSwipeToDismissBoxState(
                                         confirmValueChange = { value ->
                                             if (value == SwipeToDismissBoxValue.EndToStart) {

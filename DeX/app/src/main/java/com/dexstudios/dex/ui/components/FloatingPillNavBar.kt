@@ -87,7 +87,7 @@ fun FloatingPillNavBar(
     val peakShiftDp =
         if (isPeaking) {
             val pressedCenterDp =
-                horizontalPadding + (itemWidth * pressedIndex!!) + (itemWidth / 2f)
+                horizontalPadding + (itemWidth * (pressedIndex ?: selectedIndex)) + (itemWidth / 2f)
             val diff = pressedCenterDp - selectedCenterDp
             if (diff > 0.dp) 20.dp else -20.dp
         } else 0.dp
@@ -163,8 +163,9 @@ fun FloatingPillNavBar(
     // offset) ---
     val targetCenterDp by remember {
         derivedStateOf {
-            if (dragX != null) {
-                with(density) { dragX!!.toDp() }
+            val currentDragX = dragX
+            if (currentDragX != null) {
+                with(density) { currentDragX.toDp() }
             } else {
                 val selectedCenter =
                     horizontalPadding + (itemWidth * selectedIndex) + (itemWidth / 2f)
@@ -173,7 +174,7 @@ fun FloatingPillNavBar(
                 val shift =
                     if (isPeaking) {
                         val pressedCenter =
-                            horizontalPadding + (itemWidth * pressedIndex!!) + (itemWidth / 2f)
+                            horizontalPadding + (itemWidth * (pressedIndex ?: selectedIndex)) + (itemWidth / 2f)
                         val diff = pressedCenter - selectedCenter
                         if (diff > 0.dp) 20.dp else -20.dp
                     } else 0.dp
@@ -278,10 +279,11 @@ fun FloatingPillNavBar(
                                     dragX = change.position.x - 8.dp.toPx()
                                 }
                             } else {
-                                if (dragActivated && dragX != null) {
+                                val currentDragX = dragX
+                                if (dragActivated && currentDragX != null) {
                                     val itemWidthPx = itemWidth.toPx()
                                     val dropIndex =
-                                        (dragX!! / itemWidthPx).toInt().coerceIn(0, items.size - 1)
+                                        (currentDragX / itemWidthPx).toInt().coerceIn(0, items.size - 1)
                                     if (dropIndex != selectedIndex) {
                                         items[dropIndex].onClick()
                                     }

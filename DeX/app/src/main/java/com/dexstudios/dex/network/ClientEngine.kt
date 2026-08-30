@@ -27,14 +27,19 @@ import kotlin.time.Duration.Companion.seconds
 class ClientEngine(
     engine: HttpClientEngine? = null,
     private val quicClient: QuicClient? = null,
-    private val deviceConfig: DeviceConfig? = null
+    private val deviceConfig: DeviceConfig? = null,
+    context: android.content.Context? = null
 ) {
     private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
     private var resetJob: Job? = null
 
-    // LocalSend uses self-signed certificates, so we must trust all certificates on the local network
+    // LocalSend uses self-signed certificates on the LAN. Instead of trusting every
+    // cert (which allows MITM), pin each host's cert trust-on-first-use and reject it
+    // if it changes. Falls back to trust-all only when no Context is supplied (tests).
+    private val pinnedTrustManager = context?.let { PinnedTrustManager(it) }
+
     @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
-    private val trustAllManager = object : X509TrustManager {
+    private val trustManager: X509TrustManager = pinnedTrustManager ?: object : X509TrustManager {
         override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
         override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
@@ -42,7 +47,7 @@ class ClientEngine(
 
     private val client = HttpClient(engine ?: CIO.create {
         https {
-            trustManager = trustAllManager
+            trustManager = this@ClientEngine.trustManager
         }
     }) {
         install(ContentNegotiation) {
@@ -127,6 +132,7 @@ class ClientEngine(
 
     suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareResult = withContext(Dispatchers.IO) {
         try {
+            pinnedTrustManager?.setExpectedHost(ip)
             val response = client.post("https://$ip:$port/api/localsend/v2/prepare-upload") {
                 contentType(ContentType.Application.Json)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
@@ -162,6 +168,7 @@ class ClientEngine(
                 }
             }
 
+            pinnedTrustManager?.setExpectedHost(ip)
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
                 url {
                     parameters.append("sessionId", sessionId)
@@ -266,6 +273,7 @@ class ClientEngine(
      */
     suspend fun sendText(ip: String, port: Int, text: String, token: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
+            pinnedTrustManager?.setExpectedHost(ip)
             val response = client.post("https://$ip:$port/api/dex/clipboard") {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
@@ -281,6 +289,7 @@ class ClientEngine(
     suspend fun sendClipboard(ip: String, port: Int, text: String, targetFingerprint: String? = null, targetIdentityHash: String? = null, targetGoogleSub: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
+            pinnedTrustManager?.setExpectedHost(ip)
             val response = client.post("https://$ip:$port/api/dex/clipboard") {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")

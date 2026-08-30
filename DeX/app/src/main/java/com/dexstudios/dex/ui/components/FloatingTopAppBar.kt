@@ -786,6 +786,9 @@ private fun ExpandedProfileContent(
 @Composable
 fun KoinPreviewWrapper(content: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Preview-only wrapper: the lambda-based KoinApplication is deprecated in favor of
+    // KoinConfiguration, but this minimal preview module is simplest as-is. Suppress.
+    @Suppress("DEPRECATION")
     org.koin.compose.KoinApplication(application = {
         // Use a minimal module for previews
         modules(org.koin.dsl.module {

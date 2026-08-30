@@ -19,7 +19,7 @@ val appModule = module {
     single { DeviceConfig(androidContext()) }
     single { NotificationHelper(androidContext()) }
     single(createdAtStart = true) { QuicClient(androidContext()) }
-    single { ClientEngine(quicClient = get(), deviceConfig = get()) }
+    single { ClientEngine(quicClient = get(), deviceConfig = get(), context = androidContext()) }
     single { DiscoveryEngine(get(), androidContext()) }
     single { FileShareManager(get(), get(), androidContext()) }
     single { MessageHandler(get(), androidContext(), get(), get()) }

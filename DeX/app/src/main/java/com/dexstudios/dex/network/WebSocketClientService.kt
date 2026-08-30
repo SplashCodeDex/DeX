@@ -12,10 +12,8 @@ import kotlinx.serialization.json.putJsonObject
 import okhttp3.*
 import timber.log.Timber
 import java.security.SecureRandom
-import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
-import javax.net.ssl.X509TrustManager
 
 // android.net.wifi.WifiInfo.RSSI_INVALID is a hidden API; mirror its value (-127)
 private const val RSSI_INVALID = -127
@@ -42,24 +40,23 @@ class WebSocketClientService(
     private val messageHandler: MessageHandler,
     private val context: Context,
 ) {
-    // The PC serves wss:// with an ephemeral self-signed certificate, so we trust all certs on the LAN
-    @android.annotation.SuppressLint("TrustAllX509TrustManager", "CustomX509TrustManager")
-    private val trustAllManager = object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-    }
+    // The PC serves wss:// with an ephemeral self-signed certificate. We pin it
+    // trust-on-first-use instead of trusting every cert, so a changed cert (MITM)
+    // is rejected. The hostname check stays off because the cert is keyed by host/IP.
+    private val pinnedTrustManager = PinnedTrustManager(context)
 
     private val sslContext: SSLContext by lazy {
         val context = SSLContext.getInstance("TLS")
-        context.init(null, arrayOf(trustAllManager), SecureRandom())
+        context.init(null, arrayOf(pinnedTrustManager), SecureRandom())
         context
     }
 
     private val client = OkHttpClient.Builder()
         .pingInterval(30, TimeUnit.SECONDS)
-        .sslSocketFactory(sslContext.socketFactory, trustAllManager)
-        .hostnameVerifier { _, _ -> true }
+        .sslSocketFactory(sslContext.socketFactory, pinnedTrustManager)
+        // Capture the host for pinning; the self-signed cert won't match the host, so
+        // we delegate the trust decision to the TOFU pin check rather than CN matching.
+        .hostnameVerifier { host, session -> pinnedTrustManager.verifyHostname(host, session) }
         .build()
 
     private var activeSocket: WebSocket? = null
