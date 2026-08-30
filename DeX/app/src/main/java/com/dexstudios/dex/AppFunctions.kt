@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.dexstudios.dex.network.DiscoveryEngine
 import com.dexstudios.dex.network.TransferHistory
+import com.dexstudios.dex.network.TransferWorkKeys
 import com.dexstudios.dex.network.UploadWorker
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -40,12 +41,12 @@ abstract class BaseDeXAppFunctionService : AppFunctionService(), KoinComponent {
         val urisJson = "[\"${lastReceived.uri}\"]"
         val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
             .setInputData(workDataOf(
-                "ip" to targetPc.ip,
-                "port" to targetPc.info.port,
-                "uris" to urisJson,
-                "targetFingerprint" to targetPc.info.fingerprint,
-                "targetIdentityHash" to targetPc.info.identityHash,
-                "targetGoogleSub" to targetPc.info.googleSub
+                TransferWorkKeys.IP to targetPc.ip,
+                TransferWorkKeys.PORT to targetPc.info.port,
+                TransferWorkKeys.URIS to urisJson,
+                TransferWorkKeys.TARGET_FINGERPRINT to targetPc.info.fingerprint,
+                TransferWorkKeys.TARGET_IDENTITY_HASH to targetPc.info.identityHash,
+                TransferWorkKeys.TARGET_GOOGLE_SUB to targetPc.info.googleSub
             ))
             .build()
 

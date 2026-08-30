@@ -18,9 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -50,7 +48,7 @@ class FileShareManager(
     private val wsService: WebSocketClientService by inject()
     private val discoveryEngine: DiscoveryEngine by inject()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = DexJson
 
     /** requestId -> true once the PC asks us to abort that pull. */
     private val cancelledRequests = ConcurrentHashMap<String, Boolean>()
@@ -60,13 +58,13 @@ class FileShareManager(
 
     /** Handles an incoming PC request; [data] is the JSON `data` object of the message. */
     fun handleRequest(type: String, data: JsonObject) {
-        val requestId = data["requestId"]?.jsonPrimitive?.content ?: return
+        val requestId = data[ProtocolKeys.REQUEST_ID]?.jsonPrimitive?.content ?: return
         when (type) {
-            "list-shared-folders" -> replyList(requestId)
-            "browse-folder" -> replyBrowse(requestId, data)
-            "pull-files" -> scope.launch { replyPull(requestId, data) }
-            "pull-cancel" -> cancelledRequests[requestId] = true
-            "grant-shared-folder" -> scope.launch { replyGrant(requestId) }
+            ProtocolKeys.LIST_SHARED_FOLDERS -> replyList(requestId)
+            ProtocolKeys.BROWSE_FOLDER -> replyBrowse(requestId, data)
+            ProtocolKeys.PULL_FILES -> scope.launch { replyPull(requestId, data) }
+            ProtocolKeys.PULL_CANCEL -> cancelledRequests[requestId] = true
+            ProtocolKeys.GRANT_SHARED_FOLDER -> scope.launch { replyGrant(requestId) }
             else -> Timber.w("Unknown FileShare request: $type")
         }
     }
@@ -97,18 +95,15 @@ class FileShareManager(
     private fun replyList(requestId: String) {
         val folders = sharedFolders()
         Timber.i("Replying with ${folders.size} shared folders (request $requestId)")
-        send(buildJsonObject {
-            put("type", "list-shared-folders-reply")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                putJsonObject("folders") { folders.forEach { f ->
-                    putJsonObject(f.id) {
-                        put("name", f.name)
-                        put("uri", f.uri)
-                    }
-                } }
-            }
-        }.toString())
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.LIST_SHARED_FOLDERS_REPLY) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            putJsonObject("folders") { folders.forEach { f ->
+                putJsonObject(f.id) {
+                    put("name", f.name)
+                    put("uri", f.uri)
+                }
+            } }
+        })
     }
 
     private fun replyBrowse(requestId: String, data: JsonObject) {
@@ -119,26 +114,23 @@ class FileShareManager(
                 emptyList()
             }
         }
-        send(buildJsonObject {
-            put("type", "browse-reply")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                putJsonObject("entries") {
-                    var thumbCount = 0
-                    entries.forEach { e ->
-                        putJsonObject(e.uri) {
-                            put("name", e.name)
-                            put("isDirectory", e.isDirectory)
-                            put("size", e.size)
-                            val isImage = !e.isDirectory && e.size in 1..THUMB_MAX_BYTES &&
-                                e.name.substringAfterLast('.', "").lowercase() in IMAGE_EXTS
-                            val thumb = if (isImage && thumbCount < THUMB_CAP) { thumbCount++; thumbnailFor(e) } else null
-                            put("thumb", thumb ?: "")
-                        }
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.BROWSE_REPLY) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            putJsonObject("entries") {
+                var thumbCount = 0
+                entries.forEach { e ->
+                    putJsonObject(e.uri) {
+                        put("name", e.name)
+                        put("isDirectory", e.isDirectory)
+                        put("size", e.size)
+                        val isImage = !e.isDirectory && e.size in 1..THUMB_MAX_BYTES &&
+                            e.name.substringAfterLast('.', "").lowercase() in IMAGE_EXTS
+                        val thumb = if (isImage && thumbCount < THUMB_CAP) { thumbCount++; thumbnailFor(e) } else null
+                        put("thumb", thumb ?: "")
                     }
                 }
             }
-        }.toString())
+        })
     }
 
     /** Base64 JPEG thumbnail for small image files, so phone files render like local ones. */
@@ -239,7 +231,7 @@ class FileShareManager(
                         val fileId = prepareRequest.files.getValue(key).id
                         val fileToken = response.files[fileId]
 
-                        if (fileToken == null || fileToken == "[SKIP]") {
+                        if (fileToken == null || fileToken == NetConfig.SKIP_TOKEN) {
                             saved.add(m.name)
                             doneCount.incrementAndGet()
                             TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
@@ -304,20 +296,17 @@ class FileShareManager(
     ) {
         val now = System.currentTimeMillis()
         val last = lastProgressReport.getOrPut(requestId) { AtomicLong(0L) }
-        if (sentBytes < totalBytes && now - last.get() < 200) return
+        if (sentBytes < totalBytes && now - last.get() < NetConfig.UI_THROTTLE_MS) return
         last.set(now)
-        send(buildJsonObject {
-            put("type", "pull-progress")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                put("doneFiles", doneFiles)
-                put("totalFiles", totalFiles)
-                put("sentBytes", sentBytes)
-                put("totalBytes", totalBytes)
-                put("currentFile", currentFile)
-                put("state", "running")
-            }
-        }.toString())
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.PULL_PROGRESS) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            put("doneFiles", doneFiles)
+            put("totalFiles", totalFiles)
+            put("sentBytes", sentBytes)
+            put("totalBytes", totalBytes)
+            put("currentFile", currentFile)
+            put("state", "running")
+        })
     }
 
     private fun sendPullReply(requestId: String, saved: List<String>, failed: List<Pair<String, String>>, cancelled: Boolean) {
@@ -325,29 +314,23 @@ class FileShareManager(
         lastProgressReport.remove(requestId)
         PullForegroundService.stop(context)
         // Final progress frame so the PC can close the dock with the terminal state.
-        send(buildJsonObject {
-            put("type", "pull-progress")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                put("state", when {
-                    cancelled -> "cancelled"
-                    failed.isEmpty() -> "done"
-                    else -> "failed"
-                })
-                put("doneFiles", saved.size)
-                put("totalFiles", saved.size + failed.size)
-            }
-        }.toString())
-        send(buildJsonObject {
-            put("type", "pull-reply")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                put("success", failed.isEmpty() && !cancelled)
-                put("cancelled", cancelled)
-                putJsonObject("saved") { saved.forEach { put(it, true) } }
-                putJsonObject("failed") { failed.forEach { put(it.first, it.second) } }
-            }
-        }.toString())
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.PULL_PROGRESS) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            put("state", when {
+                cancelled -> "cancelled"
+                failed.isEmpty() -> "done"
+                else -> "failed"
+            })
+            put("doneFiles", saved.size)
+            put("totalFiles", saved.size + failed.size)
+        })
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.PULL_REPLY) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            put("success", failed.isEmpty() && !cancelled)
+            put("cancelled", cancelled)
+            putJsonObject("saved") { saved.forEach { put(it, true) } }
+            putJsonObject("failed") { failed.forEach { put(it.first, it.second) } }
+        })
     }
 
     /** SAF display name for a file, falling back to the name the PC provided. */
@@ -366,18 +349,15 @@ class FileShareManager(
         // Open the SAF picker and wait for the user to pick (or cancel) a folder.
         val deferred = SharedFolderGrantState.register()
         SafStorage.promptForSharedFolderGrant(context)
-        val granted = withTimeoutOrNull(GRANT_WAIT_MS.milliseconds) { deferred.await() }
+        val granted = withTimeoutOrNull(NetConfig.GRANT_WAIT_MS.milliseconds) { deferred.await() }
         val name = granted?.name ?: ""
         val uri = granted?.uri ?: ""
-        send(buildJsonObject {
-            put("type", "grant-reply")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                put("granted", granted != null)
-                put("name", name)
-                put("uri", uri)
-            }
-        }.toString())
+        send(ProtocolKeys.envelopeOf(ProtocolKeys.GRANT_REPLY) {
+            put(ProtocolKeys.REQUEST_ID, requestId)
+            put("granted", granted != null)
+            put("name", name)
+            put("uri", uri)
+        })
     }
 
     private fun send(message: String) {
@@ -385,9 +365,9 @@ class FileShareManager(
     }
 
     private companion object {
-        const val GRANT_WAIT_MS = 180_000L
-        const val MAX_CONCURRENT_UPLOADS = 3
-        const val MAX_FILE_RETRIES = 2
+        const val GRANT_WAIT_MS = NetConfig.GRANT_WAIT_MS
+        const val MAX_CONCURRENT_UPLOADS = NetConfig.MAX_CONCURRENT_TRANSFERS
+        const val MAX_FILE_RETRIES = NetConfig.MAX_FILE_RETRIES
         const val THUMB_SIZE = 128
         const val THUMB_MAX_BYTES = 512L * 1024L
         const val THUMB_CAP = 30

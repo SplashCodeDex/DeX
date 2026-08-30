@@ -804,17 +804,6 @@ private fun getFileIcon(fileName: String): ImageVector {
     }
 }
 
-private fun getDateGroupLabel(timestamp: Long): String {
-    val now = Calendar.getInstance()
-    val time = Calendar.getInstance().apply { timeInMillis = timestamp }
-    if (now.get(Calendar.YEAR) == time.get(Calendar.YEAR) && now.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR)) return "Today"
-    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-    if (yesterday.get(Calendar.YEAR) == time.get(Calendar.YEAR) && yesterday.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR)) return "Yesterday"
-    val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
-    if (time.after(weekAgo)) return "This Week"
-    return "Older"
-}
-
 @Preview(showBackground = true)
 @Composable
 fun HistoryGridPreview() {

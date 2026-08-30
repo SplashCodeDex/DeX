@@ -77,7 +77,7 @@ class DiscoveryEngine(
                     map.filterKeys { fp ->
                         // Read timestamp from the side-map — it stays accurate even for
                         // deduplicated broadcasts that skipped a _devices emission.
-                        (seenDevices[fp]?.lastSeenTimestamp ?: 0L).let { now - it < 20000 }
+                        (seenDevices[fp]?.lastSeenTimestamp ?: 0L).let { now - it < NetConfig.NSD_DISCOVERY_TTL_MS }
                     }
                 }
                 // Prune side-map entries that have been evicted from _devices
@@ -123,7 +123,7 @@ class DiscoveryEngine(
 
     fun addDevice(device: DiscoveredDevice) {
         // Task 18: Cap discovered devices to prevent OutOfMemory / DoS from discovery storms
-        if (seenDevices.size >= 100 && !seenDevices.containsKey(device.info.fingerprint)) {
+        if (seenDevices.size >= NetConfig.DEVICE_CAP && !seenDevices.containsKey(device.info.fingerprint)) {
             val oldest = seenDevices.minByOrNull { it.value.lastSeenTimestamp }
             if (oldest != null) {
                 seenDevices.remove(oldest.key)
@@ -144,7 +144,7 @@ class DiscoveryEngine(
         if (!changed) return
 
         _devices.update { map ->
-            if (map.size >= 100 && !map.containsKey(device.info.fingerprint)) {
+            if (map.size >= NetConfig.DEVICE_CAP && !map.containsKey(device.info.fingerprint)) {
                 val oldestFp = map.minByOrNull { it.value.lastSeenTimestamp }?.key
                 if (oldestFp != null) {
                     (map - oldestFp) + (device.info.fingerprint to device)
@@ -203,10 +203,10 @@ class DiscoveryEngine(
 
             // 2. Direct HTTP REST Probe Fallback (solves AP isolation & UDP blockades)
             runCatching {
-                val url = java.net.URL("http://$ip:$port/api/localsend/v2/info")
+                val url = java.net.URL(ApiRoutes.httpUrl(ip, port, ApiRoutes.INFO))
                 val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 2000
-                conn.readTimeout = 2000
+                conn.connectTimeout = NetConfig.MANUAL_PROBE_TIMEOUT_MS
+                conn.readTimeout = NetConfig.MANUAL_PROBE_TIMEOUT_MS
                 conn.requestMethod = "GET"
                 if (conn.responseCode == 200) {
                     val responseText = conn.inputStream.bufferedReader().readText()

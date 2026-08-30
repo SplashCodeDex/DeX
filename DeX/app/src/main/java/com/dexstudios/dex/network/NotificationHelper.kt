@@ -162,15 +162,15 @@ class NotificationHelper(private val context: Context) {
 
     fun showIncomingFileNotification(sessionId: String, notificationId: Int, fileCount: Int) {
         val acceptIntent = Intent(context, FileTransferReceiver::class.java).apply {
-            action = "com.dexstudios.dex.ACCEPT_TRANSFER"
-            putExtra("SESSION_ID", sessionId)
-            putExtra("NOTIFICATION_ID", notificationId)
+            action = TransferIntents.ACTION_ACCEPT_TRANSFER
+            putExtra(TransferIntents.EXTRA_SESSION_ID, sessionId)
+            putExtra(TransferIntents.EXTRA_NOTIFICATION_ID, notificationId)
         }
 
         val rejectIntent = Intent(context, FileTransferReceiver::class.java).apply {
-            action = "com.dexstudios.dex.REJECT_TRANSFER"
-            putExtra("SESSION_ID", sessionId)
-            putExtra("NOTIFICATION_ID", notificationId)
+            action = TransferIntents.ACTION_REJECT_TRANSFER
+            putExtra(TransferIntents.EXTRA_SESSION_ID, sessionId)
+            putExtra(TransferIntents.EXTRA_NOTIFICATION_ID, notificationId)
         }
 
         val acceptPendingIntent = PendingIntent.getBroadcast(
@@ -267,7 +267,7 @@ class NotificationHelper(private val context: Context) {
     fun showPendingShareNotification(alias: String, fingerprint: String) {
         val cancelIntent = Intent(context, FileTransferReceiver::class.java).apply {
             action = ACTION_CANCEL_PENDING_SHARE
-            putExtra("FINGERPRINT", fingerprint)
+            putExtra(TransferIntents.EXTRA_FINGERPRINT, fingerprint)
         }
         val cancelPendingIntent = PendingIntent.getBroadcast(
             context, fingerprint.hashCode(), cancelIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

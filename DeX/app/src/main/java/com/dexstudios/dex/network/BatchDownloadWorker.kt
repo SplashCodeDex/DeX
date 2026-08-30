@@ -16,7 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
@@ -46,10 +45,10 @@ class BatchDownloadWorker(
     private val completeNotificationId = 1003
 
     // Cap of concurrent QUIC streams per session
-    private val maxConcurrent = 3
+    private val maxConcurrent = NetConfig.MAX_CONCURRENT_TRANSFERS
 
     // Transient transport failures are retried with exponential backoff, capped attempts
-    private val maxRetryAttempts = 3
+    private val maxRetryAttempts = NetConfig.MAX_RETRY_ATTEMPTS
 
     // Plain-HTTP fallback client for the PC's dedicated pull port (no TLS on 48426)
     private val httpClient by lazy {
@@ -86,16 +85,16 @@ class BatchDownloadWorker(
     private var lastForegroundPercent: Int = -1
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val ip = inputData.getString("ip") ?: return@withContext Result.failure()
-        val httpsPort = inputData.getInt("httpsPort", -1)
-        val tcpPort = inputData.getInt("port", -1)
-        val filesJson = inputData.getString("files") ?: return@withContext Result.failure()
-        val totalBytes = inputData.getLong("totalBytes", 0L)
-        val destDirUri = inputData.getString("destDirUri")
-        val sourceAlias = inputData.getString("sourceAlias")
+        val ip = inputData.getString(TransferWorkKeys.IP) ?: return@withContext Result.failure()
+        val httpsPort = inputData.getInt(TransferWorkKeys.HTTPS_PORT, -1)
+        val tcpPort = inputData.getInt(TransferWorkKeys.PORT, -1)
+        val filesJson = inputData.getString(TransferWorkKeys.FILES) ?: return@withContext Result.failure()
+        val totalBytes = inputData.getLong(TransferWorkKeys.TOTAL_BYTES, 0L)
+        val destDirUri = inputData.getString(TransferWorkKeys.DEST_DIR_URI)
+        val sourceAlias = inputData.getString(TransferWorkKeys.SOURCE_ALIAS)
 
         val files = try {
-            Json.decodeFromString<List<PullFileDto>>(filesJson)
+            DexJson.decodeFromString<List<PullFileDto>>(filesJson)
         } catch (e: Exception) {
             Timber.e(e, "BatchDownload: failed to parse files JSON")
             return@withContext Result.failure()
@@ -320,7 +319,7 @@ class BatchDownloadWorker(
         var downloaded = 0L
         try {
             val tokenPart = file.token?.let { "?token=${java.net.URLEncoder.encode(it, "UTF-8")}" } ?: ""
-            val url = "http://$ip:$port/download/${java.net.URLEncoder.encode(file.fileId, "UTF-8")}$tokenPart"
+            val url = ApiRoutes.httpUrl(ip, port, "${ApiRoutes.DOWNLOAD}/${java.net.URLEncoder.encode(file.fileId, "UTF-8")}") + tokenPart
 
             val request = okhttp3.Request.Builder().url(url).build()
             val call = httpClient.newCall(request)
@@ -364,9 +363,9 @@ class BatchDownloadWorker(
     }
 
     private fun reportProgress(doneFiles: Int, totalFiles: Int, sentBytes: Long, totalBytes: Long, currentFile: String) {
-        val sourceFingerprint = inputData.getString("sourceFingerprint")
+        val sourceFingerprint = inputData.getString(TransferWorkKeys.SOURCE_FINGERPRINT)
         val now = System.currentTimeMillis()
-        if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
+        if (sentBytes < totalBytes && now - lastUiUpdate.get() < NetConfig.UI_THROTTLE_MS) return
         lastUiUpdate.set(now)
 
         val sample = speedCalculator.sample(sentBytes, totalBytes, now)

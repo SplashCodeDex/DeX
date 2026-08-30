@@ -34,8 +34,8 @@ class NsdManagerHelper(
 
     private fun registerService() {
         val serviceInfo = NsdServiceInfo().apply {
-            serviceName = "DeX_Android"
-            serviceType = "_dex._udp"
+            serviceName = NetConfig.NSD_SERVICE_NAME
+            serviceType = NetConfig.NSD_SERVICE_TYPE
             port = localInfo.port
             setAttribute("alias", localInfo.alias)
             setAttribute("fingerprint", localInfo.fingerprint)
@@ -207,7 +207,7 @@ class NsdManagerHelper(
         discoveryListener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(regType: String) {}
             override fun onServiceFound(service: NsdServiceInfo) {
-                if (service.serviceType.contains("_dex._udp")) {
+                if (service.serviceType.contains(NetConfig.NSD_SERVICE_TYPE)) {
                     resolveService(service)
                 }
             }
@@ -221,6 +221,6 @@ class NsdManagerHelper(
             }
         }
 
-        runCatching { nsdManager.discoverServices("_dex._udp", NsdManager.PROTOCOL_DNS_SD, discoveryListener) }
+        runCatching { nsdManager.discoverServices(NetConfig.NSD_SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener) }
     }
 }

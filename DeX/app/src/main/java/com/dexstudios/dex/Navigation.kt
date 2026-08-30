@@ -61,6 +61,7 @@ import com.dexstudios.dex.network.DeXPorts
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.MessageHandler
 import com.dexstudios.dex.network.RegisterDto
+import com.dexstudios.dex.network.TransferWorkKeys
 import com.dexstudios.dex.ui.components.ConnectionOptionsDialog
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.LiquidGlassButton
@@ -163,11 +164,11 @@ fun MainNavigation(
 
             if (urisJson.isNotEmpty()) {
                 val inputData = workDataOf(
-                    "ip" to target.ip,
-                    "port" to target.info.port,
-                    "uris" to urisJson,
-                    "targetFingerprint" to target.info.fingerprint,
-                    "targetAlias" to target.info.alias
+                    TransferWorkKeys.IP to target.ip,
+                    TransferWorkKeys.PORT to target.info.port,
+                    TransferWorkKeys.URIS to urisJson,
+                    TransferWorkKeys.TARGET_FINGERPRINT to target.info.fingerprint,
+                    TransferWorkKeys.TARGET_ALIAS to target.info.alias
                 )
 
                 val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.UploadWorker>()

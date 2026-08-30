@@ -134,7 +134,7 @@ class ClientEngine(
     suspend fun prepareUpload(ip: String, port: Int, request: PrepareUploadRequestDto, token: String? = null): PrepareResult = withContext(Dispatchers.IO) {
         try {
             pinnedTrustManager?.setExpectedHost(ip)
-            val response = client.post("https://$ip:$port/api/localsend/v2/prepare-upload") {
+            val response = client.post(ApiRoutes.httpsUrl(ip, port, ApiRoutes.PREPARE_UPLOAD)) {
                 contentType(ContentType.Application.Json)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
                 setBody(request)
@@ -170,7 +170,7 @@ class ClientEngine(
             }
 
             pinnedTrustManager?.setExpectedHost(ip)
-            val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
+            val response = client.post(ApiRoutes.httpsUrl(ip, port, ApiRoutes.UPLOAD)) {
                 url {
                     parameters.append("sessionId", sessionId)
                     parameters.append("fileId", fileId)
@@ -275,7 +275,7 @@ class ClientEngine(
     suspend fun sendText(ip: String, port: Int, text: String, token: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             pinnedTrustManager?.setExpectedHost(ip)
-            val response = client.post("https://$ip:$port/api/dex/clipboard") {
+            val response = client.post(ApiRoutes.httpsUrl(ip, port, ApiRoutes.CLIPBOARD)) {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
                 setBody(text)
@@ -291,7 +291,7 @@ class ClientEngine(
         try {
             val token = authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
             pinnedTrustManager?.setExpectedHost(ip)
-            val response = client.post("https://$ip:$port/api/dex/clipboard") {
+            val response = client.post(ApiRoutes.httpsUrl(ip, port, ApiRoutes.CLIPBOARD)) {
                 contentType(ContentType.Text.Plain)
                 if (!token.isNullOrEmpty()) header(HttpHeaders.Authorization, "Bearer $token")
                 setBody(text)

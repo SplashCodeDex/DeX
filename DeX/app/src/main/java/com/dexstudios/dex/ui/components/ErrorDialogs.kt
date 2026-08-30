@@ -36,7 +36,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,6 +57,7 @@ import com.dexstudios.dex.R
 import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.PermissionManager
+import com.dexstudios.dex.network.ProtocolKeys
 import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
@@ -161,7 +161,7 @@ fun PairingRequestDialog(
             // Transmit pair-response immediately so the PC verifies the PIN proof without animation latency
             onAccept(enteredPin)
             // Domino effect: 80ms per slot
-            repeat(5) {
+            repeat(ProtocolKeys.PIN_LENGTH) {
                 delay(80.milliseconds)
                 greenSlotsCount++
             }
@@ -315,7 +315,7 @@ fun PairingRequestDialog(
                                 PinInputField(
                                     value = enteredPin,
                                     onValueChange = {
-                                        if (it.length <= 5) {
+                                        if (it.length <= ProtocolKeys.PIN_LENGTH) {
                                             if (it.length > enteredPin.length) {
                                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             }
@@ -368,7 +368,7 @@ fun PairingRequestDialog(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        val isComplete = enteredPin.length == 5
+                        val isComplete = enteredPin.length == ProtocolKeys.PIN_LENGTH
 
                         DeXButton(
                             onClick = {
@@ -485,7 +485,7 @@ fun PinInputField(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    repeat(5) { index ->
+                    repeat(ProtocolKeys.PIN_LENGTH) { index ->
                         val char = when {
                             index < value.length -> value[index].toString()
                             else -> ""

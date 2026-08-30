@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.UUID
@@ -45,10 +44,10 @@ class UploadWorker(
     private val channelId = NotificationHelper.CHANNEL_UPLOAD
 
     // Cap of concurrent QUIC streams per session
-    private val maxConcurrentUploads = 3
+    private val maxConcurrentUploads = NetConfig.MAX_CONCURRENT_TRANSFERS
 
     // Transient transport failures are retried with exponential backoff, capped attempts
-    private val maxRetryAttempts = 3
+    private val maxRetryAttempts = NetConfig.MAX_RETRY_ATTEMPTS
 
     private val lastUiUpdate = AtomicLong(0L)
 
@@ -56,15 +55,15 @@ class UploadWorker(
     private var lastForegroundPercent: Int = -1
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val ip = inputData.getString("ip") ?: return@withContext Result.failure()
-        val port = inputData.getInt("port", -1)
+        val ip = inputData.getString(TransferWorkKeys.IP) ?: return@withContext Result.failure()
+        val port = inputData.getInt(TransferWorkKeys.PORT, -1)
         if (port == -1) return@withContext Result.failure()
-        val urisJson = inputData.getString("uris") ?: return@withContext Result.failure()
+        val urisJson = inputData.getString(TransferWorkKeys.URIS) ?: return@withContext Result.failure()
 
         val deviceConfig by inject<DeviceConfig>()
 
         val uriStrings = try {
-            Json.decodeFromString<List<String>>(urisJson)
+            DexJson.decodeFromString<List<String>>(urisJson)
         } catch (e: Exception) {
             Timber.e(e, "Operation failed")
             return@withContext Result.failure()
@@ -72,7 +71,7 @@ class UploadWorker(
         val uris = uriStrings.map { it.toUri() }
 
         // Folder bundles: a picked tree is enumerated into (uri, relativePath) pairs
-        val folderTreeUri = inputData.getString("folderTreeUri")?.toUri()
+        val folderTreeUri = inputData.getString(TransferWorkKeys.FOLDER_TREE_URI)?.toUri()
         var relativePaths: Map<String, String> = emptyMap()
 
         // Initial foreground notification
@@ -125,10 +124,10 @@ class UploadWorker(
 
         client.resetUploadState()
 
-        val targetFingerprint = inputData.getString("targetFingerprint")
-        val targetAlias = inputData.getString("targetAlias")
-        val targetIdentityHash = inputData.getString("targetIdentityHash")
-        val targetGoogleSub = inputData.getString("targetGoogleSub")
+        val targetFingerprint = inputData.getString(TransferWorkKeys.TARGET_FINGERPRINT)
+        val targetAlias = inputData.getString(TransferWorkKeys.TARGET_ALIAS)
+        val targetIdentityHash = inputData.getString(TransferWorkKeys.TARGET_IDENTITY_HASH)
+        val targetGoogleSub = inputData.getString(TransferWorkKeys.TARGET_GOOGLE_SUB)
         val token = client.authToken(targetFingerprint, targetIdentityHash, targetGoogleSub)
         val prepared = client.prepareUpload(ip, port, prepareRequest, token)
         val response = prepared.response
@@ -155,7 +154,7 @@ class UploadWorker(
                                 outcomes.add(id to UploadOutcome(false, 403))
                                 return@launch
                             }
-                            if (fileToken == "[SKIP]") {
+                            if (fileToken == NetConfig.SKIP_TOKEN) {
                                 doneCount.incrementAndGet()
                                 TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
                                 outcomes.add(id to UploadOutcome(true))
@@ -256,9 +255,9 @@ class UploadWorker(
         currentFile: String,
         useQuic: Boolean
     ) {
-        val targetFingerprint = inputData.getString("targetFingerprint")
+        val targetFingerprint = inputData.getString(TransferWorkKeys.TARGET_FINGERPRINT)
         val now = System.currentTimeMillis()
-        if (sentBytes < totalBytes && now - lastUiUpdate.get() < 200) return
+        if (sentBytes < totalBytes && now - lastUiUpdate.get() < NetConfig.UI_THROTTLE_MS) return
         lastUiUpdate.set(now)
 
         val sample = speedCalculator.sample(sentBytes, totalBytes, now)

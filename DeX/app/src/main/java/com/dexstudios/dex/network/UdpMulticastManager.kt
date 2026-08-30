@@ -44,7 +44,7 @@ class UdpMulticastManager(
                     MulticastSocket(0)
                 }.apply {
                     reuseAddress = true
-                    val groupAddr = InetSocketAddress(InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+                    val groupAddr = InetSocketAddress(InetAddress.getByName(NetConfig.MULTICAST_GROUP), DeXPorts.HTTPS)
                     NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->
                         runCatching {
                             if (ni.isUp && !ni.isLoopback && ni.supportsMulticast()) {
@@ -61,9 +61,9 @@ class UdpMulticastManager(
                     while (isActive) {
                         broadcastPresence()
                         val interval = when {
-                            isConnectedToPc -> 30_000L
-                            burstCount < 3 -> 3_000L
-                            else -> 10_000L
+                            isConnectedToPc -> NetConfig.UDP_PRESENCE_CONNECTED_INTERVAL_MS
+                            burstCount < NetConfig.UDP_BURST_ROUNDS -> NetConfig.UDP_PRESENCE_BURST_INTERVAL_MS
+                            else -> NetConfig.UDP_PRESENCE_IDLE_INTERVAL_MS
                         }
                         burstCount++
                         kotlinx.coroutines.delay(interval)
@@ -157,7 +157,7 @@ class UdpMulticastManager(
     private fun broadcastPresence() {
         runCatching {
             val replyData = getReplyData()
-            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName("224.0.0.167"), DeXPorts.HTTPS)
+            val mcastPacket = DatagramPacket(replyData, replyData.size, InetAddress.getByName(NetConfig.MULTICAST_GROUP), DeXPorts.HTTPS)
 
             // 1. Multicast
             NetworkInterface.getNetworkInterfaces().toList().forEach { ni ->

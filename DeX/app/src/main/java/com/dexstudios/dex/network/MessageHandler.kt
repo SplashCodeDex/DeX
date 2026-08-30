@@ -10,10 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
@@ -30,7 +28,7 @@ class MessageHandler(
     private val notificationHelper: NotificationHelper,
     private val fileShareManager: FileShareManager
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = DexJson
 
     var onSendMessage: ((String) -> Unit)? = null
 
@@ -38,26 +36,26 @@ class MessageHandler(
         try {
             Timber.d("Received message from $senderIp:$senderPort")
             val jsonObject = json.decodeFromString<JsonObject>(text)
-            val type = jsonObject["type"]?.jsonPrimitive?.content ?: return
-            val dataElement = jsonObject["data"] ?: return
+            val type = jsonObject[ProtocolKeys.TYPE]?.jsonPrimitive?.content ?: return
+            val dataElement = jsonObject[ProtocolKeys.DATA] ?: return
 
             when (type) {
-                "pair-prompt" -> handlePairPrompt(dataElement)
-                "pair-cancelled" -> handlePairCancelled()
-                "pair-accepted" -> handlePairAccepted(dataElement)
-                "identity-challenge" -> handleIdentityChallenge(dataElement)
-                "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
-                "public-address" -> handlePublicAddress(dataElement)
-                "endpoint-info" -> handleEndpointInfo(dataElement)
-                "peer-endpoint" -> handlePeerEndpoint(dataElement)
-                "device-roster" -> handleDeviceRoster(dataElement)
-                "trust-check" -> handleTrustCheck(dataElement)
-                "unpair" -> handleUnpair(dataElement)
-                "relay-started" -> handleRelayReply(true)
-                "relay-error" -> handleRelayReply(false)
-                "set-clipboard" -> handleSetClipboard(dataElement)
-                "wallpaper-updated" -> WallpaperState.notifyUpdated()
-                "list-shared-folders", "browse-folder", "pull-files", "pull-cancel", "grant-shared-folder" ->
+                ProtocolKeys.PAIR_PROMPT -> handlePairPrompt(dataElement)
+                ProtocolKeys.PAIR_CANCELLED -> handlePairCancelled()
+                ProtocolKeys.PAIR_ACCEPTED -> handlePairAccepted(dataElement)
+                ProtocolKeys.IDENTITY_CHALLENGE -> handleIdentityChallenge(dataElement)
+                ProtocolKeys.PREPARE_UPLOAD -> handlePrepareUpload(dataElement, senderIp)
+                ProtocolKeys.PUBLIC_ADDRESS -> handlePublicAddress(dataElement)
+                ProtocolKeys.ENDPOINT_INFO -> handleEndpointInfo(dataElement)
+                ProtocolKeys.PEER_ENDPOINT -> handlePeerEndpoint(dataElement)
+                ProtocolKeys.DEVICE_ROSTER -> handleDeviceRoster(dataElement)
+                ProtocolKeys.TRUST_CHECK -> handleTrustCheck(dataElement)
+                ProtocolKeys.UNPAIR -> handleUnpair(dataElement)
+                ProtocolKeys.RELAY_STARTED -> handleRelayReply(true)
+                ProtocolKeys.RELAY_ERROR -> handleRelayReply(false)
+                ProtocolKeys.SET_CLIPBOARD -> handleSetClipboard(dataElement)
+                ProtocolKeys.WALLPAPER_UPDATED -> WallpaperState.notifyUpdated()
+                ProtocolKeys.LIST_SHARED_FOLDERS, ProtocolKeys.BROWSE_FOLDER, ProtocolKeys.PULL_FILES, ProtocolKeys.PULL_CANCEL, ProtocolKeys.GRANT_SHARED_FOLDER ->
                     fileShareManager.handleRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
                 else -> {
                     Timber.w("Unknown message type received: $type")
@@ -70,16 +68,13 @@ class MessageHandler(
 
     private fun handlePairPrompt(dataElement: JsonElement) {
         val pairReq = json.decodeFromJsonElement<PairRequestDto>(dataElement)
-        
+
         // Task 5: Re-Pairing After Partial Forget (Auto-Accept)
         if (AuthState.pairedFingerprints.contains(pairReq.fingerprint)) {
             Timber.i("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
-            val responseMsg = buildJsonObject {
-                put("type", "pair-response")
-                putJsonObject("data") {
-                    put("accepted", true)
-                }
-            }.toString()
+            val responseMsg = ProtocolKeys.envelopeOf(ProtocolKeys.PAIR_RESPONSE) {
+                put(ProtocolKeys.ACCEPTED, true)
+            }
             onSendMessage?.invoke(responseMsg)
             return
         }
@@ -169,10 +164,9 @@ class MessageHandler(
         runCatching {
             val mac = HashUtils.hmacSha256Base64(sub, android.util.Base64.decode(nonce, android.util.Base64.NO_WRAP))
             onSendMessage?.invoke(
-                buildJsonObject {
-                    put("type", "identity-proof")
-                    putJsonObject("data") { put("mac", mac) }
-                }.toString(),
+                ProtocolKeys.envelopeOf(ProtocolKeys.IDENTITY_PROOF) {
+                    put(ProtocolKeys.MAC, mac)
+                },
             )
         }.onFailure { Timber.e(it, "Failed to answer identity challenge") }
     }
@@ -301,32 +295,24 @@ class MessageHandler(
      * user consent on its pairing panel instead.
      */
     private fun sendPairResponse(accepted: Boolean, enteredPin: String? = null) {
-        val payload = buildJsonObject {
-            put("type", "pair-response")
-            putJsonObject("data") {
-                put("accepted", accepted)
-                if (!enteredPin.isNullOrEmpty()) {
-                    put("pin", enteredPin)
-                }
+        val payload = ProtocolKeys.envelopeOf(ProtocolKeys.PAIR_RESPONSE) {
+            put(ProtocolKeys.ACCEPTED, accepted)
+            if (!enteredPin.isNullOrEmpty()) {
+                put(ProtocolKeys.PIN, enteredPin)
             }
         }
-        onSendMessage?.invoke(payload.toString())
+        onSendMessage?.invoke(payload)
     }
 
     /** Emits live keystroke telemetry so the desktop pairing UI can highlight matching digits in real time. */
     fun sendPinDigitEntered(digitCount: Int) {
-        val payload = buildJsonObject {
-            put("type", "pin-digit-entered")
-            putJsonObject("data") {
-                put("digitCount", digitCount)
-            }
+        val payload = ProtocolKeys.envelopeOf(ProtocolKeys.PIN_DIGIT_ENTERED) {
+            put(ProtocolKeys.DIGIT_COUNT, digitCount)
         }
-        onSendMessage?.invoke(payload.toString())
+        onSendMessage?.invoke(payload)
     }
 
     private companion object {
-        const val PAIR_PROMPT_TIMEOUT_MS = 60_000L
-        const val PROMPT_TIMEOUT_MS = 60_000L
-        const val GRANT_WAIT_MS = 180_000L
+        const val PAIR_PROMPT_TIMEOUT_MS = NetConfig.PAIR_PROMPT_TIMEOUT_MS
     }
 }

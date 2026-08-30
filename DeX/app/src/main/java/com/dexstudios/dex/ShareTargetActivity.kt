@@ -321,11 +321,11 @@ class ShareTargetActivity : ComponentActivity() {
         }
 
         val inputData = workDataOf(
-            "ip" to device.ip,
-            "port" to device.info.port,
-            "uris" to urisJson,
-            "targetFingerprint" to device.info.fingerprint,
-            "targetAlias" to device.info.alias
+            TransferWorkKeys.IP to device.ip,
+            TransferWorkKeys.PORT to device.info.port,
+            TransferWorkKeys.URIS to urisJson,
+            TransferWorkKeys.TARGET_FINGERPRINT to device.info.fingerprint,
+            TransferWorkKeys.TARGET_ALIAS to device.info.alias
         )
 
         val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()

@@ -17,10 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
@@ -43,17 +40,17 @@ class PunchSendWorker(
     private val channelId = NotificationHelper.CHANNEL_PUNCH
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val targetFingerprint = inputData.getString("targetFingerprint") ?: return@withContext Result.failure()
-        val urisJson = inputData.getString("uris") ?: return@withContext Result.failure()
+        val targetFingerprint = inputData.getString(TransferWorkKeys.TARGET_FINGERPRINT) ?: return@withContext Result.failure()
+        val urisJson = inputData.getString(TransferWorkKeys.URIS) ?: return@withContext Result.failure()
 
         val uris = try {
-            Json.decodeFromString<List<String>>(urisJson).map { it.toUri() }
+            DexJson.decodeFromString<List<String>>(urisJson).map { it.toUri() }
         } catch (e: Exception) {
             return@withContext Result.failure()
         }
 
         // Folder bundles: enumerate a picked tree into (uri, relativePath) pairs
-        val folderTreeUri = inputData.getString("folderTreeUri")?.toUri()
+        val folderTreeUri = inputData.getString(TransferWorkKeys.FOLDER_TREE_URI)?.toUri()
         if (folderTreeUri == null && uris.isEmpty()) return@withContext Result.failure()
         // Enumerate the folder tree once — listTreeFiles walks recursively.
         val treeEntries = folderTreeUri?.let { tree -> SafStorage.listTreeFiles(applicationContext, tree) }
@@ -153,7 +150,7 @@ class PunchSendWorker(
                             TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias, status = "failed")
                             return@launch
                         }
-                        if (token_ == "[SKIP]") {
+                        if (token_ == NetConfig.SKIP_TOKEN) {
                             TransferHistory.log(applicationContext, d.second, d.third, "sent", d.first.toString(), peerDevice = targetAlias)
                             return@launch
                         }
@@ -202,13 +199,10 @@ class PunchSendWorker(
         val relayDeferred = CompletableDeferred<Boolean>()
         PunchState.pendingRelay.value = relayDeferred
         wsService.sendMessage(
-            buildJsonObject {
-                put("type", "relay-transfer")
-                putJsonObject("data") {
-                    put("targetFingerprint", targetFingerprint)
-                    put("sessionId", response.sessionId)
-                }
-            }.toString()
+            ProtocolKeys.envelopeOf(ProtocolKeys.RELAY_TRANSFER) {
+                put(ProtocolKeys.TARGET_FINGERPRINT, targetFingerprint)
+                put(ProtocolKeys.SESSION_ID, response.sessionId)
+            }
         )
         val pushed = withTimeoutOrNull(10_000.milliseconds) { relayDeferred.await() } == true
         PunchState.pendingRelay.value = null
@@ -217,7 +211,7 @@ class PunchSendWorker(
     }
 
     private fun reportProgress(progress: Float, fileName: String, protocol: String, totalFiles: Int) {
-        val targetFingerprint = inputData.getString("targetFingerprint")
+        val targetFingerprint = inputData.getString(TransferWorkKeys.TARGET_FINGERPRINT)
         try {
             client.updateUploadState(
                 UploadState(

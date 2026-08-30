@@ -13,17 +13,17 @@ class FileTransferReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (action == NotificationHelper.ACTION_CANCEL_PENDING_SHARE) {
-            val fingerprint = intent.getStringExtra("FINGERPRINT") ?: return
+            val fingerprint = intent.getStringExtra(TransferIntents.EXTRA_FINGERPRINT) ?: return
             PendingShareForwarder.cancel(fingerprint)
             return
         }
 
-        val sessionId = intent.getStringExtra("SESSION_ID") ?: return
+        val sessionId = intent.getStringExtra(TransferIntents.EXTRA_SESSION_ID) ?: return
 
-        TransferState.pendingPrompts.remove(sessionId)?.complete(action == "com.dexstudios.dex.ACCEPT_TRANSFER")
+        TransferState.pendingPrompts.remove(sessionId)?.complete(action == TransferIntents.ACTION_ACCEPT_TRANSFER)
 
         // Cancel notification
-        val notificationId = intent.getIntExtra("NOTIFICATION_ID", 0)
+        val notificationId = intent.getIntExtra(TransferIntents.EXTRA_NOTIFICATION_ID, 0)
         if (notificationId != 0) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(notificationId)

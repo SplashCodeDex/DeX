@@ -14,10 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import timber.log.Timber
 import java.io.InputStream
 import java.io.OutputStream
@@ -49,7 +46,7 @@ class PunchSession(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverSocket: ServerSocket? = null
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = DexJson
 
     // Peer phones use self-signed certs; pin each peer's cert trust-on-first-use so a
     // changed cert (MITM on the LAN) is rejected instead of silently trusted.
@@ -165,7 +162,6 @@ class PunchSession(
                 Timber.w("Rejected punch transfer from non-same-email device ${manifest.alias}")
                 return@withContext closeQuietly(socket)
             }
-
             val sessionId = manifest.sessionId
             val resumeMap = PunchResumeState.mapFor(sessionId)
 
@@ -312,10 +308,9 @@ class PunchSession(
             val deferred = CompletableDeferred<EndpointInfoDto>()
             PunchState.pendingEndpointInfo.value = deferred
             wsService.sendMessage(
-                buildJsonObject {
-                    put("type", "resolve-endpoint")
-                    putJsonObject("data") { put("targetFingerprint", targetFingerprint) }
-                }.toString()
+                ProtocolKeys.envelopeOf(ProtocolKeys.RESOLVE_ENDPOINT) {
+                    put(ProtocolKeys.TARGET_FINGERPRINT, targetFingerprint)
+                }
             )
             val info = withTimeoutOrNull(15_000.milliseconds) { deferred.await() }
             PunchState.pendingEndpointInfo.value = null

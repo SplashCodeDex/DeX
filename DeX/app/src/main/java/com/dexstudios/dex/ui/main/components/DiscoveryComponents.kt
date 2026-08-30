@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.dexstudios.dex.ui.components.DeXGlareCard
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,14 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
-import com.dexstudios.dex.network.RegisterDto
-import com.dexstudios.dex.network.DiscoveredDevice
-import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.DeXButton
-import com.dexstudios.dex.ui.components.DeXPanel
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import androidx.compose.ui.draw.shadow
-import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 @OptIn(ExperimentalAnimationApi::class)

@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object PendingShareForwarder : KoinComponent {
 
-    private const val PENDING_SHARE_TIMEOUT_MS = 10L * 60 * 1000
+    private const val PENDING_SHARE_TIMEOUT_MS = NetConfig.PENDING_SHARE_TIMEOUT_MS
 
     private data class PendingShare(
         val fingerprint: String,
@@ -104,11 +104,11 @@ object PendingShareForwarder : KoinComponent {
         }
 
         val inputData = workDataOf(
-            "ip" to device.ip,
-            "port" to device.info.port,
-            "uris" to urisJson,
-            "targetFingerprint" to device.info.fingerprint,
-            "targetAlias" to device.info.alias
+            TransferWorkKeys.IP to device.ip,
+            TransferWorkKeys.PORT to device.info.port,
+            TransferWorkKeys.URIS to urisJson,
+            TransferWorkKeys.TARGET_FINGERPRINT to device.info.fingerprint,
+            TransferWorkKeys.TARGET_ALIAS to device.info.alias
         )
 
         val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()

@@ -12,19 +12,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
-import com.dexstudios.dex.network.RegisterDto
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -47,6 +41,7 @@ import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.PunchState
 import com.dexstudios.dex.network.TcpDownloadService
+import com.dexstudios.dex.network.TransferWorkKeys
 import kotlinx.coroutines.launch
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
@@ -59,11 +54,8 @@ import androidx.compose.ui.unit.sp
 
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import com.dexstudios.dex.network.WebSocketClientService
 import com.dexstudios.dex.network.DeviceManager
-import com.dexstudios.dex.ui.components.DeviceListItem
 import com.dexstudios.dex.ui.components.NetworkErrorDialog
-import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.*
 import com.dexstudios.dex.ui.main.components.ScanToAddDeviceCard
 import com.dexstudios.dex.ui.main.components.MainScreenCompact
@@ -174,9 +166,9 @@ fun MainScreen(
             val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.PunchSendWorker>()
                 .setInputData(
                     workDataOf(
-                        "targetFingerprint" to rosterTarget.info.fingerprint,
-                        "targetAlias" to rosterTarget.info.alias,
-                        "uris" to urisJson
+                        TransferWorkKeys.TARGET_FINGERPRINT to rosterTarget.info.fingerprint,
+                        TransferWorkKeys.TARGET_ALIAS to rosterTarget.info.alias,
+                        TransferWorkKeys.URIS to urisJson
                     )
                 )
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -199,19 +191,19 @@ fun MainScreen(
             }
 
             val inputData = workDataOf(
-                "ip" to device.ip,
-                "port" to device.info.port,
-                "uris" to urisJson,
-                "targetFingerprint" to device.info.fingerprint,
-                "targetAlias" to device.info.alias
+                TransferWorkKeys.IP to device.ip,
+                TransferWorkKeys.PORT to device.info.port,
+                TransferWorkKeys.URIS to urisJson,
+                TransferWorkKeys.TARGET_FINGERPRINT to device.info.fingerprint,
+                TransferWorkKeys.TARGET_ALIAS to device.info.alias
             ).let { base ->
                 val identityHash = device.info.identityHash
                 val googleSub = device.info.googleSub
                 if (identityHash != null || googleSub != null) {
                     androidx.work.Data.Builder().putAll(base)
                         .apply {
-                            identityHash?.let { putString("targetIdentityHash", it) }
-                            googleSub?.let { putString("targetGoogleSub", it) }
+                            identityHash?.let { putString(TransferWorkKeys.TARGET_IDENTITY_HASH, it) }
+                            googleSub?.let { putString(TransferWorkKeys.TARGET_GOOGLE_SUB, it) }
                         }
                         .build()
                 } else {

@@ -6,9 +6,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import okhttp3.*
 import timber.log.Timber
 import java.security.SecureRandom
@@ -24,14 +22,11 @@ private const val RSSI_INVALID = -127
  */
 internal fun buildTelemetryPayload(battery: Int, ssid: String?, rssi: Int): String? {
     if ((battery < 0 && ssid == null && rssi == RSSI_INVALID)) return null
-    return buildJsonObject {
-        put("type", "telemetry")
-        putJsonObject("data") {
-            if (battery >= 0) put("battery", battery)
-            if (ssid != null) put("wifiSsid", ssid)
-            if (rssi != RSSI_INVALID) put("wifiRssi", rssi)
-        }
-    }.toString()
+    return ProtocolKeys.envelopeOf(ProtocolKeys.TELEMETRY) {
+        if (battery >= 0) put(ProtocolKeys.BATTERY, battery)
+        if (ssid != null) put(ProtocolKeys.WIFI_SSID, ssid)
+        if (rssi != RSSI_INVALID) put(ProtocolKeys.WIFI_RSSI, rssi)
+    }
 }
 
 class WebSocketClientService(
@@ -120,7 +115,7 @@ class WebSocketClientService(
             while (isActive) {
                 delay(1.minutes)
                 if (isRunning && activeSocket != null) {
-                    sendMessage("""{"type":"device-roster","data":{}}""")
+                    sendMessage(ProtocolMessages.DEVICE_ROSTER_FRAME)
                     sendTelemetry()
                 }
             }
@@ -260,17 +255,14 @@ class WebSocketClientService(
                     DeviceManager.savePairedToken(pcFingerprint, token)
                 }
                 // Ask the PC which of our same-email devices are online (direct punch transfers)
-                sendMessage("""{"type":"device-roster","data":{}}""")
-                
+                sendMessage(ProtocolMessages.DEVICE_ROSTER_FRAME)
+
                 // Send trust-check to verify we are still trusted by the PC
                 val isTrusted = AuthState.pairedFingerprints.contains(pcFingerprint) || token == googleSub || (token == identityHash && identityHash.isNotEmpty())
-                val trustCheck = buildJsonObject {
-                    put("type", "trust-check")
-                    putJsonObject("data") {
-                        put("isTrusted", isTrusted)
-                        put("fingerprint", fingerprint)
-                    }
-                }.toString()
+                val trustCheck = ProtocolKeys.envelopeOf(ProtocolKeys.TRUST_CHECK) {
+                    put(ProtocolKeys.IS_TRUSTED, isTrusted)
+                    put(ProtocolKeys.FINGERPRINT, fingerprint)
+                }
                 sendMessage(trustCheck)
 
                 // Report battery immediately so the PC has telemetry on connect, not after 60s
@@ -340,7 +332,7 @@ class WebSocketClientService(
             Timber.w("Not connected to requested PC, cannot send pair request")
             return false
         }
-        return socket.send("""{"type":"pair-request"}""")
+        return socket.send(ProtocolMessages.PAIR_REQUEST_FRAME)
     }
 
     /**
@@ -353,7 +345,7 @@ class WebSocketClientService(
         val fp = targetPc.info.fingerprint
         val socket = activeSocket
         if (socket != null && _connectedFingerprint == fp) {
-            onResult(socket.send("""{"type":"pair-request"}"""))
+            onResult(socket.send(ProtocolMessages.PAIR_REQUEST_FRAME))
             return
         }
         val settled = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -383,7 +375,7 @@ class WebSocketClientService(
             Timber.w("Not connected to requested PC, cannot send unpair request")
             return false
         }
-        return socket.send("""{"type":"unpair"}""")
+        return socket.send(ProtocolMessages.UNPAIR_FRAME)
     }
 
     /**
@@ -394,7 +386,7 @@ class WebSocketClientService(
         val fp = targetPc.info.fingerprint
         val socket = activeSocket
         if (socket != null && _connectedFingerprint == fp) {
-            onResult(socket.send("""{"type":"unpair"}"""))
+            onResult(socket.send(ProtocolMessages.UNPAIR_FRAME))
             return
         }
         val settled = java.util.concurrent.atomic.AtomicBoolean(false)

@@ -97,7 +97,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         onResult: (Boolean, Int) -> Unit
     ): UrlRequest? {
         val engine = engine ?: return null
-        val url = "https://$ip:$port/api/localsend/v2/upload" +
+        val url = ApiRoutes.httpsUrl(ip, port, ApiRoutes.UPLOAD) +
             "?sessionId=${enc(sessionId)}&fileId=${enc(fileId)}&token=${enc(token)}"
 
         var sentBytes = 0L
@@ -203,7 +203,7 @@ class QuicClient(private val context: Context) : java.io.Closeable {
         onResult: (Boolean, Int, String) -> Unit
     ): UrlRequest? {
         val engine = engine ?: return null
-        val url = "https://$ip:$port/download/${enc(fileId)}" + (if (!token.isNullOrEmpty()) "?token=${enc(token)}" else "")
+        val url = ApiRoutes.httpsUrl(ip, port, "${ApiRoutes.DOWNLOAD}/${enc(fileId)}") + (if (!token.isNullOrEmpty()) "?token=${enc(token)}" else "")
 
         var receivedBytes = 0L
         var reported = false
