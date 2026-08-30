@@ -3,7 +3,10 @@ package com.dexstudios.dex.network
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.os.Build
 import timber.log.Timber
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 class NsdManagerHelper(
     context: Context,
@@ -26,6 +29,7 @@ class NsdManagerHelper(
         registrationListener = null
         runCatching { discoveryListener?.let { nsdManager.stopServiceDiscovery(it) } }
         discoveryListener = null
+        stopAllServiceInfoCallbacks()
     }
 
     private fun registerService() {
@@ -51,8 +55,122 @@ class NsdManagerHelper(
         runCatching { nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener) }
     }
 
+    /**
+     * Parses the TXT attributes + address of a resolved service into a [DiscoveredDevice]
+     * and reports it. Shared by the modern (API 34+) callback path and the legacy resolve path.
+     */
+    private fun handleResolved(serviceInfo: NsdServiceInfo) {
+        try {
+            val attributes = serviceInfo.attributes
+            val fp = attributes["fingerprint"]?.let { String(it) }
+            val alias = attributes["alias"]?.let { String(it) }
+
+            if (fp.isNullOrEmpty() || fp == localInfo.fingerprint) return
+
+            val identityHash = attributes["identityHash"]?.let { String(it) }
+            val googleSub = attributes["googleSub"]?.let { String(it) }
+            val deviceModel = attributes["deviceModel"]?.let { String(it) } ?: "Unknown"
+            val deviceType = attributes["deviceType"]?.let { String(it) } ?: "unknown"
+
+            val quicPort = attributes["quicPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.QUIC
+            val tcpFallbackPort = attributes["tcpFallbackPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.PULL
+
+            val dto = RegisterDto(
+                alias = alias ?: "Unknown",
+                version = "2.0",
+                deviceModel = deviceModel,
+                deviceType = deviceType,
+                fingerprint = fp,
+                port = serviceInfo.port,
+                protocol = "https",
+                download = true,
+                quicPort = quicPort,
+                tcpFallbackPort = tcpFallbackPort,
+                identityHash = identityHash,
+                googleSub = googleSub
+            )
+
+            // host is deprecated in API 34+ in favor of hostAddresses; use the
+            // version-appropriate accessor to avoid the deprecated call.
+            val ip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                serviceInfo.hostAddresses?.firstOrNull()?.hostAddress
+            } else {
+                @Suppress("DEPRECATION")
+                serviceInfo.host?.hostAddress
+            }
+            if (!ip.isNullOrEmpty()) {
+                val device = DiscoveredDevice(
+                    ip = ip,
+                    info = dto,
+                    viaWan = false,
+                    viaRoster = false
+                )
+                onDeviceDiscovered?.invoke(device)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error parsing NSD TXT records")
+        }
+    }
+
+    // ---- Resolution: modern callback (API 34+) with legacy resolve fallback ----
+
+    /**
+     * On API 34+ each discovered service gets a persistent [NsdManager.ServiceInfoCallback]:
+     * the system pushes updated service info (including IP changes) instead of answering a
+     * single one-shot lookup, so no resolve queue is needed and stale IPs self-heal
+     * immediately. On older Android we keep the original one-shot resolveService queue.
+     */
+    private val serviceInfoCallbacks = java.util.concurrent.ConcurrentHashMap<NsdServiceInfo, NsdManager.ServiceInfoCallback>()
+    private val serviceInfoExecutor: Executor = Executors.newSingleThreadExecutor()
+
     private val resolveQueue = java.util.concurrent.ConcurrentLinkedQueue<NsdServiceInfo>()
     private var isResolving = false
+
+    private fun resolveService(service: NsdServiceInfo) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            registerServiceInfoCallback(service)
+        } else {
+            resolveQueue.add(service)
+            resolveNext()
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun registerServiceInfoCallback(service: NsdServiceInfo) {
+        // One callback per discovered service; re-registering the same instance is wasteful
+        if (serviceInfoCallbacks.containsKey(service)) return
+
+        val callback = object : NsdManager.ServiceInfoCallback {
+            override fun onServiceInfoCallbackRegistrationFailed(errorCode: Int) {
+                Timber.e("NSD ServiceInfoCallback registration failed: $errorCode")
+            }
+
+            override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
+                handleResolved(serviceInfo)
+            }
+
+            override fun onServiceLost() {
+                Timber.d("NSD service lost (ServiceInfoCallback)")
+            }
+
+            override fun onServiceInfoCallbackUnregistered() {}
+        }
+
+        try {
+            nsdManager.registerServiceInfoCallback(service, serviceInfoExecutor, callback)
+            serviceInfoCallbacks[service] = callback
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to register ServiceInfoCallback")
+        }
+    }
+
+    private fun stopAllServiceInfoCallbacks() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        serviceInfoCallbacks.forEach { (_, callback) ->
+            runCatching { nsdManager.unregisterServiceInfoCallback(callback) }
+        }
+        serviceInfoCallbacks.clear()
+    }
 
     private fun resolveNext() {
         if (isResolving) return
@@ -67,54 +185,7 @@ class NsdManagerHelper(
             }
             override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
                 try {
-                    val attributes = serviceInfo.attributes
-                    val fp = attributes["fingerprint"]?.let { String(it) }
-                    val alias = attributes["alias"]?.let { String(it) }
-
-                    if (fp.isNullOrEmpty() || fp == localInfo.fingerprint) return
-
-                    val identityHash = attributes["identityHash"]?.let { String(it) }
-                    val googleSub = attributes["googleSub"]?.let { String(it) }
-                    val deviceModel = attributes["deviceModel"]?.let { String(it) } ?: "Unknown"
-                    val deviceType = attributes["deviceType"]?.let { String(it) } ?: "unknown"
-
-                    val quicPort = attributes["quicPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.QUIC
-                    val tcpFallbackPort = attributes["tcpFallbackPort"]?.let { String(it).toIntOrNull() } ?: DeXPorts.PULL
-
-                    val dto = RegisterDto(
-                        alias = alias ?: "Unknown",
-                        version = "2.0",
-                        deviceModel = deviceModel,
-                        deviceType = deviceType,
-                        fingerprint = fp,
-                        port = serviceInfo.port,
-                        protocol = "https",
-                        download = true,
-                        quicPort = quicPort,
-                        tcpFallbackPort = tcpFallbackPort,
-                        identityHash = identityHash,
-                        googleSub = googleSub
-                    )
-
-                    // host is deprecated in API 34+ in favor of hostAddresses; use the
-                    // version-appropriate accessor to avoid the deprecated call.
-                    val ip = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        serviceInfo.hostAddresses?.firstOrNull()?.hostAddress
-                    } else {
-                        @Suppress("DEPRECATION")
-                        serviceInfo.host?.hostAddress
-                    }
-                    if (!ip.isNullOrEmpty()) {
-                        val device = DiscoveredDevice(
-                            ip = ip,
-                            info = dto,
-                            viaWan = false,
-                            viaRoster = false
-                        )
-                        onDeviceDiscovered?.invoke(device)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing NSD TXT records")
+                    handleResolved(serviceInfo)
                 } finally {
                     isResolving = false
                     resolveNext()
@@ -122,7 +193,6 @@ class NsdManagerHelper(
             }
         }
 
-        // resolveService is deprecated in API 34+ in favor of registerServiceInfoCallback.
         runCatching {
             @Suppress("DEPRECATION")
             nsdManager.resolveService(nextService, resolveListener)
@@ -138,8 +208,7 @@ class NsdManagerHelper(
             override fun onDiscoveryStarted(regType: String) {}
             override fun onServiceFound(service: NsdServiceInfo) {
                 if (service.serviceType.contains("_dex._udp")) {
-                    resolveQueue.add(service)
-                    resolveNext()
+                    resolveService(service)
                 }
             }
             override fun onServiceLost(service: NsdServiceInfo) {}
