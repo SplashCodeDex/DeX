@@ -37,6 +37,7 @@
     <string name="error_transfer_folder">Cannot save to Downloads/DeX. Open the app and grant folder access.</string>
     <string name="error_transfer_cancelled">Transfer cancelled.</string>
     <string name="error_upload_all">Upload failed. Check the PC is on and reachable.</string>
+    <string name="onboarding_get_started">Get Started</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_grant">Grant Permission</string>
     <string name="onboarding_open_settings">Open Settings</string>

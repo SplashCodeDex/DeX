@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -28,18 +29,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,18 +61,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.video.VideoFrameDecoder
+import coil3.video.videoFrameMillis
 import com.dexstudios.dex.ui.components.LiquidGlassButton
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
-import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
-import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +85,23 @@ data class RecentMediaItem(
     val isVideo: Boolean = false,
 )
 
+data class RecentAudioItem(
+    val uri: Uri,
+    val name: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val size: Long,
+    val dateAdded: Long,
+    val albumArtUri: Uri?,
+)
+
+enum class MediaTrayTab {
+    PhotosAndVideos,
+    Audio
+}
+
 @Composable
 fun MediaPickerTray(
     backdrop: Backdrop?,
@@ -90,12 +111,30 @@ fun MediaPickerTray(
 ) {
     val context = LocalContext.current
     val selectedUris = remember { mutableStateListOf<Uri>() }
+    var currentTab by remember { mutableStateOf(MediaTrayTab.PhotosAndVideos) }
+
+    // Media & Audio state
     var mediaItems by remember { mutableStateOf<List<RecentMediaItem>>(emptyList()) }
+    var audioItems by remember { mutableStateOf<List<RecentAudioItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var hasPermission by remember { mutableStateOf(checkHasMediaPermission(context)) }
     var reloadTrigger by remember { mutableIntStateOf(0) }
 
-    // Permission launcher for accessing device media
+    // Audio preview player state
+    var playingUri by remember { mutableStateOf<Uri?>(null) }
+    val mediaPlayerRef = remember { mutableStateOf<MediaPlayer?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                mediaPlayerRef.value?.stop()
+                mediaPlayerRef.value?.release()
+                mediaPlayerRef.value = null
+            } catch (_: Exception) {}
+        }
+    }
+
+    // Permission launcher for accessing device media and audio
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -115,16 +154,7 @@ fun MediaPickerTray(
         }
     }
 
-    // 2. Audio Picker for 'Audio'
-    val audioPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            uris.forEach { if (!selectedUris.contains(it)) selectedUris.add(it) }
-        }
-    }
-
-    // 3. Camera capture launcher for 'Camera'
+    // 2. Camera capture launcher for 'Camera'
     val cameraCapture = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
@@ -144,16 +174,51 @@ fun MediaPickerTray(
         }
     }
 
-    // Load actual recent media files from Android MediaStore
+    // Load actual recent media files and audio files from Android MediaStore
     LaunchedEffect(hasPermission, reloadTrigger) {
         if (hasPermission) {
             isLoading = true
-            mediaItems = withContext(Dispatchers.IO) {
-                loadRecentMedia(context)
+            withContext(Dispatchers.IO) {
+                val loadedMedia = loadRecentMedia(context)
+                val loadedAudio = loadRecentAudio(context)
+                mediaItems = loadedMedia
+                audioItems = loadedAudio
             }
             isLoading = false
         } else {
             mediaItems = emptyList()
+            audioItems = emptyList()
+        }
+    }
+
+    fun toggleAudioPreview(item: RecentAudioItem) {
+        if (playingUri == item.uri) {
+            try {
+                mediaPlayerRef.value?.stop()
+                mediaPlayerRef.value?.release()
+                mediaPlayerRef.value = null
+            } catch (_: Exception) {}
+            playingUri = null
+        } else {
+            try {
+                mediaPlayerRef.value?.stop()
+                mediaPlayerRef.value?.release()
+                val player = MediaPlayer().apply {
+                    setDataSource(context, item.uri)
+                    prepare()
+                    start()
+                    setOnCompletionListener {
+                        playingUri = null
+                        mediaPlayerRef.value?.release()
+                        mediaPlayerRef.value = null
+                    }
+                }
+                mediaPlayerRef.value = player
+                playingUri = item.uri
+            } catch (e: Exception) {
+                e.printStackTrace()
+                playingUri = null
+            }
         }
     }
 
@@ -162,17 +227,16 @@ fun MediaPickerTray(
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        // --- 1. Top Quick Action Buttons: 'Documents', 'Camera', 'Audio' ---
+        // --- 1. Top Action Row: Documents, Camera, and Media/Audio Category Toggle ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             QuickActionButton(
                 label = "Documents",
                 icon = MaterialSymbols.Folder,
-                backdrop = backdrop,
                 modifier = Modifier.weight(1f),
                 onClick = { systemDocPicker.launch(arrayOf("*/*")) }
             )
@@ -180,23 +244,25 @@ fun MediaPickerTray(
             QuickActionButton(
                 label = "Camera",
                 icon = MaterialSymbols.Photo,
-                backdrop = backdrop,
                 modifier = Modifier.weight(1f),
                 onClick = { cameraCapture.launch(null) }
             )
 
+            // Switch between Photos/Videos and Audio browser
             QuickActionButton(
-                label = "Audio",
-                icon = MaterialSymbols.Article,
-                backdrop = backdrop,
+                label = if (currentTab == MediaTrayTab.PhotosAndVideos) "Audio" else "Photos",
+                icon = if (currentTab == MediaTrayTab.PhotosAndVideos) MaterialSymbols.MusicNote else MaterialSymbols.Photo,
+                isActive = (currentTab == MediaTrayTab.Audio),
                 modifier = Modifier.weight(1f),
-                onClick = { audioPicker.launch("audio/*") }
+                onClick = {
+                    currentTab = if (currentTab == MediaTrayTab.PhotosAndVideos) MediaTrayTab.Audio else MediaTrayTab.PhotosAndVideos
+                }
             )
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // --- 2. Recent Media Grid / Permission Request / Loading ---
+        // --- 2. Main Tray Body (Photos/Videos Grid vs. Custom Audio List) ---
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -227,7 +293,7 @@ fun MediaPickerTray(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Recent Photos & Videos",
+                        text = "Device Media & Audio Access",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -236,7 +302,7 @@ fun MediaPickerTray(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "Allow access to easily select and share your device media",
+                        text = "Allow access to easily select and share your photos, videos, and music",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center
@@ -260,36 +326,84 @@ fun MediaPickerTray(
                         )
                     }
                 }
-            } else if (mediaItems.isEmpty()) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "No recent media found",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+            } else if (currentTab == MediaTrayTab.PhotosAndVideos) {
+                // --- Photos & Videos View ---
+                if (mediaItems.isEmpty()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No recent photos or videos found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 100.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(mediaItems, key = { it.uri.toString() }) { item ->
+                            val isItemSelected = selectedUris.contains(item.uri)
+
+                            MediaThumbnailCard(
+                                item = item,
+                                isSelected = isItemSelected,
+                                onToggle = {
+                                    if (isItemSelected) selectedUris.remove(item.uri)
+                                    else selectedUris.add(item.uri)
+                                }
+                            )
+                        }
+                    }
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 100.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(mediaItems, key = { it.uri.toString() }) { item ->
-                        val isItemSelected = selectedUris.contains(item.uri)
-
-                        MediaThumbnailCard(
-                            item = item,
-                            isSelected = isItemSelected,
-                            onToggle = {
-                                if (isItemSelected) selectedUris.remove(item.uri)
-                                else selectedUris.add(item.uri)
-                            }
+                // --- Custom Audio Files View ---
+                if (audioItems.isEmpty()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(40.dp)
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "No audio files found on device",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(audioItems, key = { it.uri.toString() }) { audio ->
+                            val isSelected = selectedUris.contains(audio.uri)
+                            val isPlaying = (playingUri == audio.uri)
+
+                            AudioTrackCard(
+                                item = audio,
+                                isSelected = isSelected,
+                                isPlaying = isPlaying,
+                                onToggleSelect = {
+                                    if (isSelected) selectedUris.remove(audio.uri)
+                                    else selectedUris.add(audio.uri)
+                                },
+                                onTogglePlay = {
+                                    toggleAudioPreview(audio)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -310,6 +424,12 @@ fun MediaPickerTray(
                 LiquidGlassButton(
                     text = "Send ${selectedUris.size} item${if (selectedUris.size > 1) "s" else ""}",
                     onClick = {
+                        try {
+                            mediaPlayerRef.value?.stop()
+                            mediaPlayerRef.value?.release()
+                            mediaPlayerRef.value = null
+                            playingUri = null
+                        } catch (_: Exception) {}
                         onSend(selectedUris.toList())
                     },
                     backdrop = backdrop,
@@ -328,68 +448,191 @@ fun MediaPickerTray(
 private fun QuickActionButton(
     label: String,
     icon: ImageVector,
-    backdrop: Backdrop?,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isActive: Boolean = false,
+    onClick: () -> Unit,
 ) {
-    val buttonShape = RoundedCornerShape(16.dp)
+    val buttonShape = RoundedCornerShape(14.dp)
+    val bgColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    val contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
 
     Box(
         modifier = modifier
-            .height(44.dp)
+            .height(42.dp)
             .bubbleFluidity(targetScale = 1.04f, pullFactor = 0.05f)
             .clip(buttonShape)
+            .background(bgColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (backdrop != null) {
-            LiquidGlassPanel(
-                backdrop = backdrop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .shinyGlare(shape = buttonShape, intensity = LiquidGlassTokens.GlareFactor * 0.7f),
-                shape = buttonShape,
-                config = LiquidGlassPresets.IconButton.copy(
-                    shape = buttonShape,
-                    blurRadius = 10.dp,
-                    surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                    surfaceTintAlpha = 0.22f,
-                ),
-                content = {}
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
-            )
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 10.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(17.dp)
+                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.SemiBold,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface
+                color = contentColor
             )
         }
     }
 }
 
 /**
- * Card for each media item in the grid.
+ * High-performance Custom Audio Track Card in the Sheet (Standard Material 3, No Liquid Glass overhead).
+ */
+@Composable
+private fun AudioTrackCard(
+    item: RecentAudioItem,
+    isSelected: Boolean,
+    isPlaying: Boolean,
+    onToggleSelect: () -> Unit,
+    onTogglePlay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cardShape = RoundedCornerShape(14.dp)
+    val bgColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .bubbleFluidity(targetScale = 1.02f, pullFactor = 0.03f)
+            .clip(cardShape)
+            .border(
+                width = if (isSelected) 1.5.dp else 0.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f),
+                shape = cardShape
+            )
+            .background(bgColor)
+            .clickable(onClick = onToggleSelect)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 1. Left: Album Art or Fallback Music Icon
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            if (item.albumArtUri != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.albumArtUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = MaterialSymbols.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // 2. Middle: Track Title, Artist, Duration & File Size
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = item.title.ifEmpty { item.name },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            val durationFormatted = formatDuration(item.durationMs)
+            val sizeFormatted = formatFileSize(item.size)
+            Text(
+                text = "${item.artist} • $durationFormatted • $sizeFormatted",
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // 3. Right: Mini Preview Play/Pause Button
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
+                .clickable(onClick = onTogglePlay),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isPlaying) MaterialSymbols.Pause else MaterialSymbols.PlayArrow,
+                contentDescription = if (isPlaying) "Pause" else "Preview Play",
+                tint = if (isPlaying) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // 4. Selection Checkbox Badge
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .border(
+                    width = if (isSelected) 0.dp else 1.5.dp,
+                    color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    shape = CircleShape
+                )
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = MaterialSymbols.Check,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Card for each photo/video media item in the grid.
  */
 @Composable
 private fun MediaThumbnailCard(
@@ -414,11 +657,22 @@ private fun MediaThumbnailCard(
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
+        val context = LocalContext.current
+        val imageRequest = remember(item.uri, item.isVideo) {
+            ImageRequest.Builder(context)
                 .data(item.uri)
+                .apply {
+                    if (item.isVideo) {
+                        decoderFactory(VideoFrameDecoder.Factory())
+                        videoFrameMillis(1000)
+                    }
+                }
                 .crossfade(true)
-                .build(),
+                .build()
+        }
+
+        AsyncImage(
+            model = imageRequest,
             contentDescription = item.name,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -471,9 +725,11 @@ private fun MediaThumbnailCard(
 private fun checkHasMediaPermission(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
     } else {
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
     }
@@ -485,12 +741,14 @@ private fun getMediaPermissions(): Array<String> {
         arrayOf(
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
         )
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
             Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VIDEO
+            Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.READ_MEDIA_AUDIO
         )
     } else {
         arrayOf(
@@ -573,6 +831,97 @@ private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
         e.printStackTrace()
     }
 
-    // Return unified stream sorted chronologically descending (newest first)
     return items.sortedByDescending { it.dateAdded }
+}
+
+// Android MediaStore Query for Real Audio Tracks & Music
+private fun loadRecentAudio(context: Context): List<RecentAudioItem> {
+    val items = mutableListOf<RecentAudioItem>()
+    try {
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.DISPLAY_NAME,
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.ALBUM_ID
+        )
+        val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+        context.contentResolver.query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder
+        )?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+            val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+
+            var count = 0
+            while (cursor.moveToNext() && count < 100) {
+                val id = cursor.getLong(idCol)
+                val name = cursor.getString(nameCol) ?: "Audio"
+                val title = cursor.getString(titleCol) ?: name
+                val rawArtist = cursor.getString(artistCol)
+                val artist = if (rawArtist.isNullOrEmpty() || rawArtist == "<unknown>") "Unknown Artist" else rawArtist
+                val album = cursor.getString(albumCol) ?: ""
+                val durationMs = cursor.getLong(durationCol)
+                val size = cursor.getLong(sizeCol)
+                val dateAdded = cursor.getLong(dateCol)
+                val albumId = cursor.getLong(albumIdCol)
+
+                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                val albumArtUri = if (albumId > 0) {
+                    ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId)
+                } else null
+
+                items.add(
+                    RecentAudioItem(
+                        uri = uri,
+                        name = name,
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        durationMs = durationMs,
+                        size = size,
+                        dateAdded = dateAdded,
+                        albumArtUri = albumArtUri
+                    )
+                )
+                count++
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return items
+}
+
+private fun formatDuration(durationMs: Long): String {
+    if (durationMs <= 0L) return "0:00"
+    val totalSeconds = durationMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+}
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0L) return "0 KB"
+    val mb = bytes / (1024f * 1024f)
+    return if (mb >= 1.0f) {
+        String.format(java.util.Locale.US, "%.1f MB", mb)
+    } else {
+        val kb = bytes / 1024f
+        String.format(java.util.Locale.US, "%.0f KB", kb)
+    }
 }

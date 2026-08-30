@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -105,6 +104,14 @@ fun MainNavigation(
 
     val context = LocalContext.current
     val resources = LocalResources.current
+
+    // Onboarding state hoisted so both the sheet content and the overlay below can react to it
+    val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
+    var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
+
+    LaunchedEffect(showOnboarding) {
+        TopAppBarState.isOnboardingVisible = showOnboarding
+    }
 
     // QR Code Scanner Launcher
     val launchQrScanner: () -> Unit = {
@@ -259,14 +266,9 @@ fun MainNavigation(
             }
         }
 
-        val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
-        var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
-
-        LaunchedEffect(showOnboarding) {
-            TopAppBarState.isOnboardingVisible = showOnboarding
-        }
-
         // ===== 3-Tier Dynamic Bottom Sheet Engine (50%, 80%, 100%) =====
+        // Keep the main nav sheet dormant while the onboarding sheet owns the screen
+        if (!showOnboarding) {
         NavBottomSheet(
             backdrop = contentBackdrop,
             initialTier = SheetTier.Half,
@@ -422,6 +424,7 @@ fun MainNavigation(
                 }
             }
         )
+        }
 
         // Dimming overlay for top bar expansions (profile/search)
         if (isDimmed) {
@@ -443,6 +446,8 @@ fun MainNavigation(
         }
 
         // Floating Top App Bar (logo, profile island, search island)
+        // Hidden while the onboarding sheet owns the screen
+        if (!showOnboarding) {
         AnimatedVisibility(
             visible = true,
             enter = fadeIn(),
@@ -452,6 +457,7 @@ fun MainNavigation(
             FloatingTopAppBar(
                 backdrop = contentBackdrop
             )
+        }
         }
 
         // Pair Request Prompt
@@ -479,11 +485,8 @@ fun MainNavigation(
         }
 
         if (showOnboarding) {
-            com.dexstudios.dex.ui.components.OnboardingDialog(
-                onDismiss = {
-                    onboardingPrefs.edit().putBoolean("onboarding_done", true).apply()
-                    showOnboarding = false
-                },
+            com.dexstudios.dex.ui.components.OnboardingSheet(
+                onDismiss = { showOnboarding = false },
                 modifier = Modifier.zIndex(100f)
             )
         }

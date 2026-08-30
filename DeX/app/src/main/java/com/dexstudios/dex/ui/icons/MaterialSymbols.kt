@@ -3144,6 +3144,102 @@ object MaterialSymbols {
             }
         }.build().also { _filterList = it }
 
+    val MusicNote: ImageVector
+        get() = _musicNote ?: ImageVector.Builder(
+            name = "music_note",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(12f, 3f)
+                verticalLineToRelative(10.55f)
+                curveTo(11.41f, 13.21f, 10.74f, 13f, 10f, 13f)
+                curveToRelative(-2.21f, 0f, -4f, 1.79f, -4f, 4f)
+                reflectiveCurveToRelative(1.79f, 4f, 4f, 4f)
+                reflectiveCurveToRelative(4f, -1.79f, 4f, -4f)
+                verticalLineTo(7f)
+                horizontalLineToRelative(4f)
+                verticalLineTo(3f)
+                horizontalLineToRelative(-6f)
+                close()
+            }
+        }.build().also { _musicNote = it }
+
+    val PlayArrow: ImageVector
+        get() = _playArrow ?: ImageVector.Builder(
+            name = "play_arrow",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(8f, 5f)
+                verticalLineToRelative(14f)
+                lineToRelative(11f, -7f)
+                close()
+            }
+        }.build().also { _playArrow = it }
+
+    val Pause: ImageVector
+        get() = _pause ?: ImageVector.Builder(
+            name = "pause",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.Black),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero,
+            ) {
+                moveTo(6f, 19f)
+                horizontalLineToRelative(4f)
+                verticalLineTo(5f)
+                horizontalLineTo(6f)
+                verticalLineToRelative(14f)
+                close()
+                moveTo(14f, 5f)
+                verticalLineToRelative(14f)
+                horizontalLineToRelative(4f)
+                verticalLineTo(5f)
+                horizontalLineToRelative(-4f)
+                close()
+            }
+        }.build().also { _pause = it }
+
+    private var _musicNote: ImageVector? = null
+    private var _playArrow: ImageVector? = null
+    private var _pause: ImageVector? = null
     private var _google: ImageVector? = null
     private var _wifi: ImageVector? = null
     private var _clipboard: ImageVector? = null

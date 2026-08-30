@@ -1,4 +1,11 @@
 # Changelog
+## [10.1.29.90] - 2026-08-30
+### Added
+- **[minor] Android DeX: Real Audio Track Picker, Coil Video Decoding & Modularized Onboarding**:
+  - **MediaStore Audio & Music Hub (`ui/main/components/MediaPickerTray.kt`, `ui/icons/MaterialSymbols.kt`)**: Added native MediaStore audio querying with artist, album, duration, file size, and album art URI metadata. Integrated audio permission handling across Android 13+ (`READ_MEDIA_AUDIO`) and legacy storage.
+  - **Hardware Video Frame Decoding (`DeXApplication.kt`, `libs.versions.toml`, `build.gradle.kts`)**: Added `coil-video` decoder integration in Coil `ImageLoader` for smooth video thumbnail rendering.
+  - **Modularized Onboarding Hierarchy (`ui/components/OnboardingSheet.kt`, `ErrorDialogs.kt`)**: Extracted all onboarding permission cards, identity sign-in flows, and completion dialogs into a clean standalone composable file.
+
 ## [10.1.29.89] - 2026-08-30
 ### Changed
 - **[minor] Android DeX: Fluid Sheet Kinematics, Bouncy Physics & Haptic Calibration**:

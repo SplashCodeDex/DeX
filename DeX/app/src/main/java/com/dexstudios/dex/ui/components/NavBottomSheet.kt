@@ -2,7 +2,6 @@ package com.dexstudios.dex.ui.components
 
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,6 +76,7 @@ fun NavBottomSheet(
     backdrop: Backdrop? = null,
     modifier: Modifier = Modifier,
     initialTier: SheetTier = SheetTier.Half,
+    dragEnabled: Boolean = true,
     onDismiss: () -> Unit = {},
     sheetContent: @Composable ColumnScope.(
         expansionFraction: Float,
@@ -224,7 +224,7 @@ fun NavBottomSheet(
         }
 
         // Android 14+ Predictive Back Gesture Handling
-        PredictiveBackHandler(enabled = true) { progressFlow ->
+        PredictiveBackHandler(enabled = dragEnabled) { progressFlow ->
             val startHeight = animatableHeight.value
             val isExpanded = expansionFraction > 0.05f
             try {
@@ -305,14 +305,17 @@ fun NavBottomSheet(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            if (expansionFraction > 0.05f) {
-                                collapseToHalf()
-                            } else {
-                                scope.launch {
-                                    animatableHeight.animateTo(0f, springSpec)
-                                    onDismiss()
+                            if (dragEnabled) {
+                                if (expansionFraction > 0.05f) {
+                                    collapseToHalf()
+                                } else {
+                                    scope.launch {
+                                        animatableHeight.animateTo(0f, springSpec)
+                                        onDismiss()
+                                    }
                                 }
                             }
+                            // When drag is disabled the click is consumed (no-op): the sheet stays locked
                         }
                     )
             )
@@ -338,7 +341,9 @@ fun NavBottomSheet(
                     spotColor = Color.Black.copy(alpha = 0.30f),
                     clip = false
                 )
-                .pointerInput(totalHeightPx) {
+                .then(
+                    if (dragEnabled) {
+                        Modifier.pointerInput(totalHeightPx, dragEnabled) {
                     val dismissThresholdPx = with(density) { 50.dp.toPx() }
                     val flingVelocityThresholdPx = with(density) { 350.dp.toPx() }
                     val dragCommitThresholdPx = with(density) { 36.dp.toPx() }
@@ -454,7 +459,11 @@ fun NavBottomSheet(
                             }
                         }
                     )
-                }
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             val isDark = isSystemInDarkTheme()
             val sheetBgColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White

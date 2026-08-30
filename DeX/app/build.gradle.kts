@@ -172,8 +172,9 @@ dependencies {
   // Google Sign-In (verified email identity)
   implementation(libs.play.services.auth)
 
-  // Image Loading
+  // Image & Video Thumbnail Loading
   implementation(libs.coil.compose)
+  implementation(libs.coil.video)
   implementation(libs.coil.network.okhttp)
 
   // Baseline Profiles (AOT compilation for cold-start perf)

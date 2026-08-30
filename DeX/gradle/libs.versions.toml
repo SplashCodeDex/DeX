@@ -107,6 +107,7 @@ cronet-embedded = { module = "org.chromium.net:cronet-embedded", version.ref = "
 play-services-cronet = { module = "com.google.android.gms:play-services-cronet", version.ref = "playServicesCronet" }
 cronet-api = { module = "org.chromium.net:cronet-api", version.ref = "cronetApi" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-video = { module = "io.coil-kt.coil3:coil-video", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 androidx-identity-core = { module = "androidx.credentials:credentials", version.ref = "credentials" }
