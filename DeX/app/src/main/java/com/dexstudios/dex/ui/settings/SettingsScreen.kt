@@ -27,7 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.BuildConfig
 import com.dexstudios.dex.R
-import com.dexstudios.dex.network.ClipboardSyncTileService
 import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -195,8 +194,8 @@ fun SettingsScreen(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             SettingsClickableRow(
                                 title = "Add Quick Settings Tile",
-                                subtitle = "Quickly toggle Clipboard Sync",
-                                icon = MaterialSymbols.Clipboard,
+                                subtitle = "Quickly open DeX from Quick Settings",
+                                icon = MaterialSymbols.Devices,
                                 onClick = {
                                     val sbm = context.getSystemService("statusbar")
                                     try {
@@ -210,12 +209,12 @@ fun SettingsScreen(
                                         )
                                         val componentName = android.content.ComponentName(
                                             context,
-                                            ClipboardSyncTileService::class.java
+                                            com.dexstudios.dex.network.DexTileService::class.java
                                         )
                                         method?.invoke(
                                             sbm,
                                             componentName,
-                                            "Clipboard Sync",
+                                            context.getString(R.string.app_name),
                                             android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_stat_dex),
                                             context.mainExecutor,
                                             java.util.function.Consumer<Int> { }

@@ -6,8 +6,10 @@ import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import timber.log.Timber
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +80,7 @@ class ShareOverlayWindow(
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private var container: ViewGroup? = null
     private var owner: OverlayLifecycleOwner? = null
+    private var dimScrim: ShareDimScrim? = null
 
     val isShowing: Boolean get() = container != null
 
@@ -132,6 +135,9 @@ class ShareOverlayWindow(
             }
         }
 
+        // Backdrop first so it sits below the panel in same-type window z-order
+        dimScrim = ShareDimScrim(context).also { it.show() }
+
         windowManager.addView(frame, params)
         lifecycleOwner.performStart()
         lifecycleOwner.performResume()
@@ -145,6 +151,9 @@ class ShareOverlayWindow(
         container = null
         val lifecycleOwner = owner
         owner = null
+
+        dimScrim?.dismiss()
+        dimScrim = null
 
         try {
             windowManager.removeView(frame)
@@ -175,5 +184,57 @@ private fun ShareOverlaySurface(content: @Composable () -> Unit) {
         tonalElevation = 8.dp
     ) {
         content()
+    }
+}
+
+/**
+ * Full-screen, fully touch-transparent dim backdrop beneath the overlay panel —
+ * the same 0.5-black contrast the activity path gets from its theme dim. Every
+ * touch outside the panel passes straight through to whatever is physically
+ * beneath; the scrim is pure backdrop and lives and dies with the panel.
+ */
+class ShareDimScrim(private val context: Context) {
+
+    private val windowManager = context.getSystemService(WindowManager::class.java)
+    private var view: View? = null
+
+    fun show() {
+        if (view != null) return
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.FILL
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+
+        val scrimView = View(context).apply {
+            setBackgroundColor(BACKDROP_TINT)
+        }
+        windowManager.addView(scrimView, params)
+        view = scrimView
+        Timber.i("ShareDimScrim: dim backdrop attached (%dx%d)", params.width, params.height)
+    }
+
+    fun dismiss() {
+        val current = view ?: return
+        view = null
+        try {
+            windowManager.removeView(current)
+        } catch (_: Exception) {
+            // Window already detached by the system
+        }
+    }
+
+    private companion object {
+        // 0.5 black — same contrast as the activity theme's backgroundDimAmount
+        const val BACKDROP_TINT = 0x80000000.toInt()
     }
 }

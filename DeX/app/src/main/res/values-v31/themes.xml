@@ -6,7 +6,7 @@
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
 
-        <!-- Window Dimming Scrim (FLAG_DIM_BEHIND / backgroundDimAmount) -->
+        <!-- Standard Android Window Dimming (Universal across all Android devices) -->
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.5</item>
 

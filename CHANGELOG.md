@@ -1,4 +1,83 @@
 # Changelog
+## [10.1.29.89] - 2026-08-30
+### Changed
+- **[minor] Android DeX: Fluid Sheet Kinematics, Bouncy Physics & Haptic Calibration**:
+  - **Fluid Bouncy Spring Tuning (`ui/components/NavBottomSheet.kt`)**: Tuned the bottom sheet spring dynamics (`dampingRatio = 0.74f`, `stiffness = 350f`) delivering an organic, slight bouncy settling feel when expanding and docking into tiers.
+  - **Calibrated Kinematic Fling & Drag Thresholds (`NavBottomSheet.kt`)**: Lowered fling velocity threshold from 1000 dp/s to 350 dp/s and introduced 36dp directional drag commit thresholds, allowing effortless swipes without rigid pull-backs or micro-stalls.
+  - **Overscroll Elastic Resistance (`NavBottomSheet.kt`)**: Added 0.28x rubber-band overscroll dampening beyond 100% fullscreen height with automatic spring recovery.
+  - **Opaque Scale-Down Dismissals (`NavBottomSheet.kt`)**: Maintained solid sheet opacity (`cardAlpha = 1f`) when dragging below 50% or during scale-down exit animations.
+  - **Device Carousel Phantom Haptic Fix (`ui/main/components/DeviceCarousel.kt`)**: Guarded item tracking haptics with `listState.isScrollInProgress && !isFirstEmission`, eliminating phantom double-haptic ticks when collapsing from 80% to 50%.
+  - **Quick Settings Tile Minimalist Subtitle (`network/DexTileService.kt`)**: Explicitly cleared QS tile subtitles on Android 10+ (API 29+).
+
+## [10.1.29.88] - 2026-08-29
+### Changed
+- **[minor] Android DeX: Haptic Precision & Clean 80% Detent Bypass**:
+  - **Haptic Feedback Precision (`ui/components/NavBottomSheet.kt`)**: Prevented haptic feedback from firing during snap-backs when a gesture is released without changing tiers. Suppressed haptics on direct 100% to 50% downward collapses so haptics only trigger on genuine, user-intended detent transitions.
+  - **Seamless 80% Content Bypass (`Navigation.kt`)**: Maintained active 100% mode and segmented controls across collapse animations to prevent intermediate 80% media views from flashing during 100% to 50% downward transitions.
+
+## [10.1.29.87] - 2026-08-29
+### Changed
+- **[minor] Android DeX: Direct 100% to 50% Fullscreen Collapse**:
+  - **Detent Skipping on Swipe Down (`ui/components/NavBottomSheet.kt`)**: Added `dragStartTier` detection so that when dragging or flinging down from the 100% fullscreen tier, the sheet intentionally skips the intermediate 80% detent and collapses directly to the 50% resting position (`halfHeightPx`). Releasing within 65dp of the top seamlessly springs back to 100%.
+
+## [10.1.29.86] - 2026-08-29
+### Changed
+- **[minor] Android DeX: Relaxed Sheet Spring Physics**:
+  - **Fluid Detent Settling (`ui/components/NavBottomSheet.kt`)**: Re-tuned `springSpec` parameters from rigid medium stiffness (`Spring.StiffnessMediumLow` / 400f) down to `Spring.StiffnessLow` (200f) with smooth organic damping (`0.82f`). Eliminates abrupt snapping and excessive tension when swiping between 50%, 80%, and 100% tiers for a silky, effortless settling motion.
+
+## [10.1.29.85] - 2026-08-29
+### Added
+- **[minor] Android DeX: Velocity Fling Recognition & Tactile Haptic Snapping**:
+  - **Directional Fling Detection (`ui/components/NavBottomSheet.kt`)**: Added `VelocityTracker` to track drag velocities in real-time. High-velocity downward flings (> 1000 dp/s) from 50% immediately trigger smooth dismissal without requiring full distance dragging, while upward flings snap instantly to higher tiers (80% / 100%).
+  - **Subtle Tactile Feedback (`NavBottomSheet.kt`)**: Integrated `LocalHapticFeedback` (`HapticFeedbackType.TextHandleMove`) delivering subtle tactile ticks when snapping between 50%, 80%, and 100% tiers and on fling dismissals.
+
+## [10.1.29.84] - 2026-08-29
+### Changed
+- **[minor] Android DeX: Physics-Based Scale-Down Sheet Dismissals & Predictive Back Navigation**:
+  - **Scale-Down Dismissal Physics (`ui/components/NavBottomSheet.kt`)**: Re-engineered downward swipe-to-dismiss transitions so the floating card no longer squishes or clips its layout vertically when pulled below 50%. Clamped base layout height at 50% resting height and applied proportional translation (`translationY`), smooth proportional scale-down (`scaleX` / `scaleY` from 1.0 down to 0.84), and soft alpha fade (`alpha` down to 0.55).
+  - **Predictive Back Navigation (`NavBottomSheet.kt`, `Navigation.kt`)**: Integrated `PredictiveBackHandler` across the navigation hierarchy. Edge back swipes smoothly interpolate expanded 100%/80% sheets down toward 50%, while resting 50% sheets dynamically scale and glide down following the user's gesture in real-time, restoring seamlessly if cancelled.
+
+## [10.1.29.83] - 2026-08-29
+### Changed
+- **[minor] Android DeX: Quick Settings Tile App Launcher & Dynamic Service State Sync**:
+  - **Direct App Launch & Lockscreen Support (`network/DexTileService.kt`, `AndroidManifest.xml`, `ui/settings/SettingsScreen.kt`)**: Replaced the clipboard toggle tile with a dedicated `DexTileService` that directly launches [MainActivity](file:///w:/CodeDeX/DeX/DeX/app/src/main/java/com/dexstudios/dex/MainActivity.kt) and collapses the notification shade on tap using `startActivityAndCollapse` (with Android 14+ `PendingIntent` compatibility). Added `unlockAndRun` to seamlessly unlock and navigate to DeX when tapped from the lockscreen shade. Removed custom subtitles to keep the tile label strictly minimalist.
+  - **Live Service State Reflection (`network/DexService.kt`, `DexTileService.kt`)**: Exposed `DexService.isRunning` state flow that automatically signals `TileService.requestListeningState` on foreground service creation and destruction, illuminating the tile in active accent color (`STATE_ACTIVE`) when DeX is running in the background and returning to neutral gray (`STATE_INACTIVE`) when stopped or killed.
+
+## [10.1.29.82] - 2026-08-29
+### Added
+- **[minor] Android DeX: Notification Channel Grouping & Centralization**:
+  - **System Settings Channel Groups (`network/NotificationHelper.kt`, `values/strings.xml`)**: Grouped all notification channels under two top-level `NotificationChannelGroup` entries ("DeX Connectivity" and "DeX File Transfers") in Android system settings. Each channel features descriptive subtitles explaining its exact purpose, allowing fine-grained user notification controls (e.g. silencing background service alerts without affecting incoming transfer rings).
+  - **Full Architecture Centralization (`NotificationHelper.kt`, `PullForegroundService.kt`, `UploadWorker.kt`, `PunchSendWorker.kt`, `BatchDownloadWorker.kt`)**: Consolidated all channel definitions and IDs (`CHANNEL_SERVICE`, `CHANNEL_PULL`, `CHANNEL_TRANSFERS`, `CHANNEL_PENDING_SHARE`, `CHANNEL_UPLOAD`, `CHANNEL_DOWNLOAD`, `CHANNEL_PUNCH`) in `NotificationHelper.Companion` with unified zero-badge enforcement and automatic legacy channel cleanup.
+
+## [10.1.29.81] - 2026-08-29
+### Fixed
+- **[fix] Android DeX: Disable Launcher App Icon Badges on Foreground & Transfer Notifications**:
+  - **Channel Badge Suppression (`network/NotificationHelper.kt`)**: Disabled launcher badge dots / numeric unread indicators (`setShowBadge(false)`) across background service, direct share, and transfer channels. Migrated channel IDs (`dex_service_channel_v2`, `dex_transfers_channel_v2`, `dex_share_pending_channel_v2`) with proactive legacy channel deletion so existing installs clear cached OS-level badge counters immediately.
+  - **Builder Suppression (`NotificationHelper.kt`, `PullForegroundService.kt`, `UploadWorker.kt`, `PunchSendWorker.kt`, `BatchDownloadWorker.kt`)**: Added `setBadgeIconType(BADGE_ICON_NONE)` and `setNumber(0)` across all foreground and worker notification builders to prevent launchers (Samsung One UI, Nova, Pixel Launcher, etc.) from badging the DeX app drawer icon with '1' while the background daemon or transfers are active.
+
+## [10.1.29.80] - 2026-08-29
+### Added
+- **[minor] Android DeX: Simple Dim Backdrop for the Overlay Panel**:
+  - **`ShareDimScrim` (`ui/share/ShareOverlayWindow.kt`)**: Full-screen, fully touch-transparent `TYPE_APPLICATION_OVERLAY` window with a flat 0.5-black tint — the same contrast the activity path gets from its theme dim — shown beneath the share panel and torn down with it. Every touch outside the panel still passes straight through to the app beneath. Pure backdrop: no blur, no API gating, works identically on every device and Android version.
+
+## [10.1.29.79] - 2026-08-29
+# Changelog
+## [10.1.29.79] - 2026-08-29
+### Reverted
+- **[minor] Android DeX: Live Compositor Blur Removed — Back to Native Dim**:
+  - Supersedes 10.1.29.78 per product decision to stay minimal: the `ShareBlurScrim` overlay backdrop window, the `FLAG_BLUR_BEHIND`/`blurBehindRadius` usage on the activity window, and the blur-radius helper were removed entirely. Both share presentations (overlay panel and bottom sheet) rely on the normal theme dim/translucency as before. No behavioral surface remains from the blur experiment.
+
+## [10.1.29.78] - 2026-08-29
+# Changelog
+## [10.1.29.78] - 2026-08-29
+### Added
+- **[minor] Android DeX: Live Compositor Blur Behind the Share Picker**:
+  - **Overlay Backdrop Scrim (`ui/share/ShareOverlayWindow.kt`)**: New `ShareBlurScrim` — a full-screen, fully touch-transparent `TYPE_APPLICATION_OVERLAY` window that renders a LIVE compositor blur (`FLAG_BLUR_BEHIND` + `blurBehindRadius`, 32dp clamped to SurfaceFlinger's 254px ceiling) of whatever is physically on screen behind the share picker: launcher mid-scroll, other apps, the drawer, the shade. Applied by SurfaceFlinger at composite time on Android 12+, so no content is ever captured by the process. Shown beneath the panel window (same-type z-order by insertion) and torn down with it.
+  - **Structural Fallback**: A flat 0.5-black tint always renders under the blur; when cross-window blur is unavailable (< Android 12), disabled ("Remove animations" accessibility setting, battery saver) or unsupported by the GPU, the tint alone reads as the same dim scrim — no listeners, no re-layout, no dead states.
+  - **Activity Path (`ShareTargetActivity.kt`)**: The bottom-sheet fallback gets the same live blur via `FLAG_BLUR_BEHIND` on the activity window, with the theme's existing dim scrim as the automatic fallback.
+  - **Verification Note**: Blur-behind on `TYPE_APPLICATION_OVERLAY` follows stock Android 12+ behavior; a handful of OEM skins gate overlays differently — needs a one-time on-device smoke test. The dim fallback covers any device where it does not render.
+
+## [10.1.29.77] - 2026-08-29
 ## [10.1.29.77] - 2026-08-29
 ### Added
 - **[minor] Android DeX: Boot Persistence & Queue-and-Send-When-Online**:

@@ -77,7 +77,20 @@
     <string name="toast_percent_total">%1$d%% Total</string>
 
     <!-- Notification & Services -->
+    <string name="notif_group_connectivity">DeX Connectivity</string>
+    <string name="notif_group_transfers">DeX File Transfers</string>
     <string name="notif_channel_bg">DeX Background Service</string>
+    <string name="notif_channel_bg_desc">Persistent background connection and device discovery</string>
+    <string name="notif_channel_transfers_title">Transfers &amp; Pairing</string>
+    <string name="notif_channel_transfers_desc">Notifications for incoming transfers, pairing requests, and completion</string>
+    <string name="notif_channel_pull_title">File Pull Service</string>
+    <string name="notif_channel_pull_desc">Maintains connection while files are pulled to PC</string>
+    <string name="notif_channel_upload_title">Upload Progress</string>
+    <string name="notif_channel_upload_desc">Progress notifications during outgoing file uploads</string>
+    <string name="notif_channel_download_title">Download Progress</string>
+    <string name="notif_channel_download_desc">Progress notifications during incoming file downloads</string>
+    <string name="notif_channel_punch_title">Direct NAT Transfer</string>
+    <string name="notif_channel_punch_desc">Progress notifications during direct same-account transfers</string>
     <string name="notif_bg_title">DeX is running</string>
     <string name="notif_bg_desc">Listening for PC connections…</string>
     <string name="notif_incoming_title">Incoming File Transfer</string>

@@ -40,17 +40,7 @@ class PunchSendWorker(
     private val deviceConfig: DeviceConfig by inject()
 
     private val notificationId = 1004
-    private val channelId = "punch_channel"
-
-    init {
-        val channel = android.app.NotificationChannel(
-            channelId,
-            "Direct transfer progress",
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
-    }
+    private val channelId = NotificationHelper.CHANNEL_PUNCH
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val targetFingerprint = inputData.getString("targetFingerprint") ?: return@withContext Result.failure()
@@ -255,6 +245,8 @@ class PunchSendWorker(
             .setContentTitle("Direct Transfer")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_dex)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setProgress(100, progress, false)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)

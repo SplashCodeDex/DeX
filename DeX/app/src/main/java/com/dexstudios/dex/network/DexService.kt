@@ -7,6 +7,9 @@ import android.net.wifi.WifiManager
 import android.os.IBinder
 import android.content.pm.ServiceInfo
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.koin.android.ext.android.inject
 
 class DexService : Service() {
@@ -46,10 +49,16 @@ class DexService : Service() {
         punchSession.start()
         // Auto-push clipboard changes to the connected PC (2-way sync)
         clipboardSyncManager.start()
+
+        _isRunning.value = true
+        notifyTileUpdate(applicationContext)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        _isRunning.value = false
+        notifyTileUpdate(applicationContext)
+
         clipboardSyncManager.stop()
         webSocketClientService.stop()
         discoveryEngine.stopDiscovery()
@@ -78,8 +87,22 @@ class DexService : Service() {
     }
 
     companion object {
+        private val _isRunning = MutableStateFlow(false)
+        val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+
         @Volatile
         private var instance: DexService? = null
+
+        fun notifyTileUpdate(context: Context) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                try {
+                    android.service.quicksettings.TileService.requestListeningState(
+                        context,
+                        android.content.ComponentName(context, DexTileService::class.java)
+                    )
+                } catch (_: Exception) {}
+            }
+        }
 
         /**
          * Re-declares the foreground service type. Android 14+ requires the service to

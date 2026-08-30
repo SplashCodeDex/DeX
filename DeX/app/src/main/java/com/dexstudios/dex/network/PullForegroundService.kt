@@ -1,7 +1,5 @@
 package com.dexstudios.dex.network
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -30,15 +28,13 @@ class PullForegroundService : Service() {
     }
 
     private fun startForegroundNotification(requestId: String, count: Int) {
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "DeX File Pull", NotificationManager.IMPORTANCE_LOW)
-        )
         val title = if (count > 1) "Pulling $count files to PC" else "Pulling file to PC"
-        val notification = NotificationCompat.Builder(this, CHANNEL)
+        val notification = NotificationCompat.Builder(this, NotificationHelper.CHANNEL_PULL)
             .setContentTitle(title)
             .setContentText("Keep the app open while files transfer to your PC")
             .setSmallIcon(R.drawable.ic_stat_dex)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setOngoing(true)
             .build()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -53,7 +49,6 @@ class PullForegroundService : Service() {
     companion object {
         const val EXTRA_REQUEST_ID = "requestId"
         const val EXTRA_COUNT = "count"
-        private const val CHANNEL = "dex_pull_fg"
 
         /** Holds the process alive for the duration of a pull. Safe to call on the main thread. */
         fun start(context: Context, requestId: String, count: Int) {

@@ -1,8 +1,11 @@
 package com.dexstudios.dex.ui.main.components
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +33,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,8 +55,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -69,6 +77,7 @@ data class RecentMediaItem(
     val uri: Uri,
     val name: String,
     val size: Long = 0L,
+    val dateAdded: Long = 0L,
     val isVideo: Boolean = false,
 )
 
@@ -83,6 +92,19 @@ fun MediaPickerTray(
     val selectedUris = remember { mutableStateListOf<Uri>() }
     var mediaItems by remember { mutableStateOf<List<RecentMediaItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var hasPermission by remember { mutableStateOf(checkHasMediaPermission(context)) }
+    var reloadTrigger by remember { mutableIntStateOf(0) }
+
+    // Permission launcher for accessing device media
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.any { it }
+        hasPermission = granted
+        if (granted) {
+            reloadTrigger++
+        }
+    }
 
     // 1. Storage Document Picker for 'Documents'
     val systemDocPicker = rememberLauncherForActivityResult(
@@ -107,7 +129,6 @@ fun MediaPickerTray(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         if (bitmap != null) {
-            // Save temporary captured bitmap to cache and add to selected URIs
             try {
                 val tempFile = java.io.File(context.cacheDir, "dex_camera_${System.currentTimeMillis()}.jpg")
                 tempFile.outputStream().use { out ->
@@ -123,13 +144,17 @@ fun MediaPickerTray(
         }
     }
 
-    // Load recent media files from MediaStore
-    LaunchedEffect(Unit) {
-        isLoading = true
-        mediaItems = withContext(Dispatchers.IO) {
-            loadRecentMedia(context)
+    // Load actual recent media files from Android MediaStore
+    LaunchedEffect(hasPermission, reloadTrigger) {
+        if (hasPermission) {
+            isLoading = true
+            mediaItems = withContext(Dispatchers.IO) {
+                loadRecentMedia(context)
+            }
+            isLoading = false
+        } else {
+            mediaItems = emptyList()
         }
-        isLoading = false
     }
 
     Column(
@@ -171,7 +196,7 @@ fun MediaPickerTray(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // --- 2. Recent Media Grid ---
+        // --- 2. Recent Media Grid / Permission Request / Loading ---
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -183,6 +208,58 @@ fun MediaPickerTray(
                     modifier = Modifier.size(36.dp),
                     color = MaterialTheme.colorScheme.primary
                 )
+            } else if (!hasPermission) {
+                // Permission Request Callout
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Icon(
+                        imageVector = MaterialSymbols.Photo,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Recent Photos & Videos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Allow access to easily select and share your device media",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = {
+                            permissionLauncher.launch(getMediaPermissions())
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            text = "Grant Access",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             } else if (mediaItems.isEmpty()) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -390,13 +467,50 @@ private fun MediaThumbnailCard(
     }
 }
 
-// MediaStore Query Helper for Recent Images & Videos
+// Media Permissions Checker
+private fun checkHasMediaPermission(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+    } else {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    }
+}
+
+// Permissions array based on Android API level
+private fun getMediaPermissions(): Array<String> {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+        )
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO
+        )
+    } else {
+        arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
+    }
+}
+
+// Android MediaStore Query for Real Recent Images & Videos
 private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
     val items = mutableListOf<RecentMediaItem>()
 
-    // Query Images
+    // 1. Query Images
     try {
-        val imgProjection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.SIZE)
+        val imgProjection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.SIZE,
+            MediaStore.Images.Media.DATE_ADDED
+        )
         val imgSort = "${MediaStore.Images.Media.DATE_ADDED} DESC"
         context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -408,21 +522,30 @@ private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+            val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
             var count = 0
-            while (cursor.moveToNext() && count < 60) {
+            while (cursor.moveToNext() && count < 80) {
                 val id = cursor.getLong(idCol)
-                val name = cursor.getString(nameCol) ?: "image"
+                val name = cursor.getString(nameCol) ?: "Image"
                 val size = cursor.getLong(sizeCol)
+                val dateAdded = cursor.getLong(dateCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                items.add(RecentMediaItem(uri = uri, name = name, size = size, isVideo = false))
+                items.add(RecentMediaItem(uri = uri, name = name, size = size, dateAdded = dateAdded, isVideo = false))
                 count++
             }
         }
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 
-    // Query Videos
+    // 2. Query Videos
     try {
-        val vidProjection = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.SIZE)
+        val vidProjection = arrayOf(
+            MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.DISPLAY_NAME,
+            MediaStore.Video.Media.SIZE,
+            MediaStore.Video.Media.DATE_ADDED
+        )
         val vidSort = "${MediaStore.Video.Media.DATE_ADDED} DESC"
         context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -434,17 +557,22 @@ private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+            val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
             var count = 0
-            while (cursor.moveToNext() && count < 30) {
+            while (cursor.moveToNext() && count < 40) {
                 val id = cursor.getLong(idCol)
-                val name = cursor.getString(nameCol) ?: "video"
+                val name = cursor.getString(nameCol) ?: "Video"
                 val size = cursor.getLong(sizeCol)
+                val dateAdded = cursor.getLong(dateCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-                items.add(RecentMediaItem(uri = uri, name = name, size = size, isVideo = true))
+                items.add(RecentMediaItem(uri = uri, name = name, size = size, dateAdded = dateAdded, isVideo = true))
                 count++
             }
         }
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 
-    return items
+    // Return unified stream sorted chronologically descending (newest first)
+    return items.sortedByDescending { it.dateAdded }
 }

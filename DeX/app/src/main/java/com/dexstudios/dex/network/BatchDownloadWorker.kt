@@ -42,7 +42,7 @@ class BatchDownloadWorker(
     private val notificationHelper by inject<NotificationHelper>()
 
     private val notificationId = 1002
-    private val channelId = "download_channel"
+    private val channelId = NotificationHelper.CHANNEL_DOWNLOAD
     private val completeNotificationId = 1003
 
     // Cap of concurrent QUIC streams per session
@@ -57,16 +57,6 @@ class BatchDownloadWorker(
             .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .build()
-    }
-
-    init {
-        val channel = android.app.NotificationChannel(
-            channelId,
-            "Download progress",
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
     }
 
     private data class DownloadResult(
@@ -431,6 +421,8 @@ class BatchDownloadWorker(
             .setContentTitle("File Received")
             .setContentText(if (fileCount == 1) "Saved to Downloads/DeX" else "Saved $fileCount files to Downloads/DeX")
             .setSmallIcon(R.drawable.ic_stat_dex)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setAutoCancel(true)
             .build()
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
@@ -444,6 +436,8 @@ class BatchDownloadWorker(
             .setContentTitle("Receiving File")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_dex)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setProgress(100, progress, false)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)

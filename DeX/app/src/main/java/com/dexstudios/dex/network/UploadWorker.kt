@@ -41,23 +41,13 @@ class UploadWorker(
     private val client by inject<ClientEngine>()
 
     private val notificationId = 1001
-    private val channelId = "upload_channel"
+    private val channelId = NotificationHelper.CHANNEL_UPLOAD
 
     // Cap of concurrent QUIC streams per session
     private val maxConcurrentUploads = 3
 
     // Transient transport failures are retried with exponential backoff, capped attempts
     private val maxRetryAttempts = 3
-
-    init {
-        val channel = android.app.NotificationChannel(
-            channelId,
-            applicationContext.getString(R.string.upload_worker_channel),
-            android.app.NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.createNotificationChannel(channel)
-    }
 
     private val lastUiUpdate = AtomicLong(0L)
 
@@ -315,6 +305,8 @@ class UploadWorker(
             .setContentTitle("Sending Files")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_dex)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setProgress(100, progress, false)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)

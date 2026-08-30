@@ -40,6 +40,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
+import timber.log.Timber
 
 /**
  * Share-sheet trampoline. Three presentation modes, picked at launch:
@@ -125,8 +126,10 @@ class ShareTargetActivity : ComponentActivity() {
         }
 
         if (ShareOverlayWindow.canShowOverlay(this)) {
+            Timber.i("ShareTarget: overlay presentation (SYSTEM_ALERT_WINDOW granted)")
             presentAsOverlay()
         } else {
+            Timber.i("ShareTarget: bottom-sheet presentation (overlay permission missing)")
             presentAsBottomSheet()
         }
     }

@@ -2,7 +2,7 @@ package com.dexstudios.dex
 
 import android.net.Uri
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,10 +25,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import com.dexstudios.dex.ui.icons.MaterialSymbols
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -65,7 +69,6 @@ import com.dexstudios.dex.ui.components.PairingRequestDialog
 import com.dexstudios.dex.ui.components.SheetExpandedMode
 import com.dexstudios.dex.ui.components.SheetTier
 import com.dexstudios.dex.ui.history.HistoryScreen
-import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.main.MainScreen
 import com.dexstudios.dex.ui.main.MainScreenUiState
 import com.dexstudios.dex.ui.main.MainScreenViewModel
@@ -174,6 +177,66 @@ fun MainNavigation(
         val contentBackdrop = rememberLayerBackdrop()
         val incomingPairRequest by AuthState.incomingPairRequest.collectAsStateWithLifecycle()
 
+        // Preview Mock Devices for visual tuning & testing carousel without physical peers
+        val previewMockDevices = remember {
+            listOf(
+                DiscoveredDevice(
+                    ip = "192.168.1.101",
+                    info = RegisterDto(
+                        alias = "MacBook Pro 16\"",
+                        version = "1.0",
+                        deviceModel = "MacBookPro18,1",
+                        deviceType = "laptop",
+                        fingerprint = "mock_macbook_pro",
+                        port = DeXPorts.HTTPS,
+                        protocol = "wss",
+                        download = true
+                    )
+                ),
+                DiscoveredDevice(
+                    ip = "192.168.1.102",
+                    info = RegisterDto(
+                        alias = "Apple Watch Ultra",
+                        version = "1.0",
+                        deviceModel = "Watch Ultra",
+                        deviceType = "watch",
+                        fingerprint = "mock_watch_ultra",
+                        port = DeXPorts.HTTPS,
+                        protocol = "wss",
+                        download = true
+                    )
+                ),
+                DiscoveredDevice(
+                    ip = "192.168.1.103",
+                    info = RegisterDto(
+                        alias = "iPad Air",
+                        version = "1.0",
+                        deviceModel = "iPad13,1",
+                        deviceType = "tablet",
+                        fingerprint = "mock_ipad_air",
+                        port = DeXPorts.HTTPS,
+                        protocol = "wss",
+                        download = true
+                    )
+                ),
+                DiscoveredDevice(
+                    ip = "192.168.1.104",
+                    info = RegisterDto(
+                        alias = "Galaxy S24 Ultra",
+                        version = "1.0",
+                        deviceModel = "SM-S928B",
+                        deviceType = "phone",
+                        fingerprint = "mock_galaxy_phone",
+                        port = DeXPorts.HTTPS,
+                        protocol = "wss",
+                        download = true
+                    )
+                )
+            )
+        }
+        var showPreviewDevices by remember { mutableStateOf(false) }
+        val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
+
         val isDimmed by remember {
             derivedStateOf {
                 TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded
@@ -185,10 +248,15 @@ fun MainNavigation(
             label = "globalDimAlpha"
         )
 
-        // Back button handling for expanded overlays
-        BackHandler(enabled = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded) {
-            TopAppBarState.isProfileExpanded = false
-            TopAppBarState.isSearchExpanded = false
+        // Predictive back gesture handling for expanded overlays (profile/search)
+        PredictiveBackHandler(enabled = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded) { progressFlow ->
+            try {
+                progressFlow.collect { /* progress */ }
+                TopAppBarState.isProfileExpanded = false
+                TopAppBarState.isSearchExpanded = false
+            } catch (_: kotlin.coroutines.cancellation.CancellationException) {
+                // Cancelled
+            }
         }
 
         val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
@@ -232,43 +300,61 @@ fun MainNavigation(
                                 contentAlignment = Alignment.Center
                             ) {
                                 DeviceCarousel(
-                                    devices = discoveredDevices,
-                                    selectedDevice = selectedDevice ?: discoveredDevices.firstOrNull(),
+                                    devices = effectiveDevices,
+                                    selectedDevice = selectedDevice ?: effectiveDevices.firstOrNull(),
                                     backdrop = contentBackdrop,
                                     onDeviceSelect = { selectedDevice = it },
                                     onDeviceLongClick = { selectedDevice = it; showPairingModal = true },
+                                    onAddDeviceClick = { showPairingModal = true },
                                     uploadState = uploadState,
                                     downloadState = downloadState
                                 )
                             }
 
-                            // 2. Pinned Bottom Action Button ("Send Files" vs "Pair Device")
-                            Box(
+                            // 2. Pinned Bottom Action Button & Preview Devices Toggle (Deposit Style)
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 14.dp),
-                                contentAlignment = Alignment.Center
+                                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                if (discoveredDevices.isNotEmpty()) {
-                                    LiquidGlassButton(
-                                        text = "Send Files",
-                                        icon = MaterialSymbols.Send,
-                                        onClick = {
+                                SheetActionButton(
+                                    text = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
+                                    onClick = {
+                                        if (effectiveDevices.isNotEmpty()) {
                                             activeExpandedMode = SheetExpandedMode.Media
                                             expandTo(SheetTier.High)
-                                        },
-                                        backdrop = contentBackdrop,
-                                        modifier = Modifier.fillMaxWidth(0.85f)
-                                    )
-                                } else {
-                                    LiquidGlassButton(
-                                        text = "Pair Device",
-                                        icon = MaterialSymbols.QrCodeScanner,
-                                        onClick = {
+                                        } else {
                                             showPairingModal = true
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                val isDark = isSystemInDarkTheme()
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (showPreviewDevices) MaterialTheme.colorScheme.primary
+                                            else if (isDark) Color.White.copy(alpha = 0.12f)
+                                            else Color.Black.copy(alpha = 0.08f)
+                                        )
+                                        .clickable {
+                                            showPreviewDevices = !showPreviewDevices
+                                            if (showPreviewDevices && selectedDevice == null) {
+                                                selectedDevice = previewMockDevices.first()
+                                            }
                                         },
-                                        backdrop = contentBackdrop,
-                                        modifier = Modifier.fillMaxWidth(0.85f)
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = MaterialSymbols.Devices,
+                                        contentDescription = "Toggle Preview Connected Devices",
+                                        tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary else if (isDark) Color.White else Color.Black,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
@@ -284,18 +370,12 @@ fun MainNavigation(
                                     alpha = ((expansionFraction - 0.15f) / 0.35f).coerceIn(0f, 1f)
                                 }
                         ) {
-                            // 100% Tier: 2-Option Segmented Pill Control [ Media | History ] right under drag handle
-                            AnimatedVisibility(
-                                visible = expansionFraction >= 0.70f,
-                                enter = fadeIn(),
-                                exit = fadeOut()
-                            ) {
-                                SheetSegmentedControl(
-                                    selectedMode = activeExpandedMode,
-                                    onSelectMode = { activeExpandedMode = it },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
+                            // 2-Option Segmented Pill Control [ Media | History ] right under drag handle
+                            SheetSegmentedControl(
+                                selectedMode = activeExpandedMode,
+                                onSelectMode = { activeExpandedMode = it },
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
                             // Active Body View (Media Hub vs Transfer History)
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -512,3 +592,37 @@ private fun SheetSegmentedControl(
         }
     }
 }
+
+/**
+ * Modern High-Contrast Pill Action Button (Deposit-style CTA at the bottom of the sheet).
+ */
+@Composable
+private fun SheetActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = isSystemInDarkTheme()
+    val buttonBgColor = if (isDark) Color.White else Color.Black
+    val buttonTextColor = if (isDark) Color.Black else Color.White
+    val pillShape = RoundedCornerShape(28.dp)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(pillShape)
+            .background(buttonBgColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = buttonTextColor,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp
+        )
+    }
+}
+
