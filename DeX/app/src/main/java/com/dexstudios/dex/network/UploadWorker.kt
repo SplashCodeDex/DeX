@@ -1,4 +1,5 @@
 package com.dexstudios.dex.network
+import timber.log.Timber
 
 import android.content.Context
 import android.content.pm.ServiceInfo
@@ -65,7 +66,7 @@ class UploadWorker(
         val uriStrings = try {
             Json.decodeFromString<List<String>>(urisJson)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Operation failed")
             return@withContext Result.failure()
         }
         val uris = uriStrings.map { it.toUri() }

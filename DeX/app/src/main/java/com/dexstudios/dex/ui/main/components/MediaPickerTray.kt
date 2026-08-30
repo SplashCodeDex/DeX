@@ -1,4 +1,5 @@
 package com.dexstudios.dex.ui.main.components
+import timber.log.Timber
 
 import android.Manifest
 import android.content.ContentUris
@@ -169,7 +170,7 @@ fun MediaPickerTray(
                     selectedUris.add(photoUri)
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Operation failed")
             }
         }
     }
@@ -216,7 +217,7 @@ fun MediaPickerTray(
                 mediaPlayerRef.value = player
                 playingUri = item.uri
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Audio preview playback failed")
                 playingUri = null
             }
         }
@@ -793,7 +794,7 @@ private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
             }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Operation failed")
     }
 
     // 2. Query Videos
@@ -828,7 +829,7 @@ private fun loadRecentMedia(context: Context): List<RecentMediaItem> {
             }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Operation failed")
     }
 
     return items.sortedByDescending { it.dateAdded }
@@ -902,7 +903,7 @@ private fun loadRecentAudio(context: Context): List<RecentAudioItem> {
             }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Audio track query failed")
     }
     return items
 }

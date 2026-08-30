@@ -1,4 +1,5 @@
 package com.dexstudios.dex.network
+import timber.log.Timber
 
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -146,7 +147,7 @@ class ClientEngine(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Prepare upload failed")
             PrepareResult(null, -1)
         }
     }
@@ -202,7 +203,7 @@ class ClientEngine(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "File upload failed")
             UploadOutcome(false, -1)
         }
     }
@@ -281,7 +282,7 @@ class ClientEngine(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Send text failed")
             false
         }
     }
@@ -297,7 +298,7 @@ class ClientEngine(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Send clipboard failed")
             false
         }
     }
