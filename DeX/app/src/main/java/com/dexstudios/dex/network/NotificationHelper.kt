@@ -14,7 +14,6 @@ import com.dexstudios.dex.R
 class NotificationHelper(private val context: Context) {
 
     companion object {
-        const val ACTION_STOP_MIRRORING = "com.dexstudios.dex.STOP_MIRRORING"
         const val ACTION_CANCEL_PENDING_SHARE = "com.dexstudios.dex.CANCEL_PENDING_SHARE"
 
         // Notification Channel Groups
@@ -157,16 +156,6 @@ class NotificationHelper(private val context: Context) {
             .setSmallIcon(R.drawable.ic_stat_dex)
             .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
             .setNumber(0)
-
-        if (MirrorSession.active) {
-            val stopIntent = Intent(context, FileTransferReceiver::class.java).apply {
-                action = ACTION_STOP_MIRRORING
-            }
-            val stopPendingIntent = PendingIntent.getBroadcast(
-                context, 10, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop Mirroring", stopPendingIntent)
-        }
 
         return builder.build()
     }

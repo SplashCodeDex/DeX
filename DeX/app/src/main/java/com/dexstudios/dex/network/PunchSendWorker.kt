@@ -230,7 +230,7 @@ class PunchSendWorker(
                     targetFingerprint = targetFingerprint
                 )
             )
-            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO).launch {
                 setForeground(createForegroundInfo((progress * 100).toInt(), "Sending: $fileName"))
             }
         } catch (e: Exception) {

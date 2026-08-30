@@ -99,8 +99,6 @@ class WebSocketClientService(
         Timber.i("Starting WebSocketClientService...")
 
         messageHandler.onSendMessage = { sendMessage(it) }
-        MirrorSession.textSender = { sendMessage(it) }
-        MirrorSession.frameSender = { sendBinary(it) }
 
         serviceScope.launch {
             // Monitor discovered devices for PCs to connect to (prefer an already-paired PC)
@@ -301,8 +299,6 @@ class WebSocketClientService(
                     connectedIp = null
                     discoveryEngine.setConnected(false)
                     // Do not reset connectedPort here so background TTL refreshes still have a port to try
-                    // The PC is gone: never keep capturing/streaming into a dead socket
-                    MirrorSession.stop()
                     scheduleReconnect()
                 }
             }
@@ -315,7 +311,6 @@ class WebSocketClientService(
                     connectedViaWan = false
                     connectedIp = null
                     discoveryEngine.setConnected(false)
-                    MirrorSession.stop()
                     scheduleReconnect()
                 }
             }

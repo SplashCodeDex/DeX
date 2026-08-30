@@ -289,7 +289,7 @@ class UploadWorker(
 
                 val baseText = applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)
                 val notifText = if (speedEtaText.isNotBlank()) "$baseText ($speedEtaText)" else baseText
-                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO).launch {
                     setForeground(createForegroundInfo(percent, notifText))
                 }
             }

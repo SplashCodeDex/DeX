@@ -12,11 +12,6 @@ import java.util.concurrent.ConcurrentHashMap
 class FileTransferReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
-        if (action == NotificationHelper.ACTION_STOP_MIRRORING) {
-            MirrorSession.stop()
-            return
-        }
-
         if (action == NotificationHelper.ACTION_CANCEL_PENDING_SHARE) {
             val fingerprint = intent.getStringExtra("FINGERPRINT") ?: return
             PendingShareForwarder.cancel(fingerprint)

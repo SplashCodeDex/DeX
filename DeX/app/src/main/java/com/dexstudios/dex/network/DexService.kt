@@ -104,20 +104,5 @@ class DexService : Service() {
             }
         }
 
-        /**
-         * Re-declares the foreground service type. Android 14+ requires the service to
-         * be running with the MEDIA_PROJECTION type while a mirror session is active.
-         */
-        fun setMirroring(mirroring: Boolean) {
-            val svc = instance ?: return
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
-                        if (mirroring) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
-                ServiceCompat.startForeground(svc, 1, svc.notificationHelper.getForegroundServiceNotification(), types)
-            } else {
-                svc.startForeground(1, svc.notificationHelper.getForegroundServiceNotification())
-            }
-        }
     }
 }

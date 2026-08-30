@@ -399,7 +399,7 @@ class BatchDownloadWorker(
                 ).joinToString(" • ")
 
                 val notifText = if (speedEtaText.isNotBlank()) "Downloading: $displayName ($speedEtaText)" else "Downloading: $displayName"
-                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO).launch {
                     setForeground(createForegroundInfo(percent, notifText))
                 }
             }

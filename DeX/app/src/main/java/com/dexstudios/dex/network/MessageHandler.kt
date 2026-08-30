@@ -57,8 +57,6 @@ class MessageHandler(
                 "relay-error" -> handleRelayReply(false)
                 "set-clipboard" -> handleSetClipboard(dataElement)
                 "wallpaper-updated" -> WallpaperState.notifyUpdated()
-                "mirror-start" -> MirrorSession.requestStart()
-                "mirror-stop" -> MirrorSession.stop()
                 "list-shared-folders", "browse-folder", "pull-files", "pull-cancel", "grant-shared-folder" ->
                     fileShareManager.handleRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
                 else -> {

@@ -1,7 +1,6 @@
 package com.dexstudios.dex
 
 import android.content.Intent
-import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,7 +13,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.dexstudios.dex.network.DexService
 import com.dexstudios.dex.network.KeepAliveWorker
-import com.dexstudios.dex.network.MirrorSession
 import com.dexstudios.dex.network.SafStorage
 import androidx.work.WorkManager
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -75,23 +73,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // Screen mirror consent: the PC asked to mirror, this launcher shows the system dialog
-    private val mediaProjectionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK && result.data != null) {
-            val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val projection = projectionManager.getMediaProjection(result.resultCode, result.data!!) ?: run {
-                MirrorSession.stop()
-                return@registerForActivityResult
-            }
-            val metrics = resources.displayMetrics
-            MirrorSession.start(projection, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
-        } else {
-            MirrorSession.deny() // user denied screen sharing
-        }
-    }
-
   @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -136,7 +117,7 @@ class MainActivity : ComponentActivity() {
 
     // Start the DeX networking service
     val serviceIntent = Intent(this, DexService::class.java)
-    startForegroundService(serviceIntent)
+    runCatching { startForegroundService(serviceIntent) }
 
     // Background keep-alive: the periodic worker restarts the service if the OS killed the
     // process, so the phone stays reachable for PC pushes up to 6 hours after last use.
@@ -150,16 +131,6 @@ WorkManager.getInstance(this).enqueueUniquePeriodicWork(
 
     enableEdgeToEdge()
     window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
-
-    // When the PC asks to mirror, surface the system screen-capture consent dialog
-    lifecycleScope.launch {
-        MirrorSession.pendingConsent.collect { requested ->
-            if (requested) {
-                val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
-            }
-        }
-    }
 
     setContent {
       val windowSizeClass = androidx.compose.material3.windowsizeclass.calculateWindowSizeClass(this)

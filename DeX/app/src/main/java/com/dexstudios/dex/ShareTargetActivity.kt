@@ -312,7 +312,7 @@ class ShareTargetActivity : ComponentActivity() {
         clientEngine.resetUploadState()
 
         val urisJson = try {
-            Json.encodeToString(sharedUris.map { it.toString() })
+            Json.encodeToString(uris.map { it.toString() })
         } catch (e: Exception) {
             e.printStackTrace()
             return
