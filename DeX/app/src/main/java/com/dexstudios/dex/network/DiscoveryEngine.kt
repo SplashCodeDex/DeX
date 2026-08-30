@@ -164,6 +164,14 @@ class DiscoveryEngine(
         cleanupJob?.cancel()
         identityWatchJob?.cancel()
         shortcutJob?.cancel()
+
+        // Drop all remembered devices: the next startDiscovery() must rebuild the
+        // roster from fresh broadcasts rather than resurrecting stale entries
+        // (which could carry dead IPs and would only age out after the 20s TTL).
+        seenDevices.clear()
+        _devices.value = emptyMap()
+        // Persisted Direct Share shortcuts stay in place (they are cached targets,
+        // not live presence) until the next discovery cycle re-syncs them.
     }
 
     fun sendManualDiscovery(ip: String, port: Int = DeXPorts.HTTPS) {

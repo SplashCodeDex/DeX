@@ -55,7 +55,10 @@ class PullForegroundService : Service() {
             val intent = Intent(context, PullForegroundService::class.java)
                 .putExtra(EXTRA_REQUEST_ID, requestId)
                 .putExtra(EXTRA_COUNT, count)
-            context.startForegroundService(intent)
+            // Background-start restrictions (Android 12+) can throw if the app has no
+            // foreground exemption — fail quietly instead of crashing the transfer flow.
+            runCatching { context.startForegroundService(intent) }
+                .onFailure { timber.log.Timber.e(it, "Pull: cannot start foreground service") }
         }
 
         /** Releases the foreground guarantee. No-op if the service was never started. */

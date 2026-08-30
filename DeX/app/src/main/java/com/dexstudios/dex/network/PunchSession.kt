@@ -24,6 +24,8 @@ import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
+import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -70,6 +72,9 @@ class PunchSession(
             serverSocket = ServerSocket().apply {
                 reuseAddress = true
                 bind(InetSocketAddress(0))
+                // accept() must never block forever: the 800ms timeout lets the
+                // punch loop (and stop()) break out of it promptly instead of hanging.
+                soTimeout = 800
             }
             Timber.i("Punch listener open on port ${serverSocket!!.localPort}")
         } catch (e: Exception) {
@@ -136,8 +141,14 @@ class PunchSession(
             try {
                 val socket = withContext(Dispatchers.IO) { ss.accept() }
                 scope.launch { handleIncoming(socket) }
+            } catch (_: SocketTimeoutException) {
+                // No inbound connection within the timeout — loop back and re-check scope
+                continue
+            } catch (_: SocketException) {
+                // Listener was closed (stop()) — exit quietly
+                break
             } catch (e: Exception) {
-                if (scope.isActive) Timber.e(e, "Punch accept failed")
+                if (scope.isActive) Timber.e(e, "Punch accept failed") else break
             }
         }
     }
@@ -472,6 +483,8 @@ class PunchSession(
                     return@withContext accepted
                 }
                 scope.launch { handleIncoming(accepted) }
+            } catch (_: SocketTimeoutException) {
+                // No inbound punch this round — retry the outbound attempt
             } catch (e: Exception) {
                 if (!scope.isActive) return@withContext null
             }

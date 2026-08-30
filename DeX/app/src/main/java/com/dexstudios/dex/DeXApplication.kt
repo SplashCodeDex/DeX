@@ -23,6 +23,8 @@ class DeXApplication : Application(), SingletonImageLoader.Factory {
 
         DeviceManager.init(this)
         TransferHistory.init(this)
+        // Restore persisted "permanently denied" permission flags (survives process restarts)
+        com.dexstudios.dex.network.PermissionManager.init(this)
 
         // Surface persisted Direct Share targets immediately at process start, before
         // discovery completes, so the share sheet offers paired PCs even while offline.
