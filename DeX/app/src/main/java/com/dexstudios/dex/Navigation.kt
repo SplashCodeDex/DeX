@@ -1,4 +1,5 @@
 package com.dexstudios.dex
+import timber.log.Timber
 
 import android.net.Uri
 import android.widget.Toast
@@ -156,7 +157,7 @@ fun MainNavigation(
             val urisJson = try {
                 Json.encodeToString(uris.map { it.toString() })
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Operation failed")
                 ""
             }
 

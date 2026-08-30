@@ -324,7 +324,7 @@ internal fun OnboardingConnectivity(
                     val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = android.net.Uri.fromParts("package", context.packageName, null)
                     }
-                    context.startActivity(intent)
+                    runCatching { context.startActivity(intent) }
                 } else {
                     onAction()
                 }
@@ -385,7 +385,7 @@ internal fun OnboardingNotifications(
                     val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = android.net.Uri.fromParts("package", context.packageName, null)
                     }
-                    context.startActivity(intent)
+                    runCatching { context.startActivity(intent) }
                 } else {
                     onAction()
                 }

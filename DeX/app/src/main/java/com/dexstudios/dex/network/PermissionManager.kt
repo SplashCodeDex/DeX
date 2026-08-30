@@ -33,7 +33,7 @@ object PermissionManager {
      */
     fun init(context: Context) {
         appContext = context.applicationContext
-        val prefs = appContext!!.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _nearbyPermanentlyDenied.value = prefs.getBoolean(KEY_NEARBY_DENIED, false)
         _notificationsPermanentlyDenied.value = prefs.getBoolean(KEY_NOTIFICATIONS_DENIED, false)
     }

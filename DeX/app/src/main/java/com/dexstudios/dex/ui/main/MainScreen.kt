@@ -1,4 +1,5 @@
 package com.dexstudios.dex.ui.main
+import timber.log.Timber
 
 import android.net.Uri
 import androidx.core.net.toUri
@@ -166,7 +167,7 @@ fun MainScreen(
             val urisJson = try {
                 Json.encodeToString(uris.map { it.toString() })
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Operation failed")
                 return@rememberLauncherForActivityResult
             }
 
@@ -193,7 +194,7 @@ fun MainScreen(
             val urisJson = try {
                 Json.encodeToString(uris.map { it.toString() })
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Operation failed")
                 return@let
             }
 

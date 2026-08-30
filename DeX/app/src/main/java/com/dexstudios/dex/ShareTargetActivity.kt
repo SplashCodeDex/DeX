@@ -264,9 +264,11 @@ class ShareTargetActivity : ComponentActivity() {
     private fun requestOverlayPermission() {
         // One-time trip to system settings; the next share after granting renders
         // as the floating overlay panel. The sheet stays open for the current share.
-        startActivity(
-            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-        )
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+            )
+        }.onFailure { Timber.e(it, "Cannot open overlay-permission settings") }
     }
 
     private fun partitionDevices(
@@ -314,7 +316,7 @@ class ShareTargetActivity : ComponentActivity() {
         val urisJson = try {
             Json.encodeToString(uris.map { it.toString() })
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Operation failed")
             return
         }
 

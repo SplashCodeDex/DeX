@@ -96,7 +96,8 @@ class BatchDownloadWorker(
 
         val files = try {
             Json.decodeFromString<List<PullFileDto>>(filesJson)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Timber.e(e, "BatchDownload: failed to parse files JSON")
             return@withContext Result.failure()
         }
         val resolvedHttpsPort = if (httpsPort != -1) httpsPort else DeXPorts.HTTPS
@@ -413,7 +414,7 @@ class BatchDownloadWorker(
         docs.forEach { uri ->
             try {
                 context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Timber.w(e, "BatchDownload: could not delete partial file") }
         }
     }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.dexstudios.dex.ShortcutHelper
+import timber.log.Timber
 
 object DeviceManager {
     private const val PREFS_NAME = "dex_device_prefs"
@@ -44,7 +45,7 @@ object DeviceManager {
             val map = TokenCodec.decode(saved)
             AuthState.pairedTokens.clear()
             AuthState.pairedTokens.putAll(map)
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Timber.w(e, "DeviceManager: failed to restore paired tokens") }
     }
 
     private fun loadPairedTimes() {
@@ -55,7 +56,7 @@ object DeviceManager {
             json.keys().forEach { key ->
                 AuthState.pairedTimes[key] = json.getLong(key)
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Timber.w(e, "DeviceManager: failed to restore paired times") }
     }
 
     private fun loadPairedAliases() {

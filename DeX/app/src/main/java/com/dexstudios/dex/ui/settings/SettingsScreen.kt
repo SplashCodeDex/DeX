@@ -1,4 +1,5 @@
 package com.dexstudios.dex.ui.settings
+import timber.log.Timber
 
 import android.content.Context
 import android.content.Intent
@@ -220,7 +221,7 @@ fun SettingsScreen(
                                             java.util.function.Consumer<Int> { }
                                         )
                                     } catch (e: Exception) {
-                                        e.printStackTrace()
+                                        Timber.e(e, "Operation failed")
                                     }
                                 }
                             )

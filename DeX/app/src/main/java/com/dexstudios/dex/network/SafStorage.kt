@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.core.content.edit
 import android.provider.DocumentsContract
+import timber.log.Timber
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -64,7 +65,8 @@ object SafStorage {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("REQUEST_DOWNLOADS_DEX_GRANT", true)
         }
-        context.startActivity(intent)
+        runCatching { context.startActivity(intent) }
+            .onFailure { Timber.e(it, "SafStorage: cannot launch grant activity") }
     }
 
     // --- Shared folders (PC File Explorer: browse + pull) ---
@@ -98,7 +100,8 @@ object SafStorage {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("REQUEST_SHARED_FOLDER_GRANT", true)
         }
-        context.startActivity(intent)
+        runCatching { context.startActivity(intent) }
+            .onFailure { Timber.e(it, "SafStorage: cannot launch grant activity") }
     }
 
     /**

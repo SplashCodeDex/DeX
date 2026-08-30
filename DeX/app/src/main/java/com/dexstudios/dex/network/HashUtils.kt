@@ -1,4 +1,5 @@
 package com.dexstudios.dex.network
+import timber.log.Timber
 
 import android.content.Context
 import android.net.Uri
@@ -54,7 +55,7 @@ object HashUtils {
             
             md.digest().joinToString("") { "%02X".format(it) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Operation failed")
             null
         }
     }
