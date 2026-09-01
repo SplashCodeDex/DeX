@@ -27,7 +27,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
 import com.dexstudios.dex.platform.DisplayCoordinateSpace
 import com.dexstudios.dex.platform.DockCardMetrics
 import org.koin.compose.koinInject

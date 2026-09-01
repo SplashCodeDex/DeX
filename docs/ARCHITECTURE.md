@@ -9,13 +9,32 @@
 composeApp (desktop app entry; jvm("desktop") target)
   ├─ core/designsystem    (theme, icons, shared UI primitives)
   ├─ core/network         (engines, Ktor server, protocol DTOs, auth)
+  ├─ core/domain          (platform-neutral use cases: PairingEngine, ports)
   └─ core/data            (DataStore persistence, DeviceConfig, TransferHistory)
+
+core/protocol (LEAF — wire contract; no dependencies beyond kotlinx.serialization)
+  ├─ consumed by core/network, core/data (api) and therefore every app module
+  └─ MessageTypes / FieldNames / ProtocolEnvelope + golden-fixture conformance tests
+
+core/domain (domain layer, plan 026)
+  ├─ domain/pairing: PairingEngine + PairingState (moved verbatim from core/network)
+  ├─ PairingGrantStore port — persistence adapter DeviceManagerPairingGrantStore lives in
+  │  core/network and is Koin-wired (NetworkModule)
+  └─ depends ONLY on core/protocol, core/data primitives, coroutines — no Ktor/DataStore/Koin
 ```
 
 - `core/*` are Kotlin Multiplatform libraries with a single JVM target named
   **`desktop`** (`jvm("desktop")`). Compiled source sets are therefore ONLY:
   `src/commonMain`, `src/desktopMain`, `src/desktopTest`.
   Never create `jvmMain` or any other source root in these modules — it will silently never compile.
+- `core/protocol` is the ecosystem wire-contract law (plan 025): every peer — desktop,
+  Android (`DeX/app` keeps a lockstep `ProtocolKeys` until integration), future
+  `wearApp/`, `iosApp/`, `server/` — consumes this exact module. Protocol strings are
+  never restated as literals; the golden fixtures freeze the wire values.
+- `core/domain` is the platform-neutral use-case layer (plan 026): state machines and
+  ports only. Infrastructure adapters (DataStore persistence, WS delivery, notifications)
+  stay in `core/network` and are injected via Koin. `initiatePairing` takes a
+  `PairingTarget(ip, fingerprint, alias)` — never a transport DTO.
 - The former `feature/discovery`, `feature/settings` modules and `feature/history`
   were removed in 10.1.14.0 — they were compiled but never imported by any wired UI
   (the live device list / settings surfaces live in `composeApp/.../window/components/`).

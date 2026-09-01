@@ -2,6 +2,8 @@ package com.dexstudios.dex.core.network.services
 
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.*
 import java.nio.file.*
 
@@ -46,7 +48,7 @@ class DesktopWallpaperWatcherService(private val scope: CoroutineScope = Corouti
                             debounceJob = scope.launch {
                                 delay(1000) // 1-second debounce for write flush
                                 DesktopWallpaperService.invalidateCache()
-                                val payload = """{"type":"wallpaper-updated","data":{}}"""
+                                val payload = ProtocolEnvelope.envelopeOf(MessageTypes.WALLPAPER_UPDATED)
                                 WebSocketConnectionManager.broadcastToPaired(payload)
                                 Logger.i("DesktopWallpaperWatcher: Broadcasted wallpaper-updated event")
                             }

@@ -1,7 +1,9 @@
 package com.dexstudios.dex.core.network.di
 
-import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingGrantStore
 import com.dexstudios.dex.core.network.ClientEngine
+import com.dexstudios.dex.core.network.DeviceManagerPairingGrantStore
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.HardwareTelemetry
 import com.dexstudios.dex.core.network.IDiscoveryService
@@ -61,5 +63,13 @@ val commonNetworkModule = module {
     single { DiscoveryEngine(deviceConfig = get(), discoveryServices = getAll(), httpClient = get()) }
     single { ClientEngine(client = get(), quicClient = getOrNull(), deviceConfig = get()) }
     single { WebSocketEngine(client = get(), deviceConfig = get(), discoveryEngine = get(), messageHandler = get(), hardwareTelemetry = get(), mirrorEngine = get()) }
-    single { PairingEngine() }
+    single<PairingGrantStore> { DeviceManagerPairingGrantStore() }
+    single { PairingEngine(grantStore = get()) }
+    single {
+        com.dexstudios.dex.core.domain.transfer.TransferUseCase(
+            lingerScope = kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+            ),
+        )
+    }
 }

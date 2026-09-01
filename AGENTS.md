@@ -17,18 +17,32 @@
 ### AVOID GLOW effects.
 ### YOU MUST USE THE MOST ADVANCED AND ROBUST PATTERNS, ARCHITECTURES, AND TECHNOLOGIES AVAILABLE FOR KOTLIN MULTIPLATFORM AND COMPOSE FOR DESKTOP
 
-## SCOPE: DESKTOP ONLY — WINDOWS AND macOS
-1. **DESKTOP ONLY.** The Compose/Kotlin Multiplatform codebase is the desktop application for **Windows AND macOS** — both platforms run the **SAME shared Kotlin code** (`composeApp` + shared `core/*` + `feature/*` modules). That is the ONLY target.
-2. **The Android app (`DeX/DeX/app`) is NOT part of this migration.** 
- It lives ONLY at `W:\CodeDeX\DeX\DeX` and never integrates into the Desktop compose system.
-3. **No Android target may be added to the Compose desktop app** (`composeApp` is desktop-only: `desktopMain` + `commonMain`, no `androidMain`, no `androidTarget()`).
+## SCOPE: DeX ECOSYSTEM — Desktop First, Shared Core (AMENDED 2026-09-01, user-approved)
+1. **Ecosystem direction.** The project is evolving into a multi-device DeX ecosystem
+   (desktop, phone, tablet, watch) with per-platform native UIs and ONE shared headless
+   Kotlin core. The desktop app (Windows + macOS) remains the flagship and must never
+   regress; new platforms build ON TOP of the shared core, never at its expense.
+2. **Shared wire contract.** `core/protocol` is the single source of truth for the
+   `{type, data}` envelope, message-type constants, and payload field names (see
+   `docs/PROTOCOL.md`). Every peer — desktop, Android, Wear, iOS, and the future
+   `server/` relay — consumes THIS module. Never restate protocol strings as literals
+   in any new code; golden-fixture tests in `core/protocol` freeze the wire values.
+3. **Desktop module discipline stands.** `composeApp` stays desktop-only
+   (`desktopMain` + `commonMain`, no `androidMain`, no `androidTarget()` in composeApp).
+   Shared ecosystem logic lives in `core/*` modules. New KMP targets (iOS, watchOS)
+   may be added to `core/*` modules ONLY when the ecosystem plan (advisor-plans/025)
+   explicitly enters that phase.
+4. **Android app.** The Android app at `DeX/` develops independently until the shared-core
+   integration phase of advisor-plans/025 begins. Until then, `DeX/app` keeps its own
+   `ProtocolKeys` registry — values there must stay in lockstep with `core/protocol`
+   (same release when either changes).
 
 ## HARD RULES — ZERO TOLERANCE, NO EXCEPTIONS
 1. **NEVER delete, remove, archive, rename, or move ANY WPF / C# / PowerShell / legacy file** — not one file, not one line, not one asset — **for ANY reason**. This includes "cleanup", "consolidation", "modularization", "refactoring", "modernization", or "housekeeping".
 2. **NEVER** "tidy up", "fix", or "improve" legacy WPF/C#/PowerShell code on your own initiative.
 
 
-> **REPEAT: DESKTOP ONLY. Windows + macOS. ONE Kotlin/Compose Multiplatform codebase. Legacy WPF/C#/PowerShell stays Archived in `Archived_Legacy_WPF/`. Android stays at `W:\CodeDeX\DeX\DeX`.**
+> **REPEAT: ONE shared Kotlin core with native UIs per platform. `core/protocol` is the wire-contract law for every peer. Legacy WPF/C#/PowerShell stays Archived in `Archived_Legacy_WPF/`. The Android app stays at `W:\CodeDeX\DeX\DeX` until plan 025's integration phase.**
 
 ---
 
@@ -43,7 +57,9 @@ The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. 
 ## Repository Map
 - `Archived_Legacy_WPF/` — **RETIRED legacy WPF/C#/PowerShell — READ-ONLY ARCHIVE (see rules above). Never modify, delete, or restore it.**
 - `composeApp/`, `core/`, `feature/`, `gradle/` — **DESKTOP Compose Multiplatform project (repo root = the desktop app for Windows + macOS)**
+  - `core/protocol/` — **shared wire-contract leaf module (envelope, MessageTypes, FieldNames, golden fixtures) — consumed by every peer, zero dependencies beyond kotlinx.serialization**
 - `DeX/` — **standalone Android app project (`DeX/app`) — NOT part of the migration ***
+- Future ecosystem modules (`wearApp/`, `iosApp/`, `server/`) land under this repo per advisor-plans/025, phase-gated.
 
 - Update `CHANGELOG.md` with handwritten, precise notes.
 - Git commit with standardized tag prefixes (`[fix]`, `[minor]`, or `[major]`).
@@ -83,5 +99,8 @@ to every agent, regardless of vendor or personal memory files.
 - `docs/PROTOCOL.md` — canonical WebSocket message contract; field names are law
   (e.g. it is `data.digitCount`, never `count`).
 - `advisor-plans/README.md` — plan/finding ledger; risky changes get a plan entry with STOP
-  conditions and a status row that MUST be updated when done.
+  conditions and a status row that MUST be updated when done. The full ecosystem roadmap
+  to 100% completion is plans 025–039 (wire contract → domain slices → Android shared
+  core → sync → server → iOS/iPad → tablets → Wear/watchOS), dependency-ordered with
+  user-decision gates noted.
 - `CHANGELOG.md` — every user-visible change gets a handwritten entry.

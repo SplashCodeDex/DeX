@@ -1,6 +1,9 @@
 package com.dexstudios.dex.core.network
 
 import com.dexstudios.dex.auth.AuthState
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
@@ -8,9 +11,7 @@ import io.ktor.client.request.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509TrustManager
 import kotlin.time.Duration.Companion.minutes
@@ -22,14 +23,11 @@ import kotlin.time.Duration.Companion.seconds
  */
 internal fun buildTelemetryPayload(battery: Int, ssid: String?, rssi: Int): String? {
     if ((battery < 0 && ssid == null && rssi == HardwareTelemetry.RSSI_INVALID)) return null
-    return buildJsonObject {
-        put("type", "telemetry")
-        putJsonObject("data") {
-            if (battery >= 0) put("battery", battery)
-            if (ssid != null) put("wifiSsid", ssid)
-            if (rssi != HardwareTelemetry.RSSI_INVALID) put("wifiRssi", rssi)
-        }
-    }.toString()
+    return ProtocolEnvelope.envelopeOf(MessageTypes.TELEMETRY) {
+        if (battery >= 0) put(FieldNames.BATTERY, battery)
+        if (ssid != null) put(FieldNames.WIFI_SSID, ssid)
+        if (rssi != HardwareTelemetry.RSSI_INVALID) put(FieldNames.WIFI_RSSI, rssi)
+    }
 }
 
 class WebSocketEngine(
@@ -100,7 +98,7 @@ class WebSocketEngine(
             while (isActive) {
                 delay(1.minutes)
                 if (isRunning && activeSession != null) {
-                    sendMessage("""{"type":"device-roster","data":{}}""")
+                    sendMessage(ProtocolEnvelope.envelopeOf(MessageTypes.DEVICE_ROSTER))
                     sendTelemetry()
                 }
             }
@@ -220,15 +218,12 @@ class WebSocketEngine(
                     // identity tier with the pairing tier and survived sign-out as a stale
                     // credential. Pairing tokens are only ever stored from explicit grants.
 
-                    sendMessage("""{"type":"device-roster","data":{}}""")
+                    sendMessage(ProtocolEnvelope.envelopeOf(MessageTypes.DEVICE_ROSTER))
 
                     val isTrusted = AuthState.pairedFingerprints.value.contains(pcFingerprint) || token == googleSub || (token == identityHash && identityHash.isNotEmpty())
-                    val trustCheck = buildJsonObject {
-                        put("type", "trust-check")
-                        putJsonObject("data") {
-                            put("isTrusted", isTrusted)
-                        }
-                    }.toString()
+                    val trustCheck = ProtocolEnvelope.envelopeOf(MessageTypes.TRUST_CHECK) {
+                        put(FieldNames.IS_TRUSTED, isTrusted)
+                    }
                     sendMessage(trustCheck)
                     sendTelemetry()
                     onConnected?.invoke()
@@ -285,7 +280,7 @@ class WebSocketEngine(
 
     fun sendPairRequest(targetFingerprint: String): Boolean {
         if (_connectedFingerprint != targetFingerprint) return false
-        sendMessage("""{"type":"pair-request"}""")
+        sendMessage(ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_REQUEST))
         return true
     }
 
@@ -314,7 +309,7 @@ class WebSocketEngine(
 
     fun sendUnpairRequest(targetFingerprint: String): Boolean {
         if (_connectedFingerprint != targetFingerprint) return false
-        sendMessage("""{"type":"unpair"}""")
+        sendMessage(ProtocolEnvelope.envelopeOf(MessageTypes.UNPAIR))
         return true
     }
 

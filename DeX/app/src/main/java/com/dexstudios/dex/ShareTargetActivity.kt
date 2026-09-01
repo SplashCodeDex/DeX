@@ -180,7 +180,7 @@ class ShareTargetActivity : ComponentActivity() {
                         sheetState = sheetState,
                         containerColor = MaterialTheme.colorScheme.surface,
                         tonalElevation = 8.dp,
-                        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                        shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)
                     ) {
                         if (uploadState.isUploading || uploadState.isSuccess || uploadState.error != null) {
                             UploadProgressContent(

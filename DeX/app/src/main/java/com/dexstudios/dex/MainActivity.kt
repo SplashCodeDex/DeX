@@ -28,26 +28,34 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private var lastRequestedPermission: String? = null
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        val permission = lastRequestedPermission ?: return@registerForActivityResult
-        if (!isGranted) {
-            if (!androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+    private val requestMultiplePermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results: Map<String, Boolean> ->
+        results.forEach { (permission, isGranted) ->
+            if (!isGranted) {
+                if (!androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                    when (permission) {
+                        Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION ->
+                            com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(true)
+                        Manifest.permission.POST_NOTIFICATIONS ->
+                            com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(true)
+                        Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO,
+                        Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                        Manifest.permission.READ_EXTERNAL_STORAGE ->
+                            com.dexstudios.dex.network.PermissionManager.setMediaPermanentlyDenied(true)
+                    }
+                }
+            } else {
                 when (permission) {
                     Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION ->
-                        com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(true)
+                        com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(false)
                     Manifest.permission.POST_NOTIFICATIONS ->
-                        com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(true)
+                        com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(false)
+                    Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO,
+                    Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    Manifest.permission.READ_EXTERNAL_STORAGE ->
+                        com.dexstudios.dex.network.PermissionManager.setMediaPermanentlyDenied(false)
                 }
-            }
-        } else {
-            when (permission) {
-                Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION ->
-                    com.dexstudios.dex.network.PermissionManager.setNearbyPermanentlyDenied(false)
-                Manifest.permission.POST_NOTIFICATIONS ->
-                    com.dexstudios.dex.network.PermissionManager.setNotificationsPermanentlyDenied(false)
             }
         }
     }
@@ -78,26 +86,33 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
 
     // Trigger permissions from the UI flow
+    // Essentials: one combined system dialog for whichever of nearby/notifications is missing
     lifecycleScope.launch {
-        com.dexstudios.dex.network.PermissionManager.requestNearby.collect {
-            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        com.dexstudios.dex.network.PermissionManager.requestEssentials.collect {
+            val missing = mutableListOf<String>()
+            val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Manifest.permission.NEARBY_WIFI_DEVICES
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Manifest.permission.ACCESS_FINE_LOCATION
             } else null
 
-            permission?.let {
-                lastRequestedPermission = it
-                requestPermissionLauncher.launch(it)
+            if (nearbyPermission != null && ContextCompat.checkSelfPermission(this@MainActivity, nearbyPermission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                missing.add(nearbyPermission)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                missing.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+
+            if (missing.isNotEmpty()) {
+                requestMultiplePermissionsLauncher.launch(missing.toTypedArray())
             }
         }
     }
     lifecycleScope.launch {
-        com.dexstudios.dex.network.PermissionManager.requestNotifications.collect {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val permission = Manifest.permission.POST_NOTIFICATIONS
-                lastRequestedPermission = permission
-                requestPermissionLauncher.launch(permission)
+        com.dexstudios.dex.network.PermissionManager.requestMedia.collect {
+            if (!com.dexstudios.dex.network.checkHasMediaPermission(this@MainActivity)) {
+                requestMultiplePermissionsLauncher.launch(com.dexstudios.dex.network.getMediaPermissions())
             }
         }
     }

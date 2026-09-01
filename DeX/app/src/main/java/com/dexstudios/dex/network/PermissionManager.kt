@@ -14,6 +14,12 @@ object PermissionManager {
     private val _requestNotifications = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val requestNotifications = _requestNotifications.asSharedFlow()
 
+    private val _requestEssentials = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val requestEssentials = _requestEssentials.asSharedFlow()
+
+    private val _requestMedia = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val requestMedia = _requestMedia.asSharedFlow()
+
     private val _requestFolder = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val requestFolder = _requestFolder.asSharedFlow()
 
@@ -22,6 +28,9 @@ object PermissionManager {
 
     private val _notificationsPermanentlyDenied = MutableStateFlow(false)
     val notificationsPermanentlyDenied = _notificationsPermanentlyDenied.asStateFlow()
+
+    private val _mediaPermanentlyDenied = MutableStateFlow(false)
+    val mediaPermanentlyDenied = _mediaPermanentlyDenied.asStateFlow()
 
     private var appContext: Context? = null
 
@@ -36,10 +45,13 @@ object PermissionManager {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _nearbyPermanentlyDenied.value = prefs.getBoolean(KEY_NEARBY_DENIED, false)
         _notificationsPermanentlyDenied.value = prefs.getBoolean(KEY_NOTIFICATIONS_DENIED, false)
+        _mediaPermanentlyDenied.value = prefs.getBoolean(KEY_MEDIA_DENIED, false)
     }
 
     fun triggerNearby() { _requestNearby.tryEmit(Unit) }
     fun triggerNotifications() { _requestNotifications.tryEmit(Unit) }
+    fun triggerEssentials() { _requestEssentials.tryEmit(Unit) }
+    fun triggerMedia() { _requestMedia.tryEmit(Unit) }
     fun triggerFolder() { _requestFolder.tryEmit(Unit) }
 
     fun setNearbyPermanentlyDenied(denied: Boolean) {
@@ -52,6 +64,11 @@ object PermissionManager {
         persist(KEY_NOTIFICATIONS_DENIED, denied)
     }
 
+    fun setMediaPermanentlyDenied(denied: Boolean) {
+        _mediaPermanentlyDenied.value = denied
+        persist(KEY_MEDIA_DENIED, denied)
+    }
+
     private fun persist(key: String, denied: Boolean) {
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit {
             putBoolean(key, denied)
@@ -61,4 +78,5 @@ object PermissionManager {
     private const val PREFS = "dex_permission_prefs"
     private const val KEY_NEARBY_DENIED = "nearby_permanently_denied"
     private const val KEY_NOTIFICATIONS_DENIED = "notifications_permanently_denied"
+    private const val KEY_MEDIA_DENIED = "media_permanently_denied"
 }

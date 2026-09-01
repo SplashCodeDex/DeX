@@ -68,6 +68,7 @@ kotlin {
             implementation(project(":core:network"))
             implementation(project(":core:data"))
             implementation(project(":core:designsystem"))
+            implementation(project(":core:domain"))
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)

@@ -179,7 +179,7 @@ class ShareOverlayWindow(
 private fun ShareOverlaySurface(content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp
     ) {

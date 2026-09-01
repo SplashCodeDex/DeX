@@ -50,6 +50,12 @@
     <string name="onboarding_step_notifications_title">Never Miss a File</string>
     <string name="onboarding_step_notifications_desc">Get notified when a PC wants to send you files or when transfers complete.</string>
     <string name="onboarding_step_notifications_rationale">DeX needs notifications to alert you of incoming files. Please enable them in Settings to continue.</string>
+    <string name="onboarding_step_essentials_title">Stay Connected</string>
+    <string name="onboarding_step_essentials_desc">DeX needs nearby-device and notification access to find your PC and alert you when files arrive.</string>
+    <string name="onboarding_step_essentials_rationale">DeX can\'t find devices or alert you without these permissions. Please grant them in Settings.</string>
+    <string name="onboarding_step_media_title">Send Photos &amp; Videos</string>
+    <string name="onboarding_step_media_desc">DeX shows your recent photos, videos, and files so you can send them to your PC in a tap.</string>
+    <string name="onboarding_step_media_rationale">DeX can\'t show your media without this permission. Please grant it in Settings.</string>
     <string name="onboarding_step_identity_title">Verified Identity</string>
     <string name="onboarding_step_identity_desc">Sign in with Google to automatically trust your other devices and bypass pairing PINs.</string>
     <string name="onboarding_step_storage_title">File Storage</string>

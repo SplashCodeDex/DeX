@@ -323,7 +323,12 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                                     doneCount.incrementAndGet()
                                     logSent(file, peerName)
                                 } else {
-                                    TransferHistory.log(name = file.name, size = file.length(), direction = "sent", uri = file.absolutePath, peerDevice = peerName, status = "failed")
+                                    com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
+                                        name = file.name,
+                                        size = file.length(),
+                                        direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_SENT,
+                                        peerDevice = peerName,
+                                    )
                                 }
                                 outcomes.add(id to outcome)
                             }
@@ -480,12 +485,26 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     private fun mimeOf(file: File): String = runCatching { java.nio.file.Files.probeContentType(file.toPath()) }.getOrNull() ?: "application/octet-stream"
 
     private fun logSent(file: File, peerName: String) {
-        TransferHistory.log(name = file.name, size = file.length(), direction = "sent", uri = file.absolutePath, peerDevice = peerName)
+        com.dexstudios.dex.core.network.TransferHistoryRecorder.recordCompleted(
+            name = file.name,
+            size = file.length(),
+            direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_SENT,
+            uri = file.absolutePath,
+            peerDevice = peerName,
+        )
     }
 
     private fun logAll(files: Collection<File>, peerName: String, status: String) {
+        // status here is the raw TransferHistory status ("success"/"failed"/partial variants)
         files.forEach { file ->
-            TransferHistory.log(name = file.name, size = file.length(), direction = "sent", uri = file.absolutePath, peerDevice = peerName, status = status)
+            com.dexstudios.dex.core.network.TransferHistory.log(
+                name = file.name,
+                size = file.length(),
+                direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_SENT,
+                uri = file.absolutePath,
+                peerDevice = peerName,
+                status = status,
+            )
         }
     }
 

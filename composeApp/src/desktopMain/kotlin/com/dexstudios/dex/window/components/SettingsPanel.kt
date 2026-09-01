@@ -867,16 +867,7 @@ fun SettingsPanel(
                     // Revoke every persisted pairing, then rotate the identity hash so a
                     // previously known auto-trust credential dies with the reset.
                     coroutineScope.launch(Dispatchers.IO) {
-                        val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
-                        val unpairJson = """{"type":"unpair","data":{"fingerprint":"${deviceConfig.fingerprint}"}}"""
-                        paired.forEach { fp ->
-                            runCatching {
-                                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.sendRequest(fp, unpairJson)
-                                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.markUntrusted(fp)
-                                com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(fp)
-                            }
-                        }
-                        deviceConfig.resetIdentity()
+                        com.dexstudios.dex.core.network.services.TrustRevocationService.revokeAll(deviceConfig)
                     }
                 }) {
                     Text("Reset", color = MaterialTheme.colorScheme.error)

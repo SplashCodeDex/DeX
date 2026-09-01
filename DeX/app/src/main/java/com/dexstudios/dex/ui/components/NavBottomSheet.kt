@@ -67,7 +67,9 @@ enum class SheetTier(val fraction: Float) {
 }
 
 enum class SheetExpandedMode {
-    Media,
+    Photos,
+    Audio,
+    Files,
     History;
 }
 
@@ -93,8 +95,8 @@ fun NavBottomSheet(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val totalHeightPx = constraints.maxHeight.toFloat()
-        val halfGapPx = with(density) { 8.dp.toPx() }
-        val highGapPx = with(density) { 5.dp.toPx() }
+        val halfGapPx = with(density) { 6.dp.toPx() }
+        val highGapPx = with(density) { 3.dp.toPx() }
 
         // Heights for each tier (card height from anchored bottom)
         val halfHeightPx = (totalHeightPx * 0.50f) - halfGapPx
@@ -180,19 +182,19 @@ fun NavBottomSheet(
             }
         }
 
-        // Dynamic floating margin: 8dp at 50%, 5dp at 80%, 0dp at 100% fullscreen
+        // Dynamic floating margin: 6dp at 50%, 3dp at 80%, 0dp at 100% fullscreen
         val currentGap by remember {
             derivedStateOf {
                 val h = animatableHeight.value
                 when {
-                    h <= halfHeightPx -> 8.dp
+                    h <= halfHeightPx -> 6.dp
                     h <= highHeightPx -> {
                         val f = if (highHeightPx > halfHeightPx) ((h - halfHeightPx) / (highHeightPx - halfHeightPx)).coerceIn(0f, 1f) else 0f
-                        (8f - 3f * f).dp // 8dp -> 5dp
+                        (6f - 3f * f).dp // 6dp -> 3dp
                     }
                     else -> {
                         val f = if (fullHeightPx > highHeightPx) ((h - highHeightPx) / (fullHeightPx - highHeightPx)).coerceIn(0f, 1f) else 0f
-                        (5f - 5f * f).dp // 5dp -> 0dp
+                        (3f - 3f * f).dp // 3dp -> 0dp
                     }
                 }
             }
@@ -205,13 +207,13 @@ fun NavBottomSheet(
                 when {
                     h <= highHeightPx -> {
                         val f = if (highHeightPx > 0f) (h / highHeightPx).coerceIn(0f, 1f) else 0f
-                        val r = (36f - 6f * f).dp // 36dp at 50% -> 30dp at 80%
+                        val r = (44f - 8f * f).dp // approx 39dp at 50% -> 36dp at 80%
                         RoundedCornerShape(r)
                     }
                     else -> {
                         val f = if (fullHeightPx > highHeightPx) ((h - highHeightPx) / (fullHeightPx - highHeightPx)).coerceIn(0f, 1f) else 0f
-                        val topR = (30f - 8f * f).dp // 30dp at 80% -> 22dp at 100%
-                        val bottomR = (30f * (1f - f)).dp // 30dp at 80% -> 0dp at 100% fullscreen
+                        val topR = (36f - 8f * f).dp // 36dp at 80% -> 28dp at 100%
+                        val bottomR = (36f * (1f - f)).dp // 36dp at 80% -> 0dp at 100% fullscreen
                         RoundedCornerShape(
                             topStart = topR,
                             topEnd = topR,
@@ -496,15 +498,10 @@ fun NavBottomSheet(
                     .background(sheetBgColor)
             }
 
-            // Card Surface: Anchored Card with Authentic LiquidGlass Specular Glare & Ambient Smoke colors
+            // Card Surface: Anchored Card with Authentic LiquidGlass Specular Glare
             Box(
                 modifier = sheetSurfaceModifier
             ) {
-                // Ambient Smoke Colors in the card background
-                AmbientSmokeBackground(
-                    modifier = Modifier.fillMaxSize()
-                )
-
                 // Card Inner Content
                 Column(
                     modifier = Modifier.fillMaxSize(),

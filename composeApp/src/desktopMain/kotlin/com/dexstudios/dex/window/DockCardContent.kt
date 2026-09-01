@@ -53,13 +53,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dexstudios.dex.auth.PairingEngine
 import com.dexstudios.dex.core.designsystem.components.AmbientSmokeBackground
 import com.dexstudios.dex.core.designsystem.components.AmbientSmokeMood
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.verticalFadingEdge
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
 import com.dexstudios.dex.platform.DockCardMetrics
 import com.dexstudios.dex.window.components.DeviceStatusPanel
 import com.dexstudios.dex.window.components.ExternalDragState
@@ -95,7 +95,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
     // succTimer / errTimer did.
     LaunchedEffect(pairingState) {
         when (val state = pairingState) {
-            is com.dexstudios.dex.auth.PairingState.QrPhase, is com.dexstudios.dex.auth.PairingState.PinPhase -> {
+            is com.dexstudios.dex.core.domain.pairing.PairingState.QrPhase, is com.dexstudios.dex.core.domain.pairing.PairingState.PinPhase -> {
                 controller.isPairingActive = true
                 // Legacy WPF parity: a phone-initiated pair-request SURFACED the hidden
                 // window from the tray so the PIN was readable immediately (the focus-loss
@@ -106,20 +106,20 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                 controller.expandPanel(ExpandedPanel.Pairing)
             }
 
-            is com.dexstudios.dex.auth.PairingState.Success -> {
+            is com.dexstudios.dex.core.domain.pairing.PairingState.Success -> {
                 kotlinx.coroutines.delay(1200)
                 controller.isPairingActive = false
                 controller.expandPanel(ExpandedPanel.DeviceStatus)
                 pairingEngine.reset()
             }
 
-            is com.dexstudios.dex.auth.PairingState.Error -> {
+            is com.dexstudios.dex.core.domain.pairing.PairingState.Error -> {
                 kotlinx.coroutines.delay(800)
                 controller.collapsePanel()
                 pairingEngine.reset()
             }
 
-            com.dexstudios.dex.auth.PairingState.Idle -> controller.isPairingActive = false
+            com.dexstudios.dex.core.domain.pairing.PairingState.Idle -> controller.isPairingActive = false
         }
     }
 
@@ -127,7 +127,7 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
     LaunchedEffect(Unit) {
         com.dexstudios.dex.core.network.server.WebSocketConnectionManager.events.collect { event ->
             if (event is com.dexstudios.dex.core.network.server.ConnectionEvent.Connected) {
-                if (!controller.isPairingActive && pairingEngine.state.value == com.dexstudios.dex.auth.PairingState.Idle) {
+                if (!controller.isPairingActive && pairingEngine.state.value == com.dexstudios.dex.core.domain.pairing.PairingState.Idle) {
                     if (!controller.isVisible) {
                         controller.show()
                     }
@@ -522,17 +522,23 @@ fun DockCardContent(controller: DockedWindowStateController, modifier: Modifier 
                                     onContract = { controller.collapsePanel() },
                                     onPairDevice = { device ->
                                         val active = pairingEngine.state.value
-                                        val activeFingerprint = (active as? com.dexstudios.dex.auth.PairingState.QrPhase)?.fingerprint
-                                            ?: (active as? com.dexstudios.dex.auth.PairingState.PinPhase)?.fingerprint
+                                        val activeFingerprint = (active as? com.dexstudios.dex.core.domain.pairing.PairingState.QrPhase)?.fingerprint
+                                            ?: (active as? com.dexstudios.dex.core.domain.pairing.PairingState.PinPhase)?.fingerprint
                                         val isSameSession =
                                             activeFingerprint != null &&
                                                 activeFingerprint == device.info.fingerprint &&
                                                 controller.expandedPanel == ExpandedPanel.Pairing
                                         if (!isSameSession) {
-                                            if (active !is com.dexstudios.dex.auth.PairingState.Idle) {
+                                            if (active !is com.dexstudios.dex.core.domain.pairing.PairingState.Idle) {
                                                 pairingEngine.reset()
                                             }
-                                            pairingEngine.initiatePairing(device)
+                                            pairingEngine.initiatePairing(
+                                                com.dexstudios.dex.core.domain.pairing.PairingTarget(
+                                                    ip = device.ip,
+                                                    fingerprint = device.info.fingerprint,
+                                                    alias = device.info.alias,
+                                                ),
+                                            )
                                         }
                                         controller.expandPanel(ExpandedPanel.Pairing)
                                     },

@@ -114,6 +114,10 @@ class MessageHandlerTest {
         Dispatchers.resetMain()
         resetGlobalState()
         TransferState.pendingPrompts.clear()
+        // Stop handler fire-and-forget work BEFORE the temp store dies: a straggler
+        // savePairedToken coroutine racing teardown surfaces as an uncaught exception
+        // in whatever test class runs next (UncaughtExceptionsBeforeTest).
+        handler.shutdown()
         // Await in-flight DataStore edits BEFORE cancelling the persisting scope and
         // deleting the temp dir, or a straggling write surfaces as an uncaught exception
         // that pollutes the next runTest.

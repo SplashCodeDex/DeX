@@ -1,12 +1,5 @@
-package com.dexstudios.dex.auth
+package com.dexstudios.dex.core.domain.pairing
 
-import com.dexstudios.dex.core.network.DiscoveredDevice
-import com.dexstudios.dex.core.network.RegisterDto
-import com.dexstudios.dex.core.network.WebSocketEngine
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -25,14 +18,12 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairingEngineTest {
 
-    private lateinit var webSocketEngine: WebSocketEngine
     private lateinit var pairingEngine: PairingEngine
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        webSocketEngine = mockk(relaxed = true)
         pairingEngine = PairingEngine()
     }
 
@@ -48,29 +39,13 @@ class PairingEngineTest {
 
     @Test
     fun `initiatePairing transitions to QrPhase`() = runTest {
-        val device = DiscoveredDevice(
-            ip = "192.168.1.100",
-            info = RegisterDto(
-                alias = "TestPhone",
-                version = "1.0",
-                deviceModel = "Pixel",
-                deviceType = "phone",
-                fingerprint = "test-fingerprint",
-                port = 53317,
-                protocol = "http",
-                download = true,
-            ),
-            viaWan = false,
-            viaRoster = false,
-        )
-
-        pairingEngine.initiatePairing(device)
+        pairingEngine.initiatePairing(qrTarget())
 
         // Verify state is QrPhase
         val state = pairingEngine.state.value
         assertIs<PairingState.QrPhase>(state)
         assertEquals("192.168.1.100", state.ip)
-        assertEquals("test-fingerprint", state.fingerprint)
+        assertEquals("qr-fp", state.fingerprint)
     }
 
     @Test
@@ -105,7 +80,7 @@ class PairingEngineTest {
         engine.deviceFingerprintProvider = { "pc-fp" }
         engine.deviceAliasProvider = { "My PC" }
 
-        engine.initiatePairing(qrDevice())
+        engine.initiatePairing(qrTarget())
         assertTrue(engine.requestPinForActiveDevice(), "A deliverable prompt must succeed")
 
         val state = engine.state.value
@@ -127,7 +102,7 @@ class PairingEngineTest {
     fun `requestPinForActiveDevice keeps the QR offer when the phone is unreachable`() = runTest {
         val engine = PairingEngine(scope = backgroundScope)
         // Default outboundSender returns false: no live WebSocket session for the peer.
-        engine.initiatePairing(qrDevice())
+        engine.initiatePairing(qrTarget())
         val before = engine.state.value
 
         assertTrue(!engine.requestPinForActiveDevice(), "An undeliverable prompt must fail")
@@ -144,7 +119,7 @@ class PairingEngineTest {
     fun `revertToQrPhase cancels the pending PIN locally and keeps the device context`() = runTest {
         val engine = PairingEngine(scope = backgroundScope)
         engine.outboundSender = { _, _ -> true }
-        engine.initiatePairing(qrDevice())
+        engine.initiatePairing(qrTarget())
         engine.requestPinForActiveDevice()
         assertIs<PairingState.PinPhase>(engine.state.value)
 
@@ -156,20 +131,10 @@ class PairingEngineTest {
         assertTrue(!engine.verifyInboundPin("qr-fp", ""), "Reverted offer leaves nothing to prove")
     }
 
-    private fun qrDevice() = DiscoveredDevice(
+    private fun qrTarget() = PairingTarget(
         ip = "192.168.1.100",
-        info = RegisterDto(
-            alias = "Pixel",
-            version = "2.0",
-            deviceModel = "Pixel 9",
-            deviceType = "phone",
-            fingerprint = "qr-fp",
-            port = 48424,
-            protocol = "https",
-            download = true,
-        ),
-        viaWan = false,
-        viaRoster = false,
+        fingerprint = "qr-fp",
+        alias = "Pixel",
     )
 
     @Test
@@ -291,23 +256,14 @@ class PairingEngineTest {
     fun `unscanned QR phase offer also expires to Error after the TTL`() = runTest {
         var now = 2_000_000L
         val engine = PairingEngine(scope = backgroundScope, nowMillis = { now })
-        val device = DiscoveredDevice(
-            ip = "192.168.1.100",
-            info = RegisterDto(
-                alias = "TestPhone",
-                version = "2.0",
-                deviceModel = "Pixel",
-                deviceType = "phone",
-                fingerprint = "qr-fp",
-                port = 48424,
-                protocol = "https",
-                download = true,
-            ),
-            viaWan = false,
-            viaRoster = false,
-        )
 
-        engine.initiatePairing(device)
+        engine.initiatePairing(
+            PairingTarget(
+                ip = "192.168.1.100",
+                fingerprint = "qr-fp",
+                alias = "TestPhone",
+            ),
+        )
         assertIs<PairingState.QrPhase>(engine.state.value)
 
         advanceTimeBy(59_000L)

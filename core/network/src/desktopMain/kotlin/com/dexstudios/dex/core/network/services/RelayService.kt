@@ -4,6 +4,8 @@ import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.RegisterDto
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -278,8 +280,8 @@ object RelayService {
         )
 
         val jsonStr = buildJsonObject {
-            put("type", "prepare-upload")
-            put("data", Json.encodeToJsonElement(PrepareUploadRequestDto.serializer(), prepareReq))
+            put(FieldNames.TYPE, MessageTypes.PREPARE_UPLOAD)
+            put(FieldNames.DATA, Json.encodeToJsonElement(PrepareUploadRequestDto.serializer(), prepareReq))
         }.toString()
 
         val delivered = WebSocketConnectionManager.sendToTrusted(targetFingerprint, jsonStr)

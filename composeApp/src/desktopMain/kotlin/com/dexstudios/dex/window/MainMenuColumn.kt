@@ -58,9 +58,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.koin.compose.koinInject
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
@@ -414,17 +411,10 @@ fun MainMenuColumn(
                     // Real revocation: drop the persisted pairing (fingerprint AND token),
                     // downgrade any live session, and tell the peer so it downgrades too.
                     coroutineScope.launch(Dispatchers.IO) {
-                        runCatching {
-                            com.dexstudios.dex.core.network.server.WebSocketConnectionManager.sendRequest(
-                                item.fingerprint,
-                                buildJsonObject {
-                                    put("type", "unpair")
-                                    putJsonObject("data") { put("fingerprint", deviceConfig.fingerprint) }
-                                }.toString(),
-                            )
-                        }
-                        com.dexstudios.dex.core.network.DeviceManager.removePairedFingerprint(item.fingerprint)
-                        com.dexstudios.dex.core.network.server.WebSocketConnectionManager.markUntrusted(item.fingerprint)
+                        com.dexstudios.dex.core.network.services.TrustRevocationService.revokeDevice(
+                            fingerprint = item.fingerprint,
+                            deviceConfig = deviceConfig,
+                        )
                         Logger.i("Forgot device ${item.fingerprint}; trust revoked")
                     }
                 },

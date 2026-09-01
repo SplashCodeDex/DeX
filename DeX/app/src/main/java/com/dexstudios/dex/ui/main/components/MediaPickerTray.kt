@@ -1,6 +1,9 @@
 package com.dexstudios.dex.ui.main.components
 import timber.log.Timber
 
+import com.dexstudios.dex.network.checkHasMediaPermission
+import com.dexstudios.dex.network.getMediaPermissions
+
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
@@ -70,6 +73,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMillis
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.dexstudios.dex.ui.components.LiquidGlassButton
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.dexstudios.dex.ui.icons.MaterialSymbols
@@ -115,13 +119,13 @@ enum class MediaTrayTab {
 @Composable
 fun MediaPickerTray(
     backdrop: Backdrop?,
+    currentTab: MediaTrayTab = MediaTrayTab.PhotosAndVideos,
     onSend: (List<Uri>) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val selectedUris = remember { mutableStateListOf<Uri>() }
-    var currentTab by remember { mutableStateOf(MediaTrayTab.PhotosAndVideos) }
 
     // Media, Audio & Files state
     var mediaItems by remember { mutableStateOf<List<RecentMediaItem>>(emptyList()) }
@@ -241,47 +245,7 @@ fun MediaPickerTray(
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        // --- 1. Top Category Action Bar: Photos, Audio, Files, and Camera ---
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            CategoryTabButton(
-                label = "Photos",
-                icon = MaterialSymbols.Photo,
-                isActive = (currentTab == MediaTrayTab.PhotosAndVideos),
-                modifier = Modifier.weight(1f),
-                onClick = { currentTab = MediaTrayTab.PhotosAndVideos }
-            )
 
-            CategoryTabButton(
-                label = "Audio",
-                icon = MaterialSymbols.MusicNote,
-                isActive = (currentTab == MediaTrayTab.Audio),
-                modifier = Modifier.weight(1f),
-                onClick = { currentTab = MediaTrayTab.Audio }
-            )
-
-            CategoryTabButton(
-                label = "Files",
-                icon = MaterialSymbols.Folder,
-                isActive = (currentTab == MediaTrayTab.Files),
-                modifier = Modifier.weight(1f),
-                onClick = { currentTab = MediaTrayTab.Files }
-            )
-
-            CategoryTabButton(
-                label = "Camera",
-                icon = MaterialSymbols.VideoCamera,
-                isActive = false,
-                modifier = Modifier.weight(1f),
-                onClick = { cameraCapture.launch(null) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
 
         // --- 2. Main Tray Body (Photos/Videos Grid vs. Audio List vs. Files List) ---
         Box(
@@ -350,37 +314,32 @@ fun MediaPickerTray(
             } else when (currentTab) {
                 // --- Tab 1: Photos & Videos ---
                 MediaTrayTab.PhotosAndVideos -> {
-                    if (mediaItems.isEmpty()) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = "No recent photos or videos found",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 100.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                    ) {
+                        // 1. Clever First Tile: Camera Capture Tile
+                        item(key = "camera_capture_card") {
+                            CameraCaptureCard(
+                                onClick = { cameraCapture.launch(null) },
                             )
                         }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 100.dp),
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp)
-                        ) {
-                            items(mediaItems, key = { it.uri.toString() }) { item ->
-                                val isItemSelected = selectedUris.contains(item.uri)
 
-                                MediaThumbnailCard(
-                                    item = item,
-                                    isSelected = isItemSelected,
-                                    onToggle = {
-                                        if (isItemSelected) selectedUris.remove(item.uri)
-                                        else selectedUris.add(item.uri)
-                                    }
-                                )
-                            }
+                        // 2. Storage Media Items
+                        items(mediaItems, key = { it.uri.toString() }) { item ->
+                            val isItemSelected = selectedUris.contains(item.uri)
+
+                            MediaThumbnailCard(
+                                item = item,
+                                isSelected = isItemSelected,
+                                onToggle = {
+                                    if (isItemSelected) selectedUris.remove(item.uri)
+                                    else selectedUris.add(item.uri)
+                                },
+                            )
                         }
                     }
                 }
@@ -521,49 +480,64 @@ fun MediaPickerTray(
 }
 
 /**
- * Clean quick category tab button (Photos, Audio, Files, Camera).
+ * Modern Camera Capture Tile placed as the first box in the Photos grid.
  */
 @Composable
-private fun CategoryTabButton(
-    label: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    isActive: Boolean = false,
+private fun CameraCaptureCard(
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val buttonShape = RoundedCornerShape(14.dp)
-    val bgColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    val contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val itemShape = RoundedCornerShape(14.dp)
+    val isDark = isSystemInDarkTheme()
 
     Box(
-        modifier = modifier
-            .height(42.dp)
-            .bubbleFluidity(targetScale = 1.04f, pullFactor = 0.05f)
-            .clip(buttonShape)
-            .background(bgColor)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .aspectRatio(1f)
+                .bubbleFluidity(targetScale = 1.04f, pullFactor = 0.05f)
+                .clip(itemShape)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                    shape = itemShape,
+                )
+                .background(
+                    if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                )
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 6.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(8.dp),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            Box(
+                modifier =
+                    Modifier.size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = MaterialSymbols.PhotoCamera,
+                    contentDescription = "Camera",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = label,
+                text = "Camera",
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isActive) FontWeight.Bold else FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                color = contentColor,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -982,42 +956,6 @@ private fun MediaThumbnailCard(
                 )
             }
         }
-    }
-}
-
-// Media & Storage Permissions Checker
-private fun checkHasMediaPermission(context: Context): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-    } else {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-    }
-}
-
-// Permissions array based on Android API level
-private fun getMediaPermissions(): Array<String> {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        arrayOf(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VIDEO,
-            Manifest.permission.READ_MEDIA_AUDIO,
-            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
-        )
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VIDEO,
-            Manifest.permission.READ_MEDIA_AUDIO
-        )
-    } else {
-        arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        )
     }
 }
 

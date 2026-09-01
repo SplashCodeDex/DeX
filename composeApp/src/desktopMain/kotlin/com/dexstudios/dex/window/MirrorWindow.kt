@@ -26,6 +26,8 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_rotate
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -76,14 +78,14 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
     }
 
     LaunchedEffect(Unit) {
-        com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-start","data":{}}""")
+        com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(ProtocolEnvelope.envelopeOf(MessageTypes.MIRROR_START))
     }
 
     DisposableEffect(Unit) {
         onDispose {
             mirrorEngine.stop()
             mirrorScope.launch {
-                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired("""{"type":"mirror-stop","data":{}}""")
+                com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(ProtocolEnvelope.envelopeOf(MessageTypes.MIRROR_STOP))
             }
         }
     }

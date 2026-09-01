@@ -392,7 +392,7 @@ fun FloatingTopAppBar(
                                 )
                             }
                             IslandContentState.IDLE -> {
-                                CollapsedProfileContent(profile = profile)
+                                CollapsedProfileContent(profile = profile, modifier = Modifier.size(40.dp))
                             }
                         }
                     }
@@ -659,42 +659,6 @@ private fun formatSpeed(bps: Long): String = when {
     bps >= 1024L * 1024 -> java.util.Locale.ROOT.let { String.format(it, "%.1f MB/s", bps / (1024f * 1024)) }
     bps >= 1024L -> java.util.Locale.ROOT.let { String.format(it, "%.0f KB/s", bps / 1024f) }
     else -> "$bps B/s"
-}
-
-@Composable
-private fun CollapsedProfileContent(profile: GoogleProfile) {
-    if (profile.picture.isNotBlank()) {
-        AsyncImage(
-            model = profile.picture,
-            contentDescription = "Profile",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-        )
-    } else if (profile.email.isNotBlank()) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = (profile.name.ifBlank { profile.email }).first().uppercase(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-    } else {
-        Icon(
-            imageVector = MaterialSymbols.AccountCircle,
-            contentDescription = "Profile",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(32.dp)
-        )
-    }
 }
 
 @Composable

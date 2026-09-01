@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -15,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -45,9 +47,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
@@ -65,8 +70,10 @@ import com.dexstudios.dex.network.TransferWorkKeys
 import com.dexstudios.dex.ui.components.ConnectionOptionsDialog
 import com.dexstudios.dex.ui.components.FloatingTopAppBar
 import com.dexstudios.dex.ui.components.LiquidGlassButton
+import com.dexstudios.dex.ui.components.LiquidGlassSegmentedControl
 import com.dexstudios.dex.ui.components.NavBottomSheet
 import com.dexstudios.dex.ui.components.PairingRequestDialog
+import com.dexstudios.dex.ui.components.SegmentedControlItem
 import com.dexstudios.dex.ui.components.SheetExpandedMode
 import com.dexstudios.dex.ui.components.SheetTier
 import com.dexstudios.dex.ui.history.HistoryScreen
@@ -75,14 +82,29 @@ import com.dexstudios.dex.ui.main.MainScreenUiState
 import com.dexstudios.dex.ui.main.MainScreenViewModel
 import com.dexstudios.dex.ui.main.components.DeviceCarousel
 import com.dexstudios.dex.ui.main.components.MediaPickerTray
+import com.dexstudios.dex.ui.main.components.MediaTrayTab
 import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.dexstudios.dex.network.DeviceConfig
+import com.dexstudios.dex.ui.components.CollapsedProfileContent
+import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+
+enum class BottomRightButtonMode {
+    Devices,
+    Profile
+}
 
 @Composable
 fun MainNavigation(
@@ -91,16 +113,20 @@ fun MainNavigation(
 ) {
     val messageHandler: MessageHandler = koinInject()
     val viewModel: MainScreenViewModel = koinViewModel()
+    val deviceConfig: DeviceConfig = koinInject()
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val discoveredDevices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
     val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
     val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
+    val googleProfile by deviceConfig.googleProfileFlow.collectAsStateWithLifecycle()
 
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var showPairingModal by remember { mutableStateOf(false) }
-    var activeExpandedMode by remember { mutableStateOf(SheetExpandedMode.Media) }
+    var activeExpandedMode by remember { mutableStateOf(SheetExpandedMode.Photos) }
+    var bottomRightMode by remember { mutableStateOf(BottomRightButtonMode.Devices) }
 
+    val haptic = LocalHapticFeedback.current
     val mainListState = rememberLazyListState()
     val historyListState = rememberLazyListState()
 
@@ -276,31 +302,35 @@ fun MainNavigation(
             initialTier = SheetTier.Half,
             onDismiss = onDismiss,
             sheetContent = { expansionFraction, currentTier, halfHeightDp, expandTo, collapseToHalf ->
-                // Automatically reset mode to Media when collapsed to 50%
+                // Automatically reset mode to Photos when collapsed to 50%
                 LaunchedEffect(expansionFraction) {
                     if (expansionFraction <= 0.05f) {
-                        activeExpandedMode = SheetExpandedMode.Media
+                        activeExpandedMode = SheetExpandedMode.Photos
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // --- Resting 50% Content: Constrained to halfHeightDp so bottom button is pinned at bottom of 50% sheet ---
-                    if (expansionFraction < 0.35f) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(halfHeightDp)
-                                .graphicsLayer {
-                                    alpha = (1f - (expansionFraction / 0.25f)).coerceIn(0f, 1f)
-                                },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // 1. Centered Device Carousel / Morph Empty State
+                val density = LocalDensity.current
+                val sheetContentBackdrop = rememberLayerBackdrop()
+
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val availableWidth = maxWidth
+
+                    // 1. CAPTURED SHEET LAYER: Contains the entire scrolling sheet content (flows under the navbar)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .layerBackdrop(sheetContentBackdrop)
+                    ) {
+                        // 50% Resting Carousel
+                        if (expansionFraction < 0.35f) {
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    .height((halfHeightDp - 88.dp).coerceAtLeast(0.dp))
+                                    .graphicsLayer {
+                                        alpha = (1f - (expansionFraction / 0.22f)).coerceIn(0f, 1f)
+                                        translationY = -(36.dp * expansionFraction).toPx()
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 DeviceCarousel(
@@ -314,78 +344,35 @@ fun MainNavigation(
                                     downloadState = downloadState
                                 )
                             }
-
-                            // 2. Pinned Bottom Action Button & Preview Devices Toggle (Deposit Style)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                SheetActionButton(
-                                    text = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
-                                    onClick = {
-                                        if (effectiveDevices.isNotEmpty()) {
-                                            activeExpandedMode = SheetExpandedMode.Media
-                                            expandTo(SheetTier.High)
-                                        } else {
-                                            showPairingModal = true
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                val isDark = isSystemInDarkTheme()
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (showPreviewDevices) MaterialTheme.colorScheme.primary
-                                            else if (isDark) Color.White.copy(alpha = 0.12f)
-                                            else Color.Black.copy(alpha = 0.08f)
-                                        )
-                                        .clickable {
-                                            showPreviewDevices = !showPreviewDevices
-                                            if (showPreviewDevices && selectedDevice == null) {
-                                                selectedDevice = previewMockDevices.first()
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Devices,
-                                        contentDescription = "Toggle Preview Connected Devices",
-                                        tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary else if (isDark) Color.White else Color.Black,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
                         }
-                    }
 
-                    // --- Expanded Content: 80% Media Hub & 100% Immersion with [Media | History] Segmented Control ---
-                    if (expansionFraction >= 0.15f) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    alpha = ((expansionFraction - 0.15f) / 0.35f).coerceIn(0f, 1f)
-                                }
-                        ) {
-                            // 2-Option Segmented Pill Control [ Media | History ] right under drag handle
-                            SheetSegmentedControl(
-                                selectedMode = activeExpandedMode,
-                                onSelectMode = { activeExpandedMode = it },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            // Active Body View (Media Hub vs Transfer History)
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                if (activeExpandedMode == SheetExpandedMode.Media) {
+                        // Expanded Media Picker Tray / History View
+                        // Full size so items flow and scroll UNDER the floating bottom navbar!
+                        if (expansionFraction >= 0.15f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        val contentProgress = ((expansionFraction - 0.18f) / 0.35f).coerceIn(0f, 1f)
+                                        alpha = contentProgress
+                                        translationY = (20.dp * (1f - contentProgress)).toPx()
+                                    }
+                            ) {
+                                if (activeExpandedMode == SheetExpandedMode.History) {
+                                    HistoryScreen(
+                                        modifier = Modifier.fillMaxSize(),
+                                        listState = historyListState,
+                                    )
+                                } else {
                                     MediaPickerTray(
                                         backdrop = contentBackdrop,
+                                        currentTab =
+                                            when (activeExpandedMode) {
+                                                SheetExpandedMode.Photos -> MediaTrayTab.PhotosAndVideos
+                                                SheetExpandedMode.Audio -> MediaTrayTab.Audio
+                                                SheetExpandedMode.Files -> MediaTrayTab.Files
+                                                else -> MediaTrayTab.PhotosAndVideos
+                                            },
                                         onSend = { uris ->
                                             val target = selectedDevice ?: discoveredDevices.firstOrNull()
                                             if (target != null) {
@@ -393,16 +380,104 @@ fun MainNavigation(
                                             }
                                             collapseToHalf()
                                         },
-                                        onClose = { collapseToHalf() }
-                                    )
-                                } else {
-                                    HistoryScreen(
-                                        modifier = Modifier.fillMaxSize(),
-                                        listState = historyListState
+                                        onClose = { collapseToHalf() },
                                     )
                                 }
                             }
                         }
+                    }
+
+                    // 2. FLOATING BOTTOM BAR LAYER (Draws on top, samples sheetContentBackdrop!)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(bottom = 14.dp)
+                            .zIndex(10f)
+                    ) {
+                        // Cycling Bottom Right Button (Devices <-> Profile)
+                        if (expansionFraction < 0.25f) {
+                            val circleStartX = availableWidth - 20.dp - 56.dp
+                            val circleAlpha = (1f - (expansionFraction / 0.18f)).coerceIn(0f, 1f)
+                            val circleScale = (1f - (expansionFraction * 1.5f)).coerceIn(0f, 1f)
+
+                            val profileConfig = LiquidGlassPresets.ProfileIconButton
+                            val devicesConfig = LiquidGlassPresets.IconButton
+                            val activeDevicesConfig = devicesConfig.copy(
+                                surfaceTint = MaterialTheme.colorScheme.primary,
+                                surfaceTintAlpha = 0.8f
+                            )
+
+                            LiquidGlassIconButton(
+                                onClick = {
+                                    if (bottomRightMode == BottomRightButtonMode.Devices) {
+                                        showPreviewDevices = !showPreviewDevices
+                                        if (showPreviewDevices && selectedDevice == null) {
+                                            selectedDevice = previewMockDevices.first()
+                                        }
+                                    } else {
+                                        TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded
+                                    }
+                                },
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        translationX = with(density) { circleStartX.toPx() }
+                                        alpha = circleAlpha
+                                        scaleX = circleScale
+                                        scaleY = circleScale
+                                    }
+                                    .pointerInput(Unit) {
+                                        detectVerticalDragGestures { _, dragAmount ->
+                                            if (Math.abs(dragAmount) > 25f) {
+                                                val newMode = if (bottomRightMode == BottomRightButtonMode.Devices) BottomRightButtonMode.Profile else BottomRightButtonMode.Devices
+                                                if (newMode != bottomRightMode) {
+                                                    bottomRightMode = newMode
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                }
+                                            }
+                                        }
+                                    },
+                                backdrop = contentBackdrop,
+                                config = if (bottomRightMode == BottomRightButtonMode.Profile) profileConfig
+                                         else if (showPreviewDevices) activeDevicesConfig
+                                         else devicesConfig
+                            ) {
+                                Crossfade(targetState = bottomRightMode, label = "bottomRightCycle") { mode ->
+                                    if (mode == BottomRightButtonMode.Devices) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.Devices,
+                                            contentDescription = "Toggle Preview Connected Devices",
+                                            tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary
+                                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    } else {
+                                        CollapsedProfileContent(
+                                            profile = googleProfile,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Morphing Nav Pill (matches exact "Pair Device" button size: height = 56.dp, width = navWidth)
+                        MorphingSheetNavPill(
+                            expansionFraction = expansionFraction,
+                            totalAvailableWidthDp = availableWidth,
+                            actionText = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
+                            onActionClick = {
+                                if (effectiveDevices.isNotEmpty()) {
+                                    activeExpandedMode = SheetExpandedMode.Photos
+                                    expandTo(SheetTier.High)
+                                } else {
+                                    showPairingModal = true
+                                }
+                            },
+                            selectedMode = activeExpandedMode,
+                            onSelectMode = { activeExpandedMode = it },
+                            backdrop = sheetContentBackdrop,
+                        )
                     }
                 }
             },
@@ -533,101 +608,132 @@ fun MainNavigation(
 }
 
 /**
- * 2-Option Segmented Pill Control (Media | History) at 100% Full Tier.
+ * Bouncy Mechanical Morphing Pill (Bottom Navbar):
+ * Size is 1:1 with the 'Pair Device' button (height = 56.dp, width = totalAvailableWidthDp - 40.dp).
+ * Smoothly transforms in place from 'Send File' / 'Pair Device' into the 4-tab
+ * [Photos | Audio | Files | History] Liquid Glass Segmented Control pinned at the bottom
+ * of the bottom sheet as it expands.
  */
 @Composable
-private fun SheetSegmentedControl(
+private fun MorphingSheetNavPill(
+    expansionFraction: Float,
+    totalAvailableWidthDp: Dp,
+    actionText: String,
+    onActionClick: () -> Unit,
     selectedMode: SheetExpandedMode,
     onSelectMode: (SheetExpandedMode) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val pillShape = RoundedCornerShape(20.dp)
-
-    Box(
-        modifier = modifier
-            .padding(horizontal = 32.dp, vertical = 6.dp)
-            .height(38.dp)
-            .clip(pillShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Media Tab
-            val isMedia = selectedMode == SheetExpandedMode.Media
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(pillShape)
-                    .clickable { onSelectMode(SheetExpandedMode.Media) }
-                    .background(if (isMedia) MaterialTheme.colorScheme.primary else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Media",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (isMedia) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = if (isMedia) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // History Tab
-            val isHistory = selectedMode == SheetExpandedMode.History
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(pillShape)
-                    .clickable { onSelectMode(SheetExpandedMode.History) }
-                    .background(if (isHistory) MaterialTheme.colorScheme.primary else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "History",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (isHistory) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = if (isHistory) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-/**
- * Modern High-Contrast Pill Action Button (Deposit-style CTA at the bottom of the sheet).
- */
-@Composable
-private fun SheetActionButton(
-    text: String,
-    onClick: () -> Unit,
+    backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
     val buttonBgColor = if (isDark) Color.White else Color.Black
     val buttonTextColor = if (isDark) Color.Black else Color.White
+
+    // Morph progress mapped across sheet expansion with smooth bouncy mechanical easing
+    val morphProgress = (expansionFraction / 0.45f).coerceIn(0f, 1f)
+    val easeProgress = FastOutSlowInEasing.transform(morphProgress)
+
+    // Sizing: 1:1 with bottom action button dimensions (height = 56.dp, full width = totalAvailableWidthDp - 40.dp)
+    val fullWidth = (totalAvailableWidthDp - 40.dp).coerceAtLeast(200.dp)
+    val startWidth = (totalAvailableWidthDp - 40.dp - 66.dp).coerceAtLeast(160.dp)
+    val currentWidth = lerp(startWidth, fullWidth, easeProgress)
+    val currentHeight = 56.dp // Exact same height as "Pair Device" button!
+
+    val startX = 20.dp
+    val endX = 20.dp
+    val currentX = lerp(startX, endX, easeProgress)
+
     val pillShape = RoundedCornerShape(28.dp)
+
+    val items = remember(selectedMode, onSelectMode) {
+        listOf(
+            SegmentedControlItem(
+                title = "Photos",
+                icon = MaterialSymbols.Photo,
+                isSelected = selectedMode == SheetExpandedMode.Photos,
+                onClick = { onSelectMode(SheetExpandedMode.Photos) },
+            ),
+            SegmentedControlItem(
+                title = "Audio",
+                icon = MaterialSymbols.MusicNote,
+                isSelected = selectedMode == SheetExpandedMode.Audio,
+                onClick = { onSelectMode(SheetExpandedMode.Audio) },
+            ),
+            SegmentedControlItem(
+                title = "Files",
+                icon = MaterialSymbols.Folder,
+                isSelected = selectedMode == SheetExpandedMode.Files,
+                onClick = { onSelectMode(SheetExpandedMode.Files) },
+            ),
+            SegmentedControlItem(
+                title = "History",
+                icon = MaterialSymbols.History,
+                isSelected = selectedMode == SheetExpandedMode.History,
+                onClick = { onSelectMode(SheetExpandedMode.History) },
+            ),
+        )
+    }
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clip(pillShape)
-            .background(buttonBgColor)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+            .graphicsLayer {
+                translationX = currentX.toPx()
+            }
+            .size(currentWidth, currentHeight),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            color = buttonTextColor,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp
-        )
+        // 1. Resting Action Button Layer ("Send File" / "Pair Device")
+        if (morphProgress < 0.60f) {
+            val actionAlpha = (1f - (morphProgress / 0.32f)).coerceIn(0f, 1f)
+            val actionScale = 1f - (morphProgress * 0.12f)
+            val isButtonEnabled = expansionFraction <= 0.05f
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = actionAlpha
+                        scaleX = actionScale
+                        scaleY = actionScale
+                    }
+                    .clip(pillShape)
+                    .background(buttonBgColor)
+                    .clickable(enabled = isButtonEnabled, onClick = onActionClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = actionText,
+                    color = buttonTextColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                )
+            }
+        }
+
+        // 2. Expanded 4-Tab Liquid Glass Segmented Control
+        if (morphProgress > 0.20f) {
+            val tabsAlpha = ((morphProgress - 0.28f) / 0.45f).coerceIn(0f, 1f)
+            val tabsScale = 0.90f + (0.10f * ((morphProgress - 0.28f) / 0.72f).coerceIn(0f, 1f))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = tabsAlpha
+                        scaleX = tabsScale
+                        scaleY = tabsScale
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                LiquidGlassSegmentedControl(
+                    items = items,
+                    backdrop = backdrop,
+                    totalWidth = currentWidth,
+                    visibleHeight = currentHeight,
+                )
+            }
+        }
     }
 }
 

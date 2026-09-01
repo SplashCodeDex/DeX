@@ -58,8 +58,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dexstudios.dex.auth.PairingEngine
-import com.dexstudios.dex.auth.PairingState
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
@@ -67,6 +65,8 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingState
 import com.dexstudios.dex.ui.modifiers.shake
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import io.github.g0dkar.qrcode.QRCode

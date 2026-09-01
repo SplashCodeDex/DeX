@@ -1,4 +1,46 @@
 # Changelog
+## [10.1.30.2] - 2026-09-01
+### Added
+- **[major] core/domain Layer — Transfer Use-Case Extraction (plan 027)**:
+  - **`TransferUseCase` & `TransferModels`**: Platform-neutral transfer orchestration domain logic defining `TransferIntent`, `TransferProgress`, `TransferResult`, `TransferDirection`, and `TransferStatus`.
+  - **Transfer validation & state transitions**: Strict verification of target endpoints, file count bounds, and byte length constraints before initiating transfers, with deterministic progress and error emission.
+  - **Comprehensive Domain Test Suite (`TransferUseCaseTest`)**: Unit test suite covering transfer lifecycle, cancel/pause semantics, and adversarial boundary conditions.
+- **[major] core/sync Layer — Offline-First Metadata Sync Engine (plan 031)**:
+  - **New module `core/sync`**: Platform-neutral CRDT/HLC synchronization module for offline-first metadata sync across paired DeX peers.
+  - **`HybridLogicalClock` (HLC)**: Lamport causality timestamp generator with physical drift bounds (`MAX_PHYSICAL_DRIFT_MS`), logical counter rollover handling, and deterministic string serialization/deserialization.
+  - **`SyncEngine` & `SyncRecord`**: Last-Write-Wins (LWW) convergence engine with queued offline delta batching, automatic delta draining, remote stamp absorption, and tombstone lifecycle management (compaction after window, own-record scoping).
+  - **Strict Privacy Law Enforcement**: Enforces zero content syncing — strictly disallows file content, clipboard content, and token values at any nesting depth.
+  - **`SyncPorts`**: Clean ports (`SyncStorage`, `SyncTransport`) decoupling the sync engine from platform-specific DataStore and Ktor implementations.
+  - **Contract Test Suite (`HybridLogicalClockTest`, `SyncEngineTest`)**: 23 tests verifying causality ordering, tiebreaking, tombstone resurrection immunity, offline re-queuing, and payload validation.
+- **[minor] DeX Ecosystem Roadmap Plans (025–039)**:
+  - Added comprehensive ecosystem architecture plans (`advisor-plans/025` through `039`) with strict phase gates, stop conditions, and dependency order.
+- **[minor] Android DeX UI Polish & Liquid Glass Refinements**:
+  - `LiquidGlassSegmentedControl`: Apple-grade liquid glass backdrop shader integration for tabbed and segmented controls.
+  - `MediaPermissions` & `ProfileComponents`: Clean modularization of Android 13+ media permission requests and profile UI surfaces.
+
+## [10.1.30.1] - 2026-09-01
+### Added
+- **[minor] core/domain Layer — Pairing Use-Case Extraction (plan 026)**:
+  - **New module `core/domain`** — platform-neutral domain layer for the DeX ecosystem (first slice: pairing). Depends ONLY on `core/protocol`, `core/data` primitives, and coroutines — no Ktor, DataStore, Koin, or Compose. Every future peer (Android, Wear, iOS, watchOS) consumes this layer verbatim; adapters stay platform-side.
+  - **`PairingEngine` + `PairingState` relocated verbatim** from `core/network/.../auth/` to `core/domain/.../pairing/`. State machine semantics byte-identical: 60s TTLs, 5-digit PIN range, fingerprint-bound proof, deliver-first-then-transition, one-offer last-wins. The full 21-test contract suite moved with it and passes unmodified (one test-data inconsistency fixed: the relocated `qrTarget()` fixture vs a stale `test-fingerprint` assertion).
+  - **`PairingGrantStore` port** — the engine's persistence default (previously inline `DeviceManager` + `HashUtils` calls) is now a domain interface; `DeviceManagerPairingGrantStore` (core/network) implements it with the exact previous behavior and is Koin-wired in `NetworkModule`. Covered by a new persistence adapter test (token minting + both-sides persistence + per-device independence).
+  - **`initiatePairing(DiscoveredDevice)` → `initiatePairing(PairingTarget)`** — the domain engine no longer accepts transport DTOs; `DockCardContent` maps discovery output into the 3-field target.
+  - **`TrustRevocationService`** (core/network) — the forget-device flow previously duplicated between `MainMenuColumn` ("Forget device") and `SettingsPanel` ("Reset Identity & Trust") is now one implementation: send `unpair` (peer self-revocation contract), downgrade the live session, drop persisted trust; reset-all additionally rotates the identity hash and returns the pairing state machine to Idle.
+
+### Changed
+- **[minor] Koin wiring**: `NetworkModule` now provides `PairingGrantStore` (adapter) and injects it into `PairingEngine`; all consumers (`DeXServer`, `WebSocketRoutes`, composeApp UI: `DockCardContent`, `FloatingDockCard`, `PinPairingPanel`, `InboundPairingDialog`) re-pointed to the `core.domain.pairing` package. `AuthState` deliberately stays in `core/network` (DeviceManager-coupled mirror; later slice). Verified: `:core:domain:desktopTest` (21), `:core:network:desktopTest` (129), `:composeApp:desktopTest`, `spotlessCheck` all green.
+
+## [10.1.30.0] - 2026-09-01
+### Added
+- **[major] DeX Ecosystem Foundation — Shared Wire Contract (`core/protocol`, plan 025)**:
+  - **New leaf module `core/protocol`**: single source of truth for the `{type, data}` envelope (`ProtocolEnvelope` builder + tolerant decode), every WebSocket message-type constant (`MessageTypes`), and every payload field name (`FieldNames`). Zero dependencies beyond kotlinx.serialization — transport engines, DataStore, Koin, and platform APIs stay in the layers above. Future peers (Wear, iOS, watchOS, the `server/` relay) consume this exact module so the protocol can never drift per-platform.
+  - **Golden-fixture conformance suite (`ProtocolGoldenFixtureTest`)**: canonical JSON frames (pair-prompt, pair-response, pin-digit-entered's `digitCount`, identity-proof, device-roster, relay acks, pull-progress field set) plus frozen constant assertions — accidental wire-value edits fail CI before reaching any peer.
+  - **Gradle wiring**: module registered in `settings.gradle.kts`; `core:network` and `core:data` expose it via `api()` so every consumer sees the contract.
+
+### Changed
+- **[major] Desktop Protocol-Literal Migration (all values moved verbatim, zero wire-format change)**: Eliminated the ~100 scattered message-type/field-name string literals across the desktop build — `MessageHandler`, `WebSocketEngine`, `PairingEngine` (commonMain); `WebSocketRoutes`, `FileExplorerRoutes`, `FileExplorerService`, `RelayService`, `DesktopWallpaperWatcherService` (desktopMain); `ClipboardSyncService`, `MirrorWindow`, `MainMenuColumn`, `SettingsPanel` (composeApp). Restored the previously-unhandled `grant-shared-folder-reply` dispatch constant in the WS reply router (was silently falling to the unknown-type branch). Verified with `:core:protocol:desktopTest`, `:core:network:desktopTest`, `:composeApp:desktopTest` all green.
+- **[major] Governance — AGENTS.md Scope Amendment (user-approved)**: scope changed from "desktop-only" to the DeX ecosystem (desktop flagship + phone + tablet + watch + server on ONE shared headless Kotlin core). `core/protocol` declared wire-contract law; `composeApp` remains desktop-only; the Android app stays independent (lockstep `ProtocolKeys`) until plan 025's integration phase. Plan filed at `advisor-plans/025-ecosystem-foundation.md` with STOP conditions and next phases (core/domain, self-hosted sync, streaming E2EE relay).
+
 ## [10.1.29.91] - 2026-08-30
 ### Changed
 - **[minor] Android DeX: Protocol Constants Centralization & Dead Code Removal (Refactor Phase 1/4)**:

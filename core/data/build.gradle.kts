@@ -16,6 +16,7 @@ kotlin {
             implementation(libs.coroutines)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
+            api(project(":core:protocol"))
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

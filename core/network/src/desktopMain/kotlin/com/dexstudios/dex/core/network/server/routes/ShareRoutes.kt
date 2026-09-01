@@ -382,10 +382,10 @@ fun Route.shareRoutes() {
                     relativePath = fileMeta.relativePath,
                 )
                 ReceivedFileIndex.record(destFile, fileMeta.size, fileMeta.partialHash)
-                TransferHistory.log(
+                com.dexstudios.dex.core.network.TransferHistoryRecorder.recordCompleted(
                     name = destFile.name,
                     size = destFile.length(),
-                    direction = "received",
+                    direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
                     uri = destFile.absolutePath,
                     peerDevice = senderAlias,
                 )
@@ -409,13 +409,11 @@ fun Route.shareRoutes() {
                 // A failed upload must not leave a phantom transfer on the dashboard forever
                 failIncomingSession(sessionId)
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
-                TransferHistory.log(
+                com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
                     name = safeFileName,
                     size = fileMeta.size,
-                    direction = "received",
-                    uri = null,
+                    direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
                     peerDevice = senderAlias,
-                    status = "failed",
                 )
                 call.respond(HttpStatusCode.InternalServerError)
             }

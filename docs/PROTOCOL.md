@@ -3,6 +3,12 @@
 > Exact wire contract for the control channel. Field names here are canonical; the `count`
 > vs `digitCount` mismatch bug happened because this file did not exist. Do not invent
 > message types or rename fields without updating both peers and this document.
+>
+> **Single source of truth (plan 025):** the constants live in `core/protocol`
+> (`MessageTypes`, `FieldNames`, `ProtocolEnvelope`) with golden-fixture tests. Desktop
+> call sites reference the constants; the Android app keeps a lockstep `ProtocolKeys`
+> registry (`DeX/app`) until the shared-core integration phase. A wire-value change must
+> land in `core/protocol`, this document, and every peer in the same release.
 
 ## Transport
 

@@ -42,3 +42,9 @@ include(":core:network", ":core:data")
 
 
 include(":core:designsystem")
+
+include(":core:protocol")
+
+include(":core:domain")
+
+include(":core:sync")

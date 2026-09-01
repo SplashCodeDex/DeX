@@ -27,6 +27,8 @@ DeX/DeX/build/
 DeX/DeX/app/build/
 DeX/DeX/local.properties
 DeX/DeX/.artifacts/
+/local.properties
+/config/local.properties
 *.apk
 *.aab
 /.idea/planningMode.xml

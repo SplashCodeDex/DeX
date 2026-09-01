@@ -20,7 +20,9 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.coroutines)
+            api(project(":core:protocol"))
             implementation(project(":core:data"))
+            implementation(project(":core:domain"))
         }
 
         getByName("desktopMain").dependencies {

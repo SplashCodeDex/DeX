@@ -1,7 +1,7 @@
 package com.dexstudios.dex.core.network.server
 
 import co.touchlab.kermit.Logger
-import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
 import com.dexstudios.dex.core.network.DeXPorts
 import com.dexstudios.dex.core.network.DiscoveryEngine
 import com.dexstudios.dex.core.network.security.CertificateGenerator

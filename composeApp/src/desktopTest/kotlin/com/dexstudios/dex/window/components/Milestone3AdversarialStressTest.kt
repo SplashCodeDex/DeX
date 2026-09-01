@@ -2,8 +2,8 @@ package com.dexstudios.dex.window.components
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.auth.PairingEngine
-import com.dexstudios.dex.auth.PairingState
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingState
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

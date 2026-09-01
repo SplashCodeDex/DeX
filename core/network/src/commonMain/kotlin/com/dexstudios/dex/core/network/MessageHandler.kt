@@ -3,27 +3,42 @@ package com.dexstudios.dex.core.network
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.engine.IPlatformEngine
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import io.ktor.util.date.getTimeMillis
 import io.ktor.util.generateNonceBlocking
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import kotlin.time.Duration.Companion.milliseconds
 
-class MessageHandler(private val deviceConfig: DeviceConfig, private val engine: IPlatformEngine) {
+class MessageHandler(
+    private val deviceConfig: DeviceConfig,
+    private val engine: IPlatformEngine,
+    // Handler-owned supervised scope: fire-and-forget work launched here is cancellable
+    // as a unit (tests supervise/await it instead of leaking untracked IO coroutines that
+    // outlive teardown and crash the NEXT test with exceptions from deleted temp dirs).
+    private val handlerScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+) {
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** Cancels in-flight handler work (test teardown / session shutdown). */
+    fun shutdown() {
+        handlerScope.coroutineContext.cancelChildren()
+    }
 
     var onSendMessage: ((String) -> Unit)? = null
 
@@ -42,41 +57,41 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             val dataElement = jsonObject["data"] ?: return
 
             when (type) {
-                "pair-prompt" -> handlePairPrompt(dataElement)
+                MessageTypes.PAIR_PROMPT -> handlePairPrompt(dataElement)
 
-                "pair-cancelled" -> handlePairCancelled()
+                MessageTypes.PAIR_CANCELLED -> handlePairCancelled()
 
-                "pair-accepted" -> handlePairAccepted(dataElement)
+                MessageTypes.PAIR_ACCEPTED -> handlePairAccepted(dataElement)
 
-                "identity-challenge" -> handleIdentityChallenge(dataElement)
+                MessageTypes.IDENTITY_CHALLENGE -> handleIdentityChallenge(dataElement)
 
-                "prepare-upload" -> handlePrepareUpload(dataElement, senderIp)
+                MessageTypes.PREPARE_UPLOAD -> handlePrepareUpload(dataElement, senderIp)
 
-                "public-address" -> handlePublicAddress(dataElement)
+                MessageTypes.PUBLIC_ADDRESS -> handlePublicAddress(dataElement)
 
-                "endpoint-info" -> handleEndpointInfo(dataElement)
+                MessageTypes.ENDPOINT_INFO -> handleEndpointInfo(dataElement)
 
-                "peer-endpoint" -> handlePeerEndpoint(dataElement)
+                MessageTypes.PEER_ENDPOINT -> handlePeerEndpoint(dataElement)
 
-                "device-roster" -> handleDeviceRoster(dataElement)
+                MessageTypes.DEVICE_ROSTER -> handleDeviceRoster(dataElement)
 
-                "trust-check" -> handleTrustCheck(dataElement)
+                MessageTypes.TRUST_CHECK -> handleTrustCheck(dataElement)
 
-                "unpair" -> handleUnpair(dataElement)
+                MessageTypes.UNPAIR -> handleUnpair(dataElement)
 
-                "relay-started" -> handleRelayReply(true)
+                MessageTypes.RELAY_STARTED -> handleRelayReply(true)
 
-                "relay-error" -> handleRelayReply(false)
+                MessageTypes.RELAY_ERROR -> handleRelayReply(false)
 
-                "set-clipboard" -> handleSetClipboard(dataElement)
+                MessageTypes.SET_CLIPBOARD -> handleSetClipboard(dataElement)
 
-                "wallpaper-updated" -> WallpaperState.notifyUpdated()
+                MessageTypes.WALLPAPER_UPDATED -> WallpaperState.notifyUpdated()
 
-                "mirror-start" -> engine.handleMirrorStart()
+                MessageTypes.MIRROR_START -> engine.handleMirrorStart()
 
-                "mirror-stop" -> engine.handleMirrorStop()
+                MessageTypes.MIRROR_STOP -> engine.handleMirrorStop()
 
-                "list-shared-folders", "browse-folder", "pull-files", "grant-shared-folder" ->
+                MessageTypes.LIST_SHARED_FOLDERS, MessageTypes.BROWSE_FOLDER, MessageTypes.PULL_FILES, MessageTypes.GRANT_SHARED_FOLDER ->
                     engine.handleFileExplorerRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
 
                 else -> {
@@ -94,12 +109,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         // Task 5: Re-Pairing After Partial Forget (Auto-Accept)
         if (AuthState.pairedFingerprints.value.contains(pairReq.fingerprint)) {
             Logger.i("Device ${pairReq.fingerprint} is already paired locally. Auto-accepting pair prompt.")
-            val responseMsg = buildJsonObject {
-                put("type", "pair-response")
-                putJsonObject("data") {
-                    put("accepted", true)
-                }
-            }.toString()
+            val responseMsg = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_RESPONSE) {
+                put(FieldNames.ACCEPTED, true)
+            }
             onSendMessage?.invoke(responseMsg)
             return
         }
@@ -172,7 +184,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
             ?: obj["fingerprint"]?.jsonPrimitive?.contentOrNull
         if (pcFingerprint.isNullOrBlank()) return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        handlerScope.launch {
             DeviceManager.savePairedFingerprint(pcFingerprint)
             DeviceManager.savePairedToken(pcFingerprint, token)
             Logger.i("Pairing token stored for PC $pcFingerprint")
@@ -192,10 +204,9 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         runCatching {
             val mac = HashUtils.hmacSha256Base64(sub, java.util.Base64.getDecoder().decode(nonce))
             onSendMessage?.invoke(
-                buildJsonObject {
-                    put("type", "identity-proof")
-                    putJsonObject("data") { put("mac", mac) }
-                }.toString(),
+                ProtocolEnvelope.envelopeOf(MessageTypes.IDENTITY_PROOF) {
+                    put(FieldNames.MAC, mac)
+                },
             )
         }.onFailure { Logger.i("Failed to answer identity challenge: ${it.message}") }
     }
@@ -271,7 +282,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
     private fun handleUnpair(dataElement: JsonElement) {
         val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
         if (!fingerprint.isNullOrBlank()) {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { DeviceManager.removePairedFingerprint(fingerprint) }
+            handlerScope.launch { DeviceManager.removePairedFingerprint(fingerprint) }
             Logger.i("PC $fingerprint requested unpair; removed from local trusted list")
         }
     }
@@ -282,7 +293,7 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
         if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
             if (AuthState.pairedFingerprints.value.contains(fingerprint)) {
                 Logger.i("PC $fingerprint reported we are not trusted. Downgrading local trust.")
-                CoroutineScope(Dispatchers.IO).launch {
+                handlerScope.launch {
                     DeviceManager.removePairedFingerprint(fingerprint)
                 }
             }
@@ -313,27 +324,21 @@ class MessageHandler(private val deviceConfig: DeviceConfig, private val engine:
      * the already-paired auto-accept path) means the peer will require explicit user consent.
      */
     private fun sendPairResponse(accepted: Boolean, enteredPin: String? = null) {
-        val payload = buildJsonObject {
-            put("type", "pair-response")
-            putJsonObject("data") {
-                put("accepted", accepted)
-                if (!enteredPin.isNullOrEmpty()) {
-                    put("pin", enteredPin)
-                }
+        val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_RESPONSE) {
+            put(FieldNames.ACCEPTED, accepted)
+            if (!enteredPin.isNullOrEmpty()) {
+                put(FieldNames.PIN, enteredPin)
             }
         }
-        onSendMessage?.invoke(payload.toString())
+        onSendMessage?.invoke(payload)
     }
 
     /** Emits live keystroke telemetry so the desktop pairing UI can highlight matching digits in real time. */
     fun sendPinDigitEntered(digitCount: Int) {
-        val payload = buildJsonObject {
-            put("type", "pin-digit-entered")
-            putJsonObject("data") {
-                put("digitCount", digitCount)
-            }
+        val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PIN_DIGIT_ENTERED) {
+            put(FieldNames.DIGIT_COUNT, digitCount)
         }
-        onSendMessage?.invoke(payload.toString())
+        onSendMessage?.invoke(payload)
     }
 
     private companion object {

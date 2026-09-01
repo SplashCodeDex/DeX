@@ -1,6 +1,7 @@
 package com.dexstudios.dex.core.network
 
 import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.domain.transfer.TransferUseCase
 import com.dexstudios.dex.core.network.server.ReceiveStorage
 import io.ktor.client.*
 import io.ktor.client.plugins.timeout
@@ -70,22 +71,20 @@ class DesktopPullService(private val httpClient: HttpClient) {
                             val dest = uniqueDest(downloadsFolder, file.fileName, file.relativePath)
                             val ok = pullOne(senderIp, httpsPort, tcpFallbackPort, file, dest)
                             if (ok) {
-                                TransferHistory.log(
+                                TransferHistoryRecorder.recordCompleted(
                                     name = dest.name,
                                     size = dest.length(),
-                                    direction = "received",
+                                    direction = TransferUseCase.DIRECTION_RECEIVED,
                                     uri = dest.absolutePath,
                                     peerDevice = alias,
                                 )
                             } else {
                                 runCatching { dest.delete() }
-                                TransferHistory.log(
+                                TransferHistoryRecorder.recordFailed(
                                     name = file.fileName,
                                     size = file.size,
-                                    direction = "received",
-                                    uri = null,
+                                    direction = TransferUseCase.DIRECTION_RECEIVED,
                                     peerDevice = alias,
-                                    status = "failed",
                                 )
                             }
                             val count = doneCount.incrementAndGet()

@@ -67,6 +67,7 @@ fun OnboardingSheet(
 
             val nearbyPermanentlyDenied by PermissionManager.nearbyPermanentlyDenied.collectAsStateWithLifecycle()
             val notificationsPermanentlyDenied by PermissionManager.notificationsPermanentlyDenied.collectAsStateWithLifecycle()
+            val mediaPermanentlyDenied by PermissionManager.mediaPermanentlyDenied.collectAsStateWithLifecycle()
 
             DisposableEffect(lifecycleOwner) {
                 val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -101,12 +102,20 @@ fun OnboardingSheet(
                 if (notificationsGranted) PermissionManager.setNotificationsPermanentlyDenied(false)
             }
 
+            val mediaGranted = remember(refreshTrigger) {
+                com.dexstudios.dex.network.checkHasMediaPermission(context)
+            }
+
+            LaunchedEffect(mediaGranted) {
+                if (mediaGranted) PermissionManager.setMediaPermanentlyDenied(false)
+            }
+
             // Determine the steps sequence
-            val steps = remember(nearbyGranted, notificationsGranted, googleProfile.email) {
+            val steps = remember(nearbyGranted, notificationsGranted, mediaGranted, googleProfile.email) {
                 mutableListOf<Int>().apply {
                     add(0) // Welcome
-                    if (!nearbyGranted) add(1) // Connectivity
-                    if (!notificationsGranted) add(2) // Notifications
+                    if (!nearbyGranted || !notificationsGranted) add(1) // Essentials
+                    if (!mediaGranted) add(2) // Media
                     if (googleProfile.email.isBlank()) add(3) // Identity
                     add(4) // Completion
                 }.toList()
@@ -146,19 +155,21 @@ fun OnboardingSheet(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             when (step) {
                                 0 -> OnboardingWelcome { currentStepIdx++ }
-                                1 -> OnboardingConnectivity(
-                                    isGranted = nearbyGranted,
-                                    isPermanentlyDenied = nearbyPermanentlyDenied
+                                1 -> OnboardingEssentials(
+                                    nearbyGranted = nearbyGranted,
+                                    notificationsGranted = notificationsGranted,
+                                    nearbyPermanentlyDenied = nearbyPermanentlyDenied,
+                                    notificationsPermanentlyDenied = notificationsPermanentlyDenied
                                 ) {
-                                    if (nearbyGranted) currentStepIdx++
-                                    else PermissionManager.triggerNearby()
+                                    if (nearbyGranted && notificationsGranted) currentStepIdx++
+                                    else PermissionManager.triggerEssentials()
                                 }
-                                2 -> OnboardingNotifications(
-                                    isGranted = notificationsGranted,
-                                    isPermanentlyDenied = notificationsPermanentlyDenied
+                                2 -> OnboardingMedia(
+                                    isGranted = mediaGranted,
+                                    isPermanentlyDenied = mediaPermanentlyDenied
                                 ) {
-                                    if (notificationsGranted) currentStepIdx++
-                                    else PermissionManager.triggerNotifications()
+                                    if (mediaGranted) currentStepIdx++
+                                    else PermissionManager.triggerMedia()
                                 }
                                 3 -> OnboardingIdentity(googleProfile.email) { currentStepIdx++ }
                                 4 -> OnboardingCompletion {
@@ -283,11 +294,17 @@ internal fun OnboardingWelcome(onNext: () -> Unit) {
 }
 
 @Composable
-internal fun OnboardingConnectivity(
-    isGranted: Boolean,
-    isPermanentlyDenied: Boolean,
+internal fun OnboardingEssentials(
+    nearbyGranted: Boolean,
+    notificationsGranted: Boolean,
+    nearbyPermanentlyDenied: Boolean,
+    notificationsPermanentlyDenied: Boolean,
     onAction: () -> Unit
 ) {
+    val isGranted = nearbyGranted && notificationsGranted
+    val isPermanentlyDenied = (nearbyPermanentlyDenied && !nearbyGranted) ||
+        (notificationsPermanentlyDenied && !notificationsGranted)
+
     LaunchedEffect(isGranted) {
         if (isGranted) {
             delay(600.milliseconds)
@@ -303,7 +320,7 @@ internal fun OnboardingConnectivity(
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            stringResource(R.string.onboarding_step_connectivity_title),
+            stringResource(R.string.onboarding_step_essentials_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -311,8 +328,8 @@ internal fun OnboardingConnectivity(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_connectivity_rationale)
-            else stringResource(R.string.onboarding_step_connectivity_desc),
+            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_essentials_rationale)
+            else stringResource(R.string.onboarding_step_essentials_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -344,7 +361,7 @@ internal fun OnboardingConnectivity(
 }
 
 @Composable
-internal fun OnboardingNotifications(
+internal fun OnboardingMedia(
     isGranted: Boolean,
     isPermanentlyDenied: Boolean,
     onAction: () -> Unit
@@ -359,12 +376,12 @@ internal fun OnboardingNotifications(
     val context = androidx.compose.ui.platform.LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
-            icon = DeXIcons.Notifications,
+            icon = DeXIcons.Photo,
             isGranted = isGranted
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            stringResource(R.string.onboarding_step_notifications_title),
+            stringResource(R.string.onboarding_step_media_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -372,8 +389,8 @@ internal fun OnboardingNotifications(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_notifications_rationale)
-            else stringResource(R.string.onboarding_step_notifications_desc),
+            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_media_rationale)
+            else stringResource(R.string.onboarding_step_media_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center

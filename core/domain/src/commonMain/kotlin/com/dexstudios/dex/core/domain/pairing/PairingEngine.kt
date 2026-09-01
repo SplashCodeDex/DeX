@@ -1,9 +1,9 @@
-package com.dexstudios.dex.auth
+package com.dexstudios.dex.core.domain.pairing
 
-import com.dexstudios.dex.core.network.DeviceManager
-import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.core.network.HashUtils
-import io.ktor.util.date.getTimeMillis
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -12,9 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 
 sealed interface PairingState {
     data object Idle : PairingState
@@ -36,11 +34,16 @@ sealed interface PairingState {
     data class Error(val message: String) : PairingState
 }
 
+/** Everything the domain engine needs to know about the device being paired. */
+data class PairingTarget(val ip: String, val fingerprint: String, val alias: String)
+
 class PairingEngine(
     // Injectable so tests can drive the accept/reject paths under virtual time.
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     // Injectable clock so PIN expiry logic is deterministically testable.
-    private val nowMillis: () -> Long = ::getTimeMillis,
+    private val nowMillis: () -> Long = HashUtils::currentTimeMillis,
+    // Infrastructure port: mints + persists the per-device credential on a proven grant.
+    private val grantStore: PairingGrantStore? = null,
 ) {
     private val _state = MutableStateFlow<PairingState>(PairingState.Idle)
     val state: StateFlow<PairingState> = _state.asStateFlow()
@@ -67,26 +70,23 @@ class PairingEngine(
     var pinOfferNotifier: suspend (pin: String, alias: String) -> Unit = { _, _ -> }
 
     /**
-     * Persists a pairing and returns the credential stored for it. Default mints a fresh
-     * UUID token through [DeviceManager]; tests override to stay off real storage.
+     * Persists a pairing and returns the credential stored for it. Defaults to the
+     * [PairingGrantStore] port; tests override to stay off real storage.
      */
     internal var persistentGrant: suspend (fingerprint: String) -> String = { fingerprint ->
-        val pairToken = HashUtils.generateUUID()
-        DeviceManager.savePairedFingerprint(fingerprint)
-        DeviceManager.savePairedToken(fingerprint, pairToken)
-        pairToken
+        requireNotNull(grantStore) { "grantStore must be wired for persistent grants" }.grant(fingerprint)
     }
 
     private var expiryJob: Job? = null
 
-    fun initiatePairing(device: DiscoveredDevice) {
+    fun initiatePairing(target: PairingTarget) {
         _state.value = PairingState.QrPhase(
-            ip = device.ip,
-            fingerprint = device.info.fingerprint,
+            ip = target.ip,
+            fingerprint = target.fingerprint,
             expiresAtMillis = nowMillis() + PIN_TTL_MS,
-            alias = device.info.alias,
+            alias = target.alias,
         )
-        armExpiry(device.info.fingerprint)
+        armExpiry(target.fingerprint)
         // If the Android phone is already connected and discovering the PC, it will send pair-request
         // when the user scans the QR code or clicks Connect.
     }
@@ -104,14 +104,11 @@ class PairingEngine(
         if (current !is PairingState.QrPhase) return false
 
         val pinCode = mintPin()
-        val payload = buildJsonObject {
-            put("type", "pair-prompt")
-            putJsonObject("data") {
-                put("pin", pinCode)
-                put("alias", deviceAliasProvider?.invoke().orEmpty().ifBlank { "DeX Desktop" })
-                put("fingerprint", deviceFingerprintProvider?.invoke().orEmpty())
-            }
-        }.toString()
+        val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_PROMPT) {
+            put(FieldNames.PIN, pinCode)
+            put(FieldNames.ALIAS, deviceAliasProvider?.invoke().orEmpty().ifBlank { "DeX Desktop" })
+            put(FieldNames.FINGERPRINT, deviceFingerprintProvider?.invoke().orEmpty())
+        }
         // Deliver FIRST, transition SECOND: a failed push leaves the panel in the reachable
         // QR view instead of advertising a PIN the phone can never type.
         if (!outboundSender(current.fingerprint, payload)) return false
@@ -138,11 +135,8 @@ class PairingEngine(
         val current = _state.value
         if (current is PairingState.PinPhase) {
             scope.launch {
-                val payload = buildJsonObject {
-                    put("type", "pair-cancelled")
-                    putJsonObject("data") {}
-                }
-                outboundSender(current.fingerprint, payload.toString())
+                val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_CANCELLED)
+                outboundSender(current.fingerprint, payload)
             }
             _state.value = PairingState.QrPhase(
                 ip = current.ip,
@@ -189,22 +183,16 @@ class PairingEngine(
                     // store it here, and hand it back in the reply so the peer can persist
                     // its side. Without this, PIN-paired devices could never re-authenticate.
                     val pairToken = persistentGrant(current.fingerprint)
-                    val payload = buildJsonObject {
-                        put("type", "pair-accepted")
-                        putJsonObject("data") {
-                            put("token", pairToken)
-                            put("fingerprint", deviceFingerprintProvider?.invoke().orEmpty())
-                        }
+                    val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_ACCEPTED) {
+                        put(FieldNames.TOKEN, pairToken)
+                        put(FieldNames.FINGERPRINT, deviceFingerprintProvider?.invoke().orEmpty())
                     }
-                    outboundSender(current.fingerprint, payload.toString())
+                    outboundSender(current.fingerprint, payload)
                 } else {
-                    val payload = buildJsonObject {
-                        put("type", "pair-response")
-                        putJsonObject("data") {
-                            put("accepted", true)
-                        }
+                    val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_RESPONSE) {
+                        put(FieldNames.ACCEPTED, true)
                     }
-                    outboundSender(current.fingerprint, payload.toString())
+                    outboundSender(current.fingerprint, payload)
                 }
                 _state.value = PairingState.Success
             }
@@ -216,11 +204,8 @@ class PairingEngine(
         val current = _state.value
         if (current is PairingState.PinPhase) {
             scope.launch {
-                val payload = buildJsonObject {
-                    put("type", "pair-cancelled")
-                    putJsonObject("data") {}
-                }
-                outboundSender(current.fingerprint, payload.toString())
+                val payload = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_CANCELLED)
+                outboundSender(current.fingerprint, payload)
                 reset()
             }
         } else {

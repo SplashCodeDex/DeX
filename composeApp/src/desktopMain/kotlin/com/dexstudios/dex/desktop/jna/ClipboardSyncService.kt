@@ -2,10 +2,11 @@ package com.dexstudios.dex.desktop.jna
 
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DiscoveryEngine
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.koin.core.context.GlobalContext
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
@@ -89,14 +90,11 @@ object ClipboardSyncService {
                 if (hash != lastHash) {
                     lastHash = hash
                     // Send image base64 in canonical set-clipboard envelope
-                    val jsonPayload = buildJsonObject {
-                        put("type", "set-clipboard")
-                        putJsonObject("data") {
-                            put("text", "")
-                            put("imageMime", "image/png")
-                            put("imageBase64", b64Image)
-                        }
-                    }.toString()
+                    val jsonPayload = ProtocolEnvelope.envelopeOf(MessageTypes.SET_CLIPBOARD) {
+                        put(FieldNames.TEXT, "")
+                        put("imageMime", "image/png")
+                        put(FieldNames.IMAGE_BASE64, b64Image)
+                    }
                     sendToPhone(jsonPayload)
                 }
             }
@@ -119,12 +117,9 @@ object ClipboardSyncService {
                 val payload = if (data.startsWith("{") && data.endsWith("}")) {
                     data
                 } else {
-                    buildJsonObject {
-                        put("type", "set-clipboard")
-                        putJsonObject("data") {
-                            put("text", data)
-                        }
-                    }.toString()
+                    ProtocolEnvelope.envelopeOf(MessageTypes.SET_CLIPBOARD) {
+                        put(FieldNames.TEXT, data)
+                    }
                 }
 
                 val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)

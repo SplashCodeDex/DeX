@@ -32,7 +32,30 @@ honor its STOP conditions, and update your row when done.
 | 022  | settings-audit-followups | P2 | S-M | 021 | DONE |
 | 023  | dnd-mute-semantics-and-surface-pruning | P1 | M | 022 | DONE |
 | 024  | android-refactor-centralization | P1 | L | — | IN PROGRESS (Phase 1 DONE) |
+| 025  | ecosystem-foundation (wire contract) | P1 | L | — | IN PROGRESS (wire contract DONE) |
+| 026  | domain-extraction-pairing | P1 | M | 025 | DONE |
+| 027  | domain-extraction-transfer | P1 | M | 025, 026 | DONE |
+| 028  | domain-extraction-discovery | P1 | M | 026 | TODO |
+| 029  | clipboard-sync-authstate | P1 | S | 026 | TODO |
+| 030  | android-shared-core | P1 | L | 024, 027–029 | TODO (GATED on 024) |
+| 031  | sync-backend (self-hosted) | P1 | L | 025 | IN PROGRESS (decision settled: self-hosted on Hetzner VPS) |
+| 032  | server-relay (streaming E2EE) | P1 | L | 025, 031 | TODO |
+| 033  | ios-foundation (KMP framework) | P1 | M | 027–029 | TODO (GATED: Mac purchase) |
+| 034  | ios-swiftui-app | P1 | XL | 033 | TODO |
+| 035  | app-store-submission | P1 | S-M | 034 | TODO |
+| 036  | ipados-layout | P2 | S-M | 034 | TODO |
+| 037  | android-tablet | P2 | M | 030 | TODO |
+| 038  | wear-os (staged 1-3) | P2 | M-L | 031, 032 | TODO |
+| 039  | watchos | P3 | L | 034 + user GO | DEFERRED (demand gate) |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
+
+## Ecosystem roadmap (plans 025–039)
+
+Full ecosystem completion = the chain 025→039. Foundation (025–029, 031, 032) is the
+critical path: once the shared core + server exist, the platform phases (033+) become
+independent and can execute in any order or stop at any point with a shippable product.
+Phase gates that require user decisions before work starts: 030 (after 024 DONE),
+031 (self-hosted vs Firebase), 033 (Mac purchase), 039 (demand GO).
 
 ## Dependency notes
 

@@ -11,6 +11,9 @@ import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import com.dexstudios.dex.core.network.services.PublicAddressService
 import com.dexstudios.dex.core.network.services.RelayService
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -69,7 +72,7 @@ private suspend fun grantPairing(fingerprint: String): String {
     return pairToken
 }
 
-fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, mirrorEngine: IMirrorEngine, publicAddressService: PublicAddressService? = null) {
+fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.PairingEngine, mirrorEngine: IMirrorEngine, publicAddressService: PublicAddressService? = null) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
         val token = call.request.queryParameters["token"]
@@ -125,10 +128,9 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                     if (!address.isNullOrBlank()) {
                         WebSocketConnectionManager.sendRequest(
                             fingerprint,
-                            buildJsonObject {
-                                put("type", "public-address")
-                                putJsonObject("data") { put("address", address) }
-                            }.toString(),
+                            ProtocolEnvelope.envelopeOf(MessageTypes.PUBLIC_ADDRESS) {
+                                put(FieldNames.ADDRESS, address)
+                            },
                         )
                     }
                 }
@@ -146,10 +148,9 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                     identityNonce = nonce
                     WebSocketConnectionManager.sendRequest(
                         fingerprint,
-                        buildJsonObject {
-                            put("type", "identity-challenge")
-                            putJsonObject("data") { put("nonce", java.util.Base64.getEncoder().encodeToString(nonce)) }
-                        }.toString(),
+                        ProtocolEnvelope.envelopeOf(MessageTypes.IDENTITY_CHALLENGE) {
+                            put(FieldNames.NONCE, java.util.Base64.getEncoder().encodeToString(nonce))
+                        },
                     )
                 }
             }
@@ -168,21 +169,21 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                         val dataObj = jsonObject["data"] as? JsonObject
 
                         when (type) {
-                            "list-shared-folders-reply",
-                            "browse-reply",
-                            "grant-shared-folder-reply",
-                            "grant-reply",
-                            "pull-reply",
-                            "reply",
+                            MessageTypes.LIST_SHARED_FOLDERS_REPLY,
+                            MessageTypes.BROWSE_REPLY,
+                            MessageTypes.GRANT_SHARED_FOLDER_REPLY,
+                            MessageTypes.GRANT_REPLY,
+                            MessageTypes.PULL_REPLY,
+                            MessageTypes.REPLY,
                             -> {
-                                val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
-                                    ?: jsonObject["requestId"]?.jsonPrimitive?.content
+                                val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
+                                    ?: jsonObject[FieldNames.REQUEST_ID]?.jsonPrimitive?.content
                                 if (reqId != null) {
                                     DexRequestStore.completeRequest(reqId, dataObj ?: jsonObject)
                                 }
                             }
 
-                            "pair-request" -> {
+                            MessageTypes.PAIR_REQUEST -> {
                                 if (fingerprint != null) {
                                     // Pairing is interactive consent, not a passive alert: it must
                                     // work regardless of Do Not Disturb. DND mutes the tray
@@ -195,21 +196,18 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                         .getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
                                         ?.devices?.value?.get(fingerprint)?.info?.alias.orEmpty()
                                     val pin = pairingEngine.handleInboundPairingRequest(ip, fingerprint, peerAlias)
-                                    val promptJson = buildJsonObject {
-                                        put("type", "pair-prompt")
-                                        putJsonObject("data") {
-                                            put("pin", pin)
-                                            put("alias", deviceConfig.alias.ifBlank { "DeX Desktop" })
-                                            put("fingerprint", deviceConfig.fingerprint)
-                                        }
-                                    }.toString()
+                                    val promptJson = ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_PROMPT) {
+                                        put(FieldNames.PIN, pin)
+                                        put(FieldNames.ALIAS, deviceConfig.alias.ifBlank { "DeX Desktop" })
+                                        put(FieldNames.FINGERPRINT, deviceConfig.fingerprint)
+                                    }
                                     WebSocketConnectionManager.sendRequest(fingerprint, promptJson)
                                 }
                             }
 
-                            "pair-response" -> {
-                                val accepted = dataObj?.get("accepted")?.jsonPrimitive?.content?.toBoolean() == true
-                                val claimedPin = dataObj?.get("pin")?.jsonPrimitive?.contentOrNull
+                            MessageTypes.PAIR_RESPONSE -> {
+                                val accepted = dataObj?.get(FieldNames.ACCEPTED)?.jsonPrimitive?.content?.toBoolean() == true
+                                val claimedPin = dataObj?.get(FieldNames.PIN)?.jsonPrimitive?.contentOrNull
                                 val verifiedByPin = accepted && fingerprint != null &&
                                     pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
                                 when {
@@ -221,17 +219,14 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                         val pairToken = grantPairing(fingerprint)
                                         WebSocketConnectionManager.sendRequest(
                                             fingerprint,
-                                            buildJsonObject {
-                                                put("type", "pair-accepted")
-                                                putJsonObject("data") {
-                                                    put("token", pairToken)
-                                                    put(
-                                                        "fingerprint",
-                                                        org.koin.core.context.GlobalContext.get()
-                                                            .get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint,
-                                                    )
-                                                }
-                                            }.toString(),
+                                            ProtocolEnvelope.envelopeOf(MessageTypes.PAIR_ACCEPTED) {
+                                                put(FieldNames.TOKEN, pairToken)
+                                                put(
+                                                    FieldNames.FINGERPRINT,
+                                                    org.koin.core.context.GlobalContext.get()
+                                                        .get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint,
+                                                )
+                                            },
                                         )
                                         pairingEngine.handlePairResponse(true)
                                     }
@@ -252,8 +247,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                              * peer holds our Google account ID without it ever crossing the wire.
                              * Session-scoped auto-trust; pairing persistence stays explicit.
                              */
-                            "identity-proof" -> {
-                                val mac = dataObj?.get("mac")?.jsonPrimitive?.contentOrNull
+                            MessageTypes.IDENTITY_PROOF -> {
+                                val mac = dataObj?.get(FieldNames.MAC)?.jsonPrimitive?.contentOrNull
                                 val nonce = identityNonce
                                 if (fingerprint != null && mac != null && nonce != null &&
                                     !WebSocketConnectionManager.isTrusted(fingerprint)
@@ -278,7 +273,7 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                              * ITSELF. Only the owner of the live session may revoke its own
                              * entry — never an arbitrary third fingerprint.
                              */
-                            "unpair" -> {
+                            MessageTypes.UNPAIR -> {
                                 if (fingerprint != null) {
                                     DeviceManager.removePairedFingerprint(fingerprint)
                                     WebSocketConnectionManager.markUntrusted(fingerprint)
@@ -287,20 +282,20 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                 }
                             }
 
-                            "pin-digit-entered" -> {
-                                val count = dataObj?.get("digitCount")?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                            MessageTypes.PIN_DIGIT_ENTERED -> {
+                                val count = dataObj?.get(FieldNames.DIGIT_COUNT)?.jsonPrimitive?.content?.toIntOrNull() ?: 0
                                 pairingEngine.handlePinDigitEntered(count)
                             }
 
-                            "pull-progress" -> {
-                                val reqId = dataObj?.get("requestId")?.jsonPrimitive?.content
+                            MessageTypes.PULL_PROGRESS -> {
+                                val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
                                 if (reqId != null) {
-                                    val state = dataObj["state"]?.jsonPrimitive?.contentOrNull ?: "running"
-                                    val doneFiles = dataObj["doneFiles"]?.jsonPrimitive?.intOrNull ?: 0
-                                    val totalFiles = dataObj["totalFiles"]?.jsonPrimitive?.intOrNull ?: 0
-                                    val sentBytes = dataObj["sentBytes"]?.jsonPrimitive?.longOrNull ?: 0L
-                                    val totalBytes = dataObj["totalBytes"]?.jsonPrimitive?.longOrNull ?: 0L
-                                    val currentFile = dataObj["currentFile"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                                    val state = dataObj[FieldNames.STATE]?.jsonPrimitive?.contentOrNull ?: FieldNames.STATE_RUNNING
+                                    val doneFiles = dataObj[FieldNames.DONE_FILES]?.jsonPrimitive?.intOrNull ?: 0
+                                    val totalFiles = dataObj[FieldNames.TOTAL_FILES]?.jsonPrimitive?.intOrNull ?: 0
+                                    val sentBytes = dataObj[FieldNames.SENT_BYTES]?.jsonPrimitive?.longOrNull ?: 0L
+                                    val totalBytes = dataObj[FieldNames.TOTAL_BYTES]?.jsonPrimitive?.longOrNull ?: 0L
+                                    val currentFile = dataObj[FieldNames.CURRENT_FILE]?.jsonPrimitive?.contentOrNull.orEmpty()
                                     val speedSample = pullSpeedCalc.sample(sentBytes, totalBytes)
                                     val explorer = org.koin.core.context.GlobalContext.get()
                                         .get<com.dexstudios.dex.core.network.services.FileExplorerService>()
@@ -316,8 +311,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                                             progress = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else current.progress,
                                             speedBps = speedSample.speedBps,
                                             etaSeconds = speedSample.etaSeconds,
-                                            isPulling = state == "running",
-                                            isDone = state == "done",
+                                            isPulling = state == FieldNames.STATE_RUNNING,
+                                            isDone = state == FieldNames.STATE_DONE,
                                         ),
                                     )
                                 }
@@ -330,51 +325,51 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.auth.PairingEngine, 
                              * direct NAT-punched transfers. Membership is derived from the identity
                              * each connected session PROVED at handshake — never from client claims.
                              */
-                            "device-roster" -> handleDeviceRosterRequest(fingerprint)
+                            MessageTypes.DEVICE_ROSTER -> handleDeviceRosterRequest(fingerprint)
 
                             /* Punch rendezvous: answer with the target's last registered endpoint. */
-                            "resolve-endpoint" -> handleResolveEndpoint(fingerprint, dataObj)
+                            MessageTypes.RESOLVE_ENDPOINT -> handleResolveEndpoint(fingerprint, dataObj)
 
                             /* Announce the sender's endpoint to the punch target. */
-                            "peer-endpoint" -> handlePeerEndpointAnnounce(fingerprint, dataObj)
+                            MessageTypes.PEER_ENDPOINT -> handlePeerEndpointAnnounce(fingerprint, dataObj)
 
                             /*
                              * Trust desync check: the phone asserts what it believes; we answer with
                              * the authoritative view so it can downgrade stale trust.
                              */
-                            "trust-check" -> handleTrustCheck(fingerprint, dataObj)
+                            MessageTypes.TRUST_CHECK -> handleTrustCheck(fingerprint, dataObj)
 
                             /*
                              * A->PC->B fallback: files already uploaded here under sessionId;
                              * verify arrival, host them, push a prompt to the target.
                              */
-                            "relay-transfer" -> handleRelayTransfer(fingerprint, dataObj)
+                            MessageTypes.RELAY_TRANSFER -> handleRelayTransfer(fingerprint, dataObj)
 
-                            "mirror-config" -> {
-                                val width = dataObj?.get("width")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 720
-                                val height = dataObj?.get("height")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1280
-                                val fps = dataObj?.get("fps")?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 15
+                            MessageTypes.MIRROR_CONFIG -> {
+                                val width = dataObj?.get(FieldNames.WIDTH)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 720
+                                val height = dataObj?.get(FieldNames.HEIGHT)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1280
+                                val fps = dataObj?.get(FieldNames.FPS)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 15
                                 mirrorEngine.updateConfig(width, height, fps)
                                 Logger.i("Mirror stream config updated: ${width}x$height @ ${fps}fps")
                             }
 
-                            "mirror-stop" -> {
+                            MessageTypes.MIRROR_STOP -> {
                                 mirrorEngine.stop()
                                 Logger.i("Mirror stream stopped by peer $fingerprint")
                             }
 
-                            "telemetry" -> {
-                                val battery = dataObj?.get("battery")?.jsonPrimitive?.contentOrNull?.toIntOrNull()
-                                val isCharging = dataObj?.get("isCharging")?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
-                                val wifiSsid = dataObj?.get("wifiSsid")?.jsonPrimitive?.contentOrNull
+                            MessageTypes.TELEMETRY -> {
+                                val battery = dataObj?.get(FieldNames.BATTERY)?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                                val isCharging = dataObj?.get(FieldNames.IS_CHARGING)?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                                val wifiSsid = dataObj?.get(FieldNames.WIFI_SSID)?.jsonPrimitive?.contentOrNull
                                 if (fingerprint != null) {
                                     val discovery = org.koin.core.context.GlobalContext.get().getOrNull<com.dexstudios.dex.core.network.DiscoveryEngine>()
                                     discovery?.updateTelemetry(fingerprint, battery, isCharging, wifiSsid)
                                 }
                             }
 
-                            "set-clipboard" -> {
-                                val text = dataObj?.get("text")?.jsonPrimitive?.contentOrNull
+                            MessageTypes.SET_CLIPBOARD -> {
+                                val text = dataObj?.get(FieldNames.TEXT)?.jsonPrimitive?.contentOrNull
                                 if (!text.isNullOrBlank()) {
                                     try {
                                         val selection = java.awt.datatransfer.StringSelection(text)
@@ -435,13 +430,11 @@ private suspend fun handleDeviceRosterRequest(requesterFingerprint: String?) {
             )
         }
 
-    WebSocketConnectionManager.sendRequest(
-        requesterFingerprint,
-        buildJsonObject {
-            put("type", "device-roster")
-            put("data", Json.encodeToJsonElement(RosterDto.serializer(), RosterDto(devices)))
-        }.toString(),
-    )
+    val rosterEnvelope = buildJsonObject {
+        put(FieldNames.TYPE, MessageTypes.DEVICE_ROSTER)
+        put(FieldNames.DATA, Json.encodeToJsonElement(RosterDto.serializer(), RosterDto(devices)))
+    }.toString()
+    WebSocketConnectionManager.sendRequest(requesterFingerprint, rosterEnvelope)
 }
 
 /** Answers `resolve-endpoint` with `endpoint-info` carrying the target's registered punch endpoint. */
@@ -452,23 +445,21 @@ private suspend fun handleResolveEndpoint(callerFingerprint: String?, dataObj: J
     val targetFingerprint = dataObj?.get("targetFingerprint")?.jsonPrimitive?.contentOrNull ?: return
 
     val entry = getPunchEndpoint(targetFingerprint)
-    WebSocketConnectionManager.sendRequest(
-        callerFingerprint,
-        buildJsonObject {
-            put("type", "endpoint-info")
-            put(
-                "data",
-                Json.encodeToJsonElement(
-                    EndpointInfoDto.serializer(),
-                    EndpointInfoDto(
-                        targetFingerprint = targetFingerprint,
-                        ip = entry?.ip.orEmpty(),
-                        port = entry?.port ?: 0,
-                    ),
+    val endpointEnvelope = buildJsonObject {
+        put(FieldNames.TYPE, MessageTypes.ENDPOINT_INFO)
+        put(
+            FieldNames.DATA,
+            Json.encodeToJsonElement(
+                EndpointInfoDto.serializer(),
+                EndpointInfoDto(
+                    targetFingerprint = targetFingerprint,
+                    ip = entry?.ip.orEmpty(),
+                    port = entry?.port ?: 0,
                 ),
-            )
-        }.toString(),
-    )
+            ),
+        )
+    }.toString()
+    WebSocketConnectionManager.sendRequest(callerFingerprint, endpointEnvelope)
 }
 
 /** Forwards a sender's punch endpoint to the intended target so both sides race simultaneously. */
@@ -476,13 +467,12 @@ private suspend fun handlePeerEndpointAnnounce(senderFingerprint: String?, dataO
     if (senderFingerprint == null || dataObj == null) return
     val peerFingerprint = dataObj["peerFingerprint"]?.jsonPrimitive?.contentOrNull ?: return
 
-    WebSocketConnectionManager.sendToTrusted(
-        peerFingerprint,
-        buildJsonObject {
-            put("type", "peer-endpoint")
-            put("data", dataObj)
-        }.toString(),
-    )
+    // The sender's original data object is forwarded verbatim inside a fresh envelope.
+    val forwardEnvelope = buildJsonObject {
+        put(FieldNames.TYPE, MessageTypes.PEER_ENDPOINT)
+        put(FieldNames.DATA, dataObj)
+    }.toString()
+    WebSocketConnectionManager.sendToTrusted(peerFingerprint, forwardEnvelope)
 }
 
 /**
@@ -501,13 +491,10 @@ private suspend fun handleTrustCheck(callerFingerprint: String?, dataObj: JsonOb
 
     WebSocketConnectionManager.sendRequest(
         callerFingerprint,
-        buildJsonObject {
-            put("type", "trust-check")
-            putJsonObject("data") {
-                put("isTrusted", actuallyTrusted)
-                put("fingerprint", deviceConfig.fingerprint)
-            }
-        }.toString(),
+        ProtocolEnvelope.envelopeOf(MessageTypes.TRUST_CHECK) {
+            put(FieldNames.IS_TRUSTED, actuallyTrusted)
+            put(FieldNames.FINGERPRINT, deviceConfig.fingerprint)
+        },
     )
 }
 
@@ -539,10 +526,8 @@ private suspend fun handleRelayTransfer(requesterFingerprint: String?, dataObj: 
     }
 }
 
-private fun relayReplyJson(success: Boolean, sessionId: String?, targetFingerprint: String?): String = buildJsonObject {
-    put("type", if (success) "relay-started" else "relay-error")
-    putJsonObject("data") {
-        put("sessionId", sessionId ?: "")
-        put("targetFingerprint", targetFingerprint ?: "")
+private fun relayReplyJson(success: Boolean, sessionId: String?, targetFingerprint: String?): String =
+    ProtocolEnvelope.envelopeOf(if (success) MessageTypes.RELAY_STARTED else MessageTypes.RELAY_ERROR) {
+        put(FieldNames.SESSION_ID, sessionId ?: "")
+        put(FieldNames.TARGET_FINGERPRINT, targetFingerprint ?: "")
     }
-}.toString()

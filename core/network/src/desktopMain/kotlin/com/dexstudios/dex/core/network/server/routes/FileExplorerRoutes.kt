@@ -3,6 +3,9 @@ package com.dexstudios.dex.core.network.server.routes
 import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import com.dexstudios.dex.core.network.server.guardLoopback
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -12,9 +15,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.util.UUID
 
 /**
@@ -36,12 +37,9 @@ fun Route.fileExplorerRoutes() {
             }
 
             val requestId = UUID.randomUUID().toString()
-            val requestJson = buildJsonObject {
-                put("type", "list-shared-folders")
-                putJsonObject("data") {
-                    put("requestId", requestId)
-                }
-            }.toString()
+            val requestJson = ProtocolEnvelope.envelopeOf(MessageTypes.LIST_SHARED_FOLDERS) {
+                put(FieldNames.REQUEST_ID, requestId)
+            }
 
             val deferred = DexRequestStore.createRequest(requestId)
             val sent = WebSocketConnectionManager.sendRequest(fp, requestJson)
@@ -70,13 +68,10 @@ fun Route.fileExplorerRoutes() {
             }
 
             val requestId = UUID.randomUUID().toString()
-            val requestJson = buildJsonObject {
-                put("type", "browse-folder")
-                putJsonObject("data") {
-                    put("requestId", requestId)
-                    put("folderUri", folderUri)
-                }
-            }.toString()
+            val requestJson = ProtocolEnvelope.envelopeOf(MessageTypes.BROWSE_FOLDER) {
+                put(FieldNames.REQUEST_ID, requestId)
+                put("folderUri", folderUri)
+            }
 
             val deferred = DexRequestStore.createRequest(requestId)
             val sent = WebSocketConnectionManager.sendRequest(fp, requestJson)
@@ -104,12 +99,9 @@ fun Route.fileExplorerRoutes() {
             }
 
             val requestId = UUID.randomUUID().toString()
-            val requestJson = buildJsonObject {
-                put("type", "grant-shared-folder")
-                putJsonObject("data") {
-                    put("requestId", requestId)
-                }
-            }.toString()
+            val requestJson = ProtocolEnvelope.envelopeOf(MessageTypes.GRANT_SHARED_FOLDER) {
+                put(FieldNames.REQUEST_ID, requestId)
+            }
 
             val deferred = DexRequestStore.createRequest(requestId)
             val sent = WebSocketConnectionManager.sendRequest(fp, requestJson)

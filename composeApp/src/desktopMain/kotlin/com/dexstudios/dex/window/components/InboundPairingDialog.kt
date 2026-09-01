@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
-import com.dexstudios.dex.auth.PairingEngine
+import com.dexstudios.dex.core.domain.pairing.PairingEngine
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
 

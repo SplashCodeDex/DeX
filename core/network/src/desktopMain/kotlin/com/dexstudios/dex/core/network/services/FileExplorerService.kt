@@ -2,6 +2,9 @@ package com.dexstudios.dex.core.network.services
 
 import com.dexstudios.dex.core.network.server.DexRequestStore
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,12 +50,9 @@ class FileExplorerService {
         if (fingerprint.isBlank()) return@withContext emptyList()
 
         val requestId = UUID.randomUUID().toString()
-        val requestPayload = buildJsonObject {
-            put("type", "list-shared-folders")
-            putJsonObject("data") {
-                put("requestId", requestId)
-            }
-        }.toString()
+        val requestPayload = ProtocolEnvelope.envelopeOf(MessageTypes.LIST_SHARED_FOLDERS) {
+            put(FieldNames.REQUEST_ID, requestId)
+        }
 
         val deferred = DexRequestStore.createRequest(requestId)
         val sent = WebSocketConnectionManager.sendRequest(fingerprint, requestPayload)
@@ -89,13 +89,10 @@ class FileExplorerService {
         if (fingerprint.isBlank() || folderUri.isBlank()) return@withContext emptyList()
 
         val requestId = UUID.randomUUID().toString()
-        val requestPayload = buildJsonObject {
-            put("type", "browse-folder")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                put("folderUri", folderUri)
-            }
-        }.toString()
+        val requestPayload = ProtocolEnvelope.envelopeOf(MessageTypes.BROWSE_FOLDER) {
+            put(FieldNames.REQUEST_ID, requestId)
+            put("folderUri", folderUri)
+        }
 
         val deferred = DexRequestStore.createRequest(requestId)
         val sent = WebSocketConnectionManager.sendRequest(fingerprint, requestPayload)
@@ -135,12 +132,9 @@ class FileExplorerService {
         if (fingerprint.isBlank()) return@withContext null
 
         val requestId = UUID.randomUUID().toString()
-        val requestPayload = buildJsonObject {
-            put("type", "grant-shared-folder")
-            putJsonObject("data") {
-                put("requestId", requestId)
-            }
-        }.toString()
+        val requestPayload = ProtocolEnvelope.envelopeOf(MessageTypes.GRANT_SHARED_FOLDER) {
+            put(FieldNames.REQUEST_ID, requestId)
+        }
 
         val deferred = DexRequestStore.createRequest(requestId)
         val sent = WebSocketConnectionManager.sendRequest(fingerprint, requestPayload)
@@ -172,21 +166,18 @@ class FileExplorerService {
         if (fingerprint.isBlank() || files.isEmpty()) return@withContext null
 
         val requestId = UUID.randomUUID().toString()
-        val requestPayload = buildJsonObject {
-            put("type", "pull-files")
-            putJsonObject("data") {
-                put("requestId", requestId)
-                putJsonArray("files") {
-                    files.forEach { f ->
-                        addJsonObject {
-                            put("uri", f.uri)
-                            put("name", f.name)
-                            put("size", f.size)
-                        }
+        val requestPayload = ProtocolEnvelope.envelopeOf(MessageTypes.PULL_FILES) {
+            put(FieldNames.REQUEST_ID, requestId)
+            putJsonArray("files") {
+                files.forEach { f ->
+                    addJsonObject {
+                        put("uri", f.uri)
+                        put("name", f.name)
+                        put("size", f.size)
                     }
                 }
             }
-        }.toString()
+        }
 
         val sent = WebSocketConnectionManager.sendRequest(fingerprint, requestPayload)
         if (!sent) return@withContext null
@@ -207,12 +198,9 @@ class FileExplorerService {
     suspend fun cancelPull(fingerprint: String, requestId: String) = withContext(Dispatchers.IO) {
         if (fingerprint.isBlank() || requestId.isBlank()) return@withContext
 
-        val cancelPayload = buildJsonObject {
-            put("type", "pull-cancel")
-            putJsonObject("data") {
-                put("requestId", requestId)
-            }
-        }.toString()
+        val cancelPayload = ProtocolEnvelope.envelopeOf(MessageTypes.PULL_CANCEL) {
+            put(FieldNames.REQUEST_ID, requestId)
+        }
 
         WebSocketConnectionManager.sendRequest(fingerprint, cancelPayload)
         DexRequestStore.cancelRequest(requestId)
