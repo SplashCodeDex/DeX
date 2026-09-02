@@ -1,4 +1,12 @@
 # Changelog
+## [10.1.41.0] - 2026-09-02
+### Added
+- **[major] Plan 030 Phase 2 — Cryptographic Engine Unification & Multiplatform Shared Data**:
+  - **KMP Android Targets for `:core:sync` and `:core:data`**: Enabled multiplatform Android compilation via AGP 9.3.1 with JVM 17 bytecode alignment and host unit tests across both modules.
+  - **Android Hardware-Accelerated Cryptographic Actuals**: Implemented `RelayCrypto.android.kt` and `HashUtils.android.kt` in `:core:data`, providing standard `javax.crypto` AES-256-GCM AEAD, RFC 5869 HKDF-SHA256 session key derivation, and HMAC-SHA256 identity proof primitives.
+  - **Android Dependency Resolution & Gradle Catalog Sync**: Linked `:core:sync` and `:core:data` into `DeX/settings.gradle.kts` and `DeX/app/build.gradle.kts`, adding missing catalog entries to ensure synchronized dependency resolution.
+  - **Compile-Time Cryptographic Forwarding Shim (`RelayCrypto.kt`)**: Replaced duplicate cryptographic implementation in `DeX/app` with a forwarding shim delegating directly to `com.dexstudios.dex.core.network.RelayCrypto`. Single shared cryptographic engine now drives Desktop, Android, and future mobile peers.
+
 ## [10.1.40.0] - 2026-09-02
 ### Added
 - **[major] Plan 030 Phase 1 — Android Shared Core Integration & Protocol Wire Parity**:

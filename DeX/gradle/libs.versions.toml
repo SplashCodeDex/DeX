@@ -42,8 +42,10 @@ coil = "3.5.0"
 playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
 lottie = "6.6.2"
+kermit = "2.1.0"
 
 [libraries]
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
 compose-native-tray = { module = "dev.nucleusframework:composenativetray", version.ref = "composeNativeTray" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version = "16.1.0" }

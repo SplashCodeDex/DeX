@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.android.multiplatform.library)
 }
 
 // SYNC LAYER (plan 031) — offline-first metadata sync between DeX peers via the
@@ -15,7 +15,21 @@ plugins {
 // platform layers; the server-side surface is plan 032.
 kotlin {
 
-    jvm("desktop")
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    android {
+        namespace = "com.dexstudios.dex.core.sync"
+        compileSdk = 36
+        minSdk = 26
+        withHostTest {}
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
