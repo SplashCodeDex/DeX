@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -116,7 +117,7 @@ fun NavBottomSheet(
         }
 
         // Active animated height of the anchored floating card
-        val animatableHeight = remember(totalHeightPx) {
+        val animatableHeight = remember {
             Animatable(0f)
         }
 
@@ -153,12 +154,19 @@ fun NavBottomSheet(
             }
         }
 
+        // Morph up to initial tier as soon as layout constraints are measured on launch
+        LaunchedEffect(totalHeightPx, initialTier) {
+            if (totalHeightPx > 0f && animatableHeight.value == 0f) {
+                animatableHeight.animateTo(tierHeight(initialTier), springSpec)
+            }
+        }
+
         // Morph up from 0 to initial tier height on entry or when app resumes
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner, totalHeightPx) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    if (totalHeightPx > 0f) {
+                    if (totalHeightPx > 0f && animatableHeight.value < halfHeightPx) {
                         scope.launch {
                             animatableHeight.animateTo(tierHeight(initialTier), springSpec)
                         }
@@ -268,13 +276,30 @@ fun NavBottomSheet(
             content(expansionFraction, PaddingValues(bottom = with(density) { (totalHeightPx * 0.5f).toDp() }))
 
             // Dimming scrim activates smoothly as sheet expands past 50%
-            val scrimAlpha = ((expansionFraction - 0.15f) / 0.85f).coerceIn(0f, 1f) * 0.6f
+            val isIslandExpanded = com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded || com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded
+            val baseScrimAlpha = ((expansionFraction - 0.15f) / 0.85f).coerceIn(0f, 1f) * 0.75f
+            val scrimAlpha = if (isIslandExpanded) 0.75f else baseScrimAlpha
+
             if (scrimAlpha > 0.01f) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer { alpha = scrimAlpha }
                         .background(Color.Black)
+                        .then(
+                            if (isIslandExpanded) {
+                                Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded = false
+                                        com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded = false
+                                    }
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
         }
@@ -316,6 +341,8 @@ fun NavBottomSheet(
                                         onDismiss()
                                     }
                                 }
+                                // Collapse profile island if it's expanded when tapping the top area
+                                com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded = false
                             }
                             // When drag is disabled the click is consumed (no-op): the sheet stays locked
                         }
@@ -469,7 +496,7 @@ fun NavBottomSheet(
         ) {
             val isDark = isSystemInDarkTheme()
             val sheetBgColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
-            val glassPreset = LiquidGlassPresets.ProfileIconButton
+            val glassPreset = LiquidGlassPresets.Sheet
 
             val sheetSurfaceModifier = if (backdrop != null) {
                 Modifier

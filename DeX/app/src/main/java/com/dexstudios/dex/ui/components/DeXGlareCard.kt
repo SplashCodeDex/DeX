@@ -11,7 +11,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.ui.components.glass.shinyGlare
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.components.glass.LocalBackdrop
+import com.kyant.backdrop.drawBackdrop
 
 /**
  * A standardized, reusable card component that replicates the "Scan" card style.
@@ -25,9 +27,20 @@ fun DeXGlareCard(
     backgroundColor: Color? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val backdrop = LocalBackdrop.current
+    val iconHighlight = LiquidGlassPresets.IconButton.highlight
     Box(
         modifier = modifier
-            .shinyGlare(shape = shape)
+            .then(
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {},
+                        highlight = { iconHighlight }
+                    )
+                } else Modifier
+            )
             .clip(shape)
     ) {
         // Background layer

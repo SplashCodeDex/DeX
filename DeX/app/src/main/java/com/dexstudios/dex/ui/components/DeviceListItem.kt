@@ -47,8 +47,9 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dexstudios.dex.network.WallpaperState
 import androidx.compose.ui.draw.shadow
-import com.dexstudios.dex.ui.components.glass.shinyGlare
-import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
+import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.components.glass.LocalBackdrop
+import com.kyant.backdrop.drawBackdrop
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
@@ -138,6 +139,9 @@ fun DeviceListItem(
     // Disable interactive fluidity during flight to keep geometry stable
     val shouldApplyFluidity = !isConnecting
 
+    val backdrop = LocalBackdrop.current
+    val iconHighlight = LiquidGlassPresets.IconButton.highlight
+
     Box(
         modifier = modifier
             .width(260.dp)
@@ -145,7 +149,16 @@ fun DeviceListItem(
             .then(sharedModifier)
             .graphicsLayer { alpha = contentAlpha }
             .then(if (shouldApplyFluidity) Modifier.bubbleFluidity(targetScale = 0.98f, pullFactor = 0.02f) else Modifier)
-            .shinyGlare(shape = cardShape)
+            .then(
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { cardShape },
+                        effects = {},
+                        highlight = { iconHighlight }
+                    )
+                } else Modifier
+            )
             .clip(cardShape)
             .then(
                 if (onLongClick != null) {

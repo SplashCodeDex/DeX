@@ -35,6 +35,17 @@ core/domain (domain layer, plan 026)
   ports only. Infrastructure adapters (DataStore persistence, WS delivery, notifications)
   stay in `core/network` and are injected via Koin. `initiatePairing` takes a
   `PairingTarget(ip, fingerprint, alias)` — never a transport DTO.
+- `core/sync` is the sync layer (plan 031): HLC + SyncEngine + the exchange wire law
+  (`SyncExchangeRequest/Response`, `/sync/v1/exchange`), pure leaf (protocol +
+  coroutines + serialization; wall-clock injection mandatory). `core/data` hosts the
+  DataStore adapter + `SyncBridge` (history/roster/tombstones); `core/network` hosts the
+  Ktor transport + DI. Privacy law: devices/history/settings ONLY; content and
+  credentials rejected mechanically at any nesting depth.
+- `server/` (plan 032) is the self-hosted cloud peer for the Hetzner VPS: Google-ID-Token
+  auth (tenant = verified googleSub), the sync host (same HLC-LWW law, in-memory tenant
+  store), NAT-punch rendezvous (5-min TTLs), and the STREAMING relay — bounded-memory
+  pass-through, quotas before first byte, opaque E2EE bytes (never disk, never readable).
+  Consumes only `core/protocol` + `core/sync`.
 - The former `feature/discovery`, `feature/settings` modules and `feature/history`
   were removed in 10.1.14.0 — they were compiled but never imported by any wired UI
   (the live device list / settings surfaces live in `composeApp/.../window/components/`).

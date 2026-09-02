@@ -2,6 +2,7 @@ package com.dexstudios.dex.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -46,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -58,12 +60,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
-import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.DeXTheme
 import com.kyant.backdrop.Backdrop
@@ -104,6 +106,9 @@ fun LiquidGlassSegmentedControl(
     lensHeight: Dp = 190.dp,
     lensAmount: Dp = 100.dp,
     restRefraction: Float = 0.11f,
+    expansionFraction: Float = 1f,
+    actionText: String? = null,
+    onActionClick: (() -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -204,61 +209,56 @@ fun LiquidGlassSegmentedControl(
             label = "innerShadowA",
         )
 
+    // --- Dynamic specular glare boost on interact ---
+    val animatedGlareAlpha by
+        animateFloatAsState(
+            targetValue = if (isInteracting) 0.85f else LiquidGlassTokens.GlareRestAlpha,
+            animationSpec = spring(stiffness = Spring.StiffnessLow),
+            label = "glareA",
+        )
+
     // --- Highlighter position: drag follows finger, otherwise follows selected tab (with peak offset) ---
-    val targetCenterDp by remember {
-        derivedStateOf {
-            val currentDragX = dragX
-            if (currentDragX != null) {
-                with(density) { currentDragX.toDp() }
-            } else {
-                val selectedCenter =
-                    horizontalPadding + (itemWidth * selectedIndex) + (itemWidth / 2f)
-                val isPeak = pressedIndex != null && pressedIndex != selectedIndex
-
-                val shift =
-                    if (isPeak) {
-                        val pressedCenter =
-                            horizontalPadding + (itemWidth * (pressedIndex ?: selectedIndex)) + (itemWidth / 2f)
-                        val diff = pressedCenter - selectedCenter
-                        if (diff > 0.dp) 20.dp else -20.dp
-                    } else 0.dp
-
-                selectedCenter + shift
-            }
+    val targetCenterDp =
+        if (dragX != null) {
+            with(density) { dragX!!.toDp() }
+        } else {
+            selectedCenterDp + peakShiftDp
         }
-    }
 
     val centerX = remember { Animatable(targetCenterDp.value) }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow { Pair(targetCenterDp.value, dragX != null) }
-            .collectLatest { (target, dragging) ->
-                if (dragging) {
-                    centerX.snapTo(target)
-                } else {
-                    centerX.animateTo(
-                        targetValue = target,
-                        animationSpec = spring(dampingRatio = 0.55f, stiffness = 350f),
-                    )
-                }
-            }
+    LaunchedEffect(targetCenterDp.value, dragX != null) {
+        if (dragX != null) {
+            centerX.snapTo(targetCenterDp.value)
+        } else {
+            centerX.animateTo(
+                targetValue = targetCenterDp.value,
+                animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+            )
+        }
     }
 
     // --- Tint transitions: active while interacting OR still springing ---
     val isMoving = centerX.isRunning || abs(centerX.value - targetCenterDp.value) > 0.5f
     val isHighlighterActive = isInteracting || isMoving
 
+    // --- Dynamic Highlighter Tint (Exact 1:1 match to Apple reference) ---
+    val hlRestTint = if (isDark) Color.White else Color.Black
+    val hlActiveTint = if (isDark) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f) else Color.White
+
     val animatedTint by
         animateColorAsState(
-            targetValue =
-                if (isHighlighterActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+            targetValue = if (isHighlighterActive) hlActiveTint else hlRestTint,
             animationSpec = tween(300),
             label = "tint",
         )
+
+    val hlRestAlpha = if (isDark) 1f else 0.68f
+    val hlActiveAlpha = if (isDark) 0.1f else 0.78f
+
     val animatedTintAlpha by
         animateFloatAsState(
-            targetValue = if (isHighlighterActive) 0.15f else 0.20f,
+            targetValue = if (isHighlighterActive) hlActiveAlpha else hlRestAlpha,
             animationSpec = tween(300),
             label = "tintA",
         )
@@ -273,7 +273,8 @@ fun LiquidGlassSegmentedControl(
     Box(
         modifier =
             modifier
-                .size(totalWidth + 16.dp, visibleHeight + 12.dp)
+                .size(totalWidth, visibleHeight)
+                .graphicsLayer { clip = false }
                 .bubbleFluidity(
                     targetScale = 0.95f,
                     pullFactor = 0.10f,
@@ -301,7 +302,7 @@ fun LiquidGlassSegmentedControl(
                                     dragActivated = false
 
                                     // Check if touch started on the highlighter
-                                    val currentCenterPx = (centerX.value.dp + 8.dp).toPx()
+                                    val currentCenterPx = centerX.value.dp.toPx()
                                     val widthPx = highlighterWidth.toPx()
                                     val touchPadding = 16.dp.toPx()
                                     val leftBound = currentCenterPx - (widthPx / 2f) - touchPadding
@@ -319,7 +320,7 @@ fun LiquidGlassSegmentedControl(
                                 }
 
                                 if (dragActivated) {
-                                    dragX = change.position.x - 8.dp.toPx()
+                                    dragX = change.position.x
                                 }
                             } else {
                                 val currentDragX = dragX
@@ -345,7 +346,7 @@ fun LiquidGlassSegmentedControl(
         // 1. CAPTURED LAYER (Base Layer + Board + Labels/Icons)
         Box(
             modifier =
-                Modifier.requiredSize(totalWidth + 16.dp, samplingHeight)
+                Modifier.requiredSize(totalWidth, samplingHeight)
                     .graphicsLayer { clip = false }
                     .layerBackdrop(localControlBackdrop),
             contentAlignment = Alignment.Center,
@@ -374,7 +375,26 @@ fun LiquidGlassSegmentedControl(
                 )
             }
 
-            // Board
+            val morphProgress = (expansionFraction / 0.45f).coerceIn(0f, 1f)
+            val easeProgress = FastOutSlowInEasing.transform(morphProgress)
+
+            val solidActionColor = if (isDark) Color.White else Color.Black
+            val boardExpandedTint = Color.Black // Both light & dark mode use smoked dark glass track
+            val currentSurfaceTint = lerpColor(solidActionColor, boardExpandedTint, easeProgress)
+
+            val boardRestAlpha = if (isDark) 0.88f else 0.92f
+            val boardExpandedAlpha = if (isDark) 0.60f else 0.40f
+            val currentSurfaceTintAlpha = lerpFloat(boardRestAlpha, boardExpandedAlpha, easeProgress)
+
+            // Shadow is ONLY applied to the navbar when expanded
+            val currentShadowRadius = LiquidGlassTokens.ExpandedSearchShadowRadius * easeProgress
+            val currentShadowOffsetY = LiquidGlassTokens.ExpandedSearchShadowOffset.y * easeProgress
+            val currentShadowOffset = DpOffset(0.dp, currentShadowOffsetY)
+            val currentShadowColor = LiquidGlassTokens.ExpandedSearchShadowColor.copy(
+                alpha = LiquidGlassTokens.ExpandedSearchShadowColor.alpha * easeProgress
+            )
+
+            // Board: Authentic Liquid Glass Panel (Active refractions across all states)
             if (backdrop != null) {
                 LiquidGlassPanel(
                     backdrop = backdrop,
@@ -383,8 +403,11 @@ fun LiquidGlassSegmentedControl(
                     config =
                         LiquidGlassPresets.NavBar.copy(
                             shape = pillShape,
-                            surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
-                            surfaceTintAlpha = 1f,
+                            surfaceTint = currentSurfaceTint,
+                            surfaceTintAlpha = currentSurfaceTintAlpha,
+                            shadowRadius = currentShadowRadius,
+                            shadowOffset = currentShadowOffset,
+                            shadowColor = currentShadowColor,
                         ),
                     content = {},
                 )
@@ -392,84 +415,125 @@ fun LiquidGlassSegmentedControl(
                 Surface(
                     modifier = Modifier.size(totalWidth, visibleHeight),
                     shape = pillShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shadowElevation = 12.dp,
+                    color = currentSurfaceTint.copy(alpha = currentSurfaceTintAlpha),
+                    shadowElevation = 12.dp * easeProgress,
                     content = {},
                 )
             }
 
-            // Tabs Content
-            Row(
-                modifier =
-                    Modifier.size(totalWidth, visibleHeight)
-                        .padding(horizontal = horizontalPadding),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items.forEachIndexed { index, item ->
-                    SegmentedTabItem(
-                        item = item,
-                        onPressedChanged = { isPressed ->
-                            pressedIndex = if (isPressed) index else null
-                        },
-                        modifier = Modifier.weight(1f),
+            // Action Text inside the board (shows "Pair Device" / "Send File" at rest)
+            if (actionText != null && morphProgress < 0.60f) {
+                val actionAlpha = (1f - (morphProgress / 0.28f)).coerceIn(0f, 1f)
+                val actionEase = FastOutSlowInEasing.transform(actionAlpha)
+                val actionTextColor = if (isDark) Color.Black else Color.White
+                val actionYOffset = -14.dp * (1f - actionEase)
+
+                Box(
+                    modifier =
+                        Modifier.size(totalWidth, visibleHeight)
+                            .graphicsLayer {
+                                alpha = actionAlpha
+                                translationY = actionYOffset.toPx()
+                            }
+                            .clickable(enabled = expansionFraction <= 0.05f) {
+                                onActionClick?.invoke()
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = actionText,
+                        color = actionTextColor,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
                     )
+                }
+            }
+
+            // Tabs Content (Staggers in from the bottom/top without scaling as sheet extends)
+            if (morphProgress > 0.15f) {
+                val tabsBounceFraction = ((morphProgress - 0.18f) / 0.55f).coerceIn(0f, 1f)
+                Row(
+                    modifier =
+                        Modifier.size(totalWidth, visibleHeight)
+                            .padding(horizontal = horizontalPadding),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEachIndexed { index, item ->
+                        val tabStagger = index * 0.06f
+                        val itemProgress = ((tabsBounceFraction - tabStagger) / 0.76f).coerceIn(0f, 1f)
+                        val tabEase = FastOutSlowInEasing.transform(itemProgress)
+                        // Stagger in vertically from bottom (no scale-in)
+                        val itemYOffset = 20.dp * (1f - tabEase)
+
+                        SegmentedTabItem(
+                            item = item,
+                            onPressedChanged = { isPressed ->
+                                pressedIndex = if (isPressed) index else null
+                            },
+                            modifier =
+                                Modifier.weight(1f)
+                                    .graphicsLayer {
+                                        alpha = tabEase
+                                        translationY = itemYOffset.toPx()
+                                    },
+                        )
+                    }
                 }
             }
         }
 
         // 2. HIGHLIGHTER (Draws on top, samples captured layer, refracting board and labels with bulge)
-        val indicatorOffset = centerX.value.dp - (highlighterWidth / 2f) + 8.dp
+        val morphProgress = (expansionFraction / 0.45f).coerceIn(0f, 1f)
+        if (morphProgress > 0.15f) {
+            val tabsBounceFraction = ((morphProgress - 0.18f) / 0.55f).coerceIn(0f, 1f)
+            val highlighterEase = FastOutSlowInEasing.transform(tabsBounceFraction)
+            val indicatorOffset = centerX.value.dp - (highlighterWidth / 2f)
+            val hlYOffset = 10.dp * (1f - highlighterEase)
 
-        Box(
-            modifier =
-                Modifier.requiredSize(totalWidth + 16.dp, samplingHeight).graphicsLayer {
-                    clip = false
-                }
-        ) {
-            LiquidGlassPanel(
-                backdrop = localControlBackdrop,
+            Box(
                 modifier =
-                    Modifier.align(Alignment.CenterStart)
-                        .size(highlighterWidth, highlighterHeight)
-                        .graphicsLayer {
-                            translationX = indicatorOffset.toPx()
-                            clip = false
-                        }
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                    Modifier.requiredSize(totalWidth, samplingHeight).graphicsLayer {
+                        clip = false
+                    }
+            ) {
+                LiquidGlassPanel(
+                    backdrop = localControlBackdrop,
+                    modifier =
+                        Modifier.align(Alignment.CenterStart)
+                            .size(highlighterWidth, highlighterHeight)
+                            .graphicsLayer {
+                                translationX = indicatorOffset.toPx()
+                                translationY = hlYOffset.toPx()
+                                alpha = highlighterEase
+                                clip = false
+                            }
+                            .background(
+                                color = animatedTint.copy(alpha = animatedTintAlpha),
+                                shape = pillShape,
+                            )
+                            .zIndex(10f),
+                    shape = pillShape,
+                    config =
+                        LiquidGlassPresets.IconButton.copy(
                             shape = pillShape,
-                        )
-                        .shinyGlare(
-                            shape = pillShape,
-                            intensity = LiquidGlassTokens.GlareRestAlpha,
-                        )
-                        .zIndex(10f),
-                shape = pillShape,
-                config =
-                    LiquidGlassPresets.IconButton.copy(
-                        shape = pillShape,
-                        blurRadius = animatedBlur,
-                        lensHeight = animatedLensHeight,
-                        lensAmount = animatedLensAmount,
-                        surfaceTint = animatedTint,
-                        surfaceTintAlpha = animatedTintAlpha,
-                        restRefraction = animatedRefraction,
-                        shadowRadius = animatedShadow,
-                        depthEffect = true,
-                        highlight =
-                            LiquidGlassPresets.IconButton.highlight.copy(
-                                alpha = LiquidGlassTokens.GlareRestAlpha
-                            ),
-                        innerShadow =
-                            InnerShadow(
-                                radius = animatedInnerShadowRadius,
-                                color = Color.Black.copy(alpha = animatedInnerShadowAlpha),
-                                offset = DpOffset(0.dp, 6.dp),
-                            ),
-                    ),
-                content = {},
-            )
+                            blurRadius = animatedBlur,
+                            lensHeight = animatedLensHeight,
+                            lensAmount = animatedLensAmount,
+                            surfaceTint = animatedTint,
+                            surfaceTintAlpha = animatedTintAlpha,
+                            restRefraction = animatedRefraction,
+                            shadowRadius = animatedShadow,
+                            depthEffect = true,
+                            glareFactor = animatedGlareAlpha * 100f,
+                            innerShadowRadius = animatedInnerShadowRadius,
+                            innerShadowAlpha = animatedInnerShadowAlpha,
+                            innerShadowOffset = DpOffset(0.dp, 6.dp),
+                        ),
+                    content = {},
+                )
+            }
         }
     }
 }
@@ -493,8 +557,11 @@ private fun SegmentedTabItem(
     val iconColor by
         animateColorAsState(
             targetValue =
-                if (item.isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
+                if (item.isSelected) {
+                    if (isDark) Color.White else MaterialTheme.colorScheme.primary
+                } else {
+                    if (isDark) Color.White.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.90f)
+                },
             label = "segIconColor",
         )
 
@@ -502,9 +569,9 @@ private fun SegmentedTabItem(
         animateColorAsState(
             targetValue =
                 if (item.isSelected) {
-                    if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+                    if (isDark) Color.White else MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                    if (isDark) Color.White.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.90f)
                 },
             label = "segLabelColor",
         )
@@ -533,7 +600,7 @@ private fun SegmentedTabItem(
                 imageVector = item.icon,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(21.dp),
             )
             Spacer(modifier = Modifier.height(1.dp))
         }
@@ -541,8 +608,9 @@ private fun SegmentedTabItem(
         Text(
             text = item.title,
             color = labelColor,
-            fontSize = 11.sp,
+            fontSize = 12.5.sp,
             fontWeight = if (item.isSelected) FontWeight.Bold else FontWeight.Medium,
+            letterSpacing = (-0.2).sp,
             maxLines = 1,
         )
     }

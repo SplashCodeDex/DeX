@@ -1,8 +1,34 @@
 # Plan 028 — core/domain Slice 3: Discovery & Roster Registry (Phase 0-A3)
 
-> Status: TODO
-> Depends on: 026 (DONE); sequence after 027
+> Status: DONE (executed 2026-09-01)
+> Depends on: 026 (DONE); sequenced after 027 (DONE)
 > Effort: M (~1 week solo)
+
+## What actually shipped (2026-09-01)
+
+- **`core/domain/discovery`**: `DeviceRegistry` (observed-device state machine), domain
+  `DiscoveredDeviceInfo` + `ObservedDevice` models, `KnownPeerPersistence` +
+  `DiscoveryProbe` ports. Semantics migrated EXACTLY from the live DiscoveryEngine
+  (verified against source, not memory): fingerprint-keyed replace-on-change
+  (ip/info/viaWan/viaRoster), 100-entry cap with oldest-lastSeen eviction,
+  20s-freshness/10s-sweep TTLs, telemetry merge (battery/isCharging/wifiSsid +
+  lastSeen refresh), roster upsert lane (viaRoster=true, NO TTL — roster entries are
+  not beacon-driven), blank-fingerprint rejection. 12-test contract suite.
+- **`DiscoveryEngine` is now the desktop adapter**: DTO↔domain mapping at the boundary,
+  registry owns state, adapter owns platform feeds (JmDNS/UDP beacons, identity
+  re-advertisement watch, dual-port UDP + HTTPS/HTTP manual probe — all unchanged).
+  The legacy wire-typed `devices` flow is bridged with SYNCHRONOUS write-through so
+  every existing consumer (UI, engines, routes) compiles and behaves identically —
+  the full legacy DiscoveryEngineTest (disclosure rule, cache, probe parsing) passes
+  unmodified against the registry-backed adapter.
+- **Deliberately deferred (recorded, not forgotten)**:
+  - `PcMemory` ↔ `KnownPeerPersistence` formal wiring — PcMemory already IS the desktop
+    implementation; the port earns its keep at the first non-desktop consumer (030/033).
+  - Client-side `PunchState.devices` roster merge through the registry — that state is
+    consumed by the ANDROID app (DeX/app), so it lands with plan 030's integration,
+    not as a desktop-side change.
+- Verification: `:core:domain:desktopTest` (42), `:core:network:desktopTest` (134),
+  `:composeApp:desktopTest`, `spotlessCheck` — all green.
 
 ## Why
 
@@ -12,6 +38,8 @@ the Ktor HTTP probe. The same-account roster merge lives in `MessageHandler
 .handleDeviceRoster` + `PunchState.devices` (`core/data`). Future peers need roster +
 registry semantics; the probe itself is per-platform (JmDns/UDP desktop, NSD Android,
 NWBrowser iOS).
+
+## STOP conditions
 
 ## Scope
 

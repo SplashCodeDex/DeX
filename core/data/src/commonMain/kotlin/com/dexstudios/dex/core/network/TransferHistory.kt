@@ -75,7 +75,12 @@ object TransferHistory : KoinComponent {
         }
     }
 
-    fun log(name: String, size: Long, direction: String, uri: String? = null, peerDevice: String? = null, status: String = "success", timestamp: Long = HashUtils.currentTimeMillis()) {
+    /**
+     * Appends a record and returns it. The non-null return feeds the sync layer
+     * (plan 031): the recorder queues a HISTORY mutation derived from this record
+     * without re-reading persisted storage.
+     */
+    fun log(name: String, size: Long, direction: String, uri: String? = null, peerDevice: String? = null, status: String = "success", timestamp: Long = HashUtils.currentTimeMillis()): TransferRecord {
         val record = TransferRecord(
             id = HashUtils.generateUUID(),
             name = name,
@@ -91,6 +96,7 @@ object TransferHistory : KoinComponent {
                 mutateLocked { current -> (listOf(record) + current).take(MAX_ENTRIES) }
             }
         }
+        return record
     }
 
     private suspend fun reload() {

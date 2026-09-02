@@ -50,6 +50,14 @@ object DesktopShutdownCoordinator {
         // 3. Discovery services — JmDNS + UDP multicast sockets (non-daemon threads).
         runCatching { koin?.getOrNull<DiscoveryEngine>()?.stopDiscovery() }
 
+        // 3a. Sync flush loop — cancel BEFORE the engine could be mid-exchange; queued
+        //     deltas survive in DataStore for the next session (offline-first).
+        runCatching { koin?.getOrNull<com.dexstudios.dex.core.network.sync.DesktopSyncScheduler>()?.stop() }
+
+        // 3a-2. Sync bridge — cancels in-flight history/roster writes so a straggler
+        //     engine.mutate cannot crash as an uncaught exception post-teardown.
+        runCatching { com.dexstudios.dex.core.network.SyncBridge.stop() }
+
         // 4. WebSocket engine — sends the close frame before scope teardown.
         runCatching { koin?.getOrNull<WebSocketEngine>()?.stop() }
 

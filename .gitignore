@@ -64,3 +64,4 @@ oauth.local.json
 *.pdb
 *.deps.json
 *.runtimeconfig.json
+server/build/

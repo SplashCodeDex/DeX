@@ -61,6 +61,7 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
         val THEME_OVERRIDE_KEY = stringPreferencesKey("theme_override")
         val DOWNLOAD_DIR_KEY = stringPreferencesKey("download_dir")
         val NOTIFICATION_SOUND_ENABLED_KEY = booleanPreferencesKey("notification_sound_enabled")
+        val SYNC_HOST_URL_KEY = stringPreferencesKey("sync_host_url")
 
         // Legal values for [THEME_OVERRIDE_KEY]; absent key means follow the OS setting.
         const val THEME_SYSTEM = "system"
@@ -99,6 +100,26 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
      */
     private val _downloadDirFlow = MutableStateFlow("")
     val downloadDirFlow: StateFlow<String> = _downloadDirFlow.asStateFlow()
+
+    /**
+     * The self-hosted sync host base URL (plan 031/032), e.g. `https://sync.example.com`.
+     * Empty string means sync DISABLED — the flush scheduler stays idle and queued
+     * deltas wait; no endpoint is ever hardcoded.
+     */
+    private val _syncHostUrlFlow = MutableStateFlow("")
+    val syncHostUrlFlow: StateFlow<String> = _syncHostUrlFlow.asStateFlow()
+
+    var syncHostUrl: String
+        get() = _syncHostUrlFlow.value
+        set(value) {
+            val normalized = value.trim().trimEnd('/').take(512)
+            _syncHostUrlFlow.value = normalized
+            persist {
+                dataStore.edit { prefs ->
+                    prefs[SYNC_HOST_URL_KEY] = normalized
+                }
+            }
+        }
 
     private val _profileNameFlow = MutableStateFlow("")
     private val _profilePictureFlow = MutableStateFlow("")
@@ -326,6 +347,13 @@ class DeviceConfig(private val dataStore: DataStore<Preferences>, private val sc
                 else -> THEME_SYSTEM
             }
             _downloadDirFlow.value = prefs[DOWNLOAD_DIR_KEY] ?: ""
+
+            // Settings writes can race this init-load (setters fire before hydration
+            // completes). NEVER clobber a flow a setter already touched since
+            // construction — the setter's value wins (it is the newest user intent).
+            if (_syncHostUrlFlow.value.isBlank()) {
+                _syncHostUrlFlow.value = (prefs[SYNC_HOST_URL_KEY] ?: "").trim().trimEnd('/')
+            }
             Logger.i("DeviceConfig fully initialized.")
             _initializedFlow.value = true
         }

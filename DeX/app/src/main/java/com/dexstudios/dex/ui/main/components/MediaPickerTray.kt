@@ -38,6 +38,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -55,6 +57,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -120,12 +123,35 @@ enum class MediaTrayTab {
 fun MediaPickerTray(
     backdrop: Backdrop?,
     currentTab: MediaTrayTab = MediaTrayTab.PhotosAndVideos,
+    onTabChange: ((MediaTrayTab) -> Unit)? = null,
     onSend: (List<Uri>) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val selectedUris = remember { mutableStateListOf<Uri>() }
+
+    val pagerState = rememberPagerState(
+        initialPage = currentTab.ordinal,
+        pageCount = { MediaTrayTab.entries.size }
+    )
+
+    // Synchronize pager when currentTab changes from outside (e.g. navbar click)
+    LaunchedEffect(currentTab) {
+        if (pagerState.currentPage != currentTab.ordinal) {
+            pagerState.animateScrollToPage(currentTab.ordinal)
+        }
+    }
+
+    // Synchronize navbar when user swipes the pager
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            val targetTab = MediaTrayTab.entries.getOrNull(page) ?: MediaTrayTab.PhotosAndVideos
+            if (targetTab != currentTab) {
+                onTabChange?.invoke(targetTab)
+            }
+        }
+    }
 
     // Media, Audio & Files state
     var mediaItems by remember { mutableStateOf<List<RecentMediaItem>>(emptyList()) }
@@ -251,7 +277,8 @@ fun MediaPickerTray(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
@@ -311,135 +338,148 @@ fun MediaPickerTray(
                         )
                     }
                 }
-            } else when (currentTab) {
-                // --- Tab 1: Photos & Videos ---
-                MediaTrayTab.PhotosAndVideos -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 100.dp),
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp),
-                    ) {
-                        // 1. Clever First Tile: Camera Capture Tile
-                        item(key = "camera_capture_card") {
-                            CameraCaptureCard(
-                                onClick = { cameraCapture.launch(null) },
-                            )
-                        }
-
-                        // 2. Storage Media Items
-                        items(mediaItems, key = { it.uri.toString() }) { item ->
-                            val isItemSelected = selectedUris.contains(item.uri)
-
-                            MediaThumbnailCard(
-                                item = item,
-                                isSelected = isItemSelected,
-                                onToggle = {
-                                    if (isItemSelected) selectedUris.remove(item.uri)
-                                    else selectedUris.add(item.uri)
-                                },
-                            )
-                        }
-                    }
-                }
-
-                // --- Tab 2: Audio Tracks ---
-                MediaTrayTab.Audio -> {
-                    if (audioItems.isEmpty()) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = MaterialSymbols.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(40.dp)
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "No audio files found on device",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp)
-                        ) {
-                            items(audioItems, key = { it.uri.toString() }) { audio ->
-                                val isSelected = selectedUris.contains(audio.uri)
-                                val isPlaying = (playingUri == audio.uri)
-
-                                AudioTrackCard(
-                                    item = audio,
-                                    isSelected = isSelected,
-                                    isPlaying = isPlaying,
-                                    onToggleSelect = {
-                                        if (isSelected) selectedUris.remove(audio.uri)
-                                        else selectedUris.add(audio.uri)
-                                    },
-                                    onTogglePlay = {
-                                        toggleAudioPreview(audio)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // --- Tab 3: Files & Documents ---
-                MediaTrayTab.Files -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        // Deep Browse Storage action header
-                        item(key = "browse_storage_header") {
-                            BrowseStorageHeaderCard(
-                                onClick = { systemDocPicker.launch(arrayOf("*/*")) }
-                            )
-                        }
-
-                        if (fileItems.isEmpty()) {
-                            item(key = "empty_files_state") {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Article,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(36.dp)
+            } else {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    key = { it },
+                ) { page ->
+                    when (MediaTrayTab.entries[page]) {
+                        // --- Tab 1: Photos & Videos ---
+                        MediaTrayTab.PhotosAndVideos -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 100.dp),
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(bottom = 80.dp),
+                            ) {
+                                // 1. Clever First Tile: Camera Capture Tile
+                                item(key = "camera_capture_card") {
+                                    CameraCaptureCard(
+                                        onClick = { cameraCapture.launch(null) },
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "No recent files found in storage",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                }
+
+                                // 2. Storage Media Items
+                                items(mediaItems, key = { it.uri.toString() }) { item ->
+                                    val isItemSelected = selectedUris.contains(item.uri)
+
+                                    MediaThumbnailCard(
+                                        item = item,
+                                        isSelected = isItemSelected,
+                                        onToggle = {
+                                            if (isItemSelected) selectedUris.remove(item.uri)
+                                            else selectedUris.add(item.uri)
+                                        },
                                     )
                                 }
                             }
-                        } else {
-                            items(fileItems, key = { it.uri.toString() }) { file ->
-                                val isSelected = selectedUris.contains(file.uri)
+                        }
 
-                                FileDocumentCard(
-                                    item = file,
-                                    isSelected = isSelected,
-                                    onToggleSelect = {
-                                        if (isSelected) selectedUris.remove(file.uri)
-                                        else selectedUris.add(file.uri)
+                        // --- Tab 2: Audio Tracks ---
+                        MediaTrayTab.Audio -> {
+                            if (audioItems.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.MusicNote,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "No audio files found on device",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
                                     }
-                                )
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    contentPadding = PaddingValues(bottom = 80.dp)
+                                ) {
+                                    items(audioItems, key = { it.uri.toString() }) { audio ->
+                                        val isSelected = selectedUris.contains(audio.uri)
+                                        val isPlaying = (playingUri == audio.uri)
+
+                                        AudioTrackCard(
+                                            item = audio,
+                                            isSelected = isSelected,
+                                            isPlaying = isPlaying,
+                                            onToggleSelect = {
+                                                if (isSelected) selectedUris.remove(audio.uri)
+                                                else selectedUris.add(audio.uri)
+                                            },
+                                            onTogglePlay = {
+                                                toggleAudioPreview(audio)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- Tab 3: Files & Documents ---
+                        MediaTrayTab.Files -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                contentPadding = PaddingValues(bottom = 80.dp)
+                            ) {
+                                // Deep Browse Storage action header
+                                item(key = "browse_storage_header") {
+                                    BrowseStorageHeaderCard(
+                                        onClick = { systemDocPicker.launch(arrayOf("*/*")) }
+                                    )
+                                }
+
+                                if (fileItems.isEmpty()) {
+                                    item(key = "empty_files_state") {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = MaterialSymbols.Article,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.size(36.dp)
+                                            )
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = "No recent files found in storage",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    items(fileItems, key = { it.uri.toString() }) { file ->
+                                        val isSelected = selectedUris.contains(file.uri)
+
+                                        FileDocumentCard(
+                                            item = file,
+                                            isSelected = isSelected,
+                                            onToggleSelect = {
+                                                if (isSelected) selectedUris.remove(file.uri)
+                                                else selectedUris.add(file.uri)
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -487,7 +527,7 @@ private fun CameraCaptureCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val itemShape = RoundedCornerShape(14.dp)
+    val itemShape = RoundedCornerShape(22.dp)
     val isDark = isSystemInDarkTheme()
 
     Box(
@@ -551,7 +591,7 @@ private fun BrowseStorageHeaderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardShape = RoundedCornerShape(14.dp)
+    val cardShape = RoundedCornerShape(22.dp)
 
     Row(
         modifier = modifier
@@ -607,7 +647,7 @@ private fun FileDocumentCard(
     onToggleSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardShape = RoundedCornerShape(14.dp)
+    val cardShape = RoundedCornerShape(22.dp)
     val bgColor = if (isSelected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     } else {
@@ -645,7 +685,7 @@ private fun FileDocumentCard(
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(badgeBgColor.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center
         ) {
@@ -738,7 +778,7 @@ private fun AudioTrackCard(
     onTogglePlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardShape = RoundedCornerShape(14.dp)
+    val cardShape = RoundedCornerShape(22.dp)
     val bgColor = if (isSelected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     } else {
@@ -764,7 +804,7 @@ private fun AudioTrackCard(
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -879,7 +919,7 @@ private fun MediaThumbnailCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val itemShape = RoundedCornerShape(14.dp)
+    val itemShape = RoundedCornerShape(20.dp)
 
     Box(
         modifier = modifier

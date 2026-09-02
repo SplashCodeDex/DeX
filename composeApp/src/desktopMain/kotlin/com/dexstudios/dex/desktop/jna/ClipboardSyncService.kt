@@ -1,21 +1,8 @@
 package com.dexstudios.dex.desktop.jna
 
-import co.touchlab.kermit.Logger
-import com.dexstudios.dex.core.network.DiscoveryEngine
-import com.dexstudios.dex.core.protocol.FieldNames
-import com.dexstudios.dex.core.protocol.MessageTypes
-import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.put
-import org.koin.core.context.GlobalContext
 import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.FlavorListener
-import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
-import java.security.MessageDigest
-import java.util.Base64
-import javax.imageio.ImageIO
 
 object ClipboardSyncService {
     private var processJob: Job? = null
@@ -23,7 +10,9 @@ object ClipboardSyncService {
     @Volatile
     private var started = false
 
-    @Volatile private var lastHash: String = ""
+    // The sync brain (echo guard, enable policy, payload shaping) lives in the domain
+    // use case (plan 029); this service keeps ONLY the AWT event plumbing.
+    private var useCase: com.dexstudios.dex.core.domain.clipboard.ClipboardSyncUseCase? = null
 
     private val flavorListener = FlavorListener {
         // Debounce rapid bursts (e.g. Excel copying 15 formats at once)
@@ -40,14 +29,16 @@ object ClipboardSyncService {
         if (started) return // Already listening — never stack a second FlavorListener
         started = true
         this.deviceConfig = config
+        // The process-wide instance is wired by NetworkModule (NetworkModule.jvm) — the
+        // SAME one the server receive path consults, so the echo guard is shared. The
+        // composeApp sender (WS broadcast + ADB fallback) replaces the WS-only one.
+        this.useCase = com.dexstudios.dex.core.network.ClipboardSyncState.useCase
 
+        // The domain echo guard now owns suppression; this observer exists only to keep
+        // the legacy event stream (Received/Sent) alive for UI listeners.
         observeJob?.cancel()
         observeJob = CoroutineScope(Dispatchers.IO).launch {
-            com.dexstudios.dex.core.network.ClipboardSyncState.events.collect { event ->
-                if (event is com.dexstudios.dex.core.network.ClipboardEvent.Received) {
-                    updateHashFromRemote(event.text)
-                }
-            }
+            com.dexstudios.dex.core.network.ClipboardSyncState.events.collect { }
         }
 
         try {
@@ -67,82 +58,24 @@ object ClipboardSyncService {
     }
 
     private fun processClipboard() {
-        if (deviceConfig?.clipboardSyncEnabled != true) return
-
-        try {
-            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-            if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
-                val text = clipboard.getData(DataFlavor.stringFlavor) as? String ?: return
-                val hash = hashString(text)
-
-                if (hash != lastHash) {
-                    lastHash = hash
-                    sendToPhone(text)
-                }
-            } else if (clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) {
-                val image = clipboard.getData(DataFlavor.imageFlavor) as? BufferedImage ?: return
-                val baos = ByteArrayOutputStream()
-                ImageIO.write(image, "png", baos)
-                val imageBytes = baos.toByteArray()
-                val b64Image = Base64.getEncoder().encodeToString(imageBytes)
-                val hash = hashString(b64Image)
-
-                if (hash != lastHash) {
-                    lastHash = hash
-                    // Send image base64 in canonical set-clipboard envelope
-                    val jsonPayload = ProtocolEnvelope.envelopeOf(MessageTypes.SET_CLIPBOARD) {
-                        put(FieldNames.TEXT, "")
-                        put("imageMime", "image/png")
-                        put(FieldNames.IMAGE_BASE64, b64Image)
-                    }
-                    sendToPhone(jsonPayload)
-                }
-            }
-        } catch (e: java.lang.IllegalStateException) {
-            // Clipboard is locked by another process (common on Windows).
-            // We can safely ignore as the user hasn't successfully copied it yet.
-            Logger.i("ClipboardSyncService: Clipboard locked (${e.message})")
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun updateHashFromRemote(text: String) {
-        lastHash = hashString(text)
-    }
-
-    private fun sendToPhone(data: String) {
+        val sync = useCase ?: return
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val payload = if (data.startsWith("{") && data.endsWith("}")) {
-                    data
+            runCatching {
+                // The use case applies the enable gate, reads the clipboard, runs the
+                // echo guard, and delivers (WS broadcast + ADB fallback inside the sender).
+                val sent = sync.onLocalClipboardChanged()
+                if (sent) {
+                    co.touchlab.kermit.Logger.i("ClipboardSyncService: pushed clipboard change to peer")
+                }
+            }.onFailure { e ->
+                if (e is java.lang.IllegalStateException) {
+                    // Clipboard locked by another process (common on Windows) — the user
+                    // hasn't finished copying yet; safe to ignore.
+                    co.touchlab.kermit.Logger.i("ClipboardSyncService: Clipboard locked (${e.message})")
                 } else {
-                    ProtocolEnvelope.envelopeOf(MessageTypes.SET_CLIPBOARD) {
-                        put(FieldNames.TEXT, data)
-                    }
+                    e.printStackTrace()
                 }
-
-                val success = com.dexstudios.dex.core.network.server.WebSocketConnectionManager.broadcastToPaired(payload)
-
-                if (!success) {
-                    // ADB Fallback — routed through AdbManager so it uses the bundled
-                    // platform-tools and a bounded, destroyed process (never a bare PATH
-                    // `adb` exec that can hang forever).
-                    val b64 = Base64.getEncoder().encodeToString(data.toByteArray(Charsets.UTF_8))
-                    com.dexstudios.dex.desktop.AdbManager.broadcast(
-                        action = "com.dexstudios.dex.SET_CLIPBOARD",
-                        extras = mapOf("text_b64" to b64),
-                    )
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
-    }
-
-    private fun hashString(input: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest(input.toByteArray(Charsets.UTF_8))
-        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 }

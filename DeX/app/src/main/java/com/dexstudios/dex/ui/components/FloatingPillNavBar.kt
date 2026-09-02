@@ -37,7 +37,6 @@ import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
-import com.dexstudios.dex.ui.components.glass.shinyGlare
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.DeXTheme
 import com.kyant.backdrop.Backdrop
@@ -394,10 +393,6 @@ fun FloatingPillNavBar(
                             translationX = indicatorOffset.toPx()
                             clip = false
                         }
-                        .shinyGlare(
-                            shape = RoundedCornerShape(40.dp),
-                            intensity = LiquidGlassTokens.GlareRestAlpha,
-                        )
                         .zIndex(10f),
                 shape = RoundedCornerShape(40.dp),
                 config =
@@ -410,16 +405,10 @@ fun FloatingPillNavBar(
                         restRefraction = animatedRefraction,
                         shadowRadius = animatedShadow,
                         depthEffect = true,
-                        highlight =
-                            LiquidGlassPresets.IconButton.highlight.copy(
-                                alpha = LiquidGlassTokens.GlareRestAlpha
-                            ),
-                        innerShadow =
-                            com.kyant.backdrop.shadow.InnerShadow(
-                                radius = animatedInnerShadowRadius,
-                                color = Color.Black.copy(alpha = animatedInnerShadowAlpha),
-                                offset = androidx.compose.ui.unit.DpOffset(0.dp, 6.dp),
-                            ),
+                        glareFactor = LiquidGlassTokens.GlareRestAlpha * 100f,
+                        innerShadowRadius = animatedInnerShadowRadius,
+                        innerShadowAlpha = animatedInnerShadowAlpha,
+                        innerShadowOffset = DpOffset(0.dp, 6.dp),
                     ),
                 content = {},
             )

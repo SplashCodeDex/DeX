@@ -19,8 +19,12 @@ package com.dexstudios.dex.core.sync
  * by all of a device's sync paths.
  */
 class HybridLogicalClock(
-    /** Wall-clock source; injectable for deterministic tests and virtual time. */
-    private val wallClock: () -> Long = { com.dexstudios.dex.core.network.HashUtils.currentTimeMillis() },
+    /**
+     * Wall-clock source — MANDATORY injection (no default): the sync layer stays a pure
+     * leaf with zero module dependencies, so the platform/DI layer supplies the clock
+     * (desktop: HashUtils::currentTimeMillis; tests: deterministic lambdas).
+     */
+    private val wallClock: () -> Long,
     initialPhysical: Long = 0L,
     initialCounter: Long = 0L,
 ) {

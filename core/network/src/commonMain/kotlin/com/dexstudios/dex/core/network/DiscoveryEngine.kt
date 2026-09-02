@@ -9,15 +9,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
@@ -28,23 +25,96 @@ import kotlinx.serialization.json.put
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.seconds
 
 private val lenientJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
 // We still use java.net.DatagramSocket for the manual probe fallback since both targets are JVM.
 // If this ever targets iOS, we would expect/actual the manual probe as well.
 
+/** Wire DTO -> domain model (network boundary only; the domain never sees transport types). */
+private fun DiscoveredDevice.toDomain() = com.dexstudios.dex.core.domain.discovery.ObservedDevice(
+    ip = ip,
+    info = com.dexstudios.dex.core.domain.discovery.DiscoveredDeviceInfo(
+        alias = info.alias,
+        version = info.version,
+        deviceModel = info.deviceModel,
+        deviceType = info.deviceType,
+        fingerprint = info.fingerprint,
+        port = info.port,
+        quicPort = info.quicPort,
+        tcpFallbackPort = info.tcpFallbackPort,
+        protocol = info.protocol,
+        download = info.download,
+        identityHash = info.identityHash,
+        googleSub = info.googleSub,
+        battery = info.battery,
+        isCharging = info.isCharging,
+        wifiBand = info.wifiBand,
+        wifiSsid = info.wifiSsid,
+    ),
+    lastSeenMillis = lastSeenTimestamp,
+    viaWan = viaWan,
+    viaRoster = viaRoster,
+)
+
+/** Domain model -> wire DTO (bridge back for legacy consumers until plan 030 unifies them). */
+private fun com.dexstudios.dex.core.domain.discovery.ObservedDevice.toWire() = DiscoveredDevice(
+    ip = ip,
+    info = RegisterDto(
+        alias = info.alias,
+        version = info.version,
+        deviceModel = info.deviceModel,
+        deviceType = info.deviceType,
+        fingerprint = info.fingerprint,
+        port = info.port,
+        quicPort = info.quicPort,
+        tcpFallbackPort = info.tcpFallbackPort,
+        protocol = info.protocol,
+        download = info.download,
+        identityHash = info.identityHash,
+        googleSub = info.googleSub,
+        battery = info.battery,
+        isCharging = info.isCharging,
+        wifiBand = info.wifiBand,
+        wifiSsid = info.wifiSsid,
+    ),
+    lastSeenTimestamp = lastSeenMillis,
+    viaWan = viaWan,
+    viaRoster = viaRoster,
+)
+
 class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discoveryServices: List<IDiscoveryService>, private val httpClient: HttpClient) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var cleanupJob: Job? = null
     private var identityWatchJob: Job? = null
 
+    // The observed-device state machine lives in the domain (plan 028); this adapter maps
+    // wire DTOs into domain models and owns the platform feeds (beacons, probe, identity
+    // re-advertisement). The registry's semantics are pinned by DeviceRegistryTest.
+    private val registry = com.dexstudios.dex.core.domain.discovery.DeviceRegistry(
+        scope = scope,
+        nowMillis = { System.currentTimeMillis() },
+    )
+
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
 
-    private val seenDevices = ConcurrentHashMap<String, DiscoveredDevice>()
+    init {
+        // Bridge the domain registry's state to the legacy wire-typed flow. The collector
+        // covers registry-internal mutations (sweeps, roster merges done directly on the
+        // registry); the adapter's own write paths ALSO refresh synchronously (see
+        // [syncFromRegistry]) so legacy inline-assertion callers never race the bridge.
+        scope.launch {
+            registry.devices.collect { observed ->
+                _devices.value = observed.mapValues { (_, d) -> d.toWire() }
+            }
+        }
+    }
+
+    /** Synchronous write-through: legacy callers read `devices.value` immediately after writes. */
+    private fun syncFromRegistry() {
+        _devices.value = registry.devices.value.mapValues { (_, d) -> d.toWire() }
+    }
 
     val localInfo: RegisterDto
         get() = RegisterDto(
@@ -67,21 +137,9 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
         )
 
     fun startDiscovery() {
+        registry.start()
         val info = localInfo
         discoveryServices.forEach { it.start(info) { device -> addDevice(device) } }
-
-        cleanupJob = scope.launch {
-            while (isActive) {
-                delay(10.seconds)
-                val now = System.currentTimeMillis()
-                _devices.update { map ->
-                    map.filterKeys { fp ->
-                        (seenDevices[fp]?.lastSeenTimestamp ?: 0L).let { now - it < 20000 }
-                    }
-                }
-                seenDevices.entries.removeIf { it.key !in _devices.value }
-            }
-        }
 
         identityWatchJob = scope.launch {
             var lastAdvertised = Triple(deviceConfig.email, deviceConfig.googleSub, deviceConfig.alias)
@@ -101,55 +159,19 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
     }
 
     fun addDevice(device: DiscoveredDevice) {
-        if (seenDevices.size >= 100 && !seenDevices.containsKey(device.info.fingerprint)) {
-            val oldest = seenDevices.minByOrNull { it.value.lastSeenTimestamp }
-            if (oldest != null) {
-                seenDevices.remove(oldest.key)
-            }
-        }
-
-        val existing = seenDevices[device.info.fingerprint]
-        seenDevices[device.info.fingerprint] = device
-
-        val changed = existing == null ||
-            existing.ip != device.ip ||
-            existing.info != device.info ||
-            existing.viaWan != device.viaWan ||
-            existing.viaRoster != device.viaRoster
-        if (!changed) return
-
-        _devices.update { map ->
-            if (map.size >= 100 && !map.containsKey(device.info.fingerprint)) {
-                val oldestFp = map.minByOrNull { it.value.lastSeenTimestamp }?.key
-                if (oldestFp != null) {
-                    (map - oldestFp) + (device.info.fingerprint to device)
-                } else {
-                    map + (device.info.fingerprint to device)
-                }
-            } else {
-                map + (device.info.fingerprint to device)
-            }
-        }
+        registry.addDevice(device.toDomain())
+        syncFromRegistry()
     }
 
     /** Updates live battery, charging, and Wi-Fi telemetry for an active device. */
     fun updateTelemetry(fingerprint: String, battery: Int? = null, isCharging: Boolean? = null, wifiSsid: String? = null) {
-        val existing = seenDevices[fingerprint] ?: _devices.value[fingerprint] ?: return
-        val updatedInfo = existing.info.copy(
-            battery = battery ?: existing.info.battery,
-            isCharging = isCharging ?: existing.info.isCharging,
-            wifiSsid = wifiSsid ?: existing.info.wifiSsid,
-        )
-        val updatedDevice = existing.copy(
-            info = updatedInfo,
-            lastSeenTimestamp = System.currentTimeMillis(),
-        )
-        addDevice(updatedDevice)
+        registry.updateTelemetry(fingerprint, battery, isCharging, wifiSsid)
+        syncFromRegistry()
     }
 
     fun stopDiscovery() {
         discoveryServices.forEach { it.stop() }
-        cleanupJob?.cancel()
+        registry.stop()
         identityWatchJob?.cancel()
         // Kill the owning scope too (manual-probe launches included) — shutdown-only API.
         scope.cancel()

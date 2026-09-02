@@ -154,7 +154,10 @@ fun HistoryScreen(
     }
     val collapseThreshold = 200f
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier
+        .fillMaxSize()
+        .clip(RoundedCornerShape(24.dp))
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -546,7 +549,7 @@ private fun HistoryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.98f, pullFactor = 0.1f)
@@ -633,7 +636,7 @@ private fun HistoryGridItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else if (isFailed) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .graphicsLayer { alpha = if (isFailed && !isSelected) 0.6f else 1f }
             .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.1f)
@@ -645,7 +648,7 @@ private fun HistoryGridItem(
             modifier = Modifier
                 .aspectRatio(1f)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.12f) else if (isSent) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
             contentAlignment = Alignment.Center
         ) {

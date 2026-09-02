@@ -155,6 +155,41 @@ object DeXServer {
             getKoin().getOrNull<com.dexstudios.dex.core.network.services.DesktopWallpaperWatcherService>()?.start()
         }
 
+        // Clipboard sync use case (plan 029): eager resolve so ClipboardSyncState.useCase
+        // is wired BEFORE any set-clipboard frame can arrive; the same instance backs the
+        // server receive path and the AWT change listener (one shared echo guard).
+        runCatching {
+            getKoin().get<com.dexstudios.dex.core.domain.clipboard.ClipboardSyncUseCase>()
+        }
+
+        // Sync roster card (plan 031): publish THIS device into the synced devices
+        // collection so same-account peers render it. Koin-optional by design — a
+        // missing graph means local-only operation, never a startup failure.
+        runCatching {
+            val deviceConfig = getKoin().get<com.dexstudios.dex.core.network.DeviceConfig>()
+            val clock = getKoin().get<com.dexstudios.dex.core.sync.SyncEngine>()
+            com.dexstudios.dex.core.network.SyncBridge.attach(clock)
+            com.dexstudios.dex.core.network.SyncBridge.ownDeviceCard(
+                fingerprint = deviceConfig.fingerprint,
+                alias = deviceConfig.alias,
+                deviceModel = com.dexstudios.dex.core.network.getPlatformDeviceModel(),
+                platform = "desktop",
+            )
+        }.onFailure {
+            co.touchlab.kermit.Logger.i("Sync roster card skipped: ${it.message}")
+        }
+
+        // Sync flush loop (plan 031, closing the client loop): drains the engine's queued
+        // deltas through the configured sync host. Idle when syncHostUrl is empty (the
+        // user has not configured a host) or when signed out — queued deltas simply wait.
+        // Started with the server lifecycle; stopped by DesktopShutdownCoordinator.
+        runCatching {
+            val scheduler = getKoin().get<com.dexstudios.dex.core.network.sync.DesktopSyncScheduler>()
+            scheduler.start()
+        }.onFailure {
+            co.touchlab.kermit.Logger.i("Sync scheduler skipped: ${it.message}")
+        }
+
         Logger.i(
             "DeXServer started on HTTPS port 48424, HTTP 28425 (loopback), HTTP 48426 " +
                 "(pull fallback, downloads only), HTTP 48425 (loopback OAuth callback)",

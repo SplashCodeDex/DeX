@@ -53,7 +53,7 @@ fun LiquidGlassIconButton(
     width: Dp = 56.dp,
     height: Dp = 56.dp,
     config: LiquidGlassConfig = LiquidGlassConfig(),
-    backdrop: Backdrop? = null,
+    backdrop: Backdrop? = LocalBackdrop.current,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -108,7 +108,8 @@ fun LiquidGlassIconButton(
     }
 
     Box(
-        modifier = glassModifier
+        modifier = modifier
+            .then(glassModifier)
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,

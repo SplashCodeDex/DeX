@@ -1,8 +1,37 @@
 # Plan 029 — core/domain Slice 4: Clipboard Sync + AuthState Disposition (Phase 0-A4)
 
-> Status: TODO
-> Depends on: 026 (DONE); sequence after 028
+> Status: DONE (executed 2026-09-01)
+> Depends on: 026 (DONE); sequenced after 028 (DONE)
 > Effort: S (~1 week solo)
+
+## What actually shipped (2026-09-01)
+
+- **`core/domain/clipboard`**: `ClipboardSyncUseCase` — the echo guard (content-hash
+  based: received content is written locally AND marked, so the platform's subsequent
+  change event is suppressed and the classic two-device infinite copy loop is killed),
+  the enable policy (injected value source), payload shaping (Text XOR Image lanes),
+  and send-failure propagation (callers own fallback channels). `ClipboardAccess` +
+  `ClipboardSender` ports. **No sync dependency by design** — clipboard CONTENT is
+  real-time P2P only, never enters the sync backend (privacy law restated in the code).
+- **8-test contract suite**: push-when-changed, disabled no-op, empty no-op,
+  receive-then-write-then-NOT-rebroadcast, new-local-copy-after-remote still sends,
+  guard is per-content (idempotent), image lanes, unreachable-peer failure surfaces.
+- **Desktop wiring**: ONE process-wide instance (NetworkModule.jvm) — AWT `ClipboardAccess`
+  + WS-broadcast `ClipboardSender` (`DesktopClipboardPorts`, core/network desktopMain) +
+  DeviceConfig enable policy — eagerly resolved in DeXServer.start so the guard exists
+  before any frame arrives. The server receive path (`WebSocketRoutes` set-clipboard)
+  routes through `ClipboardSyncState.applyRemoteText` (same shared instance).
+  `ClipboardSyncService` (composeApp) is reduced to AWT flavor-listener plumbing; the
+  ADB fallback lives in `DesktopClipboardSender` (WS-first, ADB when no session).
+- **AuthState disposition — DECIDED (recorded for plan 030)**: `AuthState` STAYS in
+  `core/network`. It is the desktop/phone mirror of DeviceManager persistence
+  (StateFlow projections consumed by engines and UI), not domain logic; moving it would
+  churn every consumer for zero platform gain. Plan 030 (Android shared-core) is the
+  moment its fate is revisited: the Android app has its own DeviceManager-backed copy,
+  and THAT integration decides whether a shared mirror belongs in core/data. Moving it
+  twice would be worse than moving once, late, with full information.
+- Verification: `:core:domain:desktopTest` (50), `:core:network:desktopTest` (134),
+  `:composeApp:desktopTest`, `spotlessCheck` — all green.
 
 ## Why
 

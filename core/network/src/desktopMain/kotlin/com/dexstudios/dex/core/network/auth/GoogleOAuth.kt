@@ -55,6 +55,22 @@ object GoogleOAuth {
 
     private var cachedCredentials: Pair<String, String>? = null
 
+    /**
+     * The most recent raw ID token (process-lifetime, in-memory ONLY — never persisted:
+     * short-lived credentials must not outlive the session on disk). The sync layer's
+     * transport presents it as the exchange bearer; it goes stale after ~1h, at which
+     * point flushes fail 401, the deltas re-queue, and the next sign-in refreshes it.
+     */
+    @Volatile
+    private var latestIdToken: String? = null
+
+    /** The raw ID token from the most recent sign-in, or null when signed out/stale. */
+    fun currentIdToken(): String? = latestIdToken
+
+    private fun rememberIdToken(token: String?) {
+        latestIdToken = token
+    }
+
     private val json = Json { ignoreUnknownKeys = true }
 
     fun isConfigured(): Boolean = loadCredentials() != null
@@ -145,6 +161,7 @@ object GoogleOAuth {
             val responseBody = response.bodyAsText()
             val jsonResponse = json.decodeFromString<JsonObject>(responseBody)
             val idToken = jsonResponse["id_token"]?.jsonPrimitive?.contentOrNull ?: return null
+            rememberIdToken(idToken)
 
             val parts = idToken.split(".")
             if (parts.size != 3) return null
@@ -191,6 +208,7 @@ object GoogleOAuth {
     }
 
     fun signOut() {
+        rememberIdToken(null)
         try {
             val file = File(baseDirectory, "google_profile.json")
             if (file.exists()) file.delete()

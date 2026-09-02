@@ -372,8 +372,10 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                                 val text = dataObj?.get(FieldNames.TEXT)?.jsonPrimitive?.contentOrNull
                                 if (!text.isNullOrBlank()) {
                                     try {
-                                        val selection = java.awt.datatransfer.StringSelection(text)
-                                        java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+                                        // Route through the shared domain use case (plan 029): the
+                                        // write AND the echo-guard marking must both happen there,
+                                        // or the AWT change listener bounces this text right back.
+                                        com.dexstudios.dex.core.network.ClipboardSyncState.applyRemoteText(text)
                                         com.dexstudios.dex.core.network.ClipboardSyncState.emitReceived(text)
                                         Logger.i("Clipboard text synced via WebSocket from $fingerprint")
                                     } catch (e: Exception) {

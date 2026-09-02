@@ -34,4 +34,39 @@ val desktopNetworkModule = module {
     single { DesktopUpnpService(get()) }
     single { PublicAddressService(get(), getOrNull()) }
     single { com.dexstudios.dex.core.network.services.DesktopWallpaperWatcherService() }
+
+    // Clipboard sync (plan 029): the ONE domain use case instance — AWT clipboard access,
+    // WS-broadcast sender (ADB fallback stays in the composeApp sender), enable policy
+    // read live from DeviceConfig. Wired into ClipboardSyncState so BOTH the server
+    // receive path and the AWT change listener consult the same echo guard.
+    single {
+        com.dexstudios.dex.core.domain.clipboard.ClipboardSyncUseCase(
+            access = com.dexstudios.dex.core.network.sync.DesktopClipboardPorts.awtAccess(),
+            sender = com.dexstudios.dex.core.network.sync.DesktopClipboardPorts.wsSender(),
+            enabled = { get<com.dexstudios.dex.core.network.DeviceConfig>().clipboardSyncEnabled },
+            hash = com.dexstudios.dex.core.network.sync.DesktopClipboardPorts::sha256Base64,
+        ).also { com.dexstudios.dex.core.network.ClipboardSyncState.useCase = it }
+    }
+
+    // Sync client loop (plan 031): transport against the user-configured sync host
+    // (DeviceConfig.syncHostUrl; empty = disabled), live ID token from GoogleOAuth
+    // (in-memory only), flushed periodically by the scheduler. Started/stopped with the
+    // server lifecycle (DeXServer) — never a self-starting hidden network loop.
+    single {
+        com.dexstudios.dex.core.network.sync.HttpSyncTransport(
+            client = get(),
+            baseUrlProvider = { get<com.dexstudios.dex.core.network.DeviceConfig>().syncHostUrl },
+            tokenProvider = { com.dexstudios.dex.core.network.auth.GoogleOAuth.currentIdToken() ?: "" },
+            deviceIdProvider = { get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint },
+        )
+    }
+    factory {
+        com.dexstudios.dex.core.network.sync.DesktopSyncScheduler(
+            engine = get(),
+            transport = get(),
+            syncHostUrlProvider = { get<com.dexstudios.dex.core.network.DeviceConfig>().syncHostUrl },
+            tokenProvider = { com.dexstudios.dex.core.network.auth.GoogleOAuth.currentIdToken() },
+            scope = get(),
+        )
+    }
 }

@@ -23,6 +23,7 @@ kotlin {
             api(project(":core:protocol"))
             implementation(project(":core:data"))
             implementation(project(":core:domain"))
+            implementation(project(":core:sync"))
         }
 
         getByName("desktopMain").dependencies {
@@ -39,6 +40,9 @@ kotlin {
             dependencies {
                 implementation(libs.mockk)
                 implementation(libs.ktor.server.test.host)
+                // The WAN relay orchestration contract tests run against the REAL
+                // server module's relay routes (same wire law both sides of deployment).
+                implementation(project(":server"))
             }
         }
 

@@ -22,22 +22,31 @@ import com.kyant.backdrop.shadow.Shadow
 object LiquidGlassTokens {
     val LensHeight = 30.dp
     val LensAmount = 35.dp
-    val BlurRadius = 1.dp
-    val RestRefraction = 0.5f
+    val BlurRadius = 5.dp
+    val RestRefraction = 0.8f
     val GlareAngle = -52.82f
-    val GlareHardness = 20f
-    val GlareFactor = 0.78f
-    val GlareWidth = 1.dp
-    val GlareRestAlpha = 0.35f
+    val GlareFalloff = 2.5f
+    val GlareFactor = 0.8f
+    val GlareRestAlpha = 0.2f
+
+    val SheetGlareAngle = -52.82f
+    val SheetGlareFalloff = 3.5f
+    val SheetGlareFactor = 0.3f
+
     val SurfaceTint = Color.Black
     val DarkTintAlpha = 0.23f
     val ChromaticAberration = false
     val DepthEffect = true
 
-    // Advanced spec fields
-    val FresnelRange = 64.56f
-    val FresnelHardness = 21.58f
-    val FresnelFactor = 7.5f
+    val InnerShadowRadius = 6.dp
+    val InnerShadowOffset = DpOffset(x = 2.dp, y = 23.dp)
+    val InnerShadowColor = Color.Black
+    val InnerShadowAlpha = 0f
+
+    // Centralized Deep Drop Shadow tokens (Search Island & Floating NavBar)
+    val ExpandedSearchShadowRadius = 33.dp
+    val ExpandedSearchShadowOffset = DpOffset(0.dp, 36.dp)
+    val ExpandedSearchShadowColor = Color.Black.copy(alpha = 0.25f)
 }
 
 /**
@@ -54,27 +63,41 @@ data class LiquidGlassConfig(
     val restRefraction: Float = LiquidGlassTokens.RestRefraction,
     val surfaceTint: Color = LiquidGlassTokens.SurfaceTint,
     val surfaceTintAlpha: Float = LiquidGlassTokens.DarkTintAlpha,
-    val highlight: Highlight = Highlight(
-        style = HighlightStyle.Default(
-            angle = LiquidGlassTokens.GlareAngle,
-            falloff = LiquidGlassTokens.GlareHardness / 10f
-        ),
-        alpha = LiquidGlassTokens.GlareFactor
-    ),
+    val glareFalloff: Float = LiquidGlassTokens.GlareFalloff,
+    val glareFactor: Float = LiquidGlassTokens.GlareFactor * 100f,
+    val glareAngle: Float = LiquidGlassTokens.GlareAngle,
+    val useAmbientHighlight: Boolean = false,
     val shadowRadius: Dp = 0.dp,
     val shadowColor: Color = Color.Black.copy(alpha = 0.2f),
     val shadowOffset: DpOffset = DpOffset.Zero,
-    val innerShadow: InnerShadow? = null,
+    val innerShadowRadius: Dp = LiquidGlassTokens.InnerShadowRadius,
+    val innerShadowOffset: DpOffset = LiquidGlassTokens.InnerShadowOffset,
+    val innerShadowColor: Color = LiquidGlassTokens.InnerShadowColor,
+    val innerShadowAlpha: Float = LiquidGlassTokens.InnerShadowAlpha
+) {
+    val highlight: Highlight
+        get() = if (useAmbientHighlight) {
+            Highlight.Ambient
+        } else {
+            Highlight(
+                style = HighlightStyle.Default(
+                    angle = glareAngle,
+                    falloff = glareFalloff
+                ),
+                alpha = glareFactor / 100f
+            )
+        }
 
-    // Advanced shader parameters
-    val refFresnelRange: Float = LiquidGlassTokens.FresnelRange,
-    val refFresnelHardness: Float = LiquidGlassTokens.FresnelHardness,
-    val refFresnelFactor: Float = LiquidGlassTokens.FresnelFactor,
-    val glareRange: Float = 0f,
-    val glareHardness: Float = LiquidGlassTokens.GlareHardness,
-    val glareFactor: Float = LiquidGlassTokens.GlareFactor * 100f,
-    val glareAngle: Float = LiquidGlassTokens.GlareAngle
-)
+    val innerShadow: InnerShadow?
+        get() = if (innerShadowAlpha > 0f || innerShadowRadius > 0.dp) {
+            InnerShadow(
+                radius = innerShadowRadius,
+                offset = innerShadowOffset,
+                color = innerShadowColor,
+                alpha = innerShadowAlpha
+            )
+        } else null
+}
 
 /**
  * Curated glass presets. Every preset inherits from the Master Tokens
@@ -161,8 +184,9 @@ object LiquidGlassPresets {
                 shape = RoundedCornerShape(48.dp),
                 blurRadius = 2.dp,
                 restRefraction = 1.05f,
-                shadowRadius = 33.dp,
-                shadowOffset = DpOffset(0.dp, 36.dp),
+                shadowRadius = LiquidGlassTokens.ExpandedSearchShadowRadius,
+                shadowOffset = LiquidGlassTokens.ExpandedSearchShadowOffset,
+                shadowColor = LiquidGlassTokens.ExpandedSearchShadowColor,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
                 surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.5f
             )
@@ -191,10 +215,9 @@ object LiquidGlassPresets {
     val NavBar: LiquidGlassConfig
         @Composable get() = resolve(
             MasterSpec.copy(
-                blurRadius = 5.dp,
-                restRefraction = 0.8f,
-                shadowRadius = 0.dp,
-                shadowColor = Color.Black.copy(alpha = 0.6f)
+                shadowRadius = LiquidGlassTokens.ExpandedSearchShadowRadius,
+                shadowOffset = LiquidGlassTokens.ExpandedSearchShadowOffset,
+                shadowColor = LiquidGlassTokens.ExpandedSearchShadowColor,
             )
         )
 
@@ -251,7 +274,7 @@ object LiquidGlassPresets {
                 depthEffect = false,
                 surfaceTint = Color.White,
                 surfaceTintAlpha = 0.12f,
-                highlight = Highlight.Ambient,
+                useAmbientHighlight = true,
                 shadowRadius = 12.dp,
                 shadowColor = Color.Black.copy(alpha = 0.15f)
             )
@@ -272,9 +295,21 @@ object LiquidGlassPresets {
                 depthEffect = false,
                 surfaceTint = Color.White,
                 surfaceTintAlpha = 0.15f,
-                highlight = Highlight.Ambient,
+                useAmbientHighlight = true,
                 shadowRadius = 8.dp,
                 shadowColor = Color.Black.copy(alpha = 0.2f)
+            )
+        )
+
+    /**
+     * Dedicated preset for the navigation bottom sheet.
+     */
+    val Sheet: LiquidGlassConfig
+        @Composable get() = resolve(
+            MasterSpec.copy(
+                glareAngle = LiquidGlassTokens.SheetGlareAngle,
+                glareFalloff = LiquidGlassTokens.SheetGlareFalloff,
+                glareFactor = LiquidGlassTokens.SheetGlareFactor * 100f
             )
         )
 }

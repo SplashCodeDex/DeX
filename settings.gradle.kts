@@ -48,3 +48,5 @@ include(":core:protocol")
 include(":core:domain")
 
 include(":core:sync")
+
+include(":server")

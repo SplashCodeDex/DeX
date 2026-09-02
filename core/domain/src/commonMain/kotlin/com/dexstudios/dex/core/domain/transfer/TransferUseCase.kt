@@ -25,6 +25,13 @@ class TransferUseCase(
     private val _sessions = MutableStateFlow<Map<String, TransferSession>>(emptyMap())
     val sessions: StateFlow<Map<String, TransferSession>> = _sessions
 
+    /**
+     * Serializes read-modify-write sequences: progress reports, completion, and removal
+     * arrive from concurrent upload/pull threads; unsynchronized map copies would lose
+     * the latest write (a complete flipping back to in-flight, or a lost removal).
+     */
+    private val lock = Any()
+
     companion object {
         /** Dashboard keeps a settled transfer visible for 6s — legacy behavior. */
         const val SESSION_LINGER_MS = 6_000L
@@ -53,19 +60,21 @@ class TransferUseCase(
 
     /** Live progress report — replaces the entry's progress fields verbatim. */
     fun reportProgress(sessionId: String, progress: TransferProgress) {
-        val current = _sessions.value[sessionId] ?: return
-        _sessions.value = _sessions.value + (
-            sessionId to current.copy(
-                filesReceived = progress.filesDone,
-                totalFiles = progress.totalFiles,
-                bytesReceived = progress.bytesTransferred,
-                totalBytes = progress.totalBytes,
-                speedBps = progress.speedBps,
-                etaSeconds = progress.etaSeconds,
-                currentFileName = progress.currentFileName,
-                isComplete = false,
-            )
-            )
+        synchronized(lock) {
+            val current = _sessions.value[sessionId] ?: return
+            _sessions.value = _sessions.value + (
+                sessionId to current.copy(
+                    filesReceived = progress.filesDone,
+                    totalFiles = progress.totalFiles,
+                    bytesReceived = progress.bytesTransferred,
+                    totalBytes = progress.totalBytes,
+                    speedBps = progress.speedBps,
+                    etaSeconds = progress.etaSeconds,
+                    currentFileName = progress.currentFileName,
+                    isComplete = false,
+                )
+                )
+        }
     }
 
     /**
@@ -74,14 +83,16 @@ class TransferUseCase(
      * the legacy monitor contract where completion never auto-removed).
      */
     fun markComplete(sessionId: String, filesReceived: Int, totalFiles: Int) {
-        val current = _sessions.value[sessionId] ?: return
-        _sessions.value = _sessions.value + (
-            sessionId to current.copy(
-                filesReceived = filesReceived,
-                totalFiles = totalFiles,
-                isComplete = true,
-            )
-            )
+        synchronized(lock) {
+            val current = _sessions.value[sessionId] ?: return
+            _sessions.value = _sessions.value + (
+                sessionId to current.copy(
+                    filesReceived = filesReceived,
+                    totalFiles = totalFiles,
+                    isComplete = true,
+                )
+                )
+        }
     }
 
     /** Marks a session complete and schedules the linger removal (future-peer default). */
@@ -98,7 +109,9 @@ class TransferUseCase(
      * phantom transfer on the dashboard) and explicit cancellation.
      */
     fun removeSession(sessionId: String) {
-        _sessions.value = _sessions.value - sessionId
+        synchronized(lock) {
+            _sessions.value = _sessions.value - sessionId
+        }
     }
 
     fun session(sessionId: String): TransferSession? = _sessions.value[sessionId]

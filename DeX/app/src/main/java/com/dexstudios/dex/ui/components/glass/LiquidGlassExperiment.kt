@@ -91,7 +91,7 @@ fun LiquidGlassRefractionExperiment(
                 chromaticAberration = chromaticAberration,
                 surfaceTintAlpha = surfaceTintAlpha,
                 depthEffect = true,
-                highlight = LiquidGlassPresets.IconButton.highlight.copy(alpha = 0.4f)
+                glareFactor = 40f
             )
 
             LiquidGlassPanel(

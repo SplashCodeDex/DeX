@@ -44,6 +44,9 @@ object TrustRevocationService {
         val paired = com.dexstudios.dex.auth.AuthState.pairedFingerprints.value.toList()
         paired.forEach { fp -> revokeDevice(fp, deviceConfig) }
         pairingEngine?.reset()
+        // The OLD fingerprint's roster card must vanish from every peer's synced roster
+        // (a tombstone, not a purge — a purge would let offline peers resurrect it).
+        com.dexstudios.dex.core.network.SyncBridge.tombstoneDevice(deviceConfig.fingerprint)
         deviceConfig.resetIdentity()
     }
 }

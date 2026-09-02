@@ -25,6 +25,12 @@ interface SyncStorage {
 
     /** Persists the HLC state (survives restarts — monotonic restore contract). */
     suspend fun storeClock(clock: HlcTimestamp)
+
+    /** Loads the persisted delta-sync cursor (host sequence), or null before first contact. */
+    suspend fun loadCursor(): Long?
+
+    /** Persists the delta-sync cursor (advanced only after a fully-merged response). */
+    suspend fun storeCursor(cursor: Long)
 }
 
 /**
@@ -35,11 +41,14 @@ interface SyncStorage {
 interface SyncTransport {
     /**
      * Pushes local deltas (records the host may not have) and returns the records the
-     * host held that we must merge. The exchange is idempotent: re-sending a record
-     * the host already has is a no-op.
+     * host holds newer than [sinceHostSeq] (absent = full snapshot for first contact).
+     * The exchange is idempotent: re-sending a record the host already has is a no-op.
      */
-    suspend fun exchange(deltas: List<SyncRecord>): List<SyncRecord>
+    suspend fun exchange(deltas: List<SyncRecord>, sinceHostSeq: Long? = null): SyncExchangeBatch
 }
+
+/** One exchange result: the records plus the delta-sync cursor metadata. */
+data class SyncExchangeBatch(val records: List<SyncRecord>, val hostSeq: Long, val hasMore: Boolean)
 
 /** Emits local mutations so the engine can queue them for the next exchange. */
 interface SyncChangeSource {

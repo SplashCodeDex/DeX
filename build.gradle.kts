@@ -10,8 +10,23 @@ plugins {
 }
 
 allprojects {
-    tasks.register("test") {
-        dependsOn(tasks.matching { it.name == "allTests" || it.name == "testDebugUnitTest" || it.name == "desktopTest" || it.name == "jvmTest" })
+    // Aggregate convenience: make a bare `test` invocation route to this project's real
+    // test task. KMP modules have no built-in `test`, so a router is registered there;
+    // JVM modules (e.g. server) already own `test` from the Java plugin and are left
+    // untouched — registering a second `test` breaks plugin application outright.
+    plugins.withId("org.jetbrains.kotlin.multiplatform") {
+        if (tasks.none { it.name == "test" }) {
+            tasks.register("test") {
+                dependsOn(tasks.matching { it.name == "allTests" || it.name == "desktopTest" || it.name == "jvmTest" })
+            }
+        }
+    }
+    plugins.withId("com.android.application") {
+        if (tasks.none { it.name == "test" }) {
+            tasks.register("test") {
+                dependsOn(tasks.matching { it.name == "testDebugUnitTest" })
+            }
+        }
     }
 }
 

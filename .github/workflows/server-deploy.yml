@@ -1,0 +1,67 @@
+# DeX server build + deploy (plan 032).
+# Builds the fat JAR, runs the server contract suite, ships the Docker image to the
+# Hetzner VPS over SSH, and restarts the service. Credentials live in GitHub Actions
+# secrets — never in the repo.
+name: server-deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "server/**"
+      - "core/protocol/**"
+      - "core/sync/**"
+      - "gradle/libs.versions.toml"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build fat JAR + run server tests
+        run: ./gradlew :server:test :server:shadowJar --no-daemon
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: docker build -f server/Dockerfile -t dex-server:latest .
+
+      - name: Save image for transfer
+        run: docker save dex-server:latest | gzip > dex-server.tar.gz
+
+      - name: Copy image to VPS
+        env:
+          DEX_SSH_KEY: ${{ secrets.DEX_SSH_KEY }}
+          DEX_VPS_HOST: ${{ secrets.DEX_VPS_HOST }}
+          DEX_VPS_USER: ${{ secrets.DEX_VPS_USER }}
+        run: |
+          install -m 600 /dev/null key
+          printf '%s' "$DEX_SSH_KEY" > key
+          scp -i key -o StrictHostKeyChecking=accept-new dex-server.tar.gz "$DEX_VPS_USER@$DEX_VPS_HOST":/tmp/
+
+      - name: Load image and restart service on VPS
+        env:
+          DEX_SSH_KEY: ${{ secrets.DEX_SSH_KEY }}
+          DEX_VPS_HOST: ${{ secrets.DEX_VPS_HOST }}
+          DEX_VPS_USER: ${{ secrets.DEX_VPS_USER }}
+        run: |
+          printf '%s' "$DEX_SSH_KEY" > key
+          ssh -i key "$DEX_VPS_USER@$DEX_VPS_HOST" '
+            docker load < /tmp/dex-server.tar.gz &&
+            docker stop dex-server 2>/dev/null || true;
+            docker rm dex-server 2>/dev/null || true;
+            docker run -d --name dex-server --restart unless-stopped \
+              -p 8443:8443 \
+              --env-file /etc/dex/dex-server.env \
+              dex-server:latest &&
+            rm /tmp/dex-server.tar.gz
+          '

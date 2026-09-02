@@ -1,31 +1,16 @@
 package com.dexstudios.dex
-import timber.log.Timber
 
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,22 +18,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
-import com.dexstudios.dex.ui.icons.MaterialSymbols
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -61,21 +42,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.dexstudios.dex.network.AuthState
-import com.dexstudios.dex.network.DeXPorts
-import com.dexstudios.dex.network.DiscoveredDevice
-import com.dexstudios.dex.network.MessageHandler
-import com.dexstudios.dex.network.RegisterDto
-import com.dexstudios.dex.network.TransferWorkKeys
-import com.dexstudios.dex.ui.components.ConnectionOptionsDialog
-import com.dexstudios.dex.ui.components.FloatingTopAppBar
-import com.dexstudios.dex.ui.components.LiquidGlassButton
-import com.dexstudios.dex.ui.components.LiquidGlassSegmentedControl
-import com.dexstudios.dex.ui.components.NavBottomSheet
-import com.dexstudios.dex.ui.components.PairingRequestDialog
-import com.dexstudios.dex.ui.components.SegmentedControlItem
-import com.dexstudios.dex.ui.components.SheetExpandedMode
-import com.dexstudios.dex.ui.components.SheetTier
+import com.dexstudios.dex.network.*
+import com.dexstudios.dex.ui.components.*
+import com.dexstudios.dex.ui.components.glass.*
 import com.dexstudios.dex.ui.history.HistoryScreen
 import com.dexstudios.dex.ui.main.MainScreen
 import com.dexstudios.dex.ui.main.MainScreenUiState
@@ -87,23 +56,32 @@ import com.dexstudios.dex.ui.state.TopAppBarState
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
-import com.dexstudios.dex.network.DeviceConfig
-import com.dexstudios.dex.ui.components.CollapsedProfileContent
-import com.dexstudios.dex.ui.components.glass.LiquidGlassIconButton
-import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.icons.MaterialSymbols
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import timber.log.Timber
 
 enum class BottomRightButtonMode {
     Devices,
-    Profile
+    Profile,
+    History
+}
+
+fun BottomRightButtonMode.next(): BottomRightButtonMode = when (this) {
+    BottomRightButtonMode.Profile -> BottomRightButtonMode.History
+    BottomRightButtonMode.History -> BottomRightButtonMode.Devices
+    BottomRightButtonMode.Devices -> BottomRightButtonMode.Profile
+}
+
+fun BottomRightButtonMode.prev(): BottomRightButtonMode = when (this) {
+    BottomRightButtonMode.Profile -> BottomRightButtonMode.Devices
+    BottomRightButtonMode.History -> BottomRightButtonMode.Profile
+    BottomRightButtonMode.Devices -> BottomRightButtonMode.History
 }
 
 @Composable
@@ -118,20 +96,62 @@ fun MainNavigation(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val discoveredDevices = (uiState as? MainScreenUiState.Success)?.data ?: emptyList()
     val uploadState by viewModel.clientEngine.uploadState.collectAsStateWithLifecycle()
-    val downloadState by com.dexstudios.dex.network.TcpDownloadService.downloadState.collectAsStateWithLifecycle()
+    val downloadState by TcpDownloadService.downloadState.collectAsStateWithLifecycle()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsStateWithLifecycle()
 
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var showPairingModal by remember { mutableStateOf(false) }
     var activeExpandedMode by remember { mutableStateOf(SheetExpandedMode.Photos) }
-    var bottomRightMode by remember { mutableStateOf(BottomRightButtonMode.Devices) }
+    var bottomRightMode by remember { mutableStateOf(BottomRightButtonMode.Profile) }
 
-    val haptic = LocalHapticFeedback.current
+    // Infinite Roller Offset (Pixels). Center is 0f.
+    val rollerOffset = remember { Animatable(0f) }
+    var isMagneticLocked by remember { mutableStateOf(false) }
+    var hasMagneticHapticTriggered by remember { mutableStateOf(false) }
+
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val mainListState = rememberLazyListState()
     val historyListState = rememberLazyListState()
 
     val context = LocalContext.current
     val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    val isDownloading = downloadState.isDownloading
+    val isUploading = uploadState.isUploading
+    val isTransferActive = isDownloading || isUploading || downloadState.isSuccess || uploadState.isSuccess
+
+    val islandState by remember {
+        derivedStateOf {
+            when {
+                TopAppBarState.isProfileExpanded && isTransferActive -> IslandContentState.EXPANDED_TRANSFER
+                TopAppBarState.isProfileExpanded -> IslandContentState.EXPANDED_PROFILE
+                isTransferActive -> IslandContentState.COLLAPSED_TRANSFER
+                else -> IslandContentState.IDLE
+            }
+        }
+    }
+
+    // Dynamic Island bouncy expansion (Avatar/Profile/Transfer) from bottom-right
+    val containerSize = LocalWindowInfo.current.containerSize
+    val screenWidth = with(density) { containerSize.width.toDp() }
+    val expandedWidth = screenWidth - 32.dp
+
+    val islandWidth by animateDpAsState(
+        targetValue = if (islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE) expandedWidth else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "islandWidth"
+    )
+    val islandHeight by animateDpAsState(
+        targetValue = when (islandState) {
+            IslandContentState.EXPANDED_TRANSFER -> 180.dp
+            IslandContentState.EXPANDED_PROFILE -> 140.dp
+            else -> 56.dp
+        },
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "islandHeight"
+    )
 
     // Onboarding state hoisted so both the sheet content and the overlay below can react to it
     val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
@@ -197,7 +217,7 @@ fun MainNavigation(
                     TransferWorkKeys.TARGET_ALIAS to target.info.alias
                 )
 
-                val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.UploadWorker>()
+                val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
                     .setInputData(inputData)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .build()
@@ -272,17 +292,6 @@ fun MainNavigation(
         var showPreviewDevices by remember { mutableStateOf(false) }
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
 
-        val isDimmed by remember {
-            derivedStateOf {
-                TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded
-            }
-        }
-        val globalDimAlpha by animateFloatAsState(
-            targetValue = if (isDimmed) 0.75f else 0f,
-            animationSpec = tween(500),
-            label = "globalDimAlpha"
-        )
-
         // Predictive back gesture handling for expanded overlays (profile/search)
         PredictiveBackHandler(enabled = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded) { progressFlow ->
             try {
@@ -300,184 +309,388 @@ fun MainNavigation(
         NavBottomSheet(
             backdrop = contentBackdrop,
             initialTier = SheetTier.Half,
+            modifier = Modifier.zIndex(if (TopAppBarState.isProfileExpanded) 3f else 0f),
             onDismiss = onDismiss,
             sheetContent = { expansionFraction, currentTier, halfHeightDp, expandTo, collapseToHalf ->
-                // Automatically reset mode to Photos when collapsed to 50%
-                LaunchedEffect(expansionFraction) {
+                // Automatically cycle roller button to History when expanding, and reset to Profile when collapsed
+                val targetRollerMode = remember(expansionFraction) {
+                    when {
+                        expansionFraction >= 0.25f -> BottomRightButtonMode.History
+                        expansionFraction <= 0.05f -> BottomRightButtonMode.Profile
+                        else -> bottomRightMode
+                    }
+                }
+
+                LaunchedEffect(targetRollerMode) {
+                    if (targetRollerMode != bottomRightMode && !isMagneticLocked) {
+                        val buttonHeightPx = with(density) { 56.dp.toPx() }
+                        val targetY = if (targetRollerMode == BottomRightButtonMode.History) -buttonHeightPx else buttonHeightPx
+                        try {
+                            rollerOffset.animateTo(targetY, spring(stiffness = Spring.StiffnessMediumLow))
+                            bottomRightMode = targetRollerMode
+                        } finally {
+                            withContext(NonCancellable) {
+                                rollerOffset.snapTo(0f)
+                            }
+                        }
+                    }
+                }
+
+                LaunchedEffect(expansionFraction <= 0.05f) {
                     if (expansionFraction <= 0.05f) {
                         activeExpandedMode = SheetExpandedMode.Photos
                     }
                 }
 
-                val density = LocalDensity.current
+                val isDark = isSystemInDarkTheme()
+                val sheetBgColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
                 val sheetContentBackdrop = rememberLayerBackdrop()
+                val bottomBarBackdrop = rememberLayerBackdrop()
 
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val availableWidth = maxWidth
+                    val isExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
 
-                    // 1. CAPTURED SHEET LAYER: Contains the entire scrolling sheet content (flows under the navbar)
+                    // Invisible dismissal layer to catch taps outside the expanded island
+                    if (isExpanded) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(25f)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { TopAppBarState.isProfileExpanded = false }
+                                )
+                        )
+                    }
+
+                    // 1. CAPTURED LAYER FOR ROLLER / PROFILE / HISTORY BUTTON & DYNAMIC ISLAND:
+                    // Contains the Sheet background + Tabs screens (Photos/Audio/Files/History) + Navboard pill + Icons + Highlighter
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .layerBackdrop(sheetContentBackdrop)
+                            .layerBackdrop(bottomBarBackdrop)
                     ) {
-                        // 50% Resting Carousel
-                        if (expansionFraction < 0.35f) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height((halfHeightDp - 88.dp).coerceAtLeast(0.dp))
-                                    .graphicsLayer {
-                                        alpha = (1f - (expansionFraction / 0.22f)).coerceIn(0f, 1f)
-                                        translationY = -(36.dp * expansionFraction).toPx()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                DeviceCarousel(
-                                    devices = effectiveDevices,
-                                    selectedDevice = selectedDevice ?: effectiveDevices.firstOrNull(),
-                                    backdrop = contentBackdrop,
-                                    onDeviceSelect = { selectedDevice = it },
-                                    onDeviceLongClick = { selectedDevice = it; showPairingModal = true },
-                                    onAddDeviceClick = { showPairingModal = true },
-                                    uploadState = uploadState,
-                                    downloadState = downloadState
-                                )
-                            }
-                        }
-
-                        // Expanded Media Picker Tray / History View
-                        // Full size so items flow and scroll UNDER the floating bottom navbar!
-                        if (expansionFraction >= 0.15f) {
+                        // 1A. Captured Sheet Layer: Contains sheet background + content (flows under the navbar)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .layerBackdrop(sheetContentBackdrop)
+                        ) {
+                            // Base background surface for active liquid glass sampling across all states
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer {
-                                        val contentProgress = ((expansionFraction - 0.18f) / 0.35f).coerceIn(0f, 1f)
-                                        alpha = contentProgress
-                                        translationY = (20.dp * (1f - contentProgress)).toPx()
-                                    }
-                            ) {
-                                if (activeExpandedMode == SheetExpandedMode.History) {
-                                    HistoryScreen(
-                                        modifier = Modifier.fillMaxSize(),
-                                        listState = historyListState,
-                                    )
-                                } else {
-                                    MediaPickerTray(
-                                        backdrop = contentBackdrop,
-                                        currentTab =
-                                            when (activeExpandedMode) {
-                                                SheetExpandedMode.Photos -> MediaTrayTab.PhotosAndVideos
-                                                SheetExpandedMode.Audio -> MediaTrayTab.Audio
-                                                SheetExpandedMode.Files -> MediaTrayTab.Files
-                                                else -> MediaTrayTab.PhotosAndVideos
-                                            },
-                                        onSend = { uris ->
-                                            val target = selectedDevice ?: discoveredDevices.firstOrNull()
-                                            if (target != null) {
-                                                sendFilesToTarget(target, uris)
-                                            }
-                                            collapseToHalf()
+                                    .background(sheetBgColor)
+                            )
+
+                            // 50% Resting Carousel
+                            if (expansionFraction < 0.35f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height((halfHeightDp - 88.dp).coerceAtLeast(0.dp))
+                                        .graphicsLayer {
+                                            alpha = (1f - (expansionFraction / 0.22f)).coerceIn(0f, 1f)
+                                            translationY = -(36.dp * expansionFraction).toPx()
                                         },
-                                        onClose = { collapseToHalf() },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    DeviceCarousel(
+                                        devices = effectiveDevices,
+                                        selectedDevice = selectedDevice ?: effectiveDevices.firstOrNull(),
+                                        backdrop = contentBackdrop,
+                                        onDeviceSelect = { selectedDevice = it },
+                                        onDeviceLongClick = { selectedDevice = it; showPairingModal = true },
+                                        onAddDeviceClick = { showPairingModal = true },
+                                        uploadState = uploadState,
+                                        downloadState = downloadState
                                     )
                                 }
                             }
+
+                            // Expanded Media Picker Tray / History View
+                            // Full size so items flow and scroll UNDER the floating bottom navbar!
+                            if (expansionFraction >= 0.15f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(32.dp))
+                                        .graphicsLayer {
+                                            val contentProgress = ((expansionFraction - 0.18f) / 0.35f).coerceIn(0f, 1f)
+                                            alpha = contentProgress
+                                            translationY = (20.dp * (1f - contentProgress)).toPx()
+                                        }
+                                ) {
+                                    if (activeExpandedMode == SheetExpandedMode.History) {
+                                        HistoryScreen(
+                                            modifier = Modifier.fillMaxSize(),
+                                            listState = historyListState,
+                                        )
+                                    } else {
+                                        MediaPickerTray(
+                                            backdrop = contentBackdrop,
+                                            currentTab =
+                                                when (activeExpandedMode) {
+                                                    SheetExpandedMode.Photos -> MediaTrayTab.PhotosAndVideos
+                                                    SheetExpandedMode.Audio -> MediaTrayTab.Audio
+                                                    SheetExpandedMode.Files -> MediaTrayTab.Files
+                                                    else -> MediaTrayTab.PhotosAndVideos
+                                                },
+                                            onTabChange = { tab ->
+                                                activeExpandedMode = when (tab) {
+                                                    MediaTrayTab.PhotosAndVideos -> SheetExpandedMode.Photos
+                                                    MediaTrayTab.Audio -> SheetExpandedMode.Audio
+                                                    MediaTrayTab.Files -> SheetExpandedMode.Files
+                                                }
+                                            },
+                                            onSend = { uris ->
+                                                val target = selectedDevice ?: discoveredDevices.firstOrNull()
+                                                if (target != null) {
+                                                    sendFilesToTarget(target, uris)
+                                                }
+                                                collapseToHalf()
+                                            },
+                                            onClose = { collapseToHalf() },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 1B. Floating Navboard Pill (Draws on top of sheet, samples sheetContentBackdrop)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
+                                .zIndex(5f)
+                        ) {
+                            MorphingSheetNavPill(
+                                expansionFraction = expansionFraction,
+                                totalAvailableWidthDp = availableWidth,
+                                halfHeightDp = halfHeightDp,
+                                actionText = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
+                                onActionClick = {
+                                    if (effectiveDevices.isNotEmpty()) {
+                                        activeExpandedMode = SheetExpandedMode.Photos
+                                        expandTo(SheetTier.High)
+                                    } else {
+                                        showPairingModal = true
+                                    }
+                                },
+                                selectedMode = activeExpandedMode,
+                                onSelectMode = { activeExpandedMode = it },
+                                backdrop = sheetContentBackdrop,
+                                modifier = Modifier.zIndex(5f)
+                            )
                         }
                     }
 
-                    // 2. FLOATING BOTTOM BAR LAYER (Draws on top, samples sheetContentBackdrop!)
+                    // 2. FLOATING ROLLER / PROFILE / HISTORY BUTTON LAYER (Draws on top, samples bottomBarBackdrop!)
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
-                            .padding(bottom = 14.dp)
+                            .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
                             .zIndex(10f)
                     ) {
-                        // Cycling Bottom Right Button (Devices <-> Profile)
-                        if (expansionFraction < 0.25f) {
-                            val circleStartX = availableWidth - 20.dp - 56.dp
-                            val circleAlpha = (1f - (expansionFraction / 0.18f)).coerceIn(0f, 1f)
-                            val circleScale = (1f - (expansionFraction * 1.5f)).coerceIn(0f, 1f)
+                        // Endless Magnetic Roller Button (Devices <-> Profile <-> History)
+                        val isExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
 
-                            val profileConfig = LiquidGlassPresets.ProfileIconButton
-                            val devicesConfig = LiquidGlassPresets.IconButton
-                            val activeDevicesConfig = devicesConfig.copy(
-                                surfaceTint = MaterialTheme.colorScheme.primary,
-                                surfaceTintAlpha = 0.8f
-                            )
+                        val buttonHeightPx = with(density) { 56.dp.toPx() }
+                        val snapThresholdPx = buttonHeightPx * 0.40f
 
-                            LiquidGlassIconButton(
-                                onClick = {
-                                    if (bottomRightMode == BottomRightButtonMode.Devices) {
-                                        showPreviewDevices = !showPreviewDevices
-                                        if (showPreviewDevices && selectedDevice == null) {
-                                            selectedDevice = previewMockDevices.first()
+                        val currentY = rollerOffset.value
+                        val pullProgress = (Math.abs(currentY) / buttonHeightPx).coerceIn(0f, 1f)
+
+                        val devicesConfig = LiquidGlassPresets.IconButton
+                        val activeDevicesConfig = devicesConfig.copy(
+                            surfaceTint = MaterialTheme.colorScheme.primary,
+                            surfaceTintAlpha = 0.8f
+                        )
+                        val profileConfig = LiquidGlassPresets.ProfileIconButton
+                        val profileIslandConfig = LiquidGlassPresets.ProfileIsland
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .zIndex(if (isExpanded) 100f else 10f)
+                                .graphicsLayer {
+                                    alpha = 1f
+                                    scaleX = 1f
+                                    scaleY = 1f
+                                    clip = false
+                                }
+                                .size(islandWidth, islandHeight)
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { isMagneticLocked = false; hasMagneticHapticTriggered = false },
+                                        onVerticalDrag = { _, dragAmount ->
+                                            if (isMagneticLocked || isExpanded) return@detectVerticalDragGestures
+
+                                             val nextY = rollerOffset.value + dragAmount
+                                             if (Math.abs(nextY) > snapThresholdPx) {
+                                                 isMagneticLocked = true
+                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+                                                 scope.launch {
+                                                     val targetY = if (nextY > 0) buttonHeightPx else -buttonHeightPx
+                                                     rollerOffset.animateTo(targetY, spring(stiffness = Spring.StiffnessMediumLow))
+
+                                                     bottomRightMode = if (nextY > 0) bottomRightMode.prev() else bottomRightMode.next()
+                                                     rollerOffset.snapTo(0f)
+                                                 }
+                                             } else {
+                                                 scope.launch { rollerOffset.snapTo(nextY) }
+                                             }
+                                         },
+                                        onDragEnd = {
+                                            if (!isMagneticLocked) {
+                                                scope.launch { rollerOffset.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
+                                            }
+                                            isMagneticLocked = false
                                         }
-                                    } else {
-                                        TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded
-                                    }
-                                },
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        translationX = with(density) { circleStartX.toPx() }
-                                        alpha = circleAlpha
-                                        scaleX = circleScale
-                                        scaleY = circleScale
-                                    }
-                                    .pointerInput(Unit) {
-                                        detectVerticalDragGestures { _, dragAmount ->
-                                            if (Math.abs(dragAmount) > 25f) {
-                                                val newMode = if (bottomRightMode == BottomRightButtonMode.Devices) BottomRightButtonMode.Profile else BottomRightButtonMode.Devices
-                                                if (newMode != bottomRightMode) {
-                                                    bottomRightMode = newMode
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    )
+                                }
+                        ) {
+                            val nextMode = if (currentY > 0) bottomRightMode.prev() else bottomRightMode.next()
+
+                            // 1. Current Button / Expanded Island
+                            Box(modifier = Modifier.graphicsLayer {
+                                translationY = if (isExpanded) 0f else currentY
+                                alpha = if (isExpanded) 1f else 1f - (pullProgress * 1.2f).coerceIn(0f, 1f)
+                                scaleX = if (isExpanded) 1f else 1f - (pullProgress * 0.4f)
+                                scaleY = if (isExpanded) 1f else 1f - (pullProgress * 0.4f)
+                            }) {
+                                if (bottomRightMode == BottomRightButtonMode.Profile || isExpanded) {
+                                    // Dynamic Island Component
+                                    Box(contentAlignment = Alignment.Center) {
+                                        if (isTransferActive && !isExpanded) {
+                                            TransferProgressRing(
+                                                progress = if (isDownloading) downloadState.progress else uploadState.aggregateProgress,
+                                                modifier = Modifier.size(64.dp)
+                                            )
+                                        }
+                                        LiquidGlassIconButton(
+                                            onClick = {
+                                                if (!isMagneticLocked && (bottomRightMode == BottomRightButtonMode.Profile || isExpanded)) {
+                                                    TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded
+                                                    if (TopAppBarState.isProfileExpanded) TopAppBarState.isSearchExpanded = false
+                                                }
+                                            },
+                                            width = islandWidth,
+                                            height = islandHeight,
+                                            backdrop = bottomBarBackdrop,
+                                            config = if (isExpanded) profileIslandConfig else profileConfig
+                                        ) {
+                                            AnimatedContent(
+                                                targetState = islandState,
+                                                transitionSpec = {
+                                                    fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                                                },
+                                                label = "islandContent"
+                                            ) { state ->
+                                                when (state) {
+                                                    IslandContentState.EXPANDED_TRANSFER -> {
+                                                        ExpandedTransferContent(
+                                                            downloadState = downloadState,
+                                                            uploadState = uploadState,
+                                                            onCancel = {
+                                                                if (isDownloading) TcpDownloadService.cancelDownload(context)
+                                                                else viewModel.clientEngine.cancelUpload(context)
+                                                                TopAppBarState.isProfileExpanded = false
+                                                            }
+                                                        )
+                                                    }
+                                                    IslandContentState.EXPANDED_PROFILE -> {
+                                                        ExpandedProfileContent(
+                                                            profile = googleProfile,
+                                                            onSignIn = {
+                                                                val activity = context as? android.app.Activity
+                                                                if (activity != null) {
+                                                                    scope.launch {
+                                                                        val credential = GoogleSignInManager.signIn(activity)
+                                                                        val email = credential?.let { GoogleSignInManager.applyToDeviceConfig(it, deviceConfig) }
+                                                                        if (email != null) {
+                                                                            Toast.makeText(context, resources.getString(R.string.google_signed_in_as, email), Toast.LENGTH_LONG).show()
+                                                                        } else {
+                                                                            Toast.makeText(context, resources.getString(R.string.google_sign_in_failed), Toast.LENGTH_SHORT).show()
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        )
+                                                    }
+                                                    IslandContentState.COLLAPSED_TRANSFER -> {
+                                                        val currentPeerPicture = if (downloadState.isDownloading || downloadState.isSuccess) downloadState.peerPicture else uploadState.peerPicture
+                                                        TransferIcon(
+                                                            isDownloading = isDownloading,
+                                                            isUploading = isUploading,
+                                                            modifier = Modifier.size(32.dp),
+                                                            peerPicture = currentPeerPicture
+                                                        )
+                                                    }
+                                                    else -> {
+                                                        CollapsedProfileContent(
+                                                            profile = googleProfile,
+                                                            modifier = Modifier.size(32.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
-                                    },
-                                backdrop = contentBackdrop,
-                                config = if (bottomRightMode == BottomRightButtonMode.Profile) profileConfig
-                                         else if (showPreviewDevices) activeDevicesConfig
-                                         else devicesConfig
-                            ) {
-                                Crossfade(targetState = bottomRightMode, label = "bottomRightCycle") { mode ->
-                                    if (mode == BottomRightButtonMode.Devices) {
-                                        Icon(
-                                            imageVector = MaterialSymbols.Devices,
-                                            contentDescription = "Toggle Preview Connected Devices",
-                                            tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary
-                                                   else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    } else {
-                                        CollapsedProfileContent(
-                                            profile = googleProfile,
-                                            modifier = Modifier.size(32.dp)
-                                        )
                                     }
+                                } else {
+                                    // Normal Devices / History Button
+                                    RollerButtonItem(
+                                        mode = bottomRightMode,
+                                        isSettled = !isMagneticLocked && Math.abs(currentY) < 2f,
+                                        showPreviewDevices = showPreviewDevices,
+                                        activeDevicesConfig = activeDevicesConfig,
+                                        devicesConfig = devicesConfig,
+                                        profileConfig = profileConfig,
+                                        googleProfile = googleProfile,
+                                        contentBackdrop = bottomBarBackdrop,
+                                        onTogglePreview = { showPreviewDevices = !showPreviewDevices },
+                                        onExpandProfile = { TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded },
+                                        onOpenHistory = {
+                                            activeExpandedMode = SheetExpandedMode.History
+                                            expandTo(SheetTier.High)
+                                        }
+                                    )
+                                }
+                            }
+
+                            // 2. Incoming Button (Magnetizes from top or bottom)
+                            if (!isExpanded && Math.abs(currentY) > 1f) {
+                                val incomingY = currentY - (if (currentY > 0) buttonHeightPx else -buttonHeightPx)
+                                Box(modifier = Modifier.graphicsLayer {
+                                    translationY = incomingY
+                                    alpha = (pullProgress * 1.5f).coerceIn(0f, 1f)
+                                    scaleX = 0.6f + (pullProgress * 0.4f)
+                                    scaleY = 0.6f + (pullProgress * 0.4f)
+                                }) {
+                                    RollerButtonItem(
+                                        mode = nextMode,
+                                        isSettled = false,
+                                        showPreviewDevices = showPreviewDevices,
+                                        activeDevicesConfig = activeDevicesConfig,
+                                        devicesConfig = devicesConfig,
+                                        profileConfig = profileConfig,
+                                        googleProfile = googleProfile,
+                                        contentBackdrop = bottomBarBackdrop,
+                                        onTogglePreview = {},
+                                        onExpandProfile = {},
+                                        onOpenHistory = {
+                                            activeExpandedMode = SheetExpandedMode.History
+                                            expandTo(SheetTier.High)
+                                        }
+                                    )
                                 }
                             }
                         }
-
-                        // Morphing Nav Pill (matches exact "Pair Device" button size: height = 56.dp, width = navWidth)
-                        MorphingSheetNavPill(
-                            expansionFraction = expansionFraction,
-                            totalAvailableWidthDp = availableWidth,
-                            actionText = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
-                            onActionClick = {
-                                if (effectiveDevices.isNotEmpty()) {
-                                    activeExpandedMode = SheetExpandedMode.Photos
-                                    expandTo(SheetTier.High)
-                                } else {
-                                    showPairingModal = true
-                                }
-                            },
-                            selectedMode = activeExpandedMode,
-                            onSelectMode = { activeExpandedMode = it },
-                            backdrop = sheetContentBackdrop,
-                        )
                     }
                 }
             },
@@ -503,33 +716,13 @@ fun MainNavigation(
         )
         }
 
-        // Dimming overlay for top bar expansions (profile/search)
-        if (isDimmed) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(2f)
-                    .graphicsLayer { alpha = globalDimAlpha }
-                    .background(MaterialTheme.colorScheme.scrim)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            TopAppBarState.isProfileExpanded = false
-                            TopAppBarState.isSearchExpanded = false
-                        }
-                    )
-            )
-        }
-
-        // Floating Top App Bar (logo, profile island, search island)
         // Hidden while the onboarding sheet owns the screen
         if (!showOnboarding) {
         AnimatedVisibility(
             visible = true,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.zIndex(1f)
+            modifier = Modifier.zIndex(if (TopAppBarState.isSearchExpanded) 3f else 1f)
         ) {
             FloatingTopAppBar(
                 backdrop = contentBackdrop
@@ -539,7 +732,7 @@ fun MainNavigation(
 
         // Pair Request Prompt
         incomingPairRequest?.let { req ->
-            com.dexstudios.dex.ui.components.PairingRequestDialog(
+            PairingRequestDialog(
                 alias = req.alias,
                 expectedPin = req.pin,
                 onAccept = { enteredPin: String ->
@@ -562,7 +755,7 @@ fun MainNavigation(
         }
 
         if (showOnboarding) {
-            com.dexstudios.dex.ui.components.OnboardingSheet(
+            OnboardingSheet(
                 onDismiss = { showOnboarding = false },
                 modifier = Modifier.zIndex(100f)
             )
@@ -608,16 +801,17 @@ fun MainNavigation(
 }
 
 /**
- * Bouncy Mechanical Morphing Pill (Bottom Navbar):
- * Size is 1:1 with the 'Pair Device' button (height = 56.dp, width = totalAvailableWidthDp - 40.dp).
- * Smoothly transforms in place from 'Send File' / 'Pair Device' into the 4-tab
- * [Photos | Audio | Files | History] Liquid Glass Segmented Control pinned at the bottom
- * of the bottom sheet as it expands.
+ * Living Liquid Glass Bottom Navbar:
+ * Single authentic liquid glass component that sits at the bottom of the sheet.
+ * At rest: Solid opaque black action button (0% background refraction, authentic specular liquid glare).
+ * As sheet expands: Dynamically reduces surface tint alpha, shows refractions of media passing underneath,
+ * bounces in the 4 tabs, and activates the liquid glass highlighter lens.
  */
 @Composable
 private fun MorphingSheetNavPill(
     expansionFraction: Float,
     totalAvailableWidthDp: Dp,
+    halfHeightDp: Dp,
     actionText: String,
     onActionClick: () -> Unit,
     selectedMode: SheetExpandedMode,
@@ -625,25 +819,11 @@ private fun MorphingSheetNavPill(
     backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val buttonBgColor = if (isDark) Color.White else Color.Black
-    val buttonTextColor = if (isDark) Color.Black else Color.White
-
-    // Morph progress mapped across sheet expansion with smooth bouncy mechanical easing
-    val morphProgress = (expansionFraction / 0.45f).coerceIn(0f, 1f)
-    val easeProgress = FastOutSlowInEasing.transform(morphProgress)
-
-    // Sizing: 1:1 with bottom action button dimensions (height = 56.dp, full width = totalAvailableWidthDp - 40.dp)
-    val fullWidth = (totalAvailableWidthDp - 40.dp).coerceAtLeast(200.dp)
-    val startWidth = (totalAvailableWidthDp - 40.dp - 66.dp).coerceAtLeast(160.dp)
-    val currentWidth = lerp(startWidth, fullWidth, easeProgress)
-    val currentHeight = 56.dp // Exact same height as "Pair Device" button!
-
-    val startX = 20.dp
-    val endX = 20.dp
-    val currentX = lerp(startX, endX, easeProgress)
-
-    val pillShape = RoundedCornerShape(28.dp)
+    // Sizing: Fixed width alongside the 56dp roller button (with 12dp start padding, 16dp end padding, 14dp gap)
+    val fixedWidth = (totalAvailableWidthDp - 16.dp - 12.dp - 56.dp - 14.dp).coerceAtLeast(160.dp)
+    val fixedHeight = 56.dp
+    val samplingHeight = (halfHeightDp * 0.55f).coerceAtLeast(220.dp)
+    val lensHeight = samplingHeight * 1.12f
 
     val items = remember(selectedMode, onSelectMode) {
         listOf(
@@ -665,75 +845,82 @@ private fun MorphingSheetNavPill(
                 isSelected = selectedMode == SheetExpandedMode.Files,
                 onClick = { onSelectMode(SheetExpandedMode.Files) },
             ),
-            SegmentedControlItem(
-                title = "History",
-                icon = MaterialSymbols.History,
-                isSelected = selectedMode == SheetExpandedMode.History,
-                onClick = { onSelectMode(SheetExpandedMode.History) },
-            ),
         )
     }
 
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                translationX = currentX.toPx()
-            }
-            .size(currentWidth, currentHeight),
-        contentAlignment = Alignment.Center,
-    ) {
-        // 1. Resting Action Button Layer ("Send File" / "Pair Device")
-        if (morphProgress < 0.60f) {
-            val actionAlpha = (1f - (morphProgress / 0.32f)).coerceIn(0f, 1f)
-            val actionScale = 1f - (morphProgress * 0.12f)
-            val isButtonEnabled = expansionFraction <= 0.05f
+    // Single unified LiquidGlassSegmentedControl component!
+    LiquidGlassSegmentedControl(
+        items = items,
+        backdrop = backdrop,
+        totalWidth = fixedWidth,
+        visibleHeight = fixedHeight,
+        samplingHeight = samplingHeight,
+        lensHeight = lensHeight,
+        expansionFraction = expansionFraction,
+        actionText = actionText,
+        onActionClick = onActionClick,
+        modifier = modifier.size(fixedWidth, fixedHeight),
+    )
+}
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = actionAlpha
-                        scaleX = actionScale
-                        scaleY = actionScale
-                    }
-                    .clip(pillShape)
-                    .background(buttonBgColor)
-                    .clickable(enabled = isButtonEnabled, onClick = onActionClick),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = actionText,
-                    color = buttonTextColor,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
+/**
+ * Shared renderer for the individual items inside the endless roller (Devices, Profile, History).
+ */
+@Composable
+private fun RollerButtonItem(
+    mode: BottomRightButtonMode,
+    isSettled: Boolean,
+    showPreviewDevices: Boolean,
+    activeDevicesConfig: LiquidGlassConfig,
+    devicesConfig: LiquidGlassConfig,
+    profileConfig: LiquidGlassConfig,
+    googleProfile: GoogleProfile,
+    contentBackdrop: Backdrop?,
+    onTogglePreview: () -> Unit,
+    onExpandProfile: () -> Unit,
+    onOpenHistory: () -> Unit,
+) {
+    LiquidGlassIconButton(
+        onClick = {
+            if (isSettled) {
+                when (mode) {
+                    BottomRightButtonMode.Devices -> onTogglePreview()
+                    BottomRightButtonMode.Profile -> onExpandProfile()
+                    BottomRightButtonMode.History -> onOpenHistory()
+                }
+            }
+        },
+        backdrop = contentBackdrop,
+        config = when (mode) {
+            BottomRightButtonMode.Profile -> profileConfig
+            BottomRightButtonMode.Devices -> if (showPreviewDevices) activeDevicesConfig else devicesConfig
+            BottomRightButtonMode.History -> devicesConfig
+        }
+    ) {
+        when (mode) {
+            BottomRightButtonMode.Devices -> {
+                Icon(
+                    imageVector = MaterialSymbols.Devices,
+                    contentDescription = "Toggle Preview Connected Devices",
+                    tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
                 )
             }
-        }
-
-        // 2. Expanded 4-Tab Liquid Glass Segmented Control
-        if (morphProgress > 0.20f) {
-            val tabsAlpha = ((morphProgress - 0.28f) / 0.45f).coerceIn(0f, 1f)
-            val tabsScale = 0.90f + (0.10f * ((morphProgress - 0.28f) / 0.72f).coerceIn(0f, 1f))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = tabsAlpha
-                        scaleX = tabsScale
-                        scaleY = tabsScale
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                LiquidGlassSegmentedControl(
-                    items = items,
-                    backdrop = backdrop,
-                    totalWidth = currentWidth,
-                    visibleHeight = currentHeight,
+            BottomRightButtonMode.Profile -> {
+                CollapsedProfileContent(
+                    profile = googleProfile,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            BottomRightButtonMode.History -> {
+                Icon(
+                    imageVector = MaterialSymbols.History,
+                    contentDescription = "Transfer History",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
     }
 }
-

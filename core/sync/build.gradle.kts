@@ -20,7 +20,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core:protocol"))
-            implementation(project(":core:data"))
             implementation(libs.coroutines)
             implementation(libs.kotlinx.serialization.json)
         }

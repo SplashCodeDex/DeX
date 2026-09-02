@@ -20,7 +20,6 @@ HSPLcom/dexstudios/dex/ui/components/DeviceListItemKt;->DeviceListItem(Lcom/dexs
 # Liquid Glass & Backdrops
 HSPLcom/dexstudios/dex/ui/components/glass/LiquidGlassPanelKt;->LiquidGlassPanel(Landroidx/compose/ui/Modifier;Lcom/kyant/backdrop/Backdrop;Landroidx/compose/ui/graphics/Shape;Lcom/dexstudios/dex/ui/components/glass/LiquidGlassConfig;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
 HSPLcom/dexstudios/dex/ui/components/glass/LiquidGlassIconButtonKt;->LiquidGlassIconButton(Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Lcom/kyant/backdrop/Backdrop;FFLandroidx/compose/ui/graphics/Shape;Lcom/dexstudios/dex/ui/components/glass/LiquidGlassConfig;ZLkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
-HSPLcom/dexstudios/dex/ui/components/glass/ModifierUtilsKt;->shinyGlare(Landroidx/compose/ui/Modifier;Landroidx/compose/ui/graphics/Shape;FFFF)Landroidx/compose/ui/Modifier;
 
 # History & Settings
 HSPLcom/dexstudios/dex/ui/history/HistoryScreenKt;->HistoryScreen(Landroidx/compose/ui/Modifier;Landroidx/compose/foundation/lazy/LazyListState;Landroidx/compose/runtime/Composer;II)V

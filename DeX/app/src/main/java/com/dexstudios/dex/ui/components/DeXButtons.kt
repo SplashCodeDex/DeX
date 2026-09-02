@@ -27,8 +27,10 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
-import com.dexstudios.dex.ui.components.glass.shinyGlare
+import com.dexstudios.dex.ui.components.glass.LocalBackdrop
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.highlight.Highlight
 
 // ============================================================================
 // DeX Button Wrappers
@@ -45,11 +47,21 @@ fun DeXButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
 ) {
+    val backdrop = LocalBackdrop.current
     Button(
         onClick = onClick,
         modifier = modifier
             .bubbleFluidity()
-            .shinyGlare(shape = shape),
+            .then(
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {},
+                        highlight = { Highlight.Ambient }
+                    )
+                } else Modifier
+            ),
         enabled = enabled,
         colors = colors,
         shape = shape,
@@ -68,11 +80,21 @@ fun DeXTextButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
 ) {
+    val backdrop = LocalBackdrop.current
     TextButton(
         onClick = onClick,
         modifier = modifier
             .bubbleFluidity()
-            .shinyGlare(shape = shape),
+            .then(
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {},
+                        highlight = { Highlight.Ambient }
+                    )
+                } else Modifier
+            ),
         enabled = enabled,
         colors = colors,
         shape = shape,
@@ -106,18 +128,14 @@ fun LiquidGlassButton(
         if (backdrop != null) {
             LiquidGlassPanel(
                 backdrop = backdrop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .shinyGlare(
-                        shape = buttonShape,
-                        intensity = LiquidGlassTokens.GlareFactor
-                    ),
+                modifier = Modifier.matchParentSize(),
                 shape = buttonShape,
                 config = LiquidGlassPresets.IconButton.copy(
                     shape = buttonShape,
                     blurRadius = 14.dp,
                     surfaceTint = MaterialTheme.colorScheme.primary,
                     surfaceTintAlpha = 0.28f,
+                    glareFactor = LiquidGlassTokens.GlareFactor * 100f
                 ),
                 content = {}
             )

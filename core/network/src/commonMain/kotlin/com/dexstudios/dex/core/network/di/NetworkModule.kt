@@ -72,4 +72,31 @@ val commonNetworkModule = module {
             ),
         )
     }
+
+    // Sync layer (plan 031): the DataStore-backed SyncStorage adapter lives in core/data;
+    // the HLC gets the platform wall clock; the engine's device identity is OUR fingerprint
+    // (stable across restarts, unique per device — exactly the sync author semantic).
+    // The persisted HLC state is restored (monotonic-only) at graph construction so
+    // restarts never reissue timestamps the device already stamped.
+    single<com.dexstudios.dex.core.sync.SyncStorage> {
+        com.dexstudios.dex.core.network.DataStoreSyncStorage(dataStore = get())
+    }
+    single {
+        val clock = com.dexstudios.dex.core.sync.HybridLogicalClock(
+            wallClock = { com.dexstudios.dex.core.network.HashUtils.currentTimeMillis() },
+        )
+        val saved = runCatching {
+            kotlinx.coroutines.runBlocking { get<com.dexstudios.dex.core.sync.SyncStorage>().loadClock() }
+        }.getOrNull()
+        if (saved != null) clock.restore(saved)
+        clock
+    }
+    single {
+        com.dexstudios.dex.core.sync.SyncEngine(
+            storage = get(),
+            clock = get(),
+            deviceId = get<com.dexstudios.dex.core.network.DeviceConfig>().fingerprint,
+            wallClock = { com.dexstudios.dex.core.network.HashUtils.currentTimeMillis() },
+        )
+    }
 }

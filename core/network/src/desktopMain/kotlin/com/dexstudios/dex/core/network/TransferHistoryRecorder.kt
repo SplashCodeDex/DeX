@@ -10,7 +10,7 @@ import com.dexstudios.dex.core.domain.transfer.TransferUseCase
  */
 object TransferHistoryRecorder {
     fun record(name: String, size: Long, direction: String, uri: String?, peerDevice: String?, outcome: TransferOutcome) {
-        TransferHistory.log(
+        val record = TransferHistory.log(
             name = name,
             size = size,
             direction = direction,
@@ -21,6 +21,9 @@ object TransferHistoryRecorder {
                 TransferOutcome.FAILED -> TransferUseCase.STATUS_FAILED
             },
         )
+        // Sync echo (plan 031): history metadata follows the user across devices.
+        // Koin-optional — no engine attached means sync simply stays local-only.
+        com.dexstudios.dex.core.network.SyncBridge.historyRecord(record)
     }
 
     /** Convenience for the common success path with a resolved destination. */
