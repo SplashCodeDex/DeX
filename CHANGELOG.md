@@ -1,4 +1,11 @@
 # Changelog
+## [10.1.43.0] - 2026-09-02
+### Added
+- **[major] Plan 030 Phase 4 — Device Discovery & Registry Unification**:
+  - **Bidirectional DTO & Domain Bridges (`ProtocolDto.kt`)**: Added type-safe converters between Android's `RegisterDto`/`DiscoveredDevice` and the shared `:core:domain:discovery.DiscoveredDeviceInfo`/`ObservedDevice` models.
+  - **Discovery Configuration Centralization (`NetConfig.kt`)**: Pinned `DEVICE_CAP` (100) and `NSD_DISCOVERY_TTL_MS` (20,000L) to delegate directly to `DeviceRegistry.MAX_DEVICES` and `DeviceRegistry.FRESHNESS_MS`.
+  - **Shared Discovery Registry Engine (`DiscoveryEngine.kt`)**: Integrated the shared `:core:domain:discovery.DeviceRegistry` inside Android's `DiscoveryEngine`, synchronizing discovery lifecycles (`start()`, `stop()`, `clear()`, `addDevice()`) and exposing `registry` to shared consumers while preserving `devices: StateFlow<Map<String, DiscoveredDevice>>` for seamless UI zero-breakage.
+
 ## [10.1.42.0] - 2026-09-02
 ### Added
 - **[major] Plan 030 Phase 3 — Domain Layer Multiplatform Expansion & Pairing Logic Centralization**:

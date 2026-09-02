@@ -75,8 +75,8 @@ object NetConfig {
     const val MULTICAST_GROUP = "224.0.0.167"
     const val NSD_SERVICE_TYPE = "_dex._udp"
     const val NSD_SERVICE_NAME = "DeX_Android"
-    const val NSD_DISCOVERY_TTL_MS = 20_000L
-    const val DEVICE_CAP = 100
+    const val NSD_DISCOVERY_TTL_MS = com.dexstudios.dex.core.domain.discovery.DeviceRegistry.FRESHNESS_MS
+    const val DEVICE_CAP = com.dexstudios.dex.core.domain.discovery.DeviceRegistry.MAX_DEVICES
     const val UDP_PRESENCE_CONNECTED_INTERVAL_MS = 30_000L
     const val UDP_PRESENCE_BURST_INTERVAL_MS = 3_000L
     const val UDP_PRESENCE_IDLE_INTERVAL_MS = 10_000L

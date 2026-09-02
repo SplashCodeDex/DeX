@@ -1,5 +1,7 @@
 package com.dexstudios.dex.network
 
+import com.dexstudios.dex.core.domain.discovery.DiscoveredDeviceInfo
+import com.dexstudios.dex.core.domain.discovery.ObservedDevice
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -56,6 +58,61 @@ data class DiscoveredDevice(
     // True for same-email devices advertised by the PC (transfers route via NAT punch)
     val viaRoster: Boolean = false
 )
+
+fun RegisterDto.toDiscoveredDeviceInfo(): DiscoveredDeviceInfo = DiscoveredDeviceInfo(
+    alias = alias,
+    version = version,
+    deviceModel = deviceModel,
+    deviceType = deviceType,
+    fingerprint = fingerprint,
+    port = port,
+    quicPort = quicPort,
+    tcpFallbackPort = tcpFallbackPort,
+    protocol = protocol,
+    download = download,
+    identityHash = identityHash,
+    googleSub = googleSub,
+    battery = battery,
+    isCharging = isCharging,
+    wifiBand = wifiBand,
+    wifiSsid = wifiSsid
+)
+
+fun DiscoveredDeviceInfo.toRegisterDto(): RegisterDto = RegisterDto(
+    alias = alias,
+    version = version,
+    deviceModel = deviceModel,
+    deviceType = deviceType,
+    fingerprint = fingerprint,
+    port = port,
+    quicPort = quicPort,
+    tcpFallbackPort = tcpFallbackPort,
+    protocol = protocol,
+    download = download,
+    identityHash = identityHash,
+    googleSub = googleSub,
+    battery = battery,
+    isCharging = isCharging,
+    wifiBand = wifiBand,
+    wifiSsid = wifiSsid
+)
+
+fun DiscoveredDevice.toObservedDevice(): ObservedDevice = ObservedDevice(
+    ip = ip,
+    info = info.toDiscoveredDeviceInfo(),
+    lastSeenMillis = lastSeenTimestamp,
+    viaWan = viaWan,
+    viaRoster = viaRoster
+)
+
+fun ObservedDevice.toDiscoveredDevice(): DiscoveredDevice = DiscoveredDevice(
+    ip = ip,
+    info = info.toRegisterDto(),
+    lastSeenTimestamp = lastSeenMillis,
+    viaWan = viaWan,
+    viaRoster = viaRoster
+)
+
 @Serializable
 data class PairRequestDto(
     val alias: String,

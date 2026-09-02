@@ -1,6 +1,7 @@
 package com.dexstudios.dex.network
 
 import android.content.Context
+import com.dexstudios.dex.core.domain.discovery.DeviceRegistry
 import com.dexstudios.dex.ShortcutHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,11 @@ class DiscoveryEngine(
     private var cleanupJob: Job? = null
     private var identityWatchJob: Job? = null
     private var shortcutJob: Job? = null
+
+    val registry: DeviceRegistry = DeviceRegistry(
+        scope = scope,
+        nowMillis = { System.currentTimeMillis() }
+    )
 
     private val _devices = MutableStateFlow<Map<String, DiscoveredDevice>>(emptyMap())
     val devices: StateFlow<Map<String, DiscoveredDevice>> = _devices.asStateFlow()
@@ -66,6 +72,7 @@ class DiscoveryEngine(
 
     fun startDiscovery() {
         Timber.i("Starting DiscoveryEngine (NSD + UDP Multicast)...")
+        registry.start()
         nsdManagerHelper = NsdManagerHelper(context, localInfo) { device -> addDevice(device) }.apply { start() }
         udpManager = UdpMulticastManager(context, localInfo) { device -> addDevice(device) }.apply { start() }
 
@@ -133,6 +140,7 @@ class DiscoveryEngine(
         val existing = seenDevices[device.info.fingerprint]
         // Always bump the timestamp in the side-map so the TTL cleanup stays accurate
         seenDevices[device.info.fingerprint] = device
+        registry.addDevice(device.toObservedDevice())
 
         // Skip StateFlow emission when the payload is identical — periodic rebroadcasts
         // from the same device were causing a full-screen recomposition storm.
@@ -161,6 +169,8 @@ class DiscoveryEngine(
         Timber.i("Stopping DiscoveryEngine...")
         nsdManagerHelper?.stop()
         udpManager?.stop()
+        registry.stop()
+        registry.clear()
         cleanupJob?.cancel()
         identityWatchJob?.cancel()
         shortcutJob?.cancel()
