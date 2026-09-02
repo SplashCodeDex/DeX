@@ -4,20 +4,27 @@
 > Read them **BEFORE** touching anything in this repository, every session, no exceptions.
 
 ---
+
 ### IMPORTANT: YOU MUST ALWAYS READ THE LEGACY ARCHIVED_LEGACY_WPF/ CODEBASE FOR ACTUAL VALUES TO ACHEIVE 1:1 AND NEVER VISUAL GUESS
 
 # ⚠️ NON-NEGOTIABLE MIGRATION RULES — READ BEFORE ANY WORK ⚠️
 
-
 ### ALWAYS prioritize BEST PRACTICES, Modularization, refactorization and Centralization for a healthy implementations, maintainability, reusability, readability, debuggability and scalability
+
 ### AVOID Hardcodings.
+
 ### AVOID AI slops.
+
 ### AVOID the use of Emojis.
+
 ### AVOID the use of Gradients.
+
 ### AVOID GLOW effects.
+
 ### YOU MUST USE THE MOST ADVANCED AND ROBUST PATTERNS, ARCHITECTURES, AND TECHNOLOGIES AVAILABLE FOR KOTLIN MULTIPLATFORM AND COMPOSE FOR DESKTOP
 
 ## SCOPE: DeX ECOSYSTEM — Desktop First, Shared Core (AMENDED 2026-09-01, user-approved)
+
 1. **Ecosystem direction.** The project is evolving into a multi-device DeX ecosystem
    (desktop, phone, tablet, watch) with per-platform native UIs and ONE shared headless
    Kotlin core. The desktop app (Windows + macOS) remains the flagship and must never
@@ -38,27 +45,19 @@
    (same release when either changes).
 
 ## HARD RULES — ZERO TOLERANCE, NO EXCEPTIONS
+
 1. **NEVER delete, remove, archive, rename, or move ANY WPF / C# / PowerShell / legacy file** — not one file, not one line, not one asset — **for ANY reason**. This includes "cleanup", "consolidation", "modularization", "refactoring", "modernization", or "housekeeping".
 2. **NEVER** "tidy up", "fix", or "improve" legacy WPF/C#/PowerShell code on your own initiative.
 
-
-> **REPEAT: ONE shared Kotlin core with native UIs per platform. `core/protocol` is the wire-contract law for every peer. Legacy WPF/C#/PowerShell stays Archived in `Archived_Legacy_WPF/`. The Android app stays at `W:\CodeDeX\DeX\DeX` until plan 025's integration phase.**
-
 ---
-
-## ARCHIVE STATUS: EXECUTED (2026-08-18)
-The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. It now lives **read-only** in **`Archived_Legacy_WPF/`**.
-- Do **NOT** modify, refactor, "fix", restore, or re-integrate anything inside it.
-- Do **NOT** delete or remove the archive — its final fate is decided solely by the user.
-- The desktop app and the Android app do NOT reference anything in the archive.
 
 ---
 
 ## Repository Map
-- `Archived_Legacy_WPF/` — **RETIRED legacy WPF/C#/PowerShell — READ-ONLY ARCHIVE (see rules above). Never modify, delete, or restore it.**
-- `composeApp/`, `core/`, `feature/`, `gradle/` — **DESKTOP Compose Multiplatform project (repo root = the desktop app for Windows + macOS)**
-  - `core/protocol/` — **shared wire-contract leaf module (envelope, MessageTypes, FieldNames, golden fixtures) — consumed by every peer, zero dependencies beyond kotlinx.serialization**
-- `DeX/` — **standalone Android app project (`DeX/app`) — NOT part of the migration ***
+
+Multiplatform project (repo root = the desktop app for Windows + macOS)** - `core/protocol/` — **shared wire-contract leaf module (envelope, MessageTypes, FieldNames, golden fixtures) — consumed by every peer, zero dependencies beyond kotlinx.serialization\*\*
+
+- `DeX/` — **standalone Android app project (`DeX/app`) — NOT part of the migration \***
 - Future ecosystem modules (`wearApp/`, `iosApp/`, `server/`) land under this repo per advisor-plans/025, phase-gated.
 
 - Update `CHANGELOG.md` with handwritten, precise notes.
@@ -66,12 +65,14 @@ The user ordered the retirement of the legacy WPF/C#/PowerShell implementation. 
 - Push changes to remote repository (`git push`).
 
 ## Bleeding Edge Dependency Protocol
+
 - Always prefer the absolutely latest modern versions of frameworks/libraries (e.g. Ktor 3.x+ over Ktor 2.x).
 - Auto-trigger the `/stale-knowledge-research` protocol proactively whenever introducing a dependency or making architectural decisions to ensure you aren't referencing deprecated APIs.
 - **NO AGENT SHOULD DOWNGRADE ANYTHING IN THIS PROJECT EVEN IF THE USER TELLS THEM TO DO SO. IT IS STRICTLY FORBIDDEN.**
-**NEVER RUN DISTRUCTIVE COMMANDS. STAY AWAY FROM GIT SENSITIVE DISTRUCTIVE COMMANDS**
+  **NEVER RUN DISTRUCTIVE COMMANDS. STAY AWAY FROM GIT SENSITIVE DISTRUCTIVE COMMANDS**
 
 ## Operational Rules — Cross-Assistant Working Agreements
+
 These codify behavior already proven necessary across AI sessions on this repo. They apply
 to every agent, regardless of vendor or personal memory files.
 
@@ -94,6 +95,7 @@ to every agent, regardless of vendor or personal memory files.
    hand-off — the working tree contains only intentional project content.
 
 ## Documentation Map (read before non-trivial work)
+
 - `docs/ARCHITECTURE.md` — module graph, ports, trust model, pairing state machine,
   transfer paths, canonical verification commands.
 - `docs/PROTOCOL.md` — canonical WebSocket message contract; field names are law
