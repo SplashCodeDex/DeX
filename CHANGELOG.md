@@ -1,4 +1,12 @@
 # Changelog
+## [10.1.42.0] - 2026-09-02
+### Added
+- **[major] Plan 030 Phase 3 — Domain Layer Multiplatform Expansion & Pairing Logic Centralization**:
+  - **KMP Android Target for `:core:domain`**: Configured AGP 9.3.1 `com.android.kotlin.multiplatform.library` with JVM 17 bytecode alignment and multiplatform host unit tests in `core/domain/build.gradle.kts`.
+  - **Android Build System Wiring (`:core:domain`)**: Linked `:core:domain` into `DeX/settings.gradle.kts` and added `implementation(project(":core:domain"))` to `DeX/app/build.gradle.kts`.
+  - **Pairing & Identity Proof Centralization**: Wired `ProtocolKeys.PIN_LENGTH` to delegate directly to `PairingEngine.PIN_LENGTH` (pinned to 5 digits across the ecosystem) and updated Android identity challenge proof-of-possession to consume `com.dexstudios.dex.core.network.HashUtils.hmacSha256Base64`.
+  - **Zero UI Disruption Guarantee**: Windows desktop UI and Android mobile UI (including in-progress, deferred, and experimental UI files) remain completely preserved and untouched.
+
 ## [10.1.41.0] - 2026-09-02
 ### Added
 - **[major] Plan 030 Phase 2 — Cryptographic Engine Unification & Multiplatform Shared Data**:

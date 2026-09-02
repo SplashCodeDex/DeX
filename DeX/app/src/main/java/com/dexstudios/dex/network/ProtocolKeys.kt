@@ -79,7 +79,7 @@ object ProtocolKeys {
     const val WIFI_RSSI = FieldNames.WIFI_RSSI
 
     /** PIN length shared by the pairing UI; mirrors the PC's digit count in the pair prompt. */
-    const val PIN_LENGTH = 5
+    const val PIN_LENGTH = com.dexstudios.dex.core.domain.pairing.PairingEngine.PIN_LENGTH
 
     /**
      * Builds the canonical `{type, data}` envelope as a sendable JSON string.

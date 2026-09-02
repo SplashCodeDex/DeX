@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.android.multiplatform.library)
 }
 
 // DOMAIN LAYER (plan 026) — platform-neutral use cases and state machines for the DeX
@@ -12,7 +12,21 @@ plugins {
 // the shared data primitives, and coroutines.
 kotlin {
 
-    jvm("desktop")
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    android {
+        namespace = "com.dexstudios.dex.core.domain"
+        compileSdk = 36
+        minSdk = 26
+        withHostTest {}
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
