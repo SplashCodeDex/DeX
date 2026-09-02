@@ -3,6 +3,7 @@ import timber.log.Timber
 
 import com.dexstudios.dex.network.checkHasMediaPermission
 import com.dexstudios.dex.network.getMediaPermissions
+import com.dexstudios.dex.ui.util.Formatters
 
 import android.Manifest
 import android.content.ContentUris
@@ -725,7 +726,7 @@ private fun FileDocumentCard(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            val sizeFormatted = formatFileSize(item.size)
+            val sizeFormatted = Formatters.formatBytes(item.size)
             val dateFormatted = formatDate(item.dateAdded)
             Text(
                 text = if (dateFormatted.isNotEmpty()) "$sizeFormatted • $dateFormatted" else sizeFormatted,
@@ -847,8 +848,8 @@ private fun AudioTrackCard(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            val durationFormatted = formatDuration(item.durationMs)
-            val sizeFormatted = formatFileSize(item.size)
+            val durationFormatted = Formatters.formatDuration(item.durationMs)
+            val sizeFormatted = Formatters.formatBytes(item.size)
             Text(
                 text = "${item.artist} • $durationFormatted • $sizeFormatted",
                 style = MaterialTheme.typography.bodySmall,
@@ -1255,25 +1256,6 @@ private fun loadRecentFiles(context: Context): List<RecentFileItem> {
     } catch (_: Exception) {}
 
     return items.sortedByDescending { it.dateAdded }
-}
-
-private fun formatDuration(durationMs: Long): String {
-    if (durationMs <= 0L) return "0:00"
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
-}
-
-private fun formatFileSize(bytes: Long): String {
-    if (bytes <= 0L) return "0 KB"
-    val mb = bytes / (1024f * 1024f)
-    return if (mb >= 1.0f) {
-        String.format(java.util.Locale.US, "%.1f MB", mb)
-    } else {
-        val kb = bytes / 1024f
-        String.format(java.util.Locale.US, "%.0f KB", kb)
-    }
 }
 
 private fun formatDate(dateAddedSeconds: Long): String {

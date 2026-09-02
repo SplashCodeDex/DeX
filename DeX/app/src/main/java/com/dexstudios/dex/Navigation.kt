@@ -209,18 +209,10 @@ fun MainNavigation(
             }
 
             if (urisJson.isNotEmpty()) {
-                val inputData = workDataOf(
-                    TransferWorkKeys.IP to target.ip,
-                    TransferWorkKeys.PORT to target.info.port,
-                    TransferWorkKeys.URIS to urisJson,
-                    TransferWorkKeys.TARGET_FINGERPRINT to target.info.fingerprint,
-                    TransferWorkKeys.TARGET_ALIAS to target.info.alias
+                val workRequest = com.dexstudios.dex.network.UploadWorkRequestFactory.create(
+                    device = target,
+                    urisJson = urisJson
                 )
-
-                val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-                    .setInputData(inputData)
-                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                    .build()
 
                 viewModel.clientEngine.activeWorkId = workRequest.id
                 WorkManager.getInstance(context).enqueue(workRequest)

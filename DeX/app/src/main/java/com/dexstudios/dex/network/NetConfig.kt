@@ -45,6 +45,11 @@ object TransferWorkKeys {
     const val TARGET_ALIAS = "targetAlias"
     const val TARGET_IDENTITY_HASH = "targetIdentityHash"
     const val TARGET_GOOGLE_SUB = "targetGoogleSub"
+    const val SESSION_ID = "sessionId"
+    const val STREAM_TOKEN = "streamToken"
+    const val RELAY_URL = "relayUrl"
+    const val PAIRED_TOKEN = "pairedToken"
+    const val FILE_NAME = "fileName"
 }
 
 /**

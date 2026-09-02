@@ -236,4 +236,63 @@ class MessageHandlerTest {
         assertTrue(capturedMessage!!.contains("\"type\":\"pin-digit-entered\""))
         assertTrue(capturedMessage!!.contains("\"digitCount\":3"))
     }
+
+    @Test
+    fun `relay-offer triggers downloadWanRelay when peer is paired`() = runTest(testDispatcher) {
+        mockkObject(TcpDownloadService)
+        mockkObject(SafStorage)
+        every { SafStorage.getDownloadsDexUri(any()) } returns null
+        every { TcpDownloadService.downloadWanRelay(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns Unit
+
+        AuthState.pairedTokens["pc_fp"] = "secret_paired_token"
+
+        try {
+            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
+            val offerJson = """
+                {"type":"relay-offer","data":{"sessionId":"sess_123","streamToken":"tok_abc","relayUrl":"https://relay.dexstudios.com","fileName":"archive.zip","size":1048576,"fingerprint":"pc_fp","alias":"Desktop PC"}}
+            """.trimIndent()
+
+            handler.handleMessage(offerJson, "10.0.0.1", 443)
+
+            verify(exactly = 1) {
+                TcpDownloadService.downloadWanRelay(
+                    context = any(),
+                    sessionId = "sess_123",
+                    streamToken = "tok_abc",
+                    relayUrl = "https://relay.dexstudios.com",
+                    pairedToken = "secret_paired_token",
+                    fileName = "archive.zip",
+                    totalBytes = 1048576L,
+                    destDirUri = any(),
+                    fingerprint = "pc_fp",
+                    sourceAlias = "Desktop PC"
+                )
+            }
+        } finally {
+            unmockkObject(TcpDownloadService)
+            unmockkObject(SafStorage)
+            AuthState.pairedTokens.remove("pc_fp")
+        }
+    }
+
+    @Test
+    fun `relay-offer is ignored when peer is unpaired`() = runTest(testDispatcher) {
+        mockkObject(TcpDownloadService)
+        AuthState.pairedTokens.remove("unpaired_fp")
+
+        try {
+            val handler = MessageHandler(mockk<DeviceConfig>(relaxed = true), mockContext, notificationHelper, fileShareManager)
+            val offerJson = """
+                {"type":"relay-offer","data":{"sessionId":"sess_123","streamToken":"tok_abc","relayUrl":"https://relay.dexstudios.com","fileName":"archive.zip","size":1048576,"fingerprint":"unpaired_fp","alias":"Attacker"}}
+            """.trimIndent()
+
+            handler.handleMessage(offerJson, "10.0.0.1", 443)
+
+            verify(exactly = 0) {
+                TcpDownloadService.downloadWanRelay(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            }
+        } finally {
+            unmockkObject(TcpDownloadService)
+        }
+    }
 }

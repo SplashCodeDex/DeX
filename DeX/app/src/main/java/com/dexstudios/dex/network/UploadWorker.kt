@@ -75,7 +75,17 @@ class UploadWorker(
         var relativePaths: Map<String, String> = emptyMap()
 
         // Initial foreground notification
-        setForeground(createForegroundInfo(0, applicationContext.getString(R.string.upload_worker_preparing)))
+        setForeground(
+            TransferProgressNotifier.createForegroundInfo(
+                context = applicationContext,
+                workId = id,
+                title = "Sending Files",
+                text = applicationContext.getString(R.string.upload_worker_preparing),
+                progress = 0,
+                notificationId = notificationId,
+                channelId = channelId
+            )
+        )
 
         val fileData: Map<String, Triple<Uri, String, Long>> = if (folderTreeUri != null) {
             val treeFiles = SafStorage.listTreeFiles(applicationContext, folderTreeUri)
@@ -290,32 +300,21 @@ class UploadWorker(
                 val baseText = applicationContext.getString(R.string.upload_worker_progress, doneFiles + 1, totalFiles, currentFile)
                 val notifText = if (speedEtaText.isNotBlank()) "$baseText ($speedEtaText)" else baseText
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO).launch {
-                    setForeground(createForegroundInfo(percent, notifText))
+                    setForeground(
+                        TransferProgressNotifier.createForegroundInfo(
+                            context = applicationContext,
+                            workId = id,
+                            title = "Sending Files",
+                            text = notifText,
+                            progress = percent,
+                            notificationId = notificationId,
+                            channelId = channelId
+                        )
+                    )
                 }
             }
         } catch (e: Exception) {
             // UI updates must never kill the transfer
-        }
-    }
-
-    private fun createForegroundInfo(progress: Int, text: String): ForegroundInfo {
-        val cancelIntent = androidx.work.WorkManager.getInstance(applicationContext).createCancelPendingIntent(id)
-
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Sending Files")
-            .setContentText(text)
-            .setSmallIcon(R.drawable.ic_stat_dex)
-            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
-            .setNumber(0)
-            .setProgress(100, progress, false)
-            .setOngoing(true)
-            .addAction(android.R.drawable.ic_delete, "Cancel", cancelIntent)
-            .build()
-
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            ForegroundInfo(notificationId, notification)
         }
     }
 }

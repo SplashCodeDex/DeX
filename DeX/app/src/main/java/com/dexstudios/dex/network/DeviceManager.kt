@@ -13,15 +13,23 @@ object DeviceManager {
     private const val KEY_PAIRED_TIMES = "paired_times"
     private const val KEY_PAIRED_ALIASES = "paired_aliases"
 
-    private lateinit var prefs: SharedPreferences
+    private var prefs: SharedPreferences? = null
 
     // Application context captured at init (DeXApplication passes `this`) so unpair
     // paths can tear down Direct Share shortcuts from anywhere.
     private var appContext: Context? = null
 
+    private fun requirePrefs(): SharedPreferences? {
+        if (prefs == null && appContext != null) {
+            prefs = appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        }
+        return prefs
+    }
+
     fun init(context: Context) {
-        appContext = context
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        appContext = (runCatching { context.applicationContext }.getOrNull()) ?: context
+        val sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs = sp
         loadPairedFingerprints()
         loadPairedTokens()
         loadPairedTimes()
@@ -32,7 +40,8 @@ object DeviceManager {
     val pairedAliases: Map<String, String> get() = AuthState.pairedAliases
 
     private fun loadPairedFingerprints() {
-        val saved = prefs.getStringSet(KEY_PAIRED_FINGERPRINTS, emptySet())
+        val sp = requirePrefs() ?: return
+        val saved = sp.getStringSet(KEY_PAIRED_FINGERPRINTS, emptySet())
         AuthState.pairedFingerprints.clear()
         if (saved != null) {
             AuthState.pairedFingerprints.addAll(saved)
@@ -40,7 +49,8 @@ object DeviceManager {
     }
 
     private fun loadPairedTokens() {
-        val saved = prefs.getString(KEY_PAIRED_TOKENS, null) ?: return
+        val sp = requirePrefs() ?: return
+        val saved = sp.getString(KEY_PAIRED_TOKENS, null) ?: return
         try {
             val map = TokenCodec.decode(saved)
             AuthState.pairedTokens.clear()
@@ -49,7 +59,8 @@ object DeviceManager {
     }
 
     private fun loadPairedTimes() {
-        val saved = prefs.getString(KEY_PAIRED_TIMES, null) ?: return
+        val sp = requirePrefs() ?: return
+        val saved = sp.getString(KEY_PAIRED_TIMES, null) ?: return
         try {
             val json = org.json.JSONObject(saved)
             AuthState.pairedTimes.clear()
@@ -60,7 +71,8 @@ object DeviceManager {
     }
 
     private fun loadPairedAliases() {
-        val saved = prefs.getString(KEY_PAIRED_ALIASES, null) ?: return
+        val sp = requirePrefs() ?: return
+        val saved = sp.getString(KEY_PAIRED_ALIASES, null) ?: return
         try {
             val json = org.json.JSONObject(saved)
             AuthState.pairedAliases.clear()
@@ -82,7 +94,7 @@ object DeviceManager {
         AuthState.pairedAliases[fingerprint] = alias
         val aliasesJson = org.json.JSONObject()
         AuthState.pairedAliases.forEach { (k, v) -> aliasesJson.put(k, v) }
-        prefs.edit { putString(KEY_PAIRED_ALIASES, aliasesJson.toString()) }
+        requirePrefs()?.edit { putString(KEY_PAIRED_ALIASES, aliasesJson.toString()) }
     }
 
     fun savePairedFingerprint(fingerprint: String) {
@@ -93,7 +105,7 @@ object DeviceManager {
         val timesJson = org.json.JSONObject()
         AuthState.pairedTimes.forEach { (k, v) -> timesJson.put(k, v) }
         
-        prefs.edit { 
+        requirePrefs()?.edit { 
             putStringSet(KEY_PAIRED_FINGERPRINTS, AuthState.pairedFingerprints.toSet())
             putString(KEY_PAIRED_TIMES, timesJson.toString())
         }
@@ -101,8 +113,10 @@ object DeviceManager {
 
     fun savePairedToken(fingerprint: String, token: String) {
         AuthState.pairedTokens[fingerprint] = token
-        prefs.edit { putString(KEY_PAIRED_TOKENS, TokenCodec.encode(AuthState.pairedTokens)) }
+        requirePrefs()?.edit { putString(KEY_PAIRED_TOKENS, TokenCodec.encode(AuthState.pairedTokens)) }
     }
+
+    fun getPairedToken(fingerprint: String): String? = AuthState.pairedTokens[fingerprint]
 
     fun removePairedFingerprint(fingerprint: String) {
         TcpDownloadService.cancelIfFingerprint(fingerprint)
@@ -116,7 +130,7 @@ object DeviceManager {
         val aliasesJson = org.json.JSONObject()
         AuthState.pairedAliases.forEach { (k, v) -> aliasesJson.put(k, v) }
 
-        prefs.edit {
+        requirePrefs()?.edit {
             putStringSet(KEY_PAIRED_FINGERPRINTS, AuthState.pairedFingerprints.toSet())
             putString(KEY_PAIRED_TOKENS, TokenCodec.encode(AuthState.pairedTokens))
             putString(KEY_PAIRED_TIMES, timesJson.toString())

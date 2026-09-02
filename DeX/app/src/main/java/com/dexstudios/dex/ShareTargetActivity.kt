@@ -320,18 +320,10 @@ class ShareTargetActivity : ComponentActivity() {
             return
         }
 
-        val inputData = workDataOf(
-            TransferWorkKeys.IP to device.ip,
-            TransferWorkKeys.PORT to device.info.port,
-            TransferWorkKeys.URIS to urisJson,
-            TransferWorkKeys.TARGET_FINGERPRINT to device.info.fingerprint,
-            TransferWorkKeys.TARGET_ALIAS to device.info.alias
+        val workRequest = com.dexstudios.dex.network.UploadWorkRequestFactory.create(
+            device = device,
+            urisJson = urisJson
         )
-
-        val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-            .setInputData(inputData)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .build()
 
         clientEngine.activeWorkId = workRequest.id
         WorkManager.getInstance(this).enqueue(workRequest)

@@ -1,4 +1,24 @@
 # Changelog
+## [10.1.39.0] - 2026-09-02
+### Added
+- **[major] Cloud Relay Deployment & Production Ops (Option 2 / Plan 032)**:
+  - **Unbuffered Caddy TLS reverse proxy (`server/Caddyfile`)**: Configured with `buffer_requests false`, `buffer_responses false`, and `flush_interval -1` to enforce zero disk buffering across WAN transfers. Full HTTP/2 and HTTP/3 QUIC support with automated Let's Encrypt certificates.
+  - **Docker Compose orchestration (`server/docker-compose.yml`)**: Production multi-container definition with memory cap (1536M), non-root `dexserver` user, healthcheck against `/healthz`, and persistent Caddy volumes.
+  - **Automated deployment (`server/scripts/deploy.sh`)**: One-command Ubuntu 24.04 provisioning script with dependency validation, fat JAR compilation, container build, and health liveness verification.
+- **[major] Android Phone-Side Streaming WAN Receiver (Option 3 / Plan 032)**:
+  - **Cryptographic parity (`RelayCrypto.kt`)**: Implemented HKDF-SHA256 session key derivation and sequence-bound AES-256-GCM AEAD decryption in `DeX/app`. Monotonic 8-byte big-endian sequence verified in AAD; drops, replays, and corruptions fail closed. Pinned by 8 property unit tests.
+  - **Streaming receiver worker (`WanDownloadWorker.kt`)**: WorkManager foreground service (`FOREGROUND_SERVICE_TYPE_DATA_SYNC`) streaming frames directly from OkHttp into SAF document output streams with bounded ~256 KiB heap footprint. Includes ETA/speed smoothing, cancellation handling, and `TransferHistory` logging.
+  - **Wire contract routing**: Added `RELAY_OFFER` (`relay-offer`) to `core/protocol`, golden fixture tests, `ProtocolKeys`, and `MessageHandler.kt`.
+- **[major] Plan 024 Phase 3 — Structural Centralization & Service Extraction**:
+  - **Critical bug fixes**: Corrected layout toggle in `HistoryScreen.kt` where `HistoryViewMode.LIST` mapped back to `LIST`, making grid view unreachable; eliminated `DeviceManager` `lateinit prefs` crash-before-init hazard by introducing safe lazy initialization and defensive fallbacks.
+  - **Transfer foreground delegate (`TransferProgressNotifier.kt`)**: Consolidated WorkManager foreground notification creation, Android 14+ `ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC` enforcement, channel binding, and cancel pending intent handling across `UploadWorker` and `WanDownloadWorker`. Pinned with unit tests.
+  - **Pairing isolation (`PairingCoordinator.kt`)**: Decoupled pairing state machine, tie-breaking race condition resolver, PIN countdown timeouts, and zero-knowledge HMAC-SHA256 identity proof responses from `MessageHandler.kt` into dedicated `com.dexstudios.dex.network.pairing.PairingCoordinator`. Pinned with unit tests.
+- **[minor] Plan 024 Phase 2 — Android Mechanical De-duplication & Centralization**:
+  - **`SettingsSwitchRow` shadow merge**: Deleted private shadow implementation in `SettingsScreen.kt` and consolidated into `SettingsComponents.kt` with circular icon container support.
+  - **Centralized `Formatters.kt`**: Extracted canonical byte size (`formatBytes`), duration (`formatDuration`), and speed (`formatSpeed`) formatters into `ui/util/Formatters.kt`. Refactored `HistoryScreen`, `MediaPickerTray`, and `ShareSheetContent`. Pinned with unit tests.
+  - **Standardized `UploadWorkRequestFactory`**: Unified repeated `OneTimeWorkRequestBuilder<UploadWorker>` construction across `AppFunctions`, `Navigation`, `ShareTargetActivity`, and `PendingShareForwarder`. Pinned with unit tests.
+  - **Release APK hygiene**: Isolated developer sandbox `LiquidGlassExperiment.kt` to `src/debug`, stripping experimental code from production release artifacts.
+
 ## [10.1.38.0] - 2026-09-02
 ### Added
 - **[minor] Round-3 hardening — client law mirror, streaming timeout, botnet caps, shutdown hygiene**:

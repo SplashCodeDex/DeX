@@ -39,16 +39,10 @@ abstract class BaseDeXAppFunctionService : AppFunctionService(), KoinComponent {
             ?: return "No connected PC found on the network."
 
         val urisJson = "[\"${lastReceived.uri}\"]"
-        val workRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-            .setInputData(workDataOf(
-                TransferWorkKeys.IP to targetPc.ip,
-                TransferWorkKeys.PORT to targetPc.info.port,
-                TransferWorkKeys.URIS to urisJson,
-                TransferWorkKeys.TARGET_FINGERPRINT to targetPc.info.fingerprint,
-                TransferWorkKeys.TARGET_IDENTITY_HASH to targetPc.info.identityHash,
-                TransferWorkKeys.TARGET_GOOGLE_SUB to targetPc.info.googleSub
-            ))
-            .build()
+        val workRequest = com.dexstudios.dex.network.UploadWorkRequestFactory.create(
+            device = targetPc,
+            urisJson = urisJson
+        )
 
         WorkManager.getInstance(appContext).enqueue(workRequest)
 

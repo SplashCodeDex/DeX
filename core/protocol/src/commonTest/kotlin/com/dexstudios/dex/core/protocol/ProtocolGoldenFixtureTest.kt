@@ -131,6 +131,7 @@ class ProtocolGoldenFixtureTest {
         assertEquals("relay-transfer", MessageTypes.RELAY_TRANSFER)
         assertEquals("relay-started", MessageTypes.RELAY_STARTED)
         assertEquals("relay-error", MessageTypes.RELAY_ERROR)
+        assertEquals("relay-offer", MessageTypes.RELAY_OFFER)
         assertEquals("resolve-endpoint", MessageTypes.RESOLVE_ENDPOINT)
         assertEquals("endpoint-info", MessageTypes.ENDPOINT_INFO)
         assertEquals("peer-endpoint", MessageTypes.PEER_ENDPOINT)

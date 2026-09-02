@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import com.dexstudios.dex.ui.util.Formatters
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -227,7 +228,7 @@ fun HistoryScreen(
                                     Icon(DeXIcons.FilterList, null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 IconButton(onClick = {
-                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.LIST else HistoryViewMode.GRID
+                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
                                 }) {
                                     Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
@@ -608,7 +609,7 @@ private fun HistoryRow(
             Text(text = record.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.height(2.dp))
             val subText = buildString {
-                append(formatSize(record.size))
+                append(Formatters.formatBytes(record.size))
                 record.peerDevice?.let { append(" · "); append(it) }
             }
             Text(text = subText, style = MaterialTheme.typography.bodySmall, color = if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -712,7 +713,7 @@ private fun HistoryGridItem(
         )
 
         Text(
-            text = formatSize(record.size),
+            text = Formatters.formatBytes(record.size),
             style = MaterialTheme.typography.bodySmall,
             color = if (isFailed) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -720,19 +721,6 @@ private fun HistoryGridItem(
         )
     }
 }
-
-private fun formatSize(bytes: Long): String {
-    val kb = 1024.0
-    val mb = kb * 1024
-    val gb = mb * 1024
-    return when {
-        bytes >= gb -> String.format(Locale.US, "%.1f GB", bytes / gb)
-        bytes >= mb -> String.format(Locale.US, "%.1f MB", bytes / mb)
-        bytes >= kb -> String.format(Locale.US, "%.1f KB", bytes / kb)
-        else -> "$bytes B"
-    }
-}
-
 
 private fun openFolderOf(context: Context, fileUri: Uri) {
     try {

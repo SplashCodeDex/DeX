@@ -124,6 +124,58 @@ object TcpDownloadService {
         WorkManager.getInstance(context).enqueue(workRequest)
     }
 
+    /**
+     * Enqueues an end-to-end encrypted streaming download from the cloud relay (Plan 032 / Option 3).
+     */
+    fun downloadWanRelay(
+        context: Context,
+        sessionId: String,
+        streamToken: String,
+        relayUrl: String,
+        pairedToken: String,
+        fileName: String,
+        totalBytes: Long,
+        destDirUri: Uri?,
+        fingerprint: String? = null,
+        sourceAlias: String? = null
+    ) {
+        lastContext = context.applicationContext
+        _downloadState.value = DownloadState(
+            fileName = fileName,
+            isDownloading = true,
+            doneFiles = 0,
+            totalFiles = 1,
+            sourceFingerprint = fingerprint,
+            peerName = sourceAlias,
+            protocol = "relay-e2ee"
+        )
+
+        val inputData = Data.Builder()
+            .putString(TransferWorkKeys.SESSION_ID, sessionId)
+            .putString(TransferWorkKeys.STREAM_TOKEN, streamToken)
+            .putString(TransferWorkKeys.RELAY_URL, relayUrl)
+            .putString(TransferWorkKeys.PAIRED_TOKEN, pairedToken)
+            .putString(TransferWorkKeys.FILE_NAME, fileName)
+            .putLong(TransferWorkKeys.TOTAL_BYTES, totalBytes)
+            .putString(TransferWorkKeys.DEST_DIR_URI, destDirUri?.toString())
+            .putString(TransferWorkKeys.SOURCE_FINGERPRINT, fingerprint)
+            .putString(TransferWorkKeys.SOURCE_ALIAS, sourceAlias)
+            .build()
+
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = OneTimeWorkRequestBuilder<WanDownloadWorker>()
+            .setConstraints(constraints)
+            .setInputData(inputData)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+            .build()
+
+        activeWorkId = workRequest.id
+        WorkManager.getInstance(context).enqueue(workRequest)
+    }
+
     fun cancelDownload(context: Context) {
         activeWorkId?.let {
             WorkManager.getInstance(context).cancelWorkById(it)

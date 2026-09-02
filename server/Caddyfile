@@ -1,0 +1,45 @@
+# Production Caddyfile for DeX Cloud Relay (Plan 032)
+# Law: zero disk buffering — streaming frames must pass through instantaneously.
+
+{$DEX_DOMAIN:localhost} {
+    # Compression for text / json metadata (leaves opaque binary streams untouched)
+    encode zstd gzip
+
+    # Unauthenticated liveness probe for uptime monitoring / docker healthchecks
+    handle /healthz {
+        reverse_proxy dex-server:8443
+    }
+
+    # Core streaming relay, punch rendezvous, and delta sync endpoints
+    handle {
+        reverse_proxy dex-server:8443 {
+            # THE LAW: Disable request and response buffering completely.
+            # In-memory frames (~256 KiB) must stream in real-time with zero disk writes.
+            flush_interval -1
+            buffer_requests false
+            buffer_responses false
+
+            # Proxy headers
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Standard security hardening headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Access logging
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}

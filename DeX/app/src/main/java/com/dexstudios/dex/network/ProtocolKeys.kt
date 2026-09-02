@@ -36,6 +36,7 @@ object ProtocolKeys {
     const val RELAY_STARTED = "relay-started"
     const val RELAY_ERROR = "relay-error"
     const val RELAY_TRANSFER = "relay-transfer"
+    const val RELAY_OFFER = "relay-offer"
     const val RESOLVE_ENDPOINT = "resolve-endpoint"
 
     // Message types — discovery & telemetry

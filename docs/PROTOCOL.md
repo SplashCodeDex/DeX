@@ -41,6 +41,7 @@ Direction is from the **desktop server** perspective. `→` = received by deskto
 | `endpoint-info` | ← | `{targetFingerprint, ip, port}` | Resolved punch endpoint for a pending NAT punch (trusted callers only) |
 | `peer-endpoint` | → | `{peerFingerprint, ip, port}` | Punch peer announces where to hit it |
 | `relay-started` / `relay-error` | ← | — | Relay-transfer fallback ack |
+| `relay-offer` | ↔ | `sessionId`, `streamToken`, `relayUrl`, `fileName`, `size`, `fingerprint`, `alias?` | Cloud relay E2EE streaming transfer offer (Plan 032) |
 | `set-clipboard` | ← | `text` | Clipboard sync push (receiver remembers it to avoid echo) |
 | `wallpaper-updated` | ← | — | Invalidate wallpaper cache |
 | `mirror-start` / `mirror-stop` | ← | — | Toggle screen mirroring (binary frames follow on same socket) |

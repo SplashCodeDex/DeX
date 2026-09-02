@@ -8,9 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -159,12 +157,12 @@ fun Preview_ReferenceMatch() {
             Text("Reference Match (Extreme Warp + Dark Tint)", color = Color.White)
             LiquidGlassRefractionExperiment(
                 lensHeight = 40f,
-                lensAmount = 140f,      // Deep bending
-                restRefraction = 1.25f, // Magnification
-                surfaceTintAlpha = 0.4f, // Darker center like screenshot
-                highlighterHeight = 92f, // Much taller than 72dp navbar
+                lensAmount = 140f,
+                restRefraction = 1.25f,
+                surfaceTintAlpha = 0.4f,
+                highlighterHeight = 92f,
                 chromaticAberration = true,
-                iconsOnTop = false      // Everything under the lens
+                iconsOnTop = false
             )
         }
     }

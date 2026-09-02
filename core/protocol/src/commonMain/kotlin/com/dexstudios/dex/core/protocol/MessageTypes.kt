@@ -31,6 +31,7 @@ object MessageTypes {
     const val RELAY_TRANSFER = "relay-transfer"
     const val RELAY_STARTED = "relay-started"
     const val RELAY_ERROR = "relay-error"
+    const val RELAY_OFFER = "relay-offer"
 
     // ---- NAT punch rendezvous ----
     const val RESOLVE_ENDPOINT = "resolve-endpoint"

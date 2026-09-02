@@ -3,6 +3,7 @@ package com.dexstudios.dex.ui.share
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.dexstudios.dex.ui.util.Formatters
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +64,7 @@ fun ShareTargetSheetContent(
 ) {
     val context = LocalContext.current
     val totalSize = remember(sharedUris, context) { sharedUris.sumOf { resolveFileSize(context, it) } }
-    val sizeStr = remember(totalSize) { formatSize(totalSize) }
+    val sizeStr = remember(totalSize) { Formatters.formatBytes(totalSize) }
 
     Column(
         modifier = Modifier
@@ -287,11 +288,4 @@ internal fun resolveFileSize(context: Context, uri: Uri): Long {
         } catch (_: Exception) {}
     }
     return 0L
-}
-
-internal fun formatSize(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    return java.util.Locale.ROOT.let { String.format(it, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups]) }
 }

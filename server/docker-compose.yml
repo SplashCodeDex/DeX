@@ -1,0 +1,56 @@
+services:
+  dex-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: dex-server:latest
+    container_name: dex-server
+    restart: unless-stopped
+    environment:
+      - DEX_PORT=8443
+      - DEX_GOOGLE_CLIENT_ID=${DEX_GOOGLE_CLIENT_ID:-}
+      - DEX_FIXTURE_AUTH=${DEX_FIXTURE_AUTH:-0}
+      - DEX_DEV=${DEX_DEV:-0}
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8443/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - dex-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: dex-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 (QUIC)
+    environment:
+      - DEX_DOMAIN=${DEX_DOMAIN:-localhost}
+      - DEX_PORT=8443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      dex-server:
+        condition: service_healthy
+    networks:
+      - dex-net
+
+networks:
+  dex-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
