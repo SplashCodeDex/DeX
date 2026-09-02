@@ -1,7 +1,7 @@
 # Plan 030 — Android Shared-Core Integration (Phase 0-A5)
 
-> Status: TODO — GATED: plan 024 (android-refactor-centralization) must be DONE first
-> Depends on: 024, 026–029 (domain slices complete)
+> Status: IN PROGRESS (Phase 1: Protocol Wire Unification DONE)
+> Depends on: 024 (DONE)
 > Effort: L (2–3 weeks solo)
 
 ## Why

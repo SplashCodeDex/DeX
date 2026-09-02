@@ -37,3 +37,7 @@ plugins {
 
 rootProject.name = "DeXAndroid"
 include(":app")
+include(":core")
+project(":core").projectDir = file("../core")
+include(":core:protocol")
+project(":core:protocol").projectDir = file("../core/protocol")

@@ -1,4 +1,12 @@
 # Changelog
+## [10.1.40.0] - 2026-09-02
+### Added
+- **[major] Plan 030 Phase 1 — Android Shared Core Integration & Protocol Wire Parity**:
+  - **KMP Android Multiplatform Target in `:core:protocol`**: Applied modern AGP 9.3.1 `com.android.kotlin.multiplatform.library` with `android { ... }` alongside `jvm("desktop")`, configured with explicit JVM target 17 bytecode compatibility and enabled host unit tests (`withHostTest {}`).
+  - **Android Project Build Integration**: Linked `:core:protocol` into `DeX/settings.gradle.kts` via directory mapping, resolving the multiplatform leaf library into the Android build pipeline without polluting `composeApp`.
+  - **Compile-Time Protocol Forwarding Shim (`ProtocolKeys.kt`)**: Refactored `DeX/app`'s `ProtocolKeys` to forward directly to `com.dexstudios.dex.core.protocol.FieldNames`, `MessageTypes`, and `ProtocolEnvelope`. Zero breaking changes for existing Android call sites, while eliminating wire-contract drift permanently at compile time.
+  - **Dual-Platform Test Verification**: Host unit tests (`testAndroidHostTest`), golden fixture tests, and desktop test suites (`desktopTest`) verified green across both Android and Desktop Gradle targets.
+
 ## [10.1.39.0] - 2026-09-02
 ### Added
 - **[major] Cloud Relay Deployment & Production Ops (Option 2 / Plan 032)**:
