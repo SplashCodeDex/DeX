@@ -37,6 +37,32 @@ literals in Phase 1).
 3. DI re-wiring in `AppModule` if constructor shapes change (Koin `viewModelOf` /
    singletons — keep injection manual-friendly).
 
+## WP0 audit (completed 2026-09-03, execution record)
+
+- **Field→concern map**: `pinnedTrustManager` + `sslContext` (lazy) were used ONLY by
+  `registerEndpoint` (TLS endpoint reflection to the PC) → moved into
+  `PunchSocketConnector`. `serverSocket` is mutated by lifecycle (start/stop) → the
+  connector observes it via `serverSocketProvider`; cancellation parity via
+  `isActive` provider; foreign inbound connections re-launched by PunchSession's own
+  scope via `onForeignConnection` (identical cancellation semantics — the old
+  `scope.launch { handleIncoming(accepted) }`).
+- **Consumer map**: `AppModule.kt` (`single { PunchSession(get(), get(), get(),
+  androidContext()) }`), `DexService.kt` (`start()`/`stop()`), `PunchSendWorker.kt`
+  (`sendTo`). Public surface unchanged: `start() / stop() / sendTo(...)`.
+- **Wire law verified**: line-protocol framing bytes identical (`\n`-terminated UTF-8,
+  64 KiB hostile-line drop); punch timers (12s deadline, 800ms connect, 250ms retry,
+  120s register refresh, 60s prune, 10s/30s/60s read timeouts) preserved verbatim;
+  64 KiB stream buffer unchanged.
+- **Extractions executed**: `PunchLineProtocol` (framing), `PunchSocketConnector`
+  (registerEndpoint + punch + closeQuietly + SSL/pinning), `PunchTransferChannel`
+  (TransferOutcome + runTransfer + streamBytes). `PunchSession` = lifecycle +
+  receiver + sendTo orchestration (511 → 322 lines).
+- **Build gate**: `:app:assembleDebug` + `:app:testDebugUnitTest` GREEN
+  (incl. PunchResumeStateTest, PairingCoordinatorTest, MessageHandlerTest,
+  TransferEdgeCasesTestSuite).
+- **Remaining for DONE**: user-driven manual soak (LAN pairing, punch LAN/WAN send,
+  batch download, cancel mid-transfer, symmetric-NAT error path).
+
 ## STOP conditions
 
 - Zero wire-visible change: punch line-protocol framing bytes, refresh/prune/window

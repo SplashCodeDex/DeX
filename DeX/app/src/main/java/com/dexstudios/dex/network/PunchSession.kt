@@ -3,6 +3,7 @@ package com.dexstudios.dex.network
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.dexstudios.dex.network.PunchTransferChannel.TransferOutcome
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,11 +24,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import java.net.URLEncoder
-import java.security.SecureRandom
 import java.util.UUID
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocket
 
 /**
  * Direct phone-to-phone transfers over a NAT-punched TCP connection, mediated by the
@@ -48,15 +45,16 @@ class PunchSession(
     private var serverSocket: ServerSocket? = null
     private val json = DexJson
 
-    // Peer phones use self-signed certs; pin each peer's cert trust-on-first-use so a
-    // changed cert (MITM on the LAN) is rejected instead of silently trusted.
-    private val pinnedTrustManager = PinnedTrustManager(context)
-
-    private val sslContext: SSLContext by lazy {
-        val ctx = SSLContext.getInstance("TLS")
-        ctx.init(null, arrayOf(pinnedTrustManager), SecureRandom())
-        ctx
-    }
+    // Plan 042 seams: rendezvous/socket acquisition, and the TCP transfer data plane.
+    private val connector = PunchSocketConnector(
+        context = context,
+        wsService = wsService,
+        deviceConfig = deviceConfig,
+        serverSocketProvider = { serverSocket },
+        isActive = { scope.isActive },
+        onForeignConnection = { socket -> scope.launch { handleIncoming(socket) } },
+    )
+    private val transferChannel = PunchTransferChannel(context, deviceConfig)
 
     fun start() {
         if (serverSocket != null) return
@@ -77,7 +75,7 @@ class PunchSession(
         scope.launch {
             // Register our public endpoint and refresh before the PC's 5-minute TTL expires
             while (isActive) {
-                registerEndpoint()
+                connector.registerEndpoint()
                 delay(120_000.milliseconds)
             }
         }
@@ -95,36 +93,6 @@ class PunchSession(
         serverSocket?.close()
         serverSocket = null
         scope.cancel()
-    }
-
-    /**
-     * Reflects our public TCP endpoint via the PC: we connect FROM the listener port, so
-     * the PC answers with the source address of this connection — our NAT public endpoint.
-     */
-    private suspend fun registerEndpoint() = withContext(Dispatchers.IO) {
-        val ss = serverSocket ?: return@withContext
-        try {
-            val pcIp = wsService.connectedIp ?: PcMemory.ip(context) ?: return@withContext
-            val localPort = ss.localPort
-            val socket = Socket().apply {
-                reuseAddress = true
-                bind(InetSocketAddress("0.0.0.0", localPort))
-            }
-            socket.connect(InetSocketAddress(pcIp, wsService.connectedPort), 5000)
-            val ssl = sslContext.socketFactory.createSocket(socket, pcIp, wsService.connectedPort, true) as SSLSocket
-            pinnedTrustManager.setExpectedHost(pcIp)
-            ssl.startHandshake()
-            val request = "GET /punch/endpoint?fingerprint=${URLEncoder.encode(deviceConfig.fingerprint, "UTF-8")} HTTP/1.1\r\n" +
-                "Host: $pcIp\r\nConnection: close\r\n\r\n"
-            ssl.getOutputStream().write(request.toByteArray())
-            ssl.getOutputStream().flush()
-            val body = String(ssl.getInputStream().readBytes()).substringAfter("\r\n\r\n")
-            val reflected = json.decodeFromString<EndpointInfoDto>(body)
-            ssl.close()
-            Timber.i("Punch endpoint registered: ${reflected.ip}:${reflected.port}")
-        } catch (e: Exception) {
-            Timber.e(e, "Punch endpoint registration failed")
-        }
     }
 
     // ---- Receiver side ----
@@ -152,13 +120,13 @@ class PunchSession(
             val input = socket.getInputStream()
             val output = socket.getOutputStream()
 
-            val manifestLine = withTimeoutOrNull(10_000.milliseconds) { readLine(input) }
+            val manifestLine = withTimeoutOrNull(10_000.milliseconds) { PunchLineProtocol.readLine(input) }
                 ?: return@withContext closeQuietly(socket)
             val manifest = json.decodeFromString<PunchManifestDto>(manifestLine)
 
             // Same-email only: the sender's identity must match ours
             if ((manifest.identityHash.isBlank() || manifest.identityHash != deviceConfig.identityHash)) {
-                writeLine(output, """{"type":"reject","reason":"identity"}""")
+                PunchLineProtocol.writeLine(output, """{"type":"reject","reason":"identity"}""")
                 Timber.w("Rejected punch transfer from non-same-email device ${manifest.alias}")
                 return@withContext closeQuietly(socket)
             }
@@ -175,7 +143,7 @@ class PunchSession(
                 val accepted = withTimeoutOrNull(60_000.milliseconds) { deferred.await() } == true
                 TransferState.pendingPrompts.remove(sessionId)
                 if (!accepted) {
-                    writeLine(output, """{"type":"reject","reason":"declined"}""")
+                    PunchLineProtocol.writeLine(output, """{"type":"reject","reason":"declined"}""")
                     return@withContext closeQuietly(socket)
                 }
                 PunchResumeState.markAccepted(sessionId)
@@ -186,13 +154,13 @@ class PunchSession(
                 sessionId = sessionId,
                 files = manifest.files.associateBy({ it.id }, { resumeMap[it.id]?.received ?: 0L })
             )
-            writeLine(output, json.encodeToString(resumeInfo))
+            PunchLineProtocol.writeLine(output, json.encodeToString(resumeInfo))
 
             val dirUri = SafStorage.getDownloadsDexUri(context)
 
             var doneFiles = manifest.files.count { file -> (resumeMap[file.id]?.received ?: 0L) >= file.size }
             for (file in manifest.files) {
-                val headerLine = withTimeoutOrNull(30_000.milliseconds) { readLine(input) }
+                val headerLine = withTimeoutOrNull(30_000.milliseconds) { PunchLineProtocol.readLine(input) }
                     ?: break
                 val header = json.decodeFromString<PunchFileHeaderDto>(headerLine)
 
@@ -251,7 +219,7 @@ class PunchSession(
             }
 
             // Await the sender's completion marker, then clear the resume state
-            withTimeoutOrNull(10_000.milliseconds) { readLine(input) }
+            withTimeoutOrNull(10_000.milliseconds) { PunchLineProtocol.readLine(input) }
             PunchResumeState.complete(sessionId)
             TcpDownloadService.updateState(DownloadState(fileName = "$doneFiles of ${manifest.files.size} files", progress = 1f, isSuccess = true, doneFiles = doneFiles, totalFiles = manifest.files.size))
             Timber.i("Punch transfer received: $doneFiles files from ${manifest.alias}")
@@ -302,7 +270,7 @@ class PunchSession(
             if (isCancelled()) return@withContext "Transfer cancelled"
             if (attempt > 0) delay(1500.milliseconds)
 
-            registerEndpoint()
+            connector.registerEndpoint()
 
             // 1. Ask the PC for the target's public endpoint (and give it ours)
             val deferred = CompletableDeferred<EndpointInfoDto>()
@@ -319,7 +287,7 @@ class PunchSession(
             }
 
             // 2. Punch through the NATs (simultaneous-open)
-            val socket = punch(info.ip, info.port, isCancelled)
+            val socket = connector.punch(info.ip, info.port, isCancelled)
             if (socket == null) {
                 lastError = "Direct connection failed — your network blocks punching"
                 return@withContext lastError
@@ -328,7 +296,7 @@ class PunchSession(
             // 3. Transfer with resume support; a mid-transfer drop retries the whole session
             try {
                 val targetAlias = PunchState.devices.value.firstOrNull { it.info.fingerprint == targetFingerprint }?.info?.alias ?: "Device"
-                when (runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress, targetAlias)) {
+                when (transferChannel.runTransfer(socket, sessionId, uris, files, totalSize, isCancelled, onProgress, targetAlias)) {
                     TransferOutcome.SUCCESS -> return@withContext null
                     TransferOutcome.REJECTED -> return@withContext "The recipient declined the transfer"
                     TransferOutcome.DROP -> {
@@ -345,167 +313,5 @@ class PunchSession(
         }
         lastError ?: "Transfer failed"
     }
-
-    private enum class TransferOutcome { SUCCESS, REJECTED, DROP }
-
-    private suspend fun runTransfer(
-        socket: Socket,
-        sessionId: String,
-        uris: List<Uri>,
-        files: List<PunchFileDto>,
-        totalSize: Long,
-        isCancelled: () -> Boolean,
-        onProgress: suspend (Float, String) -> Unit,
-        targetAlias: String = "Device"
-    ): TransferOutcome = withContext(Dispatchers.IO) {
-        val output = socket.getOutputStream()
-        val input = socket.getInputStream()
-
-        // Announce the transfer (with the resume session id)
-        val manifest = PunchManifestDto(
-            sessionId = sessionId,
-            fingerprint = deviceConfig.fingerprint,
-            identityHash = deviceConfig.identityHash,
-            alias = getDeviceName(context),
-            files = files
-        )
-        writeLine(output, json.encodeToString(manifest))
-
-        val reply = withTimeoutOrNull(60_000.milliseconds) { readLine(input) }
-            ?: return@withContext TransferOutcome.DROP
-        if (reply.contains("\"reject\"")) return@withContext TransferOutcome.REJECTED
-
-        // The receiver tells us how many bytes it already has per file
-        val resumeInfo = try {
-            json.decodeFromString<PunchResumeInfoDto>(reply)
-        } catch (e: Exception) {
-            PunchResumeInfoDto()
-        }
-
-        val alreadyDone = files.sumOf { minOf(resumeInfo.files[it.id] ?: 0L, it.size) }
-        val grandTotal = totalSize.coerceAtLeast(1)
-        var sentNew = 0L
-
-        for ((index, file) in files.withIndex()) {
-            if (isCancelled()) return@withContext TransferOutcome.DROP
-
-            val resume = minOf(resumeInfo.files[file.id] ?: 0L, file.size)
-            writeLine(output, json.encodeToString(PunchFileHeaderDto(fileId = file.id, size = file.size, offset = resume)))
-            if (resume >= file.size) continue
-
-            val remaining = file.size - resume
-            val streamed = if (resume > 0) {
-                val afd = context.contentResolver.openAssetFileDescriptor(uris[index], "r") ?: return@withContext TransferOutcome.DROP
-                afd.use { descriptor ->
-                    val stream = descriptor.createInputStream()
-                    stream.use { s ->
-                        var skipped = 0L
-                        while (skipped < resume) {
-                            val n = s.skip(resume - skipped)
-                            if (n <= 0) break
-                            skipped += n
-                        }
-                        if (skipped < resume) return@use false
-                        streamBytes(s, output, remaining) { bytes ->
-                            sentNew += bytes
-                            onProgress((alreadyDone + sentNew).toFloat() / grandTotal, file.fileName)
-                        }
-                    }
-                }
-            } else {
-                val stream = context.contentResolver.openInputStream(uris[index]) ?: return@withContext TransferOutcome.DROP
-                stream.use { s ->
-                    streamBytes(s, output, remaining) { bytes ->
-                        sentNew += bytes
-                        onProgress((alreadyDone + sentNew).toFloat() / grandTotal, file.fileName)
-                    }
-                }
-            }
-            if (!streamed) return@withContext TransferOutcome.DROP
-            TransferHistory.log(context, file.fileName, file.size, "sent", uris[index].toString(), peerDevice = targetAlias)
-        }
-
-        writeLine(output, json.encodeToString(PunchDoneDto(sessionId = sessionId)))
-        TransferOutcome.SUCCESS
-    }
-
-    /** Copies [length] bytes from [input] to [output], reporting the delta per chunk. */
-    private suspend fun streamBytes(input: InputStream, output: OutputStream, length: Long, onDelta: suspend (Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val buffer = ByteArray(64 * 1024)
-        var sent = 0L
-        while (sent < length) {
-            val toRead = minOf(buffer.size.toLong(), length - sent).toInt()
-            val n = input.read(buffer, 0, toRead)
-            if (n <= 0) return@withContext false
-            output.write(buffer, 0, n)
-            sent += n
-            onDelta(n.toLong())
-        }
-        true
-    }
-
-    /**
-     * Simultaneous-open NAT punch: outbound connects bound to the listener port, racing an
-     * accept on the same listener. Returns the first usable socket or null on timeout.
-     */
-    private suspend fun punch(ip: String, port: Int, isCancelled: () -> Boolean): Socket? = withContext(Dispatchers.IO) {
-        val ss = serverSocket ?: return@withContext null
-        val localPort = ss.localPort
-        val deadline = System.currentTimeMillis() + 12_000
-        while (System.currentTimeMillis() < deadline && !isCancelled()) {
-            // Outbound simultaneous-open attempt, source port = listener port
-            try {
-                val s = Socket().apply {
-                    reuseAddress = true
-                    bind(InetSocketAddress("0.0.0.0", localPort))
-                }
-                s.connect(InetSocketAddress(ip, port), 800)
-                s.tcpNoDelay = true
-                Timber.i("Punch connect succeeded to $ip:$port")
-                return@withContext s
-            } catch (e: Exception) {
-                // expected while the NAT mapping is being established
-            }
-
-            // The peer's own punch may have landed on our listener first
-            try {
-                val accepted = ss.accept()
-                if (accepted.inetAddress.hostAddress == ip) {
-                    accepted.tcpNoDelay = true
-                    Timber.i("Punch accept succeeded from $ip")
-                    return@withContext accepted
-                }
-                scope.launch { handleIncoming(accepted) }
-            } catch (_: SocketTimeoutException) {
-                // No inbound punch this round — retry the outbound attempt
-            } catch (e: Exception) {
-                if (!scope.isActive) return@withContext null
-            }
-            delay(250.milliseconds)
-        }
-        Timber.w("Punch failed for $ip:$port")
-        null
-    }
-
-    private fun writeLine(output: OutputStream, line: String) {
-        output.write((line + "\n").toByteArray(Charsets.UTF_8))
-        output.flush()
-    }
-
-    /** Line reader over a raw stream (never mixes with binary reads on the same stream). */
-    private fun readLine(input: InputStream): String? {
-        val bytes = java.io.ByteArrayOutputStream()
-        while (true) {
-            val b = input.read()
-            if (b == -1) return null
-            if (b == '\n'.code) break
-            bytes.write(b)
-            if (bytes.size() > 64 * 1024) return null
-        }
-        return String(bytes.toByteArray(), Charsets.UTF_8)
-    }
-
-    private fun closeQuietly(socket: Socket) {
-        try { socket.close() } catch (_: Exception) {}
-    }
 }
+

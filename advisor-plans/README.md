@@ -49,7 +49,7 @@ honor its STOP conditions, and update your row when done.
 | 039  | watchos | P3 | L | 034 + user GO | DEFERRED (demand gate) |
 | 040  | core-data-primitives-split | P2 | M | after 032 lands (merge-conflict sequencing) | TODO |
 | 041  | core-network-hostkit-split | P2 | L | 040 (module-edge rewrites) | TODO |
-| 042  | punchsession-split (Android P4) | P1 | L | 024 | TODO (soak required) |
+| 042  | punchsession-split (Android P4) | P1 | L | 024 | IN PROGRESS (WP0 audit + extractions DONE: PunchLineProtocol/PunchSocketConnector/PunchTransferChannel; :app:assembleDebug + testDebugUnitTest GREEN; BLOCKED only on user manual soak) |
 | 043  | navsheet-drag-state (Android P4) | P1 | M | 024 | TODO (soak required) |
 | 044  | ui-state-holders: pill nav + top app bar (Android P4) | P1 | M | 024, 043 | TODO (user decision on state retention; soak required) |
 | 045  | okhttp-client-consolidation (Android P4) | P2 | M | 024 | TODO (WP0 pinning audit; soak required) |
