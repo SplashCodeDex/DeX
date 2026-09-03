@@ -33,6 +33,22 @@ exactly how a pinning regression or a timeout regression ships silently.
    pinned), STOP and file it as a separate finding — this plan consolidates, it does
    not fix security posture.
 
+## WP0 audit (completed 2026-09-03, execution record)
+
+- **Definitive builder census** (grep-verified): THREE `OkHttpClient` builders exist —
+  `BatchDownloadWorker.kt:55` (plain HTTP, LAN pull port 48426, 10s/30s),
+  `WanDownloadWorker.kt:54` (TLS to the public relay, 15s/60s, followRedirects),
+  `WebSocketClientService.kt:49` (30s ping + TOFU pinning + custom hostnameVerifier).
+  `QuicClient` is Cronet-only (no OkHttp). The original "4 clients" estimate included
+  QuicClient's fallback, which does not exist as OkHttp.
+- **Pinning posture verdict — NO latent bug**: the WS client pins (TOFU);
+  `BatchDownloadWorker` is plain-LAN by design (nothing to pin); `WanDownloadWorker`
+  speaks TLS to the relay's public-CA domain (system trust is CORRECT there — content
+  is independently E2EE via `RelayCrypto`, so transport trust is not the secrecy
+  boundary). Consolidation is therefore pure hygiene, priority P2.
+- Consolidation scope shrinks to: one `DeXHttpClients` factory with three named
+  profiles reproducing the exact options above.
+
 ## STOP conditions
 
 - Timeout and SSL values byte-identical per call site (the audit table is the contract).

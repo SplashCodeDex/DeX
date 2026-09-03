@@ -143,6 +143,7 @@ class PunchSession(
                 val accepted = withTimeoutOrNull(60_000.milliseconds) { deferred.await() } == true
                 TransferState.pendingPrompts.remove(sessionId)
                 if (!accepted) {
+                    PunchResumeState.discard(sessionId)
                     PunchLineProtocol.writeLine(output, """{"type":"reject","reason":"declined"}""")
                     return@withContext closeQuietly(socket)
                 }

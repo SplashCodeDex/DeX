@@ -64,4 +64,15 @@ class PunchResumeStateTest {
         // A fresh map for the same session id must be empty (state cleared)
         assertTrue(PunchResumeState.mapFor("c1").isEmpty())
     }
+
+    @Test
+    fun `discard drops a declined session's resume map`() {
+        // mapFor runs BEFORE the acceptance check in handleIncoming, so a declined
+        // transfer would leak its map forever (prune only sweeps accepted sessions).
+        val map = PunchResumeState.mapFor("d1")
+        map["f"] = entry(5L, 100L)
+        PunchResumeState.discard("d1")
+        assertTrue(PunchResumeState.mapFor("d1").isEmpty())
+        assertFalse(PunchResumeState.isAccepted("d1"))
+    }
 }

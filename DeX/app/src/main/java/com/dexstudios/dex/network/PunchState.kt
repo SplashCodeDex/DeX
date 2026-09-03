@@ -40,6 +40,16 @@ object PunchResumeState {
 
     fun isAccepted(sessionId: String): Boolean = acceptedSessions.containsKey(sessionId)
 
+    /**
+     * Drops a session that was rejected or whose acceptance prompt timed out.
+     * [mapFor] runs before the acceptance check, so a declined transfer would
+     * otherwise leak its (empty) resume map forever — [prune] only sweeps
+     * sessions that were actually accepted.
+     */
+    fun discard(sessionId: String) {
+        sessions.remove(sessionId)
+    }
+
     fun markAccepted(sessionId: String) {
         acceptedSessions[sessionId] = System.currentTimeMillis()
     }

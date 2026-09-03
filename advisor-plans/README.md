@@ -52,7 +52,8 @@ honor its STOP conditions, and update your row when done.
 | 042  | punchsession-split (Android P4) | P1 | L | 024 | IN PROGRESS (WP0 audit + extractions DONE: PunchLineProtocol/PunchSocketConnector/PunchTransferChannel; :app:assembleDebug + testDebugUnitTest GREEN; BLOCKED only on user manual soak) |
 | 043  | navsheet-drag-state (Android P4) | P1 | M | 024 | TODO (soak required) |
 | 044  | ui-state-holders: pill nav + top app bar (Android P4) | P1 | M | 024, 043 | TODO (user decision on state retention; soak required) |
-| 045  | okhttp-client-consolidation (Android P4) | P2 | M | 024 | TODO (WP0 pinning audit; soak required) |
+| 045  | okhttp-client-consolidation (Android P4) | P2 | M | 024 | TODO (WP0 audit DONE: 3 builders, no latent pinning bug — pure hygiene) |
+| 046  | punch-dataplane-e2ee | P1 | L | 042, user GO | TODO — BLOCKED on user GO (wire-protocol change; both phones same release). Verified plaintext gap: punch manifest + file bytes unencrypted |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Ecosystem roadmap (plans 025–039)
@@ -78,6 +79,11 @@ Phase gates that require user decisions before work starts: 030 (after 024 DONE)
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).
 - [DX-01] Add Kotlin linting and formatting tooling: RESOLVED 2026-08-23. Same implementation as DX-02.
 - [DX-02] Migrate println statements to structured logging: RESOLVED 2026-09-03. Production printlns migrated (DeXAnimatedIcons Lottie failure paths -> Kermit Logger). Remaining println calls are deliberate: server Main.kt System.err FATAL line is the pre-exit emergency channel (no logger is guaranteed at boot failure — migrating it would not improve observability), scripts/*.kts are manually-run dev tools where println is idiomatic, and one occurrence is inside an Android unit test.
+- [SEC-PUNCH-01] Punch direct phone-to-phone transfers are PLAINTEXT on the wire (manifest incl. identityHash/alias/file names, resume offsets, all file bytes): VERIFIED 2026-09-03, escalated to plan 046 (P1, BLOCKED on user GO — wire-protocol change requiring both phones updated in the same release). Context: every other transport encrypts (TOFU-pinned TLS to PC, E2EE via RelayCrypto on WAN relay); the punch path predates RelayCrypto and never wrapped its socket.
+- [ROBUST-PUNCH-02] Declined punch transfers leaked their resume map forever (PunchResumeState.mapFor runs before the acceptance check; prune() only sweeps accepted sessions): FIXED 2026-09-03 — PunchResumeState.discard(sessionId) added and called on the declined/timeout reject path; regression test added to PunchResumeStateTest; :app:testDebugUnitTest green.
+- [BUG-UI-01] MainScreen troubleshoot dialog is unreachable (showTroubleshootDialog is only ever set false; nothing sets it true — plan 024 audit finding, still open 2026-09-03): needs a user decision — (a) wire it to a settings/menu entry (what content is intended?), or (b) remove the dialog and its state. Not patched: removal is a user decision per repo rules.
+- [BUG-NSD-01] DiscoveredDevice.download is a write-only field with inconsistent initialization (NSD parser hardcodes true, DiscoveryEngine/FileShareManager/MessageHandler use false, UDP parser defaults true; zero readers found repo-wide): VERIFIED harmless today 2026-09-03. Options: delete the field or make initialization consistent — user decision; not patched.
+- [LOCKSTEP-AUDIT] DeX/app ProtocolKeys vs core/protocol: VERIFIED 2026-09-03 — ProtocolKeys is a pure forwarding shim to MessageTypes/FieldNames (plan 030 Phase 1), so wire drift is compile-impossible; no raw wire-type string literals remain in Android main sources (only KDoc comments). The lockstep concern from the ecosystem plan is fully retired.
 - [DIR-01] Implement desktop file fetching and sharing: REJECTED (with one-line rationale). Largely implemented independently since the audit: ShareRoutes prepare-upload/upload/download/share-target with auth + path-traversal guard, RelayService hostAndPushAsync with TTL cleanup. Revisit only for gaps found in use.
 - [DIR-02] Implement system tray notifications: Rejected. Duplicate of Plan 014.
 - [SEC-01] Remove instructional directives in dependency plan: Deferred.
