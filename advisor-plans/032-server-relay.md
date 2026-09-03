@@ -14,6 +14,14 @@
   preserved: Caddy does not buffer proxy bodies by default, and `flush_interval -1`
   (valid, verified) flushes every read immediately. Deploy runbook added at
   `docs/SERVER_DEPLOY.md`; ledger rows for 032/024 trued up.
+- **Load-test harness** (`server/scripts/loadtest.sh`, 2026-09-03): executable bash +
+  curl harness for the remaining "production load test" item — real wire surface,
+  hard pass/fail gates: `/healthz`, all four 401 auth gates, 429 quota gate before
+  first byte, concurrent relay streaming with byte-integrity + throughput, punch
+  round-trip, sync exchange smoke; `DEX_MB=2050` exercises the 2 GiB cap 410.
+  Validated against a live fixture-auth server (liveness + auth gates PASS; authed
+  phases fail-closed on bogus token); 200-path asserts mirror the exact
+  RelayRoutes/PunchRoutes/SyncRoutes contracts.
 - **CI deploy path resolved (Option A, user decision 2026-09-03)**:
   `.github/workflows/server-deploy.yml` reworked to the single canonical path — CI
   builds + tests the fat JAR, ships JAR + `server/` source bundle over SSH, and the

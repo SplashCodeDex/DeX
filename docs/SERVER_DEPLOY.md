@@ -77,9 +77,19 @@ One-time VPS provisioning for the CI path (in addition to the procedure above):
 
 ## Remaining plan-032 verification after first deploy
 
-- **Production load test:** concurrent multi-GB relay streams; confirm bounded memory
-  (`docker stats` — KiB-scale deltas expected, the streaming law), no disk growth in
-  `/var/lib/docker` beyond images, quota rejection (per-account caps) before first byte.
+- **Production load test** — `server/scripts/loadtest.sh` (executable; bash + curl):
+  runs the real wire surface with hard pass/fail gates — `/healthz`, all four 401
+  auth gates, the 429 quota gate before first byte, concurrent relay streams with
+  byte-integrity verification + MiB/s throughput, punch register/resolve round-trip,
+  and a sync exchange smoke. Usage:
+  `DEX_HOST=https://<domain> DEX_BEARER=<live Google ID token> bash server/scripts/loadtest.sh`
+  (optionally `DEX_MB`, `DEX_STREAMS`, `DEX_KEEP_TMP`; set `DEX_MB=2050` to exercise
+  the 2 GiB session-cap 410). While phase 4 runs, watch `docker stats dex-server` on
+  the VPS — memory must stay ~flat (bounded frame buffer), no disk growth beyond
+  images. Validated 2026-09-03 against a live fixture-auth server: liveness + all
+  auth gates PASS, authed phases fail-closed on a bogus token; the 200-path asserts
+  mirror the exact wire contracts in RelayRoutes/PunchRoutes/SyncRoutes and the
+  `:server:test` suite.
 - **On-device convergence test:** desktop + Android against the deployed host —
   pairing, LAN transfer fallback, WAN relay transfer both directions, sync exchange.
 - Then mark plan 032 DONE in `advisor-plans/README.md` (status row MUST be updated).
