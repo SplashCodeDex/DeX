@@ -1,7 +1,13 @@
-# DeX server build + deploy (plan 032).
-# Builds the fat JAR, runs the server contract suite, ships the Docker image to the
-# Hetzner VPS over SSH, and restarts the service. Credentials live in GitHub Actions
-# secrets — never in the repo.
+# DeX server build + deploy (plan 032, Option A: single canonical deploy path).
+# Builds and tests the fat JAR in CI, ships the JAR + server source bundle to the
+# Hetzner VPS over SSH, and invokes server/scripts/deploy.sh — the SAME compose + Caddy
+# stack the manual runbook uses (docs/SERVER_DEPLOY.md). TLS termination, health
+# probing and rollback semantics therefore never diverge between CI and manual deploys.
+#
+# Secrets law (plan 032): only SSH credentials live in GitHub secrets. Server config
+# (DEX_GOOGLE_CLIENT_ID, DEX_DOMAIN) lives ONLY in /opt/dex/server/.env on the VPS —
+# it is excluded from the bundle and never overwritten by CI. One-time provisioning:
+# see docs/SERVER_DEPLOY.md.
 name: server-deploy
 
 on:
@@ -26,19 +32,21 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # Gate: the server contract suite must pass before anything ships.
       - name: Build fat JAR + run server tests
         run: ./gradlew :server:test :server:shadowJar --no-daemon
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # Bundle = server sources only (compose, Dockerfile, Caddyfile, scripts).
+      # Excludes: build outputs (JAR ships separately), and .env — the VPS env file
+      # is provisioned once by hand and is NEVER replaced by CI.
+      - name: Create deploy bundle
+        run: |
+          tar -czf dex-deploy-bundle.tgz \
+            --exclude='server/build' \
+            --exclude='server/.env' \
+            server/
 
-      - name: Build image
-        run: docker build -f server/Dockerfile -t dex-server:latest .
-
-      - name: Save image for transfer
-        run: docker save dex-server:latest | gzip > dex-server.tar.gz
-
-      - name: Copy image to VPS
+      - name: Copy bundle and JAR to VPS
         env:
           DEX_SSH_KEY: ${{ secrets.DEX_SSH_KEY }}
           DEX_VPS_HOST: ${{ secrets.DEX_VPS_HOST }}
@@ -46,22 +54,34 @@ jobs:
         run: |
           install -m 600 /dev/null key
           printf '%s' "$DEX_SSH_KEY" > key
-          scp -i key -o StrictHostKeyChecking=accept-new dex-server.tar.gz "$DEX_VPS_USER@$DEX_VPS_HOST":/tmp/
+          scp -i key -o StrictHostKeyChecking=accept-new \
+            dex-deploy-bundle.tgz server/build/libs/dex-server-all.jar \
+            "$DEX_VPS_USER@$DEX_VPS_HOST":/tmp/
 
-      - name: Load image and restart service on VPS
+      # The remote script runs the canonical deploy.sh: compose build + up, Caddy
+      # auto-HTTPS, health-probe loop. Hard-fails on first run if /opt/dex/server/.env
+      # has not been provisioned yet (runbook step 3).
+      - name: Deploy on VPS via scripts/deploy.sh
         env:
           DEX_SSH_KEY: ${{ secrets.DEX_SSH_KEY }}
           DEX_VPS_HOST: ${{ secrets.DEX_VPS_HOST }}
           DEX_VPS_USER: ${{ secrets.DEX_VPS_USER }}
         run: |
+          install -m 600 /dev/null key
           printf '%s' "$DEX_SSH_KEY" > key
-          ssh -i key "$DEX_VPS_USER@$DEX_VPS_HOST" '
-            docker load < /tmp/dex-server.tar.gz &&
-            docker stop dex-server 2>/dev/null || true;
-            docker rm dex-server 2>/dev/null || true;
-            docker run -d --name dex-server --restart unless-stopped \
-              -p 8443:8443 \
-              --env-file /etc/dex/dex-server.env \
-              dex-server:latest &&
-            rm /tmp/dex-server.tar.gz
-          '
+          ssh -i key -o StrictHostKeyChecking=accept-new "$DEX_VPS_USER@$DEX_VPS_HOST" 'bash -s' <<'REMOTE'
+            set -euo pipefail
+            mkdir -p /opt/dex
+            tar -xzf /tmp/dex-deploy-bundle.tgz -C /opt/dex
+            mkdir -p /opt/dex/server/build/libs
+            mv /tmp/dex-server-all.jar /opt/dex/server/build/libs/dex-server-all.jar
+            if [ ! -f /opt/dex/server/.env ]; then
+              cp /opt/dex/server/.env.example /opt/dex/server/.env
+              echo "FIRST-TIME PROVISIONING REQUIRED: edit /opt/dex/server/.env" >&2
+              echo "(DEX_DOMAIN + DEX_GOOGLE_CLIENT_ID), then re-run this deploy." >&2
+              exit 1
+            fi
+            cd /opt/dex/server
+            ./scripts/deploy.sh
+            rm -f /tmp/dex-deploy-bundle.tgz /tmp/dex-server-all.jar
+REMOTE

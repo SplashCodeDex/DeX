@@ -53,21 +53,27 @@ Per the plan ledger, plan 032 cannot complete without these user-provided inputs
    - `docker compose ps` → both services `running`, `dex-server` `healthy`,
    - `docker compose logs caddy -n=100` → certificate issuance succeeded.
 
-## Known discrepancy — `server-deploy.yml` needs a user decision
+## CI deploy path (resolved — Option A, user decision 2026-09-03)
 
-The CI workflow deploys via bare `docker run -d --name dex-server -p 8443:8443
---env-file /etc/dex/dex-server.env` — it does NOT use the compose stack, so there is
-NO Caddy/TLS termination on that path, and it collides with the compose-managed
-`dex-server` container name if both are ever used on one VPS. Options:
+`.github/workflows/server-deploy.yml` no longer runs a bare `docker run` — it now:
 
-- **A (recommended):** rework the workflow to `scp` the built JAR and invoke
-  `server/scripts/deploy.sh` on the VPS — one canonical path, TLS included.
-- **B:** keep the bare-docker path and terminate TLS in a host-level Caddy installed
-  outside compose (more moving parts; the `/etc/dex/dex-server.env` env file must then
-  be provisioned manually on the VPS).
+1. Builds `dex-server-all.jar` and runs the `:server:test` contract suite (gate).
+2. Ships only the JAR + a `server/` source bundle over SSH (`DEX_SSH_KEY`,
+   `DEX_VPS_HOST`, `DEX_VPS_USER` GitHub secrets).
+3. On the VPS, extracts to `/opt/dex`, places the JAR, and invokes
+   `server/scripts/deploy.sh` — the SAME compose + Caddy stack as the manual path
+   above. TLS, health probing and rollback semantics can never diverge between
+   CI and manual deploys.
 
-Until decided, treat `deploy.sh` as the only supported deploy method and do not trigger
-the workflow against the production VPS.
+One-time VPS provisioning for the CI path (in addition to the procedure above):
+
+- Install Docker Engine + Compose plugin and `tar`; the deploy user needs write
+  access to `/opt/dex` and Docker permissions (docker group or root).
+- Server config lives ONLY in `/opt/dex/server/.env` on the VPS — the bundle
+  excludes `.env`, so CI can never overwrite it. On the very first CI deploy, the
+  workflow copies `.env.example` to `.env` and fails with provisioning instructions;
+  edit `DEX_DOMAIN` + `DEX_GOOGLE_CLIENT_ID` and re-run the workflow.
+  `DEX_GOOGLE_CLIENT_ID` therefore never needs to be a GitHub secret at all.
 
 ## Remaining plan-032 verification after first deploy
 

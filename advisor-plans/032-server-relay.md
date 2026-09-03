@@ -14,11 +14,13 @@
   preserved: Caddy does not buffer proxy bodies by default, and `flush_interval -1`
   (valid, verified) flushes every read immediately. Deploy runbook added at
   `docs/SERVER_DEPLOY.md`; ledger rows for 032/024 trued up.
-- **Flagged, awaiting user decision**: `.github/workflows/server-deploy.yml` deploys a
-  bare `docker run -p 8443:8443` (no Caddy/TLS, container-name collision with compose,
-  no image retention for rollback) while `server/scripts/deploy.sh` + compose is the
-  canonical path. Runbook documents both options; workflow must not target production
-  until aligned.
+- **CI deploy path resolved (Option A, user decision 2026-09-03)**:
+  `.github/workflows/server-deploy.yml` reworked to the single canonical path — CI
+  builds + tests the fat JAR, ships JAR + `server/` source bundle over SSH, and the
+  VPS runs `server/scripts/deploy.sh` (compose + Caddy, auto-HTTPS). Server env
+  (`DEX_GOOGLE_CLIENT_ID`, `DEX_DOMAIN`) lives only in `/opt/dex/server/.env` on the
+  VPS, excluded from the bundle and never overwritten by CI; SSH credentials remain
+  the only GitHub secrets. Runbook updated.
 
 ## What shipped (Work Package 4, 2026-09-03 — Cross-Platform WAN Cloud Relay Transfer Integration)
 
