@@ -1,4 +1,15 @@
 # Changelog
+## [10.1.45.0] - 2026-09-03
+### Added
+- **[major] Plan 032 Phase 6 / Work Package 4 — Cross-Platform WAN Cloud Relay Transfer Integration**:
+  - **`IPlatformEngine` Multiplatform Expansion**: Added `downloadWanRelay(sessionId, streamToken, relayUrl, fileName, totalBytes, fingerprint, sourceAlias)` to the shared cross-platform engine contract in `:core:network`.
+  - **`MessageHandler` Wire Routing**: Wired `MessageTypes.RELAY_OFFER` handling in shared `MessageHandler.kt`, extracting wire parameters (`sessionId`, `streamToken`, `relayUrl`, `fileName`, `size`, `fingerprint`, `alias`) per `docs/PROTOCOL.md` and routing directly to `engine.downloadWanRelay(...)`.
+  - **Android Platform Engine**: Implemented `AndroidPlatformEngine.downloadWanRelay(...)` with fail-closed paired token verification via `DeviceManager.getPairedToken(fingerprint)`, delegating trusted requests to `TcpDownloadService.downloadWanRelay(...)` and `WanDownloadWorker`.
+  - **Desktop Platform Engine**: Implemented `DesktopPlatformEngine.downloadWanRelay(...)` with fail-closed paired token verification via `AuthState.pairedTokens.value[fingerprint]`, collision-free destination allocation via `ReceiveStorage.uniqueDest(...)`, and streaming/decrypting frame-by-frame via `WanRelayClient.download(...)` while updating `TransferStateMonitor` and `TransferHistoryRecorder`.
+  - **Centralized Path Sanitization**: Extracted and centralized collision-free file naming logic into `ReceiveStorage.uniqueDest(...)`, eliminating duplicate code between `DesktopPullService` and `DesktopPlatformEngine`.
+  - **Desktop Outbound WAN Relay Transfer**: Integrated `sendViaWanRelay` into `DesktopFileSendService` when `deviceConfig.syncHostUrl` is configured, opening relay sessions via `WanRelayClient`, prompting remote peers with `MessageTypes.RELAY_OFFER`, and streaming AES-256-GCM sealed chunks concurrently with progress telemetry, falling back seamlessly to LAN relay if unset or unreachable.
+  - **Zero UI Disruption Guarantee**: Zero modifications to UI composables, layouts, screens, or experimental components in either Windows or Android.
+
 ## [10.1.44.0] - 2026-09-03
 ### Added
 - **[major] Plan 030 Phase 5 — Android Platform Engine Adapter & Network Multiplatform Expansion**:

@@ -1,8 +1,18 @@
 # Plan 032 — `server/` Module: Streaming E2EE Relay + Sync Host (Phase 0-C)
 
-> Status: IN PROGRESS — WP1 DONE (surfaces + deploy) · WP2 DONE (E2EE + WAN client) · WP3 DONE (hardening pass: punch auth, streaming download, timeouts, concurrency serialization, DoS bounds, /healthz)
+> Status: IN PROGRESS — WP1 DONE (surfaces + deploy) · WP2 DONE (E2EE + WAN client) · WP3 DONE (hardening pass) · WP4 DONE (cross-platform desktop & android WAN relay integration)
 > Depends on: 025 (DONE), 031 (DONE — client loop)
 > Effort: L (2–3 weeks solo)
+
+## What shipped (Work Package 4, 2026-09-03 — Cross-Platform WAN Cloud Relay Transfer Integration)
+
+- **`IPlatformEngine` Multiplatform Expansion**: Added `downloadWanRelay(sessionId, streamToken, relayUrl, fileName, totalBytes, fingerprint, sourceAlias)` to the shared cross-platform engine contract.
+- **`MessageHandler` Wire Routing**: Added `MessageTypes.RELAY_OFFER` handling, extracting wire fields and routing offers directly to `engine.downloadWanRelay(...)`.
+- **Android Platform Engine**: Implemented `AndroidPlatformEngine.downloadWanRelay(...)` verifying paired token trust before dispatching to `TcpDownloadService.downloadWanRelay(...)` and `WanDownloadWorker`.
+- **Desktop Platform Engine**: Implemented `DesktopPlatformEngine.downloadWanRelay(...)` verifying paired token trust, allocating unique destination files via `ReceiveStorage.uniqueDest(...)`, and streaming/decrypting frame-by-frame via `WanRelayClient.download(...)` while publishing live updates to `TransferStateMonitor` and `TransferHistoryRecorder`.
+- **Centralized Path Sanitization**: Centralized collision-free destination resolution (`uniqueDest`) in `ReceiveStorage`, eliminating code duplication between `DesktopPullService` and `DesktopPlatformEngine`.
+- **Desktop Outbound WAN Relay Transfer**: Integrated `sendViaWanRelay` into `DesktopFileSendService` when `deviceConfig.syncHostUrl` is configured, opening relay sessions via `WanRelayClient`, prompting remote peers with `MessageTypes.RELAY_OFFER`, and streaming AES-256-GCM sealed chunks concurrently with progress telemetry, falling back seamlessly to LAN relay if unset or unreachable.
+- **Contract & Regression Tests**: Added unit contract tests for `relay-offer` parsing in `MessageHandlerTest` and verified full multiplatform test suite (125 tests passed in `:core:network`, 57 tasks in root, 100 tasks in Android).
 
 ## What shipped (Work Package 3, 2026-09-02 — edge-case hardening pass)
 

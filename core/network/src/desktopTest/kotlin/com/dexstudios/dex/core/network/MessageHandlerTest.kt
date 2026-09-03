@@ -77,6 +77,13 @@ class MessageHandlerTest {
             downloads.add(DownloadCall(senderIp, port, tcpFallbackPort, files, fingerprint, sourceAlias))
         }
 
+        val wanDownloads = mutableListOf<WanDownloadCall>()
+        data class WanDownloadCall(val sessionId: String, val streamToken: String, val relayUrl: String, val fileName: String, val totalBytes: Long, val fingerprint: String, val sourceAlias: String)
+
+        override fun downloadWanRelay(sessionId: String, streamToken: String, relayUrl: String, fileName: String, totalBytes: Long, fingerprint: String, sourceAlias: String) {
+            wanDownloads.add(WanDownloadCall(sessionId, streamToken, relayUrl, fileName, totalBytes, fingerprint, sourceAlias))
+        }
+
         override fun handleFileExplorerRequest(type: String, data: JsonObject) {
             fileExplorerRequests.add(type to data)
         }
@@ -465,5 +472,33 @@ class MessageHandlerTest {
         handler.handleMessage(frame("mirror-stop", "{}"), "10.0.0.1", 1)
         awaitUntil { engine.mirrorStops == 1 }
         assertEquals(1, engine.mirrorStops)
+    }
+
+    // === Cloud Relay E2EE streaming offer ===
+
+    @Test
+    fun `relay-offer dispatches downloadWanRelay to platform engine`() = runBlocking {
+        val data = """
+            {
+              "sessionId": "sess_wan_123",
+              "streamToken": "tok_wan_stream",
+              "relayUrl": "https://relay.example.com",
+              "fileName": "document.pdf",
+              "size": 1048576,
+              "fingerprint": "phone-fp-wan",
+              "alias": "Phone Device"
+            }
+        """.trimIndent()
+        handler.handleMessage(frame("relay-offer", data), "10.0.0.1", 1)
+
+        awaitUntil { engine.wanDownloads.size == 1 }
+        val call = engine.wanDownloads.single()
+        assertEquals("sess_wan_123", call.sessionId)
+        assertEquals("tok_wan_stream", call.streamToken)
+        assertEquals("https://relay.example.com", call.relayUrl)
+        assertEquals("document.pdf", call.fileName)
+        assertEquals(1048576L, call.totalBytes)
+        assertEquals("phone-fp-wan", call.fingerprint)
+        assertEquals("Phone Device", call.sourceAlias)
     }
 }

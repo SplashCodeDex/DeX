@@ -168,27 +168,5 @@ class DesktopPullService(private val httpClient: HttpClient) {
         true
     }
 
-    private fun uniqueDest(downloadsFolder: File, fileName: String, relativePath: String?): File {
-        val safeName = fileName.ifEmpty { "unnamed_file" }.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        var base: File = if (relativePath.isNullOrBlank()) {
-            File(downloadsFolder, safeName)
-        } else {
-            val rel = relativePath.replace("\\", "/").removePrefix("/")
-            if (rel.contains("..")) {
-                File(downloadsFolder, safeName)
-            } else {
-                val resolved = downloadsFolder.toPath().resolve(rel).normalize()
-                if (resolved.startsWith(downloadsFolder.toPath())) resolved.toFile() else File(downloadsFolder, safeName)
-            }
-        }
-
-        synchronized(this) {
-            var counter = 1
-            while (base.exists()) {
-                base = File(base.parentFile, "${base.nameWithoutExtension} ($counter).${base.extension}")
-                counter++
-            }
-        }
-        return base
-    }
+    private fun uniqueDest(downloadsFolder: File, fileName: String, relativePath: String?): File = ReceiveStorage.uniqueDest(downloadsFolder, fileName, relativePath)
 }

@@ -83,6 +83,8 @@ class MessageHandler(
 
                 MessageTypes.RELAY_ERROR -> handleRelayReply(false)
 
+                MessageTypes.RELAY_OFFER -> handleRelayOffer(dataElement)
+
                 MessageTypes.SET_CLIPBOARD -> handleSetClipboard(dataElement)
 
                 MessageTypes.WALLPAPER_UPDATED -> WallpaperState.notifyUpdated()
@@ -316,6 +318,29 @@ class MessageHandler(
     private fun handleRelayReply(success: Boolean) {
         PunchState.pendingRelay.value?.complete(success)
         PunchState.pendingRelay.value = null
+    }
+
+    /** Incoming cloud relay E2EE streaming transfer offer (Plan 032). */
+    private fun handleRelayOffer(dataElement: JsonElement) {
+        val dataObj = dataElement as? JsonObject ?: return
+        val sessionId = dataObj["sessionId"]?.jsonPrimitive?.contentOrNull ?: return
+        val streamToken = dataObj["streamToken"]?.jsonPrimitive?.contentOrNull ?: return
+        val relayUrl = dataObj["relayUrl"]?.jsonPrimitive?.contentOrNull ?: return
+        val fileName = dataObj["fileName"]?.jsonPrimitive?.contentOrNull ?: "shared_file"
+        val size = dataObj["size"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
+        val fingerprint = dataObj["fingerprint"]?.jsonPrimitive?.contentOrNull ?: return
+        val alias = dataObj["alias"]?.jsonPrimitive?.contentOrNull ?: "Remote Device"
+
+        Logger.i("Incoming WAN relay offer from $alias ($fingerprint) for $fileName ($size bytes)")
+        engine.downloadWanRelay(
+            sessionId = sessionId,
+            streamToken = streamToken,
+            relayUrl = relayUrl,
+            fileName = fileName,
+            totalBytes = size,
+            fingerprint = fingerprint,
+            sourceAlias = alias,
+        )
     }
 
     /**

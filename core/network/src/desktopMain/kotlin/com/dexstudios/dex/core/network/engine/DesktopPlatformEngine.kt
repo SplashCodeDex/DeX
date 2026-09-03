@@ -4,6 +4,8 @@ import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.DesktopPullService
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.PullFileDto
+import com.dexstudios.dex.core.network.sync.WanRelayClient
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -67,6 +69,72 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
             return
         }
         DesktopPullService(httpClient).downloadBatch(senderIp, port, tcpFallbackPort, files, fingerprint, sourceAlias)
+    }
+
+    override fun downloadWanRelay(sessionId: String, streamToken: String, relayUrl: String, fileName: String, totalBytes: Long, fingerprint: String, sourceAlias: String) {
+        val pairedToken = com.dexstudios.dex.auth.AuthState.pairedTokens.value[fingerprint]
+        if (pairedToken.isNullOrBlank()) {
+            Logger.i("[DesktopPlatformEngine] Rejecting WAN relay offer from unpaired device $fingerprint")
+            return
+        }
+        val httpClient = runCatching {
+            org.koin.core.context.GlobalContext.get().get<io.ktor.client.HttpClient>()
+        }.getOrNull()
+        if (httpClient == null) {
+            Logger.i("[DesktopPlatformEngine] Cannot receive WAN relay files: HttpClient unavailable")
+            return
+        }
+        val alias = sourceAlias.ifBlank { "Remote Device" }
+        val downloadsFolder = com.dexstudios.dex.core.network.server.ReceiveStorage.downloadsDir()
+        if (downloadsFolder.freeSpace < totalBytes) {
+            Logger.i("[DesktopPlatformEngine] Insufficient disk space for WAN relay file from $alias")
+            return
+        }
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
+            val monitor = com.dexstudios.dex.core.network.TransferStateMonitor
+            val transferId = java.util.UUID.randomUUID().toString()
+            monitor.updateIncomingProgress(transferId, alias, 1, 0)
+            val dest = com.dexstudios.dex.core.network.server.ReceiveStorage.uniqueDest(downloadsFolder, fileName)
+            val part = java.io.File(dest.parentFile, "${dest.name}.part")
+            try {
+                val relayClient = com.dexstudios.dex.core.network.sync.WanRelayClient(
+                    client = httpClient,
+                    baseUrlProvider = { relayUrl },
+                    tokenProvider = { "" },
+                )
+                val session = WanRelayClient.RelaySession(sessionId, streamToken, fingerprint)
+                part.outputStream().use { output ->
+                    relayClient.download(session, pairedToken, output)
+                }
+                if (totalBytes > 0 && part.length() != totalBytes) {
+                    throw IllegalStateException("Size mismatch: expected $totalBytes, got ${part.length()}")
+                }
+                if (!part.renameTo(dest)) {
+                    part.copyTo(dest, overwrite = true)
+                    part.delete()
+                }
+                com.dexstudios.dex.core.network.TransferHistoryRecorder.recordCompleted(
+                    name = dest.name,
+                    size = dest.length(),
+                    direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
+                    uri = dest.absolutePath,
+                    peerDevice = alias,
+                )
+                monitor.updateIncomingProgress(transferId, alias, 1, 1)
+                Logger.i("[DesktopPlatformEngine] WAN relay download completed: ${dest.absolutePath}")
+            } catch (e: Exception) {
+                part.delete()
+                com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
+                    name = fileName,
+                    size = totalBytes,
+                    direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
+                    peerDevice = alias,
+                )
+                monitor.removeSession(transferId)
+                Logger.i("[DesktopPlatformEngine] WAN relay download failed: ${e.message}")
+            }
+        }
     }
 
     override fun handleFileExplorerRequest(type: String, data: JsonObject) {

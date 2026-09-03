@@ -12,6 +12,9 @@ import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.UploadOutcome
 import com.dexstudios.dex.core.network.UploadState
 import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
+import com.dexstudios.dex.core.protocol.FieldNames
+import com.dexstudios.dex.core.protocol.MessageTypes
+import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.serialization.json.put
 import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
@@ -440,6 +444,11 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
             ),
         )
 
+        if (deviceConfig.syncHostUrl.isNotBlank()) {
+            val wanDelivered = sendViaWanRelay(files, chosenFingerprint, peerName, alias)
+            if (wanDelivered) return true
+        }
+
         val delivered = com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
             targetFingerprint = chosenFingerprint,
             files = files,
@@ -480,6 +489,74 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
             )
         }
         return delivered
+    }
+
+    private suspend fun sendViaWanRelay(files: List<Pair<String, String?>>, targetFingerprint: String, peerName: String, alias: String): Boolean {
+        val relayUrl = deviceConfig.syncHostUrl.trim().trimEnd('/')
+        if (relayUrl.isEmpty()) return false
+        val httpClient = runCatching {
+            org.koin.core.context.GlobalContext.get().get<io.ktor.client.HttpClient>()
+        }.getOrNull() ?: return false
+
+        val pairedToken = AuthState.pairedTokens.value[targetFingerprint]
+        if (pairedToken.isNullOrBlank()) return false
+
+        val idToken = com.dexstudios.dex.core.network.auth.GoogleOAuth.currentIdToken().orEmpty()
+        val wanClient = com.dexstudios.dex.core.network.sync.WanRelayClient(
+            client = httpClient,
+            baseUrlProvider = { relayUrl },
+            tokenProvider = { idToken },
+        )
+
+        val regularFiles = files.map { File(it.first) }.filter { it.isFile }
+        if (regularFiles.isEmpty()) return false
+
+        var sentCount = 0
+        for (file in regularFiles) {
+            val session = try {
+                wanClient.openSession(targetFingerprint)
+            } catch (e: Exception) {
+                co.touchlab.kermit.Logger.i("[DesktopFileSendService] Could not open WAN relay session: ${e.message}")
+                return false
+            }
+
+            val offerJson = ProtocolEnvelope.envelopeOf(MessageTypes.RELAY_OFFER) {
+                put("sessionId", session.sessionId)
+                put("streamToken", session.streamToken)
+                put("relayUrl", relayUrl)
+                put("fileName", file.name)
+                put("size", file.length())
+                put("fingerprint", deviceConfig.fingerprint.ifEmpty { "desktop-migration" })
+                put("alias", alias)
+            }
+
+            val promptDelivered = WebSocketConnectionManager.sendToTrusted(targetFingerprint, offerJson)
+            if (!promptDelivered) {
+                try {
+                    wanClient.closeSession(session)
+                } catch (_: Exception) {}
+                return false
+            }
+
+            try {
+                FileInputStream(file).use { input ->
+                    wanClient.upload(session, pairedToken, input) { sentBytes ->
+                        reportProgress(sentCount, regularFiles.size, sentBytes, file.length(), file.name, peerName, targetFingerprint)
+                    }
+                }
+                sentCount++
+                logSent(file, peerName)
+            } catch (e: Exception) {
+                co.touchlab.kermit.Logger.i("[DesktopFileSendService] WAN relay upload error for ${file.name}: ${e.message}")
+                try {
+                    wanClient.closeSession(session)
+                } catch (_: Exception) {}
+                return false
+            }
+        }
+
+        clientEngine.finishUpload(regularFiles.size, regularFiles.size)
+        return true
     }
 
     private fun mimeOf(file: File): String = runCatching { java.nio.file.Files.probeContentType(file.toPath()) }.getOrNull() ?: "application/octet-stream"

@@ -39,7 +39,7 @@ honor its STOP conditions, and update your row when done.
 | 029  | clipboard-sync-authstate | P1 | S | 026 | DONE (clipboard use case + ports; AuthState disposition decided: stays in core/network, revisited at 030) |
 | 030  | android-shared-core | P1 | L | 024, 027–029 | DONE (Phases 1-5 complete: wire contract, crypto, pairing, discovery, platform engine) |
 | 031  | sync-backend (self-hosted) | P1 | L | 025 | DONE (client loop complete: engine, storage, transport, wiring, scheduler; host surface in 032) |
-| 032  | server-relay (streaming E2EE) | P1 | L | 025, 031 | IN PROGRESS (WP1+WP2+WP3 DONE: surfaces + E2EE + WAN client + hardening; deploy + phone-side wiring remain) |
+| 032  | server-relay (streaming E2EE) | P1 | L | 025, 031 | IN PROGRESS (WP1-WP4 DONE: surfaces, E2EE, WAN client, hardening, cross-platform WAN relay transfer integration; VPS deploy remains) |
 | 033  | ios-foundation (KMP framework) | P1 | M | 027–029 | TODO (GATED: Mac purchase) |
 | 034  | ios-swiftui-app | P1 | XL | 033 | TODO |
 | 035  | app-store-submission | P1 | S-M | 034 | TODO |

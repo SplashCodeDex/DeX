@@ -78,6 +78,35 @@ class AndroidPlatformEngine(
         )
     }
 
+    override fun downloadWanRelay(
+        sessionId: String,
+        streamToken: String,
+        relayUrl: String,
+        fileName: String,
+        totalBytes: Long,
+        fingerprint: String,
+        sourceAlias: String,
+    ) {
+        val pairedToken = com.dexstudios.dex.network.DeviceManager.getPairedToken(fingerprint)
+        if (pairedToken.isNullOrBlank()) {
+            Timber.w("Rejecting WAN relay offer from unpaired device $fingerprint")
+            return
+        }
+        val dirUri = SafStorage.getDownloadsDexUri(context)
+        TcpDownloadService.downloadWanRelay(
+            context = context,
+            sessionId = sessionId,
+            streamToken = streamToken,
+            relayUrl = relayUrl,
+            pairedToken = pairedToken,
+            fileName = fileName,
+            totalBytes = totalBytes,
+            destDirUri = dirUri,
+            fingerprint = fingerprint,
+            sourceAlias = sourceAlias,
+        )
+    }
+
     override fun handleFileExplorerRequest(type: String, data: JsonObject) {
         fileShareManager?.handleRequest(type, data)
     }

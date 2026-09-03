@@ -18,6 +18,7 @@ interface IPlatformEngine {
     fun setClipboardText(text: String)
 
     fun downloadBatch(senderIp: String, port: Int, tcpFallbackPort: Int, files: List<PullFileDto>, fingerprint: String, sourceAlias: String)
+    fun downloadWanRelay(sessionId: String, streamToken: String, relayUrl: String, fileName: String, totalBytes: Long, fingerprint: String, sourceAlias: String) {}
 
     fun handleFileExplorerRequest(type: String, data: JsonObject)
 
