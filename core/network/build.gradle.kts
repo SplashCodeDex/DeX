@@ -1,12 +1,26 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.android.multiplatform.library)
 }
 
 kotlin {
 
-    jvm("desktop")
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    android {
+        namespace = "com.dexstudios.dex.core.network"
+        compileSdk = 36
+        minSdk = 26
+        withHostTest {}
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -42,7 +56,9 @@ kotlin {
                 implementation(libs.ktor.server.test.host)
                 // The WAN relay orchestration contract tests run against the REAL
                 // server module's relay routes (same wire law both sides of deployment).
-                implementation(project(":server"))
+                findProject(":server")?.let {
+                    implementation(it)
+                }
             }
         }
 

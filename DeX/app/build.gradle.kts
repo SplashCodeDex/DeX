@@ -137,10 +137,11 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // Serialization, Shared Wire Protocol, Shared Data & Domain (Plan 030)
+  // Serialization, Shared Wire Protocol, Shared Data, Domain & Network (Plan 030)
   implementation(project(":core:protocol"))
   implementation(project(":core:data"))
   implementation(project(":core:domain"))
+  implementation(project(":core:network"))
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.ktor.serialization.kotlinx.json)
 

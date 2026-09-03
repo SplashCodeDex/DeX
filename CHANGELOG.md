@@ -1,4 +1,13 @@
 # Changelog
+## [10.1.44.0] - 2026-09-03
+### Added
+- **[major] Plan 030 Phase 5 — Android Platform Engine Adapter & Network Multiplatform Expansion**:
+  - **KMP Android Target for `:core:network`**: Added AGP 9.3.1 `com.android.kotlin.multiplatform.library` target to `core/network/build.gradle.kts` with JVM 17 bytecode alignment, allowing client interfaces and models to compile for Android while keeping desktop-only Netty server and JmDNS cleanly isolated in `desktopMain`.
+  - **Android Platform Actuals (`PlatformUtils.android.kt`)**: Implemented platform information actuals in `:core:network` resolving device name, model, and declaring platform type as `"mobile"`.
+  - **Android Monorepo Dependency Resolution**: Linked `:core:network` into `DeX/settings.gradle.kts` and `DeX/app/build.gradle.kts`, adding `ktor-server-test-host` catalog definition and using dynamic `findProject(":server")` evaluation to guarantee clean cross-project compilation.
+  - **Android Platform Engine Adapter (`AndroidPlatformEngine.kt`)**: Created the native Android implementation of `com.dexstudios.dex.core.network.engine.IPlatformEngine` in `DeX/app`, bridging shared core commands (pairing notifications, clipboard text synchronizing, and batch downloading) into native Android services (`NotificationHelper`, `ClipboardManager`, and `TcpDownloadService`).
+  - **Zero UI Disruption Guarantee**: Zero modifications to UI composables, layouts, screens, or experimental components in either Windows or Android.
+
 ## [10.1.43.0] - 2026-09-02
 ### Added
 - **[major] Plan 030 Phase 4 — Device Discovery & Registry Unification**:
