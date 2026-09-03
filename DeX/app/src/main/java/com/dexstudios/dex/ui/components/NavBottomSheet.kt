@@ -52,7 +52,6 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.abs
 import kotlinx.coroutines.launch
 
 /**
@@ -99,22 +98,15 @@ fun NavBottomSheet(
         val halfGapPx = with(density) { 6.dp.toPx() }
         val highGapPx = with(density) { 3.dp.toPx() }
 
-        // Heights for each tier (card height from anchored bottom)
-        val halfHeightPx = (totalHeightPx * 0.50f) - halfGapPx
-        val highHeightPx = (totalHeightPx * 0.80f) - highGapPx
-        val fullHeightPx = totalHeightPx
-
-        val tierHeights = listOf(
-            SheetTier.Half to halfHeightPx,
-            SheetTier.High to highHeightPx,
-            SheetTier.Full to fullHeightPx
-        )
-
-        fun tierHeight(tier: SheetTier): Float = when (tier) {
-            SheetTier.Half -> halfHeightPx
-            SheetTier.High -> highHeightPx
-            SheetTier.Full -> fullHeightPx
+        // Plan 043: pure tier geometry (heights, settling, gaps, radii) — verbatim math
+        val geometry = remember(totalHeightPx, halfGapPx, highGapPx) {
+            NavSheetGeometry(totalHeightPx, halfGapPx, highGapPx)
         }
+
+        // Local aliases (same values) so the remaining inline math stays untouched.
+        val halfHeightPx = geometry.halfHeightPx
+        val highHeightPx = geometry.highHeightPx
+        val fullHeightPx = geometry.fullHeightPx
 
         // Active animated height of the anchored floating card
         val animatableHeight = remember {
@@ -130,10 +122,7 @@ fun NavBottomSheet(
 
         // Closest settled tier based on current active height
         val currentTier by remember {
-            derivedStateOf {
-                val current = animatableHeight.value
-                tierHeights.minByOrNull { abs(it.second - current) }?.first ?: SheetTier.Half
-            }
+            derivedStateOf { geometry.currentTierFor(animatableHeight.value) }
         }
 
         fun expandTo(tier: SheetTier, triggerHaptic: Boolean = false) {
@@ -141,7 +130,7 @@ fun NavBottomSheet(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
             scope.launch {
-                animatableHeight.animateTo(tierHeight(tier), springSpec)
+                animatableHeight.animateTo(geometry.tierHeight(tier), springSpec)
             }
         }
 
@@ -150,14 +139,14 @@ fun NavBottomSheet(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
             scope.launch {
-                animatableHeight.animateTo(halfHeightPx, springSpec)
+                animatableHeight.animateTo(geometry.halfHeightPx, springSpec)
             }
         }
 
         // Morph up to initial tier as soon as layout constraints are measured on launch
         LaunchedEffect(totalHeightPx, initialTier) {
             if (totalHeightPx > 0f && animatableHeight.value == 0f) {
-                animatableHeight.animateTo(tierHeight(initialTier), springSpec)
+                animatableHeight.animateTo(geometry.tierHeight(initialTier), springSpec)
             }
         }
 
@@ -166,9 +155,9 @@ fun NavBottomSheet(
         DisposableEffect(lifecycleOwner, totalHeightPx) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    if (totalHeightPx > 0f && animatableHeight.value < halfHeightPx) {
+                    if (totalHeightPx > 0f && animatableHeight.value < geometry.halfHeightPx) {
                         scope.launch {
-                            animatableHeight.animateTo(tierHeight(initialTier), springSpec)
+                            animatableHeight.animateTo(geometry.tierHeight(initialTier), springSpec)
                         }
                     }
                 }
@@ -184,52 +173,24 @@ fun NavBottomSheet(
 
         // Live expansion fraction (0.0f at Half/50% to 1.0f at Full/100%)
         val expansionFraction by remember {
-            derivedStateOf {
-                if (fullHeightPx <= halfHeightPx) 0f
-                else ((animatableHeight.value - halfHeightPx) / (fullHeightPx - halfHeightPx)).coerceIn(0f, 1f)
-            }
+            derivedStateOf { geometry.expansionFractionFor(animatableHeight.value) }
         }
 
         // Dynamic floating margin: 6dp at 50%, 3dp at 80%, 0dp at 100% fullscreen
         val currentGap by remember {
-            derivedStateOf {
-                val h = animatableHeight.value
-                when {
-                    h <= halfHeightPx -> 6.dp
-                    h <= highHeightPx -> {
-                        val f = if (highHeightPx > halfHeightPx) ((h - halfHeightPx) / (highHeightPx - halfHeightPx)).coerceIn(0f, 1f) else 0f
-                        (6f - 3f * f).dp // 6dp -> 3dp
-                    }
-                    else -> {
-                        val f = if (fullHeightPx > highHeightPx) ((h - highHeightPx) / (fullHeightPx - highHeightPx)).coerceIn(0f, 1f) else 0f
-                        (3f - 3f * f).dp // 3dp -> 0dp
-                    }
-                }
-            }
+            derivedStateOf { geometry.gapDpFor(animatableHeight.value).dp }
         }
 
         // Dynamic corner radius: 4 rounded corners at 50% & 80%, seamless top corners at 100% fullscreen
         val sheetShape by remember {
             derivedStateOf {
-                val h = animatableHeight.value
-                when {
-                    h <= highHeightPx -> {
-                        val f = if (highHeightPx > 0f) (h / highHeightPx).coerceIn(0f, 1f) else 0f
-                        val r = (44f - 8f * f).dp // approx 39dp at 50% -> 36dp at 80%
-                        RoundedCornerShape(r)
-                    }
-                    else -> {
-                        val f = if (fullHeightPx > highHeightPx) ((h - highHeightPx) / (fullHeightPx - highHeightPx)).coerceIn(0f, 1f) else 0f
-                        val topR = (36f - 8f * f).dp // 36dp at 80% -> 28dp at 100%
-                        val bottomR = (36f * (1f - f)).dp // 36dp at 80% -> 0dp at 100% fullscreen
-                        RoundedCornerShape(
-                            topStart = topR,
-                            topEnd = topR,
-                            bottomStart = bottomR,
-                            bottomEnd = bottomR
-                        )
-                    }
-                }
+                val radii = geometry.cornerRadiiFor(animatableHeight.value)
+                RoundedCornerShape(
+                    topStart = radii.topStartDp.dp,
+                    topEnd = radii.topEndDp.dp,
+                    bottomStart = radii.bottomStartDp.dp,
+                    bottomEnd = radii.bottomEndDp.dp
+                )
             }
         }
 
@@ -277,7 +238,7 @@ fun NavBottomSheet(
 
             // Dimming scrim activates smoothly as sheet expands past 50%
             val isIslandExpanded = com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded || com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded
-            val baseScrimAlpha = ((expansionFraction - 0.15f) / 0.85f).coerceIn(0f, 1f) * 0.75f
+            val baseScrimAlpha = baseScrimAlphaFor(expansionFraction)
             val scrimAlpha = if (isIslandExpanded) 0.75f else baseScrimAlpha
 
             if (scrimAlpha > 0.01f) {
@@ -373,11 +334,16 @@ fun NavBottomSheet(
                 .then(
                     if (dragEnabled) {
                         Modifier.pointerInput(totalHeightPx, dragEnabled) {
-                    val dismissThresholdPx = with(density) { 50.dp.toPx() }
-                    val flingVelocityThresholdPx = with(density) { 350.dp.toPx() }
-                    val dragCommitThresholdPx = with(density) { 36.dp.toPx() }
                     val maxOverscrollPx = with(density) { 40.dp.toPx() }
-                    val maxAllowedHeightPx = fullHeightPx + maxOverscrollPx
+                    val maxAllowedHeightPx = geometry.fullHeightPx + maxOverscrollPx
+                    // Plan 043: pure drag-settle decision engine (verbatim thresholds)
+                    val decider = NavSheetDecider(
+                        geometry = geometry,
+                        dismissThresholdPx = with(density) { 50.dp.toPx() },
+                        flingVelocityThresholdPx = with(density) { 350.dp.toPx() },
+                        dragCommitThresholdPx = with(density) { 36.dp.toPx() },
+                        flingDismissBoundPx = with(density) { 30.dp.toPx() }
+                    )
                     val velocityTracker = VelocityTracker()
 
                     detectVerticalDragGestures(
@@ -391,84 +357,23 @@ fun NavBottomSheet(
                             val velocityY = velocityTracker.calculateVelocity().y // + is down, - is up
                             val h = animatableHeight.value
 
-                            // 1. Fast downward fling (> 350 dp/s)
-                            if (velocityY > flingVelocityThresholdPx) {
-                                if (h <= halfHeightPx + with(density) { 30.dp.toPx() }) {
-                                    // Fast fling down from near or below 50%: dismiss immediately with haptic tick
+                            when (val action = decider.settleAfterDrag(dragStartTier, h, velocityY)) {
+                                SheetSettleAction.Dismiss -> {
+                                    // Dragged down past the dismiss threshold (or fling-dismiss): haptic tick then close
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     scope.launch {
                                         animatableHeight.animateTo(0f, springSpec)
                                         onDismiss()
                                     }
-                                } else {
-                                    // Fling down from 100% or 80%: collapse directly to 50% without intermediate stall
-                                    collapseToHalf(triggerHaptic = false)
                                 }
-                            }
-                            // 2. Fast upward fling (< -350 dp/s)
-                            else if (velocityY < -flingVelocityThresholdPx) {
-                                val nextTier = if (dragStartTier == SheetTier.Half) {
-                                    if (h > highHeightPx) SheetTier.Full else SheetTier.High
-                                } else {
-                                    SheetTier.Full
-                                }
-                                expandTo(nextTier, triggerHaptic = (nextTier != dragStartTier))
-                            }
-                            // 3. Position-based settling (effortless directional commit)
-                            else {
-                                if (h <= halfHeightPx - dismissThresholdPx) {
-                                    // Dragged down past dismiss threshold
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    scope.launch {
-                                        animatableHeight.animateTo(0f, springSpec)
-                                        onDismiss()
-                                    }
-                                } else if (h < halfHeightPx) {
-                                    // Small downward pull below 50%: spring back up to 50%
-                                    collapseToHalf(triggerHaptic = false)
-                                } else if (h > fullHeightPx) {
-                                    // Overscroll released above 100%: spring back to 100%
-                                    expandTo(SheetTier.Full, triggerHaptic = false)
-                                } else when (dragStartTier) {
-                                    SheetTier.Full -> {
-                                        // From 100%: swiping down commits to 50% if pulled down by threshold
-                                        if (h <= fullHeightPx - dragCommitThresholdPx) {
-                                            collapseToHalf(triggerHaptic = false)
-                                        } else {
-                                            expandTo(SheetTier.Full, triggerHaptic = false)
-                                        }
-                                    }
-                                    SheetTier.High -> {
-                                        // From 80%: swiping down commits to 50%, swiping up commits to 100%
-                                        if (h <= highHeightPx - dragCommitThresholdPx) {
-                                            collapseToHalf(triggerHaptic = true)
-                                        } else if (h >= highHeightPx + dragCommitThresholdPx) {
-                                            expandTo(SheetTier.Full, triggerHaptic = true)
-                                        } else {
-                                            expandTo(SheetTier.High, triggerHaptic = false)
-                                        }
-                                    }
-                                    SheetTier.Half -> {
-                                        // From 50%: swiping up commits to 80% (or 100% if dragged high)
-                                        if (h >= fullHeightPx - dragCommitThresholdPx) {
-                                            expandTo(SheetTier.Full, triggerHaptic = true)
-                                        } else if (h >= halfHeightPx + dragCommitThresholdPx) {
-                                            expandTo(SheetTier.High, triggerHaptic = true)
-                                        } else {
-                                            collapseToHalf(triggerHaptic = false)
-                                        }
-                                    }
-                                }
+                                is SheetSettleAction.SettleTo -> expandTo(action.tier, action.triggerHaptic)
                             }
                         },
                         onDragCancel = {
                             isDragging = false
-                            val h = animatableHeight.value
-                            val nearest = if (h < halfHeightPx) halfHeightPx
-                            else if (h > fullHeightPx) fullHeightPx
-                            else (tierHeights.minByOrNull { abs(it.second - h) }?.second ?: halfHeightPx)
+                            val action = decider.settleAfterCancel(animatableHeight.value) as SheetSettleAction.SettleTo
                             scope.launch {
-                                animatableHeight.animateTo(nearest, springSpec)
+                                animatableHeight.animateTo(geometry.tierHeight(action.tier), springSpec)
                             }
                         },
                         onVerticalDrag = { change, dragAmount ->

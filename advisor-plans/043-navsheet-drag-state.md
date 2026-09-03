@@ -1,6 +1,6 @@
 # Plan 043 — NavBottomSheet Drag-State Extraction (Android, plan 024 Phase 4)
 
-> Status: TODO
+> Status: IN PROGRESS (WP0 audit + NavSheetModel extraction DONE, unit tests + assembleDebug GREEN, soak pending)
 > Depends on: plan 024 (Phases 1-3 DONE). Effort: M. Risk: HIGH (gesture/kinematics).
 > Soak testing REQUIRED before DONE (manual, user-driven).
 
@@ -24,6 +24,21 @@ untestable in isolation and every recomposition re-runs the state machinery.
    composable becomes a thin renderer consuming the holder.
 3. Unit-test the holder: tier transitions, velocity thresholds, scrim alpha values —
    pure functions once extracted (the reason this is worth doing).
+
+## Execution record (2026-09-03)
+
+- **Pure geometry & settle models extracted**: `DeX/app/.../ui/components/NavSheetModel.kt`
+  houses `NavSheetGeometry` (50%/80%/100% detents, dynamic gap 6dp->3dp->0dp, dynamic
+  radii, expansion fractions, nearest tier), `baseScrimAlphaFor` (golden formula),
+  `SheetSettleAction`, and `NavSheetDecider` (verbatim thresholds: dismiss 50dp, fling
+  velocity 350dp/s, drag commit 36dp, fling dismiss bound 30dp).
+- **Renderer integration**: `NavBottomSheet.kt` simplified to delegate geometry,
+  scrim calculation, and drag settling to the extracted pure models.
+- **Unit test coverage**: `NavSheetModelTest.kt` with 13 comprehensive test cases covering
+  geometry math, scrim golden values, fast flings (up/down/dismiss), directional commits
+  from all tiers, and cancel recovery.
+- **Build verification**: `:app:compileDebugKotlin`, `:app:testDebugUnitTest`,
+  `:app:assembleDebug`, and repo-root `:composeApp:desktopTest` all GREEN.
 
 ## STOP conditions
 
