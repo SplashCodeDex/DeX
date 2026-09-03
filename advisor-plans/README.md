@@ -47,6 +47,8 @@ honor its STOP conditions, and update your row when done.
 | 037  | android-tablet | P2 | M | 030 | TODO |
 | 038  | wear-os (staged 1-3) | P2 | M-L | 031, 032 | TODO |
 | 039  | watchos | P3 | L | 034 + user GO | DEFERRED (demand gate) |
+| 040  | core-data-primitives-split | P2 | M | after 032 lands (merge-conflict sequencing) | TODO |
+| 041  | core-network-hostkit-split | P2 | L | 040 (module-edge rewrites) | TODO |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Ecosystem roadmap (plans 025–039)
@@ -59,7 +61,9 @@ Phase gates that require user decisions before work starts: 030 (after 024 DONE)
 
 ## Dependency notes
 
-- None
+- Plans 040/041 (2026-09-03): module-split refactors, both P2. Sequence: 040 → 041,
+  both after plan 032 lands (032 is actively editing the same core/network + core/data
+  edges). Neither blocks the 033+ platform phases.
 
 ## Findings considered and rejected (or deferred)
 
