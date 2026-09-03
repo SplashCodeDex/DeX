@@ -1,6 +1,6 @@
 # Plan 030 — Android Shared-Core Integration (Phase 0-A5)
 
-> Status: IN PROGRESS (Phase 1: Protocol Wire Unification DONE; Phase 2: Cryptographic Engine Unification DONE; Phase 3: Domain Layer & Pairing Centralization DONE; Phase 4: Device Discovery & Registry Unification DONE; Phase 5: Platform Engine & Network Multiplatform Expansion DONE)
+> Status: DONE (Phases 1-5 complete: wire contract, crypto, pairing, discovery, platform engine)
 > Depends on: 024 (DONE)
 > Effort: L (2–3 weeks solo)
 
