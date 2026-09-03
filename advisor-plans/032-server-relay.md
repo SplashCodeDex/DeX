@@ -4,6 +4,22 @@
 > Depends on: 025 (DONE), 031 (DONE — client loop)
 > Effort: L (2–3 weeks solo)
 
+## What shipped (pre-deploy hardening, 2026-09-03)
+
+- **Caddyfile correctness fix**: removed `buffer_requests false` / `buffer_responses
+  false` — these subdirectives no longer exist in current Caddy 2.x (verified against
+  the live reverse_proxy docs; current streaming surface is `flush_interval`,
+  `request_buffers`, `response_buffers`, `stream_timeout`, `stream_close_delay`) and
+  would have failed config parse on first `docker compose up`. The zero-buffer law is
+  preserved: Caddy does not buffer proxy bodies by default, and `flush_interval -1`
+  (valid, verified) flushes every read immediately. Deploy runbook added at
+  `docs/SERVER_DEPLOY.md`; ledger rows for 032/024 trued up.
+- **Flagged, awaiting user decision**: `.github/workflows/server-deploy.yml` deploys a
+  bare `docker run -p 8443:8443` (no Caddy/TLS, container-name collision with compose,
+  no image retention for rollback) while `server/scripts/deploy.sh` + compose is the
+  canonical path. Runbook documents both options; workflow must not target production
+  until aligned.
+
 ## What shipped (Work Package 4, 2026-09-03 — Cross-Platform WAN Cloud Relay Transfer Integration)
 
 - **`IPlatformEngine` Multiplatform Expansion**: Added `downloadWanRelay(sessionId, streamToken, relayUrl, fileName, totalBytes, fingerprint, sourceAlias)` to the shared cross-platform engine contract.

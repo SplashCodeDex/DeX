@@ -1,4 +1,10 @@
 # Changelog
+## [Unreleased]
+### Fixed
+- **[fix] Plan 032 pre-deploy hardening — Caddyfile directive correctness**: Removed `buffer_requests false` and `buffer_responses false` from `server/Caddyfile`; these `reverse_proxy` subdirectives no longer exist in current Caddy 2.x (verified against the live Caddy docs) and would have failed config parse on the first `docker compose up`. The zero-buffer streaming law is preserved: Caddy does not buffer proxied request/response bodies by default, and the already-present `flush_interval -1` flushes each read to the client immediately.
+### Added
+- **[minor] Plan 032 deploy runbook** (`docs/SERVER_DEPLOY.md`): canonical first-deploy procedure via `server/scripts/deploy.sh` + compose (Caddy auto-HTTPS), required user-decision inputs (Hetzner VPS, domain/DNS, Google client ID, GitHub secrets), post-deploy load-test and convergence-test checklist for closing plan 032, rollback protocol, and a flagged decision on the divergent `server-deploy.yml` CI path (bare `docker run`, no TLS — must not target production until aligned with the compose stack).
+
 ## [10.1.45.0] - 2026-09-03
 ### Added
 - **[major] Plan 032 Phase 6 / Work Package 4 — Cross-Platform WAN Cloud Relay Transfer Integration**:

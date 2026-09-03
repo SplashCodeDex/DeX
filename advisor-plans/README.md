@@ -31,7 +31,7 @@ honor its STOP conditions, and update your row when done.
 | 021  | fix-settings-surface | P1 | M | — | DONE |
 | 022  | settings-audit-followups | P2 | S-M | 021 | DONE |
 | 023  | dnd-mute-semantics-and-surface-pruning | P1 | M | 022 | DONE |
-| 024  | android-refactor-centralization | P1 | L | — | IN PROGRESS (Phase 1 DONE) |
+| 024  | android-refactor-centralization | P1 | L | — | DONE (Phases 1-3 complete; Phase 4 deferred — high-risk items each need their own plan + soak testing) |
 | 025  | ecosystem-foundation (wire contract) | P1 | L | — | IN PROGRESS (wire contract DONE) |
 | 026  | domain-extraction-pairing | P1 | M | 025 | DONE |
 | 027  | domain-extraction-transfer | P1 | M | 025, 026 | DONE |
@@ -39,7 +39,7 @@ honor its STOP conditions, and update your row when done.
 | 029  | clipboard-sync-authstate | P1 | S | 026 | DONE (clipboard use case + ports; AuthState disposition decided: stays in core/network, revisited at 030) |
 | 030  | android-shared-core | P1 | L | 024, 027–029 | DONE (Phases 1-5 complete: wire contract, crypto, pairing, discovery, platform engine) |
 | 031  | sync-backend (self-hosted) | P1 | L | 025 | DONE (client loop complete: engine, storage, transport, wiring, scheduler; host surface in 032) |
-| 032  | server-relay (streaming E2EE) | P1 | L | 025, 031 | IN PROGRESS (WP1-WP4 DONE: surfaces, E2EE, WAN client, hardening, cross-platform WAN relay transfer integration; VPS deploy remains) |
+| 032  | server-relay (streaming E2EE) | P1 | L | 025, 031 | IN PROGRESS (WP1-WP4 DONE: surfaces, E2EE, WAN client, hardening, cross-platform WAN relay transfer integration; REMAINING: first deploy [user gate: VPS/domain/DNS/client-id secrets], production load test, on-device convergence test — runbook: docs/SERVER_DEPLOY.md) |
 | 033  | ios-foundation (KMP framework) | P1 | M | 027–029 | TODO (GATED: Mac purchase) |
 | 034  | ios-swiftui-app | P1 | XL | 033 | TODO |
 | 035  | app-store-submission | P1 | S-M | 034 | TODO |

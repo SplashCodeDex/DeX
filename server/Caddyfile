@@ -13,11 +13,12 @@
     # Core streaming relay, punch rendezvous, and delta sync endpoints
     handle {
         reverse_proxy dex-server:8443 {
-            # THE LAW: Disable request and response buffering completely.
-            # In-memory frames (~256 KiB) must stream in real-time with zero disk writes.
+            # THE LAW: zero-buffering streaming. Caddy's reverse_proxy does NOT buffer
+            # request/response bodies by default (verified against current Caddy 2 docs:
+            # the former buffer_requests/buffer_responses subdirectives were removed);
+            # flush_interval -1 flushes each read to the client immediately, so in-memory
+            # frames (~256 KiB) stream in real-time with zero disk writes.
             flush_interval -1
-            buffer_requests false
-            buffer_responses false
 
             # Proxy headers
             header_up Host {host}
