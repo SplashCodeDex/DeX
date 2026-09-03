@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import io.github.alexzhirkevich.compottie.Compottie
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
@@ -73,7 +74,7 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
             dndOnJson = LottieAssetCache.loadJson("files/bell_dnd_on.json")
             dndOffJson = LottieAssetCache.loadJson("files/bell_dnd_off.json")
         } catch (e: Exception) {
-            println("DeXAnimatedIcons: Failed to load DND bell Lottie assets: ${e.message}")
+            Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load DND bell Lottie assets" }
         }
     }
 
@@ -203,7 +204,7 @@ fun AnimatedSearchToXIcon(
         try {
             searchJson = LottieAssetCache.loadJson("files/search_to_x.json")
         } catch (e: Exception) {
-            println("DeXAnimatedIcons: Failed to load search_to_x Lottie asset: ${e.message}")
+            Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load search_to_x Lottie asset" }
         }
     }
 

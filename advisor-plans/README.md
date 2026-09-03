@@ -31,7 +31,7 @@ honor its STOP conditions, and update your row when done.
 | 021  | fix-settings-surface | P1 | M | — | DONE |
 | 022  | settings-audit-followups | P2 | S-M | 021 | DONE |
 | 023  | dnd-mute-semantics-and-surface-pruning | P1 | M | 022 | DONE |
-| 024  | android-refactor-centralization | P1 | L | — | DONE (Phases 1-3 complete; Phase 4 deferred — high-risk items each need their own plan + soak testing) |
+| 024  | android-refactor-centralization | P1 | L | — | DONE (Phases 1-3 complete; Phase 4 items split into plans 042-045) |
 | 025  | ecosystem-foundation (wire contract) | P1 | L | — | IN PROGRESS (wire contract DONE) |
 | 026  | domain-extraction-pairing | P1 | M | 025 | DONE |
 | 027  | domain-extraction-transfer | P1 | M | 025, 026 | DONE |
@@ -49,6 +49,10 @@ honor its STOP conditions, and update your row when done.
 | 039  | watchos | P3 | L | 034 + user GO | DEFERRED (demand gate) |
 | 040  | core-data-primitives-split | P2 | M | after 032 lands (merge-conflict sequencing) | TODO |
 | 041  | core-network-hostkit-split | P2 | L | 040 (module-edge rewrites) | TODO |
+| 042  | punchsession-split (Android P4) | P1 | L | 024 | TODO (soak required) |
+| 043  | navsheet-drag-state (Android P4) | P1 | M | 024 | TODO (soak required) |
+| 044  | ui-state-holders: pill nav + top app bar (Android P4) | P1 | M | 024, 043 | TODO (user decision on state retention; soak required) |
+| 045  | okhttp-client-consolidation (Android P4) | P2 | M | 024 | TODO (WP0 pinning audit; soak required) |
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
 ## Ecosystem roadmap (plans 025–039)
@@ -73,7 +77,7 @@ Phase gates that require user decisions before work starts: 030 (after 024 DONE)
 - [DOCS-01] Document local OAuth credentials setup: Deferred.
 - [DIRECTION-01] Dependency Update Plan execution: Deferred (handled via existing docs).
 - [DX-01] Add Kotlin linting and formatting tooling: RESOLVED 2026-08-23. Same implementation as DX-02.
-- [DX-02] Migrate println statements to structured logging: Deferred.
+- [DX-02] Migrate println statements to structured logging: RESOLVED 2026-09-03. Production printlns migrated (DeXAnimatedIcons Lottie failure paths -> Kermit Logger). Remaining println calls are deliberate: server Main.kt System.err FATAL line is the pre-exit emergency channel (no logger is guaranteed at boot failure — migrating it would not improve observability), scripts/*.kts are manually-run dev tools where println is idiomatic, and one occurrence is inside an Android unit test.
 - [DIR-01] Implement desktop file fetching and sharing: REJECTED (with one-line rationale). Largely implemented independently since the audit: ShareRoutes prepare-upload/upload/download/share-target with auth + path-traversal guard, RelayService hostAndPushAsync with TTL cleanup. Revisit only for gaps found in use.
 - [DIR-02] Implement system tray notifications: Rejected. Duplicate of Plan 014.
 - [SEC-01] Remove instructional directives in dependency plan: Deferred.
