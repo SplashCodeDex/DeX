@@ -441,7 +441,7 @@ private suspend fun handleResolveEndpoint(callerFingerprint: String?, dataObj: J
     if (callerFingerprint == null) return
     // Punch rendezvous data (other devices' ip:port) is only for proven sessions.
     if (!WebSocketConnectionManager.isTrusted(callerFingerprint)) return
-    val targetFingerprint = dataObj?.get("targetFingerprint")?.jsonPrimitive?.contentOrNull ?: return
+    val targetFingerprint = dataObj?.get(FieldNames.TARGET_FINGERPRINT)?.jsonPrimitive?.contentOrNull ?: return
 
     val entry = getPunchEndpoint(targetFingerprint)
     val endpointEnvelope = buildJsonObject {
@@ -464,7 +464,7 @@ private suspend fun handleResolveEndpoint(callerFingerprint: String?, dataObj: J
 /** Forwards a sender's punch endpoint to the intended target so both sides race simultaneously. */
 private suspend fun handlePeerEndpointAnnounce(senderFingerprint: String?, dataObj: JsonObject?) {
     if (senderFingerprint == null || dataObj == null) return
-    val peerFingerprint = dataObj["peerFingerprint"]?.jsonPrimitive?.contentOrNull ?: return
+    val peerFingerprint = dataObj[FieldNames.PEER_FINGERPRINT]?.jsonPrimitive?.contentOrNull ?: return
 
     // The sender's original data object is forwarded verbatim inside a fresh envelope.
     val forwardEnvelope = buildJsonObject {
@@ -480,7 +480,7 @@ private suspend fun handlePeerEndpointAnnounce(senderFingerprint: String?, dataO
  */
 private suspend fun handleTrustCheck(callerFingerprint: String?, dataObj: JsonObject?) {
     if (callerFingerprint == null) return
-    val subjectFingerprint = dataObj?.get("fingerprint")?.jsonPrimitive?.contentOrNull ?: callerFingerprint
+    val subjectFingerprint = dataObj?.get(FieldNames.FINGERPRINT)?.jsonPrimitive?.contentOrNull ?: callerFingerprint
 
     val koin = org.koin.core.context.GlobalContext.get()
     val deviceConfig = koin.get<com.dexstudios.dex.core.network.DeviceConfig>()
@@ -504,8 +504,8 @@ private suspend fun handleTrustCheck(callerFingerprint: String?, dataObj: JsonOb
  */
 private suspend fun handleRelayTransfer(requesterFingerprint: String?, dataObj: JsonObject?) {
     if (requesterFingerprint == null || dataObj == null) return
-    val targetFingerprint = dataObj["targetFingerprint"]?.jsonPrimitive?.contentOrNull
-    val sessionId = dataObj["sessionId"]?.jsonPrimitive?.contentOrNull
+    val targetFingerprint = dataObj[FieldNames.TARGET_FINGERPRINT]?.jsonPrimitive?.contentOrNull
+    val sessionId = dataObj[FieldNames.SESSION_ID]?.jsonPrimitive?.contentOrNull
 
     if (targetFingerprint.isNullOrBlank() || sessionId.isNullOrBlank()) {
         WebSocketConnectionManager.sendRequest(

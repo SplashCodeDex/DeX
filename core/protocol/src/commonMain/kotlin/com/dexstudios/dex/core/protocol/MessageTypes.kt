@@ -91,6 +91,7 @@ object FieldNames {
 
     // Transfers & relay
     const val TARGET_FINGERPRINT = "targetFingerprint"
+    const val PEER_FINGERPRINT = "peerFingerprint"
     const val SESSION_ID = "sessionId"
     const val REQUEST_ID = "requestId"
     const val STREAM_TOKEN = "streamToken"

@@ -72,6 +72,7 @@ object ProtocolKeys {
     const val NONCE = FieldNames.NONCE
     const val MAC = FieldNames.MAC
     const val TARGET_FINGERPRINT = FieldNames.TARGET_FINGERPRINT
+    const val PEER_FINGERPRINT = FieldNames.PEER_FINGERPRINT
     const val SESSION_ID = FieldNames.SESSION_ID
     const val REQUEST_ID = FieldNames.REQUEST_ID
     const val STREAM_TOKEN = FieldNames.STREAM_TOKEN
