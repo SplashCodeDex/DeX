@@ -117,7 +117,8 @@ class PunchSession(
 
     private suspend fun handleIncoming(socket: Socket) = withContext(Dispatchers.IO) {
         try {
-            val handshake = PunchCryptoChannel.performReceiverHandshake(socket, deviceConfig.identityHash)
+            val identitySecret = deviceConfig.googleSub.ifBlank { deviceConfig.identityHash }
+            val handshake = PunchCryptoChannel.performReceiverHandshake(socket, identitySecret)
             val channel = when (handshake) {
                 is PunchCryptoChannel.Companion.ReceiverHandshakeResult.Success -> handshake.channel
                 is PunchCryptoChannel.Companion.ReceiverHandshakeResult.LegacyV1Detected -> {

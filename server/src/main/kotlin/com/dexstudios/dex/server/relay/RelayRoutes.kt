@@ -225,8 +225,15 @@ fun Route.relayRoutes(verifier: IdTokenVerifier) {
             // Opaque E2EE frames drain until the sender completes the session: the
             // channel close terminates this loop — the receiver ALWAYS finishes.
             call.respondBytesWriter(contentType = ContentType.Application.OctetStream) {
-                for (frame in frameChannel) {
-                    writeFully(frame)
+                try {
+                    for (frame in frameChannel) {
+                        writeFully(frame)
+                    }
+                } finally {
+                    // If the receiver drops mid-stream or finishes, close the session
+                    // so the sender channel is cancelled (unblocking any suspended send)
+                    // and tenant quota is instantly released.
+                    RelaySessionRegistry.close(sessionId)
                 }
             }
         }

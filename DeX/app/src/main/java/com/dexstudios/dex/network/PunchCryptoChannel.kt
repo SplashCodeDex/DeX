@@ -43,23 +43,26 @@ class PunchCryptoChannel(
          * Executes the initiator (sender) handshake over the connected TCP socket.
          * Generates an ephemeral P-256 keypair, computes shared secret, verifies receiver's
          * identity proof, and transitions the socket to encrypted framing.
+         *
+         * Sealed per Plan 046 hardening: cleartext sessionId is NEVER sent in PunchHelloDto
+         * (preventing correlation on hostile networks), and identitySecret prioritizes
+         * private googleSub over public identityHash (defeating MITM by known contacts).
          */
         @OptIn(ExperimentalEncodingApi::class)
         suspend fun performSenderHandshake(
             socket: Socket,
-            sessionId: String,
-            identityHash: String,
+            sessionId: String = "",
+            identitySecret: String,
         ): PunchCryptoChannel = withContext(Dispatchers.IO) {
             val input = socket.getInputStream()
             val output = socket.getOutputStream()
 
-            // 1. Generate ephemeral keypair and random salt
+            // 1. Generate ephemeral keypair and random salt (sessionId omitted to prevent cleartext leakage)
             val keyPair = PunchCrypto.generateKeyPair()
             val salt = PunchCrypto.generateSalt()
             val hello = PunchHelloDto(
                 type = "punch-hello",
                 version = 2,
-                sessionId = sessionId,
                 publicKey = Base64.Default.encode(keyPair.publicKeyBytes),
                 salt = Base64.Default.encode(salt),
             )
@@ -85,10 +88,10 @@ class PunchCryptoChannel(
             val sharedSecret = PunchCrypto.computeSharedSecret(keyPair.privateKeyBytes, peerPubKeyBytes)
             val keys = PunchCrypto.derivePunchKeys(sharedSecret, salt)
 
-            // Verify receiver's proof-of-identity
+            // Verify receiver's proof-of-identity using hardened identity secret
             val expectedReceiverProof = PunchCrypto.computeReceiverAuthProof(
                 authKey = keys.authKey,
-                identityHash = identityHash,
+                identitySecret = identitySecret,
                 senderPubKey = keyPair.publicKeyBytes,
                 receiverPubKey = peerPubKeyBytes,
             )
@@ -101,7 +104,7 @@ class PunchCryptoChannel(
             // 3. Send sender's authentication proof
             val senderProof = PunchCrypto.computeSenderAuthProof(
                 authKey = keys.authKey,
-                identityHash = identityHash,
+                identitySecret = identitySecret,
                 senderPubKey = keyPair.publicKeyBytes,
                 receiverPubKey = peerPubKeyBytes,
             )
@@ -119,7 +122,7 @@ class PunchCryptoChannel(
         @OptIn(ExperimentalEncodingApi::class)
         suspend fun performReceiverHandshake(
             socket: Socket,
-            deviceIdentityHash: String,
+            deviceIdentitySecret: String,
         ): ReceiverHandshakeResult = withContext(Dispatchers.IO) {
             val input = socket.getInputStream()
             val output = socket.getOutputStream()
@@ -154,10 +157,10 @@ class PunchCryptoChannel(
             val sharedSecret = PunchCrypto.computeSharedSecret(keyPair.privateKeyBytes, peerPubKeyBytes)
             val keys = PunchCrypto.derivePunchKeys(sharedSecret, salt)
 
-            // Compute receiver's proof-of-identity
+            // Compute receiver's proof-of-identity using hardened identity secret
             val receiverProof = PunchCrypto.computeReceiverAuthProof(
                 authKey = keys.authKey,
-                identityHash = deviceIdentityHash,
+                identitySecret = deviceIdentitySecret,
                 senderPubKey = peerPubKeyBytes,
                 receiverPubKey = keyPair.publicKeyBytes,
             )
@@ -183,7 +186,7 @@ class PunchCryptoChannel(
 
             val expectedSenderProof = PunchCrypto.computeSenderAuthProof(
                 authKey = keys.authKey,
-                identityHash = deviceIdentityHash,
+                identitySecret = deviceIdentitySecret,
                 senderPubKey = peerPubKeyBytes,
                 receiverPubKey = keyPair.publicKeyBytes,
             )

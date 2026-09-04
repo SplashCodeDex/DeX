@@ -27,24 +27,24 @@ object PunchCrypto {
 
     fun computeSenderAuthProof(
         authKey: ByteArray,
-        identityHash: String,
+        identitySecret: String,
         senderPubKey: ByteArray,
         receiverPubKey: ByteArray,
     ): ByteArray = com.dexstudios.dex.core.network.PunchCrypto.computeSenderAuthProof(
         authKey,
-        identityHash,
+        identitySecret,
         senderPubKey,
         receiverPubKey,
     )
 
     fun computeReceiverAuthProof(
         authKey: ByteArray,
-        identityHash: String,
+        identitySecret: String,
         senderPubKey: ByteArray,
         receiverPubKey: ByteArray,
     ): ByteArray = com.dexstudios.dex.core.network.PunchCrypto.computeReceiverAuthProof(
         authKey,
-        identityHash,
+        identitySecret,
         senderPubKey,
         receiverPubKey,
     )

@@ -49,12 +49,12 @@ object PunchCrypto {
     fun derivePunchKeys(sharedSecret: ByteArray, salt: ByteArray): PunchSessionKeys = actualPunchDeriveKeys(sharedSecret, salt)
 
     /** Computes the sender's HMAC proof-of-identity bound to both public keys. */
-    fun computeSenderAuthProof(authKey: ByteArray, identityHash: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray =
-        actualPunchComputeAuthProof(authKey, "sender", identityHash, senderPubKey, receiverPubKey)
+    fun computeSenderAuthProof(authKey: ByteArray, identitySecret: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray =
+        actualPunchComputeAuthProof(authKey, "sender", identitySecret, senderPubKey, receiverPubKey)
 
     /** Computes the receiver's HMAC proof-of-identity bound to both public keys. */
-    fun computeReceiverAuthProof(authKey: ByteArray, identityHash: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray =
-        actualPunchComputeAuthProof(authKey, "receiver", identityHash, senderPubKey, receiverPubKey)
+    fun computeReceiverAuthProof(authKey: ByteArray, identitySecret: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray =
+        actualPunchComputeAuthProof(authKey, "receiver", identitySecret, senderPubKey, receiverPubKey)
 
     /** Verifies an authentication proof in constant time to eliminate timing side-channels. */
     fun verifyAuthProof(expected: ByteArray, actual: ByteArray): Boolean = actualPunchVerifyAuthProof(expected, actual)
@@ -74,6 +74,6 @@ expect fun actualPunchComputeSharedSecret(privateKeyBytes: ByteArray, peerPublic
 
 expect fun actualPunchDeriveKeys(sharedSecret: ByteArray, salt: ByteArray): PunchSessionKeys
 
-expect fun actualPunchComputeAuthProof(authKey: ByteArray, role: String, identityHash: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray
+expect fun actualPunchComputeAuthProof(authKey: ByteArray, role: String, identitySecret: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray
 
 expect fun actualPunchVerifyAuthProof(expected: ByteArray, actual: ByteArray): Boolean

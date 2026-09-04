@@ -64,12 +64,12 @@ actual fun actualPunchDeriveKeys(sharedSecret: ByteArray, salt: ByteArray): Punc
     return PunchSessionKeys(sessionKey = sessionKey, authKey = authKey)
 }
 
-actual fun actualPunchComputeAuthProof(authKey: ByteArray, role: String, identityHash: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray {
+actual fun actualPunchComputeAuthProof(authKey: ByteArray, role: String, identitySecret: String, senderPubKey: ByteArray, receiverPubKey: ByteArray): ByteArray {
     val mac = Mac.getInstance("HmacSHA256")
     mac.init(SecretKeySpec(authKey, "HmacSHA256"))
     mac.update(role.toByteArray(Charsets.UTF_8))
     mac.update(0.toByte())
-    mac.update(identityHash.toByteArray(Charsets.UTF_8))
+    mac.update(identitySecret.toByteArray(Charsets.UTF_8))
     mac.update(0.toByte())
     mac.update(senderPubKey)
     mac.update(receiverPubKey)

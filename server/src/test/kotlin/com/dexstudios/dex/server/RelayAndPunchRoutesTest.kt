@@ -349,4 +349,34 @@ class RelayAndPunchRoutesTest {
         assertEquals(0, RelaySessionRegistry.activeSessionsFor("load-tenant-a"))
         assertEquals(0, RelaySessionRegistry.activeSessionsFor("load-tenant-b"))
     }
+
+    @Test
+    fun `data endpoint releases tenant quota and closes session when receiver completes`() = testApplication {
+        application { installRelay() }
+        val (sessionId, streamToken) = openSession(client, "token-alice")
+        assertEquals(1, RelaySessionRegistry.activeSessionsFor("sub-alice"))
+
+        // Complete the session so receiver finishes cleanly
+        RelaySessionRegistry.completeSession(sessionId)
+
+        // Receiver pulls data endpoint
+        val response = client.get("/relay/v1/session/$sessionId/data?streamToken=$streamToken")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        // After receiver completes, the finally block MUST have closed the session
+        assertEquals(0, RelaySessionRegistry.activeSessionsFor("sub-alice"), "tenant quota must be 0 after receiver finishes")
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `session close cancels frame channel unblocking any suspended sender immediately`() = runBlocking {
+        val (sessionId, _) = RelaySessionRegistry.openSession("tenant-unblock")
+        assertEquals(1, RelaySessionRegistry.activeSessionsFor("tenant-unblock"))
+        val channel = RelaySessionRegistry.framesFor(sessionId)!!
+
+        // Hard close (as triggered by receiver drop or abort)
+        RelaySessionRegistry.close(sessionId)
+        assertEquals(0, RelaySessionRegistry.activeSessionsFor("tenant-unblock"))
+        assertTrue(channel.isClosedForSend, "frame channel must be closed for send to unblock sender")
+    }
 }

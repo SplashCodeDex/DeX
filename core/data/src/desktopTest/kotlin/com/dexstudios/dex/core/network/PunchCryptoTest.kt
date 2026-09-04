@@ -37,7 +37,7 @@ class PunchCryptoTest {
     fun testMutualAuthProofSucceedsWithMatchingIdentityHash() {
         val alice = PunchCrypto.generateKeyPair()
         val bob = PunchCrypto.generateKeyPair()
-        val identityHash = "verified-google-identity-hash-999"
+        val identitySecret = "verified-google-sub-or-hash-999"
 
         val sharedSecret = PunchCrypto.computeSharedSecret(alice.privateKeyBytes, bob.publicKeyBytes)
         val salt = PunchCrypto.generateSalt()
@@ -46,14 +46,14 @@ class PunchCryptoTest {
         // Alice = sender, Bob = receiver
         val aliceSenderProof = PunchCrypto.computeSenderAuthProof(
             authKey = keys.authKey,
-            identityHash = identityHash,
+            identitySecret = identitySecret,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = bob.publicKeyBytes,
         )
 
         val bobReceiverProof = PunchCrypto.computeReceiverAuthProof(
             authKey = keys.authKey,
-            identityHash = identityHash,
+            identitySecret = identitySecret,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = bob.publicKeyBytes,
         )
@@ -61,7 +61,7 @@ class PunchCryptoTest {
         // Bob verifies Alice's sender proof
         val expectedAliceProof = PunchCrypto.computeSenderAuthProof(
             authKey = keys.authKey,
-            identityHash = identityHash,
+            identitySecret = identitySecret,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = bob.publicKeyBytes,
         )
@@ -70,7 +70,7 @@ class PunchCryptoTest {
         // Alice verifies Bob's receiver proof
         val expectedBobProof = PunchCrypto.computeReceiverAuthProof(
             authKey = keys.authKey,
-            identityHash = identityHash,
+            identitySecret = identitySecret,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = bob.publicKeyBytes,
         )
@@ -92,7 +92,7 @@ class PunchCryptoTest {
         // Mallory attempts to compute receiver proof with her own identity
         val forgedProof = PunchCrypto.computeReceiverAuthProof(
             authKey = keys.authKey,
-            identityHash = malloryIdentity,
+            identitySecret = malloryIdentity,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = mallory.publicKeyBytes,
         )
@@ -100,12 +100,45 @@ class PunchCryptoTest {
         // Alice computes expected proof with her identity
         val expectedProof = PunchCrypto.computeReceiverAuthProof(
             authKey = keys.authKey,
-            identityHash = aliceIdentity,
+            identitySecret = aliceIdentity,
             senderPubKey = alice.publicKeyBytes,
             receiverPubKey = mallory.publicKeyBytes,
         )
 
         assertFalse(PunchCrypto.verifyAuthProof(expectedProof, forgedProof))
+    }
+
+    @Test
+    fun testGoogleSubHardeningDefeatsKnownEmailIdentityHashForgery() {
+        val alice = PunchCrypto.generateKeyPair()
+        val attacker = PunchCrypto.generateKeyPair()
+
+        // Alice's legitimate secret is her private googleSub
+        val aliceGoogleSub = "109823482348239482938"
+        // Attacker only knows Alice's public email address and pre-calculates identityHash
+        val attackerCalculatedIdentityHash = "sha256-of-alice-email"
+
+        val sharedSecret = PunchCrypto.computeSharedSecret(alice.privateKeyBytes, attacker.publicKeyBytes)
+        val salt = PunchCrypto.generateSalt()
+        val keys = PunchCrypto.derivePunchKeys(sharedSecret, salt)
+
+        // Attacker attempts to forge receiver proof using only the identityHash
+        val attackerForgedProof = PunchCrypto.computeReceiverAuthProof(
+            authKey = keys.authKey,
+            identitySecret = attackerCalculatedIdentityHash,
+            senderPubKey = alice.publicKeyBytes,
+            receiverPubKey = attacker.publicKeyBytes,
+        )
+
+        // Alice verifies expecting her hardened googleSub identitySecret
+        val expectedProof = PunchCrypto.computeReceiverAuthProof(
+            authKey = keys.authKey,
+            identitySecret = aliceGoogleSub,
+            senderPubKey = alice.publicKeyBytes,
+            receiverPubKey = attacker.publicKeyBytes,
+        )
+
+        assertFalse(PunchCrypto.verifyAuthProof(expectedProof, attackerForgedProof), "Attacker knowing only email hash must be rejected")
     }
 
     @Test

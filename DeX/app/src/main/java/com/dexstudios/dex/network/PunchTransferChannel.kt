@@ -35,8 +35,9 @@ internal class PunchTransferChannel(
         onProgress: suspend (Float, String) -> Unit,
         targetAlias: String = "Device"
     ): TransferOutcome = withContext(Dispatchers.IO) {
+        val identitySecret = deviceConfig.googleSub.ifBlank { deviceConfig.identityHash }
         val channel = try {
-            PunchCryptoChannel.performSenderHandshake(socket, sessionId, deviceConfig.identityHash)
+            PunchCryptoChannel.performSenderHandshake(socket, sessionId, identitySecret)
         } catch (e: Exception) {
             Timber.e(e, "Punch E2EE handshake failed")
             if (e.message?.contains("rejected", ignoreCase = true) == true) {

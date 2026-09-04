@@ -1,0 +1,11 @@
+.git
+.github
+.gradle
+build
+**/build
+.idea
+*.log
+DeX
+ARCHIVED_LEGACY_WPF
+DeXShareTarget
+*.md
