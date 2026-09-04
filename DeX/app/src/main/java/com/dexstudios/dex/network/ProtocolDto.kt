@@ -171,6 +171,32 @@ data class PunchFileDto(
     val relativePath: String? = null
 )
 
+/** Ephemeral ECDH key agreement initiation over direct punch TCP socket. */
+@Serializable
+data class PunchHelloDto(
+    val type: String = "punch-hello",
+    val version: Int = 2,
+    val sessionId: String = "",
+    val publicKey: String = "",
+    val salt: String = "",
+)
+
+/** Receiver's ephemeral ECDH response + mutual proof-of-identity bound to identityHash. */
+@Serializable
+data class PunchReadyDto(
+    val type: String = "punch-ready",
+    val version: Int = 2,
+    val publicKey: String = "",
+    val authProof: String = "",
+)
+
+/** Sender's mutual proof-of-identity response before starting encrypted frame stream. */
+@Serializable
+data class PunchAuthDto(
+    val type: String = "punch-auth",
+    val authProof: String = "",
+)
+
 @Serializable
 data class PunchManifestDto(
     val type: String = "manifest",
@@ -201,6 +227,12 @@ data class PunchResumeInfoDto(
 data class PunchDoneDto(
     val type: String = "done",
     val sessionId: String = ""
+)
+
+@Serializable
+data class PunchRejectDto(
+    val type: String = "reject",
+    val reason: String = ""
 )
 
 // ---- PC File Explorer over the WebSocket (phone exposes shared folders) ----

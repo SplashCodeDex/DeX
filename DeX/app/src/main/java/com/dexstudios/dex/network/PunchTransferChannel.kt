@@ -35,10 +35,17 @@ internal class PunchTransferChannel(
         onProgress: suspend (Float, String) -> Unit,
         targetAlias: String = "Device"
     ): TransferOutcome = withContext(Dispatchers.IO) {
-        val output = socket.getOutputStream()
-        val input = socket.getInputStream()
+        val channel = try {
+            PunchCryptoChannel.performSenderHandshake(socket, sessionId, deviceConfig.identityHash)
+        } catch (e: Exception) {
+            Timber.e(e, "Punch E2EE handshake failed")
+            if (e.message?.contains("rejected", ignoreCase = true) == true) {
+                return@withContext TransferOutcome.REJECTED
+            }
+            return@withContext TransferOutcome.DROP
+        }
 
-        // Announce the transfer (with the resume session id)
+        // Announce the transfer inside an encrypted frame
         val manifest = PunchManifestDto(
             sessionId = sessionId,
             fingerprint = deviceConfig.fingerprint,
@@ -46,17 +53,20 @@ internal class PunchTransferChannel(
             alias = getDeviceName(context),
             files = files
         )
-        PunchLineProtocol.writeLine(output, json.encodeToString(manifest))
-
-        val reply = withTimeoutOrNull(60_000.milliseconds) { PunchLineProtocol.readLine(input) }
-            ?: return@withContext TransferOutcome.DROP
-        if (reply.contains("\"reject\"")) return@withContext TransferOutcome.REJECTED
-
-        // The receiver tells us how many bytes it already has per file
-        val resumeInfo = try {
-            json.decodeFromString<PunchResumeInfoDto>(reply)
+        try {
+            channel.writeJson(manifest)
         } catch (e: Exception) {
-            PunchResumeInfoDto()
+            Timber.e(e, "Failed to send encrypted punch manifest")
+            return@withContext TransferOutcome.DROP
+        }
+
+        // The receiver tells us how many bytes it already has per file (encrypted frame)
+        val resumeInfo = try {
+            withTimeoutOrNull(60_000.milliseconds) { channel.readJson<PunchResumeInfoDto>() }
+                ?: return@withContext TransferOutcome.DROP
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to read encrypted punch resume info")
+            return@withContext TransferOutcome.DROP
         }
 
         val alreadyDone = files.sumOf { minOf(resumeInfo.files[it.id] ?: 0L, it.size) }
@@ -67,7 +77,12 @@ internal class PunchTransferChannel(
             if (isCancelled()) return@withContext TransferOutcome.DROP
 
             val resume = minOf(resumeInfo.files[file.id] ?: 0L, file.size)
-            PunchLineProtocol.writeLine(output, json.encodeToString(PunchFileHeaderDto(fileId = file.id, size = file.size, offset = resume)))
+            try {
+                channel.writeJson(PunchFileHeaderDto(fileId = file.id, size = file.size, offset = resume))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to send encrypted file header for ${file.fileName}")
+                return@withContext TransferOutcome.DROP
+            }
             if (resume >= file.size) continue
 
             val remaining = file.size - resume
@@ -83,7 +98,7 @@ internal class PunchTransferChannel(
                             skipped += n
                         }
                         if (skipped < resume) return@use false
-                        streamBytes(s, output, remaining) { bytes ->
+                        channel.streamFile(s, remaining, isCancelled) { bytes ->
                             sentNew += bytes
                             onProgress((alreadyDone + sentNew).toFloat() / grandTotal, file.fileName)
                         }
@@ -92,7 +107,7 @@ internal class PunchTransferChannel(
             } else {
                 val stream = context.contentResolver.openInputStream(uris[index]) ?: return@withContext TransferOutcome.DROP
                 stream.use { s ->
-                    streamBytes(s, output, remaining) { bytes ->
+                    channel.streamFile(s, remaining, isCancelled) { bytes ->
                         sentNew += bytes
                         onProgress((alreadyDone + sentNew).toFloat() / grandTotal, file.fileName)
                     }
@@ -102,22 +117,11 @@ internal class PunchTransferChannel(
             TransferHistory.log(context, file.fileName, file.size, "sent", uris[index].toString(), peerDevice = targetAlias)
         }
 
-        PunchLineProtocol.writeLine(output, json.encodeToString(PunchDoneDto(sessionId = sessionId)))
-        TransferOutcome.SUCCESS
-    }
-
-    /** Copies [length] bytes from [input] to [output], reporting the delta per chunk. */
-    private suspend fun streamBytes(input: InputStream, output: OutputStream, length: Long, onDelta: suspend (Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val buffer = ByteArray(64 * 1024)
-        var sent = 0L
-        while (sent < length) {
-            val toRead = minOf(buffer.size.toLong(), length - sent).toInt()
-            val n = input.read(buffer, 0, toRead)
-            if (n <= 0) return@withContext false
-            output.write(buffer, 0, n)
-            sent += n
-            onDelta(n.toLong())
+        try {
+            channel.writeJson(PunchDoneDto(sessionId = sessionId))
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to send encrypted punch done marker")
         }
-        true
+        TransferOutcome.SUCCESS
     }
 }

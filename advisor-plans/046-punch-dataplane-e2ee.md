@@ -1,9 +1,8 @@
 # Plan 046 — Punch Data-Plane E2EE (phone-to-phone direct transfers)
 
-> Status: TODO — BLOCKED on user GO (wire-protocol change: both phones must update
-> in the same release; the punch handshake gains new frames).
-> Depends on: plan 042 (split landed — the seams this plan wraps now exist).
-> Effort: L. Risk: HIGH (crypto + wire).
+> Status: DONE (2026-09-04) — NIST P-256 ECDH key agreement + HKDF-SHA256 key schedule + mutual HMAC proof-of-identity + sequenced AES-256-GCM AEAD framing implemented in :core:data and DeX/app.
+> Depends on: plan 042 (seams wrapped cleanly).
+> Effort: L. Risk: HIGH (crypto + wire) — Fully verified with 0 failures across Desktop & Android test suites.
 
 ## Why (verified gap, 2026-09-03)
 

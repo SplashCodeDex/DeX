@@ -117,17 +117,32 @@ class PunchSession(
 
     private suspend fun handleIncoming(socket: Socket) = withContext(Dispatchers.IO) {
         try {
-            val input = socket.getInputStream()
-            val output = socket.getOutputStream()
+            val handshake = PunchCryptoChannel.performReceiverHandshake(socket, deviceConfig.identityHash)
+            val channel = when (handshake) {
+                is PunchCryptoChannel.Companion.ReceiverHandshakeResult.Success -> handshake.channel
+                is PunchCryptoChannel.Companion.ReceiverHandshakeResult.LegacyV1Detected -> {
+                    Timber.w("Rejected punch connection from legacy v1 peer")
+                    return@withContext closeQuietly(socket)
+                }
+                is PunchCryptoChannel.Companion.ReceiverHandshakeResult.Rejected -> {
+                    Timber.w("Rejected punch connection: ${handshake.reason}")
+                    return@withContext closeQuietly(socket)
+                }
+            }
 
-            val manifestLine = withTimeoutOrNull(10_000.milliseconds) { PunchLineProtocol.readLine(input) }
-                ?: return@withContext closeQuietly(socket)
-            val manifest = json.decodeFromString<PunchManifestDto>(manifestLine)
+            // Read encrypted manifest frame
+            val manifest = try {
+                withTimeoutOrNull(10_000.milliseconds) { channel.readJson<PunchManifestDto>() }
+                    ?: return@withContext closeQuietly(socket)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to read encrypted punch manifest")
+                return@withContext closeQuietly(socket)
+            }
 
-            // Same-email only: the sender's identity must match ours
-            if ((manifest.identityHash.isBlank() || manifest.identityHash != deviceConfig.identityHash)) {
-                PunchLineProtocol.writeLine(output, """{"type":"reject","reason":"identity"}""")
-                Timber.w("Rejected punch transfer from non-same-email device ${manifest.alias}")
+            // Same-email verification: identity proof was already cryptographically asserted in handshake,
+            // but we also check manifest.identityHash matches as defense-in-depth
+            if (manifest.identityHash.isBlank() || manifest.identityHash != deviceConfig.identityHash) {
+                Timber.w("Rejected punch transfer: identity mismatch from ${manifest.alias}")
                 return@withContext closeQuietly(socket)
             }
             val sessionId = manifest.sessionId
@@ -144,26 +159,32 @@ class PunchSession(
                 TransferState.pendingPrompts.remove(sessionId)
                 if (!accepted) {
                     PunchResumeState.discard(sessionId)
-                    PunchLineProtocol.writeLine(output, """{"type":"reject","reason":"declined"}""")
+                    try {
+                        channel.writeJson(PunchRejectDto(reason = "declined"))
+                    } catch (_: Exception) {}
                     return@withContext closeQuietly(socket)
                 }
                 PunchResumeState.markAccepted(sessionId)
             }
 
-            // Tell the sender how many bytes we already have per file, so it resumes — not restarts
+            // Tell the sender how many bytes we already have per file (encrypted frame)
             val resumeInfo = PunchResumeInfoDto(
                 sessionId = sessionId,
                 files = manifest.files.associateBy({ it.id }, { resumeMap[it.id]?.received ?: 0L })
             )
-            PunchLineProtocol.writeLine(output, json.encodeToString(resumeInfo))
+            channel.writeJson(resumeInfo)
 
             val dirUri = SafStorage.getDownloadsDexUri(context)
 
             var doneFiles = manifest.files.count { file -> (resumeMap[file.id]?.received ?: 0L) >= file.size }
             for (file in manifest.files) {
-                val headerLine = withTimeoutOrNull(30_000.milliseconds) { PunchLineProtocol.readLine(input) }
-                    ?: break
-                val header = json.decodeFromString<PunchFileHeaderDto>(headerLine)
+                val header = try {
+                    withTimeoutOrNull(30_000.milliseconds) { channel.readJson<PunchFileHeaderDto>() }
+                        ?: break
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to read encrypted file header for ${file.fileName}")
+                    break
+                }
 
                 val existing = resumeMap[file.id]
                 if (existing != null && existing.received >= existing.size) {
@@ -188,13 +209,9 @@ class PunchSession(
                 val resumeEntry = resumeMap[file.id] ?: continue
                 var received = resumeEntry.received
                 try {
-                    val buffer = ByteArray(64 * 1024)
-                    while (received < header.size) {
-                        val toRead = minOf(buffer.size.toLong(), header.size - received).toInt()
-                        val n = input.read(buffer, 0, toRead)
-                        if (n <= 0) break
-                        out.write(buffer, 0, n)
-                        received += n
+                    val remaining = header.size - received
+                    channel.receiveFile(out, remaining) { delta ->
+                        received += delta
                         resumeEntry.received = received
                     }
                     if (received < header.size) break // dropped mid-file — the sender will resume
@@ -208,7 +225,7 @@ class PunchSession(
                             isDownloading = true,
                             doneFiles = doneFiles,
                             totalFiles = manifest.files.size,
-                            protocol = "direct"
+                            protocol = "direct-e2ee"
                         )
                     )
                 } catch (e: Exception) {
@@ -219,8 +236,10 @@ class PunchSession(
                 }
             }
 
-            // Await the sender's completion marker, then clear the resume state
-            withTimeoutOrNull(10_000.milliseconds) { PunchLineProtocol.readLine(input) }
+            // Await the sender's completion marker (encrypted frame), then clear the resume state
+            try {
+                withTimeoutOrNull(10_000.milliseconds) { channel.readJson<PunchDoneDto>() }
+            } catch (_: Exception) {}
             PunchResumeState.complete(sessionId)
             TcpDownloadService.updateState(DownloadState(fileName = "$doneFiles of ${manifest.files.size} files", progress = 1f, isSuccess = true, doneFiles = doneFiles, totalFiles = manifest.files.size))
             Timber.i("Punch transfer received: $doneFiles files from ${manifest.alias}")
