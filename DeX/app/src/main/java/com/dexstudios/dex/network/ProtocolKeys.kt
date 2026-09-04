@@ -74,6 +74,10 @@ object ProtocolKeys {
     const val TARGET_FINGERPRINT = FieldNames.TARGET_FINGERPRINT
     const val SESSION_ID = FieldNames.SESSION_ID
     const val REQUEST_ID = FieldNames.REQUEST_ID
+    const val STREAM_TOKEN = FieldNames.STREAM_TOKEN
+    const val RELAY_URL = FieldNames.RELAY_URL
+    const val FILE_NAME = FieldNames.FILE_NAME
+    const val SIZE = FieldNames.SIZE
     const val BATTERY = FieldNames.BATTERY
     const val WIFI_SSID = FieldNames.WIFI_SSID
     const val WIFI_RSSI = FieldNames.WIFI_RSSI

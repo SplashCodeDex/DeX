@@ -83,6 +83,23 @@ class ProtocolGoldenFixtureTest {
     }
 
     @Test
+    fun relay_offer_envelope_is_canonical() {
+        val frame = ProtocolEnvelope.envelopeOf(MessageTypes.RELAY_OFFER) {
+            put(FieldNames.SESSION_ID, "sess-123")
+            put(FieldNames.STREAM_TOKEN, "tok-stream-456")
+            put(FieldNames.RELAY_URL, "https://relay.example.com")
+            put(FieldNames.FILE_NAME, "test.pdf")
+            put(FieldNames.SIZE, 1048576L)
+            put(FieldNames.FINGERPRINT, "fp-desktop-1")
+            put(FieldNames.ALIAS, "Desktop PC")
+        }
+        assertEquals(
+            """{"type":"relay-offer","data":{"sessionId":"sess-123","streamToken":"tok-stream-456","relayUrl":"https://relay.example.com","fileName":"test.pdf","size":1048576,"fingerprint":"fp-desktop-1","alias":"Desktop PC"}}""",
+            frame,
+        )
+    }
+
+    @Test
     fun pull_progress_uses_canonical_field_names() {
         val frame = ProtocolEnvelope.envelopeOf(MessageTypes.PULL_PROGRESS) {
             put(FieldNames.REQUEST_ID, "req-9")

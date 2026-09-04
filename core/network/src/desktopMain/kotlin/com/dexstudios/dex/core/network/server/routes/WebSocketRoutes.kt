@@ -163,10 +163,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                 if (frame is Frame.Text) {
                     val text = frame.readText()
                     try {
-                        val jsonElement = Json.parseToJsonElement(text)
-                        val jsonObject = jsonElement.jsonObject
-                        val type = jsonObject["type"]?.jsonPrimitive?.content
-                        val dataObj = jsonObject["data"] as? JsonObject
+                        val type = ProtocolEnvelope.decodeType(text)
+                        val dataObj = ProtocolEnvelope.decodeData(text)
 
                         when (type) {
                             MessageTypes.LIST_SHARED_FOLDERS_REPLY,
@@ -177,9 +175,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                             MessageTypes.REPLY,
                             -> {
                                 val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
-                                    ?: jsonObject[FieldNames.REQUEST_ID]?.jsonPrimitive?.content
                                 if (reqId != null) {
-                                    DexRequestStore.completeRequest(reqId, dataObj ?: jsonObject)
+                                    DexRequestStore.completeRequest(reqId, dataObj)
                                 }
                             }
 

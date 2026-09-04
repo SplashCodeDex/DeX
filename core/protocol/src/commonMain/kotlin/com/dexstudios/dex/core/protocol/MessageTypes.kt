@@ -93,6 +93,10 @@ object FieldNames {
     const val TARGET_FINGERPRINT = "targetFingerprint"
     const val SESSION_ID = "sessionId"
     const val REQUEST_ID = "requestId"
+    const val STREAM_TOKEN = "streamToken"
+    const val RELAY_URL = "relayUrl"
+    const val FILE_NAME = "fileName"
+    const val SIZE = "size"
 
     // Telemetry
     const val BATTERY = "battery"

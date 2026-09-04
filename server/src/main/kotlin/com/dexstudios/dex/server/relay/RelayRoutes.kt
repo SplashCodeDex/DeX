@@ -1,5 +1,6 @@
 package com.dexstudios.dex.server.relay
 
+import com.dexstudios.dex.core.protocol.FieldNames
 import com.dexstudios.dex.server.auth.IdTokenVerifier
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -9,6 +10,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.core.readBytes
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -141,7 +144,12 @@ fun Route.relayRoutes(verifier: IdTokenVerifier) {
             }
             try {
                 val (sessionId, streamToken) = RelaySessionRegistry.openSession(tenant)
-                call.respondJson("""{"sessionId":"$sessionId","streamToken":"$streamToken","targetDeviceId":"$target"}""")
+                val payload = buildJsonObject {
+                    put(FieldNames.SESSION_ID, sessionId)
+                    put(FieldNames.STREAM_TOKEN, streamToken)
+                    put("targetDeviceId", target)
+                }.toString()
+                call.respondJson(payload)
             } catch (e: RelaySessionRegistry.QuotaExceeded) {
                 call.respondError(HttpStatusCode.TooManyRequests, e.message ?: "quota exceeded")
             }
@@ -151,7 +159,7 @@ fun Route.relayRoutes(verifier: IdTokenVerifier) {
             val sessionId = call.parameters["sessionId"]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "sessionId required")
             val streamToken = call.request.header("X-DeX-Stream-Token")
-                ?: call.request.queryParameters["streamToken"]
+                ?: call.request.queryParameters[FieldNames.STREAM_TOKEN]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "streamToken required")
             val session = try {
                 RelaySessionRegistry.requireOpenSession(sessionId, streamToken)
@@ -175,6 +183,7 @@ fun Route.relayRoutes(verifier: IdTokenVerifier) {
             val sessionId = call.parameters["sessionId"]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "sessionId required")
             val streamToken = call.request.header("X-DeX-Stream-Token")
+                ?: call.request.queryParameters[FieldNames.STREAM_TOKEN]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "streamToken required")
             try {
                 RelaySessionRegistry.requireOpenSession(sessionId, streamToken)
@@ -189,6 +198,7 @@ fun Route.relayRoutes(verifier: IdTokenVerifier) {
             val sessionId = call.parameters["sessionId"]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "sessionId required")
             val streamToken = call.request.header("X-DeX-Stream-Token")
+                ?: call.request.queryParameters[FieldNames.STREAM_TOKEN]
                 ?: return@post call.respondError(HttpStatusCode.BadRequest, "streamToken required")
             try {
                 RelaySessionRegistry.requireOpenSession(sessionId, streamToken)

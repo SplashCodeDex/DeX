@@ -52,9 +52,8 @@ class MessageHandler(
     fun handleMessage(text: String, senderIp: String, senderPort: Int) {
         try {
             Logger.i("Received message from $senderIp:$senderPort")
-            val jsonObject = json.decodeFromString<JsonObject>(text)
-            val type = jsonObject["type"]?.jsonPrimitive?.contentOrNull ?: return
-            val dataElement = jsonObject["data"] ?: return
+            val type = ProtocolEnvelope.decodeType(text) ?: return
+            val dataElement = ProtocolEnvelope.decodeData(text) ?: return
 
             when (type) {
                 MessageTypes.PAIR_PROMPT -> handlePairPrompt(dataElement)
@@ -181,9 +180,9 @@ class MessageHandler(
      */
     private fun handlePairAccepted(dataElement: JsonElement) {
         val obj = dataElement as? JsonObject ?: return
-        val token = obj["token"]?.jsonPrimitive?.contentOrNull ?: return
+        val token = obj[FieldNames.TOKEN]?.jsonPrimitive?.contentOrNull ?: return
         val pcFingerprint = peerFingerprintProvider?.invoke()
-            ?: obj["fingerprint"]?.jsonPrimitive?.contentOrNull
+            ?: obj[FieldNames.FINGERPRINT]?.jsonPrimitive?.contentOrNull
         if (pcFingerprint.isNullOrBlank()) return
 
         handlerScope.launch {
@@ -199,7 +198,7 @@ class MessageHandler(
      * only learn "same account or not" about this exact session.
      */
     private fun handleIdentityChallenge(dataElement: JsonElement) {
-        val nonce = (dataElement as? JsonObject)?.get("nonce")?.jsonPrimitive?.contentOrNull ?: return
+        val nonce = (dataElement as? JsonObject)?.get(FieldNames.NONCE)?.jsonPrimitive?.contentOrNull ?: return
         val sub = deviceConfig.googleSub
         if (sub.isBlank() || nonce.isBlank()) return
 
@@ -282,7 +281,7 @@ class MessageHandler(
 
     /** The PC revoked its trust in us. We must forget it locally so we don't incorrectly show it as "Trusted". */
     private fun handleUnpair(dataElement: JsonElement) {
-        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
+        val fingerprint = (dataElement as? JsonObject)?.get(FieldNames.FINGERPRINT)?.jsonPrimitive?.contentOrNull
         if (!fingerprint.isNullOrBlank()) {
             handlerScope.launch { DeviceManager.removePairedFingerprint(fingerprint) }
             Logger.i("PC $fingerprint requested unpair; removed from local trusted list")
@@ -290,8 +289,8 @@ class MessageHandler(
     }
 
     private fun handleTrustCheck(dataElement: JsonElement) {
-        val isTrustedByPC = (dataElement as? JsonObject)?.get("isTrusted")?.jsonPrimitive?.contentOrNull?.toBoolean() ?: false
-        val fingerprint = (dataElement as? JsonObject)?.get("fingerprint")?.jsonPrimitive?.contentOrNull
+        val isTrustedByPC = (dataElement as? JsonObject)?.get(FieldNames.IS_TRUSTED)?.jsonPrimitive?.contentOrNull?.toBoolean() ?: false
+        val fingerprint = (dataElement as? JsonObject)?.get(FieldNames.FINGERPRINT)?.jsonPrimitive?.contentOrNull
         if (!isTrustedByPC && !fingerprint.isNullOrBlank()) {
             if (AuthState.pairedFingerprints.value.contains(fingerprint)) {
                 Logger.i("PC $fingerprint reported we are not trusted. Downgrading local trust.")
@@ -304,7 +303,7 @@ class MessageHandler(
 
     /** The PC pushed clipboard text over the WebSocket - write it to the phone's clipboard. */
     private fun handleSetClipboard(dataElement: JsonElement) {
-        val text = (dataElement as? JsonObject)?.get("text")?.jsonPrimitive?.contentOrNull
+        val text = (dataElement as? JsonObject)?.get(FieldNames.TEXT)?.jsonPrimitive?.contentOrNull
         if (text.isNullOrBlank()) {
             Logger.i("set-clipboard with empty text, ignoring")
             return
@@ -323,13 +322,13 @@ class MessageHandler(
     /** Incoming cloud relay E2EE streaming transfer offer (Plan 032). */
     private fun handleRelayOffer(dataElement: JsonElement) {
         val dataObj = dataElement as? JsonObject ?: return
-        val sessionId = dataObj["sessionId"]?.jsonPrimitive?.contentOrNull ?: return
-        val streamToken = dataObj["streamToken"]?.jsonPrimitive?.contentOrNull ?: return
-        val relayUrl = dataObj["relayUrl"]?.jsonPrimitive?.contentOrNull ?: return
-        val fileName = dataObj["fileName"]?.jsonPrimitive?.contentOrNull ?: "shared_file"
-        val size = dataObj["size"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
-        val fingerprint = dataObj["fingerprint"]?.jsonPrimitive?.contentOrNull ?: return
-        val alias = dataObj["alias"]?.jsonPrimitive?.contentOrNull ?: "Remote Device"
+        val sessionId = dataObj[FieldNames.SESSION_ID]?.jsonPrimitive?.contentOrNull ?: return
+        val streamToken = dataObj[FieldNames.STREAM_TOKEN]?.jsonPrimitive?.contentOrNull ?: return
+        val relayUrl = dataObj[FieldNames.RELAY_URL]?.jsonPrimitive?.contentOrNull ?: return
+        val fileName = dataObj[FieldNames.FILE_NAME]?.jsonPrimitive?.contentOrNull ?: "shared_file"
+        val size = dataObj[FieldNames.SIZE]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
+        val fingerprint = dataObj[FieldNames.FINGERPRINT]?.jsonPrimitive?.contentOrNull ?: return
+        val alias = dataObj[FieldNames.ALIAS]?.jsonPrimitive?.contentOrNull ?: "Remote Device"
 
         Logger.i("Incoming WAN relay offer from $alias ($fingerprint) for $fileName ($size bytes)")
         engine.downloadWanRelay(

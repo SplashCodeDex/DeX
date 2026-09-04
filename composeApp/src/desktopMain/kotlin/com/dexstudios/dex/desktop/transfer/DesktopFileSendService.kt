@@ -521,13 +521,13 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
             }
 
             val offerJson = ProtocolEnvelope.envelopeOf(MessageTypes.RELAY_OFFER) {
-                put("sessionId", session.sessionId)
-                put("streamToken", session.streamToken)
-                put("relayUrl", relayUrl)
-                put("fileName", file.name)
-                put("size", file.length())
-                put("fingerprint", deviceConfig.fingerprint.ifEmpty { "desktop-migration" })
-                put("alias", alias)
+                put(FieldNames.SESSION_ID, session.sessionId)
+                put(FieldNames.STREAM_TOKEN, session.streamToken)
+                put(FieldNames.RELAY_URL, relayUrl)
+                put(FieldNames.FILE_NAME, file.name)
+                put(FieldNames.SIZE, file.length())
+                put(FieldNames.FINGERPRINT, deviceConfig.fingerprint.ifEmpty { "desktop-migration" })
+                put(FieldNames.ALIAS, alias)
             }
 
             val promptDelivered = WebSocketConnectionManager.sendToTrusted(targetFingerprint, offerJson)

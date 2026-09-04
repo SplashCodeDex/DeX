@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.core.protocol.FieldNames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -95,7 +96,7 @@ class DesktopUdpService : IDiscoveryService {
         val msg = String(packet.data, 0, packet.length, Charsets.UTF_8)
         runCatching {
             val json = lenientJson.parseToJsonElement(msg).jsonObject
-            val fp = json["fingerprint"]?.jsonPrimitive?.contentOrNull ?: ""
+            val fp = json[FieldNames.FINGERPRINT]?.jsonPrimitive?.contentOrNull ?: ""
             if (fp.isEmpty() || fp == localInfo?.fingerprint) return
 
             // Cooldown gate: each announcing fingerprint earns at most one discovery

@@ -1,6 +1,7 @@
 package com.dexstudios.dex.core.network.sync
 
 import com.dexstudios.dex.core.network.RelayCrypto
+import com.dexstudios.dex.core.protocol.FieldNames
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
@@ -83,9 +84,9 @@ class WanRelayClient(private val client: HttpClient, private val baseUrlProvider
             throw IllegalStateException("relay session open failed: HTTP ${response.status.value}")
         }
         val body = json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val sessionId = body["sessionId"]?.jsonPrimitive?.content
+        val sessionId = body[FieldNames.SESSION_ID]?.jsonPrimitive?.content
             ?: throw IllegalStateException("relay session response missing sessionId")
-        val streamToken = body["streamToken"]?.jsonPrimitive?.content
+        val streamToken = body[FieldNames.STREAM_TOKEN]?.jsonPrimitive?.content
             ?: throw IllegalStateException("relay session response missing streamToken")
         return RelaySession(sessionId, streamToken, targetDeviceId)
     }

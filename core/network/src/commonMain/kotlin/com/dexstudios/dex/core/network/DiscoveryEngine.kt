@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import com.dexstudios.dex.core.protocol.FieldNames
 import io.ktor.client.*
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.*
@@ -214,8 +215,8 @@ class DiscoveryEngine(private val deviceConfig: DeviceConfig, private val discov
                         val responseText = response.bodyAsText()
                         val json = lenientJson.parseToJsonElement(responseText).jsonObject
 
-                        val fp = json["fingerprint"]?.jsonPrimitive?.content ?: ""
-                        val alias = json["alias"]?.jsonPrimitive?.content ?: "PC Engine"
+                        val fp = json[FieldNames.FINGERPRINT]?.jsonPrimitive?.content ?: ""
+                        val alias = json[FieldNames.ALIAS]?.jsonPrimitive?.content ?: "PC Engine"
                         if (fp.isNotBlank()) {
                             val dto = RegisterDto(
                                 alias = alias,

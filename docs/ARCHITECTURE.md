@@ -23,10 +23,13 @@ core/domain (domain layer, plan 026)
   └─ depends ONLY on core/protocol, core/data primitives, coroutines — no Ktor/DataStore/Koin
 ```
 
-- `core/*` are Kotlin Multiplatform libraries with a single JVM target named
-  **`desktop`** (`jvm("desktop")`). Compiled source sets are therefore ONLY:
-  `src/commonMain`, `src/desktopMain`, `src/desktopTest`.
-  Never create `jvmMain` or any other source root in these modules — it will silently never compile.
+- `core/*` are Kotlin Multiplatform libraries. Shared code lives in `src/commonMain`.
+  Desktop-specific code lives in `src/desktopMain` (`jvm("desktop")`). Per Plan 030
+  (Android Shared-Core Integration), `core/protocol`, `core/data`, `core/sync`,
+  `core/domain`, and `core/network` also declare the Android target via AGP's
+  `com.android.kotlin.multiplatform.library` plugin (`src/androidMain`), allowing
+  the standalone Android app (`DeX/app`) to consume the shared core directly.
+  Never create `jvmMain` in these modules — use `desktopMain` for desktop-only actuals.
 - `core/protocol` is the ecosystem wire-contract law (plan 025): every peer — desktop,
   Android (`DeX/app` keeps a lockstep `ProtocolKeys` until integration), future
   `wearApp/`, `iosApp/`, `server/` — consumes this exact module. Protocol strings are
