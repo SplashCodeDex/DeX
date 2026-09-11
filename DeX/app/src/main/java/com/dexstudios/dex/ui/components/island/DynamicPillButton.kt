@@ -309,36 +309,49 @@ fun DynamicPillButton(
         )
     }
 
-    // Transient optical content blur during expansion/collapse morphing
-    val contentBlurAnimatable = remember { Animatable(0f) }
-    var isInitialComposition by remember { mutableStateOf(true) }
+    // Resolved centralized content blur and fluidity configurations
+    val activeContentBlur = remember(
+        enableContentBlur,
+        maxContentBlur,
+        blurRiseDurationMillis,
+        blurOnExpand,
+        blurOnCollapse
+    ) {
+        DynamicContentBlurConfig(
+            enabled = enableContentBlur,
+            maxBlur = maxContentBlur,
+            blurOnExpand = blurOnExpand,
+            blurOnCollapse = blurOnCollapse,
+            riseDurationMillis = blurRiseDurationMillis
+        )
+    }
 
-    LaunchedEffect(shouldExpandBounds) {
-        if (isInitialComposition) {
-            isInitialComposition = false
-            return@LaunchedEffect
-        }
-        val shouldBlur = if (shouldExpandBounds) blurOnExpand else blurOnCollapse
-        if (enableContentBlur && shouldBlur && maxContentBlur > 0.dp) {
-            // Rapid rise to peak blur as expansion accelerates
-            contentBlurAnimatable.animateTo(
-                targetValue = maxContentBlur.value,
-                animationSpec = tween(
-                    durationMillis = blurRiseDurationMillis,
-                    easing = FastOutSlowInEasing
-                )
-            )
-            // Elastic falloff back to tack-sharp clarity as spring settles
-            contentBlurAnimatable.animateTo(
-                targetValue = 0f,
-                animationSpec = spring(
-                    dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-                    stiffness = stiffness
-                )
-            )
-        } else {
-            contentBlurAnimatable.snapTo(0f)
-        }
+    val activeFluidityEnabled = if (shouldExpandBounds) enableExpandedBubbleFluidity else enableBubbleFluidity
+    val activePressScale = if (shouldExpandBounds) expandedPressScale else pressScale
+    val activePullFactor = if (shouldExpandBounds) expandedPullFactor else pullFactor
+    val activeElasticity = if (shouldExpandBounds) expandedElasticity else elasticity
+    val activeScalePressSpeed = if (shouldExpandBounds) expandedScalePressSpeed else scalePressSpeed
+    val activeScalePressDamping = if (shouldExpandBounds) expandedScalePressDamping else scalePressDamping
+    val activeScaleSettleSpeed = if (shouldExpandBounds) expandedScaleSettleSpeed else scaleSettleSpeed
+
+    val activeFluidity = remember(
+        activeFluidityEnabled,
+        activePressScale,
+        activePullFactor,
+        activeElasticity,
+        activeScalePressSpeed,
+        activeScalePressDamping,
+        activeScaleSettleSpeed
+    ) {
+        DynamicFluidityConfig(
+            enabled = activeFluidityEnabled,
+            pressScale = activePressScale,
+            pullFactor = activePullFactor,
+            elasticity = activeElasticity,
+            scalePressSpeed = activeScalePressSpeed,
+            scalePressDamping = activeScalePressDamping,
+            scaleSettleSpeed = activeScaleSettleSpeed
+        )
     }
 
     // 2. Strict pill/capsule shape enforcement (semicircular caps guaranteed)
@@ -361,14 +374,6 @@ fun DynamicPillButton(
             )
         }
 
-        val activeFluidityEnabled = if (shouldExpandBounds) enableExpandedBubbleFluidity else enableBubbleFluidity
-        val activePressScale = if (shouldExpandBounds) expandedPressScale else pressScale
-        val activePullFactor = if (shouldExpandBounds) expandedPullFactor else pullFactor
-        val activeElasticity = if (shouldExpandBounds) expandedElasticity else elasticity
-        val activeScalePressSpeed = if (shouldExpandBounds) expandedScalePressSpeed else scalePressSpeed
-        val activeScalePressDamping = if (shouldExpandBounds) expandedScalePressDamping else scalePressDamping
-        val activeScaleSettleSpeed = if (shouldExpandBounds) expandedScaleSettleSpeed else scaleSettleSpeed
-
         LiquidGlassIconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -379,13 +384,7 @@ fun DynamicPillButton(
             height = currentHeight,
             backdrop = backdrop,
             config = activeConfig,
-            enableBubbleFluidity = activeFluidityEnabled,
-            pressScale = activePressScale,
-            pullFactor = activePullFactor,
-            elasticity = activeElasticity,
-            scalePressSpeed = activeScalePressSpeed,
-            scalePressDamping = activeScalePressDamping,
-            scaleSettleSpeed = activeScaleSettleSpeed
+            fluidity = activeFluidity
         ) {
             Box(
                 modifier = Modifier
@@ -393,17 +392,14 @@ fun DynamicPillButton(
                     .clip(pillShape),
                 contentAlignment = Alignment.Center
             ) {
-                val currentBlur = contentBlurAnimatable.value.dp
-                val contentBlurModifier = if (enableContentBlur && currentBlur > 0.5.dp) {
-                    Modifier.blur(currentBlur)
-                } else {
-                    Modifier
-                }
-
                 AnimatedContent(
                     targetState = shouldExpandBounds,
                     transitionSpec = contentTransitionSpec,
-                    modifier = contentBlurModifier,
+                    modifier = Modifier.transientContentBlur(
+                        trigger = shouldExpandBounds,
+                        config = activeContentBlur,
+                        motion = activeMotionConfig
+                    ),
                     label = "pillSlotContent"
                 ) { expandedState ->
                     if (expandedState) {

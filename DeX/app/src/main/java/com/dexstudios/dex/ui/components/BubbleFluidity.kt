@@ -40,6 +40,34 @@ import com.dexstudios.dex.ui.components.island.DynamicFluidityConfig
  * @param onPhysicsUpdated Callback receiving live physics values (scale, translationX, translationY).
  * @param onPressedChanged Callback notified when physical touch press state changes.
  */
+/**
+ * Applies a "bubble fluidity" physics effect using a unified [DynamicFluidityConfig].
+ *
+ * Encapsulates anisotropic parallax axis scaling (horizontal leading stretch + vertical viscoelastic lag),
+ * directional touch pull tracking, and jelly shear elasticity.
+ *
+ * @param config The unified fluidity physics configuration.
+ * @param onPhysicsUpdated Callback receiving live physics values (scale, translationX, translationY).
+ * @param onPressedChanged Callback notified when physical touch press state changes.
+ */
+fun Modifier.bubbleFluidity(
+    config: DynamicFluidityConfig = DynamicFluidityConfig.Default,
+    onPhysicsUpdated: ((scale: Float, tx: Float, ty: Float) -> Unit)? = null,
+    onPressedChanged: ((Boolean) -> Unit)? = null
+): Modifier {
+    if (!config.enabled) return this
+    return this then BubbleFluidityElement(
+        targetScale = config.pressScale,
+        pullFactor = config.pullFactor,
+        elasticity = config.elasticity,
+        scalePressSpeed = config.scalePressSpeed,
+        scalePressDamping = config.scalePressDamping,
+        scaleSettleSpeed = config.scaleSettleSpeed,
+        onPhysicsUpdated = onPhysicsUpdated,
+        onPressedChanged = onPressedChanged
+    )
+}
+
 fun Modifier.bubbleFluidity(
     targetScale: Float = DynamicFluidityConfig.Default.pressScale,
     pullFactor: Float = DynamicFluidityConfig.Default.pullFactor,

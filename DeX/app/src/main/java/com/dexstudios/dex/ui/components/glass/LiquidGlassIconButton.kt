@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.ui.components.bubbleFluidity
+import com.dexstudios.dex.ui.components.island.DynamicContentBlurConfig
 import com.dexstudios.dex.ui.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.ui.components.island.transientContentBlur
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -50,6 +52,9 @@ import com.kyant.backdrop.shadow.Shadow
  * @param height the bounding height of the button.
  * @param config all glass styling knobs (shape, blur, lens, tint, highlights).
  * @param backdrop the content the glass samples; null renders a plain surface.
+ * @param fluidity unified tactile bubble and parallax scaling configuration.
+ * @param contentBlur transient optical content blur configuration for state changes or press.
+ * @param contentBlurTrigger optional trigger state for optical blur; defaults to physical press state.
  */
 @Composable
 fun LiquidGlassIconButton(
@@ -62,13 +67,16 @@ fun LiquidGlassIconButton(
     backdrop: Backdrop? = LocalBackdrop.current,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     indication: Indication? = null,
-    enableBubbleFluidity: Boolean = true,
-    pressScale: Float = DynamicFluidityConfig.Default.pressScale,
-    pullFactor: Float = DynamicFluidityConfig.Default.pullFactor,
-    elasticity: Float = DynamicFluidityConfig.Default.elasticity,
-    scalePressSpeed: Float = DynamicFluidityConfig.Default.scalePressSpeed,
-    scalePressDamping: Float = DynamicFluidityConfig.Default.scalePressDamping,
-    scaleSettleSpeed: Float = DynamicFluidityConfig.Default.scaleSettleSpeed,
+    fluidity: DynamicFluidityConfig = DynamicFluidityConfig.Default,
+    contentBlur: DynamicContentBlurConfig = DynamicContentBlurConfig.Disabled,
+    contentBlurTrigger: Any? = null,
+    enableBubbleFluidity: Boolean = fluidity.enabled,
+    pressScale: Float = fluidity.pressScale,
+    pullFactor: Float = fluidity.pullFactor,
+    elasticity: Float = fluidity.elasticity,
+    scalePressSpeed: Float = fluidity.scalePressSpeed,
+    scalePressDamping: Float = fluidity.scalePressDamping,
+    scaleSettleSpeed: Float = fluidity.scaleSettleSpeed,
     content: @Composable BoxScope.() -> Unit,
 ) {
     var isFluidityPressed by remember { mutableStateOf(false) }
@@ -85,14 +93,29 @@ fun LiquidGlassIconButton(
         label = "liquidPress",
     )
 
-    val fluidityModifier = if (enableBubbleFluidity) {
-        Modifier.bubbleFluidity(
-            targetScale = pressScale,
+    val resolvedFluidity = remember(
+        enableBubbleFluidity,
+        pressScale,
+        pullFactor,
+        elasticity,
+        scalePressSpeed,
+        scalePressDamping,
+        scaleSettleSpeed
+    ) {
+        DynamicFluidityConfig(
+            enabled = enableBubbleFluidity,
+            pressScale = pressScale,
             pullFactor = pullFactor,
             elasticity = elasticity,
             scalePressSpeed = scalePressSpeed,
             scalePressDamping = scalePressDamping,
-            scaleSettleSpeed = scaleSettleSpeed,
+            scaleSettleSpeed = scaleSettleSpeed
+        )
+    }
+
+    val fluidityModifier = if (resolvedFluidity.enabled) {
+        Modifier.bubbleFluidity(
+            config = resolvedFluidity,
             onPressedChanged = { isFluidityPressed = it }
         )
     } else {
@@ -148,7 +171,17 @@ fun LiquidGlassIconButton(
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center,
-        content = content
-    )
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .transientContentBlur(
+                    trigger = contentBlurTrigger ?: effectivelyPressed,
+                    config = contentBlur
+                ),
+            contentAlignment = Alignment.Center,
+            content = content
+        )
+    }
 }
 

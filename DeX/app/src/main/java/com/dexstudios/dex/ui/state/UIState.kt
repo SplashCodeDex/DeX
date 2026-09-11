@@ -11,11 +11,30 @@ import com.dexstudios.dex.ui.history.HistoryViewMode
 
 enum class ProfileExpansionStage { Collapsed, NamePill, FullIsland }
 
+enum class NavPillExpansionStage {
+    IconOnly,
+    IconAndLabel,
+    FullTabs;
+
+    fun next(): NavPillExpansionStage = when (this) {
+        IconOnly -> IconAndLabel
+        IconAndLabel -> FullTabs
+        FullTabs -> IconOnly
+    }
+
+    fun prev(): NavPillExpansionStage = when (this) {
+        FullTabs -> IconAndLabel
+        IconAndLabel -> IconOnly
+        IconOnly -> FullTabs
+    }
+}
+
 /**
  * State holder for the top Dynamic Island (plan 044).
  */
 object TopIslandState {
     var profileStage by mutableStateOf(ProfileExpansionStage.Collapsed)
+    var navPillStage by mutableStateOf(NavPillExpansionStage.FullTabs)
     var isOnboardingVisible by mutableStateOf(false)
 
     val isAnyProfileExpanded: Boolean
@@ -37,6 +56,22 @@ object TopIslandState {
 
     fun collapseProfile() {
         profileStage = ProfileExpansionStage.Collapsed
+    }
+
+    fun advanceNavPillStage() {
+        navPillStage = navPillStage.next()
+    }
+
+    fun collapseNavPillToLabel() {
+        navPillStage = NavPillExpansionStage.IconAndLabel
+    }
+
+    fun collapseNavPillToIcon() {
+        navPillStage = NavPillExpansionStage.IconOnly
+    }
+
+    fun expandNavPill() {
+        navPillStage = NavPillExpansionStage.FullTabs
     }
 }
 

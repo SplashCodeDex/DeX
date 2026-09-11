@@ -62,6 +62,7 @@ import com.dexstudios.dex.ui.components.island.*
 import com.dexstudios.dex.ui.history.HistoryState
 import com.dexstudios.dex.ui.state.TopIslandState
 import com.dexstudios.dex.ui.state.ProfileExpansionStage
+import com.dexstudios.dex.ui.state.NavPillExpansionStage
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -310,18 +311,25 @@ fun MainNavigation(
         }
         var showPreviewDevices by remember { mutableStateOf(false) }
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
-        var isTabsExpanded by remember { mutableStateOf(false) }
+        var navPillStage by remember { mutableStateOf(NavPillExpansionStage.FullTabs) }
 
         // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs)
-        PredictiveBackHandler(enabled = TopIslandState.isAnyProfileExpanded || HistoryState.isSearchExpanded || showPreviewDevices || isTabsExpanded) { progressFlow ->
+        PredictiveBackHandler(
+            enabled = TopIslandState.isAnyProfileExpanded ||
+                HistoryState.isSearchExpanded ||
+                showPreviewDevices ||
+                navPillStage != NavPillExpansionStage.IconOnly
+        ) { progressFlow ->
             try {
                 progressFlow.collect { /* progress */ }
                 if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
                     TopIslandState.profileStage = ProfileExpansionStage.Collapsed
                 } else if (showPreviewDevices) {
                     showPreviewDevices = false
-                } else if (isTabsExpanded) {
-                    isTabsExpanded = false
+                } else if (navPillStage == NavPillExpansionStage.FullTabs) {
+                    navPillStage = NavPillExpansionStage.IconAndLabel
+                } else if (navPillStage == NavPillExpansionStage.IconAndLabel) {
+                    navPillStage = NavPillExpansionStage.IconOnly
                 }
                 HistoryState.isSearchExpanded = false
             } catch (_: kotlin.coroutines.cancellation.CancellationException) {
@@ -368,7 +376,7 @@ fun MainNavigation(
                 LaunchedEffect(expansionFraction <= 0.05f) {
                     if (expansionFraction <= 0.05f) {
                         activeExpandedMode = lastMediaMode
-                        isTabsExpanded = false
+                        navPillStage = NavPillExpansionStage.FullTabs
                         TopIslandState.collapseProfile()
                     }
                 }
@@ -450,7 +458,7 @@ fun MainNavigation(
 
                     LaunchedEffect(expansionFraction < 0.15f) {
                         if (expansionFraction < 0.15f) {
-                            isTabsExpanded = false
+                            navPillStage = NavPillExpansionStage.FullTabs
                         }
                     }
 
@@ -574,7 +582,20 @@ fun MainNavigation(
                             }
                         }
 
-                        // Dismissal layer for expanded nav tabs: tapping anywhere on sheet collapses tabs back to active icon
+                        // Auto-regulate navbar stage based on siblings and media items:
+                        // If items selected: drop to IconOnly to leave room for selection counter
+                        // If sibling is expanded (Profile NamePill, History, Devices): drop from FullTabs to IconAndLabel
+                        val effectiveNavStage: NavPillExpansionStage = when {
+                            mediaSelectedItemCount > 0 -> NavPillExpansionStage.IconOnly
+                            isAnyExpanded -> when (navPillStage) {
+                                NavPillExpansionStage.FullTabs -> NavPillExpansionStage.IconAndLabel
+                                else -> navPillStage
+                            }
+                            else -> navPillStage
+                        }
+                        val isTabsExpanded = effectiveNavStage == NavPillExpansionStage.FullTabs
+
+                        // Dismissal layer for expanded nav tabs: tapping anywhere on sheet collapses tabs back to label pill
                         if (isTabsExpanded && expansionFraction >= 0.15f) {
                             Box(
                                 modifier = Modifier
@@ -583,7 +604,7 @@ fun MainNavigation(
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                        onClick = { isTabsExpanded = false }
+                                        onClick = { navPillStage = NavPillExpansionStage.IconAndLabel }
                                     )
                             )
                         }
@@ -596,7 +617,9 @@ fun MainNavigation(
 
                             // Auto-collapse nav tabs when sibling expands
                             LaunchedEffect(isAnyExpanded) {
-                                if (isAnyExpanded) isTabsExpanded = false
+                                if (isAnyExpanded && navPillStage == NavPillExpansionStage.FullTabs) {
+                                    navPillStage = NavPillExpansionStage.IconAndLabel
+                                }
                             }
 
                             Box(
@@ -611,12 +634,17 @@ fun MainNavigation(
                             ) {
                                 MorphingSheetNavPill(
                                     isMediaActive = isMediaOrHistoryActive,
-                                    isTabsExpanded = isTabsExpanded,
-                                    isSiblingExpanded = isAnyExpanded,
-                                    hasSelectedItems = mediaSelectedItemCount > 0,
-                                    onToggleTabsExpanded = { 
-                                        isTabsExpanded = !isTabsExpanded 
-                                        if (isTabsExpanded) {
+                                    stage = effectiveNavStage,
+                                    onAdvanceStage = { 
+                                        val nextStage = when (effectiveNavStage) {
+                                            NavPillExpansionStage.IconOnly -> {
+                                                if (isAnyExpanded) NavPillExpansionStage.IconAndLabel else NavPillExpansionStage.FullTabs
+                                            }
+                                            NavPillExpansionStage.IconAndLabel -> NavPillExpansionStage.FullTabs
+                                            NavPillExpansionStage.FullTabs -> NavPillExpansionStage.IconOnly
+                                        }
+                                        navPillStage = nextStage
+                                        if (nextStage == NavPillExpansionStage.FullTabs) {
                                             TopIslandState.collapseProfile()
                                             showPreviewDevices = false
                                             if (activeExpandedMode == SheetExpandedMode.History) {
@@ -624,7 +652,13 @@ fun MainNavigation(
                                             }
                                         }
                                     },
-                                    onCollapseTabs = { isTabsExpanded = false },
+                                    onSetStage = { stage ->
+                                        navPillStage = stage
+                                        if (stage == NavPillExpansionStage.FullTabs) {
+                                            TopIslandState.collapseProfile()
+                                            showPreviewDevices = false
+                                        }
+                                    },
                                     selectedMode = if (activeExpandedMode == SheetExpandedMode.History) lastMediaMode else activeExpandedMode,
                                     onSelectMode = { 
                                         activeExpandedMode = it 
@@ -1086,11 +1120,9 @@ fun MainNavigation(
 @Composable
 private fun MorphingSheetNavPill(
     isMediaActive: Boolean,
-    isTabsExpanded: Boolean,
-    isSiblingExpanded: Boolean = false,
-    hasSelectedItems: Boolean = false,
-    onToggleTabsExpanded: () -> Unit,
-    onCollapseTabs: () -> Unit,
+    stage: NavPillExpansionStage,
+    onAdvanceStage: () -> Unit,
+    onSetStage: (NavPillExpansionStage) -> Unit,
     selectedMode: SheetExpandedMode,
     onSelectMode: (SheetExpandedMode) -> Unit,
     actionText: String,
@@ -1104,23 +1136,31 @@ private fun MorphingSheetNavPill(
     val rowSpace = (totalAvailableWidthDp - 16.dp - 12.dp).coerceAtLeast(0.dp)
     val fullWidth = (rowSpace - DynamicDimensions.PillDefault.collapsedWidth - 14.dp).coerceAtLeast(160.dp)
     val contractedWidth = (rowSpace - DynamicDimensions.ProfilePill.expandedWidth - 10.dp).coerceIn(115.dp, DynamicDimensions.CompactPill.expandedWidth)
+    val iconOnlyWidth = DynamicDimensions.PillDefault.collapsedWidth
     val height = DynamicDimensions.PillDefault.collapsedHeight
     val pillShape = CircleShape
 
-    val actualTabsExpanded = isTabsExpanded || (!isSiblingExpanded && !hasSelectedItems)
-    val isFullPill = !isMediaActive || actualTabsExpanded
+    val isExpandedBeyondIcon = stage != NavPillExpansionStage.IconOnly
 
     val navPillAnticipationState = rememberExpandingAnticipationPhysics(
-        isExpanded = isFullPill,
+        isExpanded = isExpandedBeyondIcon,
+        triggerKey = stage,
         anchor = ExpansionAnchor.Start,
         motion = DynamicMotionConfig.Default,
         fluidity = DynamicFluidityConfig.Default,
     )
-    val shouldExpandNavBounds = if (isFullPill) navPillAnticipationState.canExpandBounds else false
-    val targetWidth = if (shouldExpandNavBounds) fullWidth else contractedWidth
+    val shouldExpandNavBounds = if (isExpandedBeyondIcon) navPillAnticipationState.canExpandBounds else false
 
-    val morphSpring = remember(isFullPill) {
-        DynamicMotionConfig.Default.resolveSpringSpec(isFullPill)
+    val targetWidth = when {
+        !isMediaActive -> fullWidth
+        stage == NavPillExpansionStage.IconOnly -> iconOnlyWidth
+        stage == NavPillExpansionStage.IconAndLabel -> if (shouldExpandNavBounds) contractedWidth else iconOnlyWidth
+        stage == NavPillExpansionStage.FullTabs -> if (shouldExpandNavBounds) fullWidth else contractedWidth
+        else -> iconOnlyWidth
+    }
+
+    val morphSpring = remember(stage) {
+        DynamicMotionConfig.Default.resolveSpringSpec(stage != NavPillExpansionStage.IconOnly)
     }
 
     val animatedWidth by animateDpAsState(
@@ -1129,24 +1169,7 @@ private fun MorphingSheetNavPill(
         label = "navPillWidth"
     )
 
-    // Optical content blur during state transitions
-    val contentBlur = remember { Animatable(0f) }
-    var hasBlurSettledInitial by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isFullPill) {
-        if (!hasBlurSettledInitial) {
-            hasBlurSettledInitial = true
-            return@LaunchedEffect
-        }
-        contentBlur.animateTo(
-            targetValue = DynamicContentBlurConfig.Default.maxBlur.value,
-            animationSpec = DynamicContentBlurConfig.Default.riseAnimationSpec
-        )
-        contentBlur.animateTo(
-            targetValue = 0f,
-            animationSpec = DynamicMotionConfig.Default.springSpec(isExpanded = isFullPill)
-        )
-    }
 
     val buttonTint = if (isDark) Color.White else Color.Black
     val contentTint = if (isDark) Color.Black else Color.White
@@ -1160,15 +1183,19 @@ private fun MorphingSheetNavPill(
     val samplingHeight = (halfHeightDp * 0.55f).coerceAtLeast(220.dp)
     val lensHeight = samplingHeight * 1.12f
 
-    val tabItems = remember(selectedMode, onSelectMode, onCollapseTabs) {
+    val tabItems = remember(selectedMode, onSelectMode, onSetStage) {
         listOf(
             SegmentedControlItem(
                 title = "Photos",
                 icon = MaterialSymbols.Photo,
                 isSelected = selectedMode == SheetExpandedMode.Photos,
                 onClick = {
-                    onSelectMode(SheetExpandedMode.Photos)
-                    onCollapseTabs()
+                    if (selectedMode == SheetExpandedMode.Photos) {
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    } else {
+                        onSelectMode(SheetExpandedMode.Photos)
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    }
                 },
             ),
             SegmentedControlItem(
@@ -1176,8 +1203,12 @@ private fun MorphingSheetNavPill(
                 icon = MaterialSymbols.MusicNote,
                 isSelected = selectedMode == SheetExpandedMode.Audio,
                 onClick = {
-                    onSelectMode(SheetExpandedMode.Audio)
-                    onCollapseTabs()
+                    if (selectedMode == SheetExpandedMode.Audio) {
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    } else {
+                        onSelectMode(SheetExpandedMode.Audio)
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    }
                 },
             ),
             SegmentedControlItem(
@@ -1185,8 +1216,12 @@ private fun MorphingSheetNavPill(
                 icon = MaterialSymbols.Folder,
                 isSelected = selectedMode == SheetExpandedMode.Files,
                 onClick = {
-                    onSelectMode(SheetExpandedMode.Files)
-                    onCollapseTabs()
+                    if (selectedMode == SheetExpandedMode.Files) {
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    } else {
+                        onSelectMode(SheetExpandedMode.Files)
+                        onSetStage(NavPillExpansionStage.IconAndLabel)
+                    }
                 },
             ),
         )
@@ -1225,67 +1260,101 @@ private fun MorphingSheetNavPill(
                     )
                 }
             }
-        } else if (!actualTabsExpanded) {
+        } else {
             val activeIcon = when (selectedMode) {
                 SheetExpandedMode.Audio -> MaterialSymbols.MusicNote
                 SheetExpandedMode.Files -> MaterialSymbols.Folder
                 else -> MaterialSymbols.Photo
             }
+            val activeTitle = when (selectedMode) {
+                SheetExpandedMode.Audio -> "Audio"
+                SheetExpandedMode.Files -> "Files"
+                else -> "Photos"
+            }
+            val blurMod = Modifier.transientContentBlur(
+                trigger = stage,
+                config = DynamicContentBlurConfig.Default,
+                motion = DynamicMotionConfig.Default
+            )
 
-            LiquidGlassIconButton(
-                onClick = onToggleTabsExpanded,
-                backdrop = backdrop,
-                config = glassConfig,
-                width = animatedWidth,
-                height = height,
-                modifier = Modifier.size(animatedWidth, height)
-            ) {
-                val currentBlur = contentBlur.value
-                val blurMod = if (currentBlur > 0.5f) Modifier.blur(currentBlur.dp) else Modifier
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(pillShape)
-                        .then(blurMod),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = activeIcon,
-                        contentDescription = when (selectedMode) {
-                            SheetExpandedMode.Audio -> "Audio"
-                            SheetExpandedMode.Files -> "Files"
-                            else -> "Photos"
-                        },
-                        tint = contentTint,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = when (selectedMode) {
-                            SheetExpandedMode.Audio -> "Audio"
-                            SheetExpandedMode.Files -> "Files"
-                            else -> "Photos"
-                        },
-                        color = contentTint,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
+            when (stage) {
+                NavPillExpansionStage.IconOnly -> {
+                    // Stage 1: Just the active mode icon inside 56.dp circle
+                    LiquidGlassIconButton(
+                        onClick = onAdvanceStage,
+                        backdrop = backdrop,
+                        config = glassConfig,
+                        width = animatedWidth,
+                        height = height,
+                        modifier = Modifier.size(animatedWidth, height)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(pillShape)
+                                .then(blurMod),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = activeIcon,
+                                contentDescription = activeTitle,
+                                tint = contentTint,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+                NavPillExpansionStage.IconAndLabel -> {
+                    // Stage 2: 130.dp stadium pill showing Icon + Label
+                    LiquidGlassIconButton(
+                        onClick = onAdvanceStage,
+                        backdrop = backdrop,
+                        config = glassConfig,
+                        width = animatedWidth,
+                        height = height,
+                        modifier = Modifier.size(animatedWidth, height)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(pillShape)
+                                .then(blurMod),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = activeIcon,
+                                contentDescription = activeTitle,
+                                tint = contentTint,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activeTitle,
+                                color = contentTint,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                NavPillExpansionStage.FullTabs -> {
+                    // Stage 3: Full liquid glass segmented control
+                    LiquidGlassSegmentedControl(
+                        items = tabItems,
+                        backdrop = backdrop,
+                        totalWidth = fullWidth,
+                        visibleHeight = height,
+                        samplingHeight = samplingHeight,
+                        lensHeight = lensHeight,
+                        expansionFraction = 1f,
+                        modifier = Modifier.size(fullWidth, height)
                     )
                 }
             }
-        } else {
-            LiquidGlassSegmentedControl(
-                items = tabItems,
-                backdrop = backdrop,
-                totalWidth = fullWidth,
-                visibleHeight = height,
-                samplingHeight = samplingHeight,
-                lensHeight = lensHeight,
-                expansionFraction = 1f,
-                modifier = Modifier.size(fullWidth, height)
-            )
         }
     }
 }
