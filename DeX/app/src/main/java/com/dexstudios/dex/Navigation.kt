@@ -313,6 +313,13 @@ fun MainNavigation(
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
         var navPillStage by remember { mutableStateOf(NavPillExpansionStage.FullTabs) }
         val selectedMediaUris = remember { mutableStateListOf<Uri>() }
+        var isCounterPillExpanded by remember { mutableStateOf(true) }
+
+        LaunchedEffect(selectedMediaUris.isEmpty()) {
+            if (!selectedMediaUris.isEmpty()) {
+                isCounterPillExpanded = true
+            }
+        }
 
         // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs/selection)
         PredictiveBackHandler(
@@ -325,7 +332,11 @@ fun MainNavigation(
             try {
                 progressFlow.collect { /* progress */ }
                 if (selectedMediaUris.isNotEmpty()) {
-                    selectedMediaUris.clear()
+                    if (isCounterPillExpanded) {
+                        isCounterPillExpanded = false
+                    } else {
+                        selectedMediaUris.clear()
+                    }
                 } else if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
                     TopIslandState.profileStage = ProfileExpansionStage.Collapsed
                 } else if (showPreviewDevices) {
@@ -398,7 +409,8 @@ fun MainNavigation(
                     val mediaSelectedItemCount = selectedMediaUris.size
 
                     val isHistoryActive = activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.15f
-                    val isAnyExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed || isHistoryActive || showPreviewDevices
+                    val isSiblingExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed || isHistoryActive || showPreviewDevices
+                    val isAnyExpanded = isSiblingExpanded || (selectedMediaUris.isNotEmpty() && isCounterPillExpanded)
 
                     val isFullIslandExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
                     val isAnyIslandExpanded = isFullIslandExpanded || islandState == IslandContentState.NAME_PILL_PROFILE
@@ -586,10 +598,10 @@ fun MainNavigation(
                         }
 
                         // Auto-regulate navbar stage based on siblings and media items:
-                        // If items selected: drop to IconOnly to leave room for selection counter
-                        // If sibling is expanded (Profile NamePill, History, Devices): drop from FullTabs to IconAndLabel
+                        // If items selected and counter is expanded: drop to IconOnly to leave room for selection counter
+                        // If sibling is expanded (Profile NamePill, History, Devices) or counter is collapsed: drop from FullTabs to IconAndLabel
                         val effectiveNavStage: NavPillExpansionStage = when {
-                            mediaSelectedItemCount > 0 -> NavPillExpansionStage.IconOnly
+                            selectedMediaUris.isNotEmpty() && isCounterPillExpanded -> NavPillExpansionStage.IconOnly
                             isAnyExpanded -> when (navPillStage) {
                                 NavPillExpansionStage.FullTabs -> NavPillExpansionStage.IconAndLabel
                                 else -> navPillStage
@@ -682,9 +694,11 @@ fun MainNavigation(
                                     modifier = Modifier.zIndex(if (isTabsExpanded) 22f else 5f)
                                 )
 
-                                if (mediaSelectedItemCount > 0 && isMediaOrHistoryActive) {
+                                if (isMediaOrHistoryActive) {
                                     SelectedItemsCounterPill(
                                         selectedCount = mediaSelectedItemCount,
+                                        isExpanded = isCounterPillExpanded,
+                                        onExpandedChange = { isCounterPillExpanded = it },
                                         onSend = {
                                             val target = selectedDevice ?: discoveredDevices.firstOrNull()
                                             if (target != null) {
@@ -700,7 +714,7 @@ fun MainNavigation(
                                         },
                                         totalAvailableWidthDp = availableWidth,
                                         backdrop = sheetContentBackdrop,
-                                        isSiblingExpanded = isAnyExpanded,
+                                        isSiblingExpanded = isSiblingExpanded,
                                         modifier = Modifier
                                             .align(Alignment.CenterStart)
                                             .padding(start = DynamicDimensions.PillDefault.collapsedWidth + 10.dp)

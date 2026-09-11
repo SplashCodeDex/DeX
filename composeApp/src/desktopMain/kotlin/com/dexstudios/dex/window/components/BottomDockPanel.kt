@@ -8,6 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -46,7 +48,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
@@ -57,6 +61,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
@@ -107,22 +115,23 @@ fun BottomDockPanel(
 
     // Kinematic Animations
     val isConfirming = confirmationStage == ExitConfirmationStage.Confirming
+    val motionConfig = DynamicMotionConfig.Default
 
     val avatarScale by animateFloatAsState(
         targetValue = if (isConfirming) 0.6f else 1.0f,
-        animationSpec = DockCardAnimations.SmoothEase,
+        animationSpec = motionConfig.springSpec(isConfirming),
         label = "avatarScale",
     )
 
     val exitExpandAmount by animateDpAsState(
         targetValue = if (isConfirming) 58.dp else 0.dp,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
+        animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitExpandAmount",
     )
 
     val exitHeight by animateDpAsState(
         targetValue = if (isConfirming) 41.dp else 40.dp,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
+        animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitHeight",
     )
 
@@ -134,12 +143,12 @@ fun BottomDockPanel(
             isConfirming || exitHovered -> MaterialTheme.colorScheme.surfaceVariant
             else -> Color.Transparent
         },
-        animationSpec = DockCardAnimations.LinearColorSpec,
+        animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitBtnBg",
     )
     val exitCenterBias by animateFloatAsState(
         targetValue = if (isConfirming) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
+        animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitCenterBias",
     )
 
@@ -168,7 +177,7 @@ fun BottomDockPanel(
                 label = "avatarHoverScale",
             )
 
-            // 34x34dp Profile Avatar Button
+            // 34x34dp Profile Avatar Button (Strict CircleShape, non-expanding)
             Box(
                 modifier = Modifier
                     .zIndex(if (avatarHovered) 1f else 0f)
@@ -178,10 +187,11 @@ fun BottomDockPanel(
                         scaleX = avatarScale * avatarHoverScale
                         scaleY = avatarScale * avatarHoverScale
                     }
-                    .bubbleFluidity()
+                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
                     .shadow(elevation = 4.dp, shape = CircleShape, spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
                     .clip(CircleShape)
                     .shinyGlare(shape = CircleShape)
+                    .pointerHoverIcon(PointerIcon.Hand)
                     .clickable(
                         interactionSource = avatarInteraction,
                         indication = null,
@@ -203,10 +213,16 @@ fun BottomDockPanel(
                 label = "exitHoverScale",
             )
 
-            // 2-Stage Exit Button Container
+            val exitShadowElevation by animateDpAsState(
+                targetValue = if (isConfirming) 8.dp else 4.dp,
+                animationSpec = motionConfig.springSpec(isConfirming),
+                label = "exitShadowElevation",
+            )
+
+            // 2-Stage Exit Button Container (Strict Stadium Capsule CircleShape)
             Box(
                 modifier = Modifier
-                    .zIndex(if (exitHovered) 1f else 0f)
+                    .zIndex(if (exitHovered || isConfirming) 1f else 0f)
                     .weight(1f)
                     .padding(horizontal = 6.dp, vertical = 1.dp)
                     .height(exitHeight)
@@ -226,11 +242,17 @@ fun BottomDockPanel(
                         scaleX = exitHoverScale
                         scaleY = exitHoverScale
                     }
-                    .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.05f)
-                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
-                    .clip(RoundedCornerShape(30.dp))
+                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                    .shadow(
+                        elevation = exitShadowElevation,
+                        shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = if (isConfirming) 0.30f else 0.20f),
+                        ambientColor = Color.Black.copy(alpha = if (isConfirming) 0.15f else 0.10f),
+                    )
+                    .clip(CircleShape)
                     .background(exitButtonBgColor)
-                    .shinyGlare(shape = RoundedCornerShape(30.dp))
+                    .shinyGlare(shape = CircleShape)
+                    .pointerHoverIcon(PointerIcon.Hand)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -308,8 +330,16 @@ fun BottomDockPanel(
                         AnimatedContent(
                             targetState = confirmationStage,
                             transitionSpec = {
-                                fadeIn(DockCardAnimations.LinearFadeSpec) togetherWith fadeOut(DockCardAnimations.LinearFadeSpec)
+                                val enterSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
+                                val exitSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
+                                (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.88f, animationSpec = enterSpec))
+                                    .togetherWith(fadeOut(animationSpec = tween(140)) + scaleOut(targetScale = 0.88f, animationSpec = exitSpec))
                             },
+                            modifier = Modifier.transientContentBlur(
+                                trigger = confirmationStage,
+                                config = DynamicContentBlurConfig.Default,
+                                motion = motionConfig,
+                            ),
                             label = "exitText",
                         ) { state ->
                             Text(

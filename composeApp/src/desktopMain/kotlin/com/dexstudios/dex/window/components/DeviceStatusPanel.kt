@@ -45,6 +45,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.network.DeviceConfig
@@ -238,8 +241,9 @@ fun DeviceStatusPanel(
                         scaleX = closeScale
                         scaleY = closeScale
                     }
-                    .bubbleFluidity(targetScale = 0.92f, pullFactor = 0.05f)
+                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
                     .clip(CircleShape)
+                    .pointerHoverIcon(PointerIcon.Hand)
                     .background(
                         if (isCloseHovered) {
                             MaterialTheme.colorScheme.surfaceVariant
@@ -455,16 +459,17 @@ fun DeviceStatusPanel(
                     scaleX = sendHoverScale
                     scaleY = sendHoverScale
                 }
-                .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.05f)
+                .bubbleFluidity(config = DynamicFluidityConfig.Default)
                 .shadow(
                     elevation = 4.dp,
-                    shape = RoundedCornerShape(30.dp),
+                    shape = CircleShape,
                     spotColor = Color.Black.copy(alpha = 0.2f),
                     ambientColor = Color.Black.copy(alpha = 0.1f),
                 )
-                .clip(RoundedCornerShape(30.dp))
+                .clip(CircleShape)
                 .background(sendBtnBgColor)
-                .shinyGlare(shape = RoundedCornerShape(30.dp))
+                .shinyGlare(shape = CircleShape)
+                .pointerHoverIcon(PointerIcon.Hand)
                 .clickable(
                     interactionSource = sendInteraction,
                     indication = null,

@@ -28,6 +28,11 @@
   - **Dynamic Stadium Action Pill**: Added `SelectedItemsCounterPill` which animates into view beside the bottom navigation pill whenever media items are selected in the picker tray.
   - **Kinematics & Dual Actions**: Features direction-aware anticipation (+32dp nudge, 1.25x swell over 70ms with `ExpansionAnchor.Start`), overshoot spring bounds expansion, tactile bubble fluidity, and dedicated send and clear actions.
   - **Responsive Spatial Adaptation**: Compacts dynamically to an icon-only stadium capsule when sibling pills expand, preventing layout collisions.
+- **[minor] Desktop Bottom Dock & Send Files Stadium Kinematics (`BottomDockPanel.kt` & `DeviceStatusPanel.kt`)**:
+  - **Exit Engine Stadium Morphing (`BottomDockPanel.kt`)**: Replaced manual `RoundedCornerShape(30.dp)` with strict `CircleShape` stadium capsule geometry. Upgraded expansion kinematics from rigid high-damping springs to direction-aware overshoot kinematics (`expandDampingRatio = 0.50f`, `collapseDampingRatio = 0.56f`, `stiffness = 170f`) via `DynamicMotionConfig.Default`.
+  - **Transient Optical Blur on Exit Confirmation**: Wrapped `exitText` animated content in `Modifier.transientContentBlur(trigger = confirmationStage)`, delivering an 8dp optical depth dissipation during 2-stage state switches.
+  - **Dynamic Elevation & Specular Light**: Upgraded confirmation elevation from 4dp to 8dp with directional `shinyGlare(shape = CircleShape)` and `PointerIcon.Hand` cursor affordances.
+  - **Non-Expanding Fluidity Parity (`DeviceStatusPanel.kt`)**: Unified the "Send Files" action pill and header close button into strict `CircleShape` and `DynamicFluidityConfig.Default` (`pressScale = 1.08f`), eliminating legacy hardcoded overrides (`0.95f`/`0.92f`).
 
 
 - **[minor] Liquid Glass History Button Kinematics, Multi-Tier Elevation & Roller Dual-Damping**:
