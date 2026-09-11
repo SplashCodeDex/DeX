@@ -60,7 +60,6 @@ fun TopActionsPanel(
     serverIpPort: String = "",
     showTelemetry: Boolean = true,
     modifier: Modifier = Modifier,
-    overlayManager: com.dexstudios.dex.overlay.OverlayManager = org.koin.compose.koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     var isCopied by remember { mutableStateOf(false) }
@@ -79,14 +78,6 @@ fun TopActionsPanel(
             DragPillHandle(
                 controller = controller,
                 modifier = Modifier.fillMaxWidth(),
-            )
-
-            OverlayTestingButton(
-                overlayManager = overlayManager,
-                controller = controller,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 12.dp),
             )
         }
 

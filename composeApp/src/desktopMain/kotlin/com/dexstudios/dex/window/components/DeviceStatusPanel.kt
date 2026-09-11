@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -228,62 +230,12 @@ fun DeviceStatusPanel(
                 modifier = Modifier.padding(horizontal = 32.dp),
             )
 
-            val closeInteraction = remember { MutableInteractionSource() }
-            val isCloseHovered by closeInteraction.collectIsHoveredAsState()
-            val isClosePressedRaw by closeInteraction.collectIsPressedAsState()
-            var isCloseFluidityPressed by remember { mutableStateOf(false) }
-            val isClosePressed = isClosePressedRaw || isCloseFluidityPressed
-            val motionConfig = DynamicMotionConfig.Default
-            val closePressProgress by animateFloatAsState(
-                targetValue = if (isClosePressed) 1f else 0f,
-                animationSpec = motionConfig.springSpec(isClosePressed),
-                label = "closePressProgress",
+            DeXCloseButton(
+                size = DeXCloseButtonSize.Small,
+                contentDescription = "Close",
+                onClick = onClose,
+                modifier = Modifier.align(Alignment.CenterEnd),
             )
-            val closeScale by animateFloatAsState(
-                targetValue = if (isCloseHovered) 1.1f else 1.0f,
-                animationSpec = tween(120),
-                label = "closeScale",
-            )
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(26.dp)
-                    .graphicsLayer {
-                        scaleX = closeScale
-                        scaleY = closeScale
-                    }
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isCloseFluidityPressed = it },
-                    )
-                    .clip(CircleShape)
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .background(
-                        if (isCloseHovered) {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                        },
-                    )
-                    .shinyGlare(
-                        shape = CircleShape,
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * closePressProgress),
-                    )
-                    .clickable(
-                        interactionSource = closeInteraction,
-                        indication = null,
-                        onClick = onClose,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(DeXIcons.Close),
-                    contentDescription = "Close",
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
 
         // === 2. Big Centered Device Animation (Click to cycle demo devices) ===

@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.overlay.BannerMorphState
 import com.dexstudios.dex.core.designsystem.components.overlay.ToastVariant
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
@@ -143,12 +145,10 @@ fun OverlayTestingPlayground(overlayManager: OverlayManager, controller: DockedW
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = "Close",
-                fontSize = 12.sp,
-                color = primaryColor,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clickable { onClose() },
+            DeXCloseButton(
+                size = DeXCloseButtonSize.Small,
+                contentDescription = "Close",
+                onClick = onClose,
             )
         }
 

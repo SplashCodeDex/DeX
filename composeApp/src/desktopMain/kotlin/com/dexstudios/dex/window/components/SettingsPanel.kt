@@ -80,6 +80,7 @@ import com.dexstudios.dex.core.designsystem.icons.AnimatedDndBell
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.mirror.toImageBitmap
+import com.dexstudios.dex.overlay.OverlayManager
 import com.dexstudios.dex.window.DockedWindowStateController
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
@@ -115,6 +116,7 @@ fun SettingsPanel(
     modifier: Modifier = Modifier,
     deviceConfig: DeviceConfig = koinInject(),
     discoveryEngine: com.dexstudios.dex.core.network.DiscoveryEngine = koinInject(),
+    overlayManager: OverlayManager = koinInject(),
 ) {
     val coroutineScope = rememberCoroutineScope()
     val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
@@ -127,6 +129,7 @@ fun SettingsPanel(
     val deviceAlias by deviceConfig.aliasFlow.collectAsState()
     var showResetConfirm by remember { mutableStateOf(false) }
     var showAdbPicker by remember { mutableStateOf(false) }
+    var showOverlayLab by remember { mutableStateOf(false) }
 
     // Real Google avatar when signed in; fetched and decoded off the UI thread via the
     // shared skia helper. Falls back to the bundled placeholder when signed out or on
@@ -338,6 +341,44 @@ fun SettingsPanel(
                     subtitle = "Pick a discovered phone to connect over ADB",
                     onClick = { showAdbPicker = true },
                 )
+                SettingsItem(
+                    icon = painterResource(Res.drawable.ic_fluent_notifications),
+                    title = "Overlay Testing Lab",
+                    subtitle = "Interactive playground for fluid banners, toasts, and overlays",
+                    trailing = {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = if (showOverlayLab) "Hide" else "Open",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    onClick = { showOverlayLab = !showOverlayLab },
+                )
+                if (showOverlayLab) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(440.dp)
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                            .padding(12.dp),
+                    ) {
+                        OverlayTestingPlayground(
+                            overlayManager = overlayManager,
+                            controller = controller,
+                            onClose = { showOverlayLab = false },
+                        )
+                    }
+                }
             }
 
             // Identity

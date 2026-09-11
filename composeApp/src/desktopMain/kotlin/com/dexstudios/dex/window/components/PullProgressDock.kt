@@ -41,12 +41,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.services.FileExplorerService
 import org.jetbrains.compose.resources.painterResource
@@ -117,47 +119,12 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
                     )
                 }
 
-                val cancelInteraction = remember { MutableInteractionSource() }
-                val isCancelHovered by cancelInteraction.collectIsHoveredAsState()
-                val isCancelPressedRaw by cancelInteraction.collectIsPressedAsState()
-                var isCancelFluidityPressed by remember { mutableStateOf(false) }
-                val isCancelPressed = isCancelPressedRaw || isCancelFluidityPressed
-
-                val cancelPressProgress by animateFloatAsState(
-                    targetValue = if (isCancelPressed) 1f else 0f,
-                    animationSpec = DynamicMotionConfig.Default.springSpec(isCancelPressed),
-                    label = "cancelPressProgress",
+                DeXCloseButton(
+                    size = DeXCloseButtonSize.Small,
+                    colors = DeXCloseButtonDefaults.ghostColors(),
+                    contentDescription = "Cancel Transfer",
+                    onClick = onCancel,
                 )
-
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .bubbleFluidity(
-                            config = DynamicFluidityConfig.Default,
-                            onPressedChanged = { isCancelFluidityPressed = it },
-                        )
-                        .clip(CircleShape)
-                        .background(if (isCancelHovered) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                        .shinyGlare(
-                            shape = CircleShape,
-                            intensity = if (isCancelHovered) DefaultGlareIntensity * (1f + 0.60f * cancelPressProgress) else 0f,
-                        )
-                        .hoverable(interactionSource = cancelInteraction)
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .clickable(
-                            interactionSource = cancelInteraction,
-                            indication = null,
-                            onClick = onCancel,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_fluent_close),
-                        contentDescription = "Cancel Transfer",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

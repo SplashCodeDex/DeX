@@ -21,8 +21,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_rotate
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
@@ -216,20 +218,16 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
                             )
                         }
 
-                        IconButton(
+                        DeXCloseButton(
+                            size = DeXCloseButtonSize.Large,
+                            colors = DeXCloseButtonDefaults.glassColors(
+                                containerColor = Color.Black.copy(alpha = 0.65f),
+                                contentColor = Color.White,
+                                hoverContainerColor = Color.Black.copy(alpha = 0.85f),
+                            ),
+                            contentDescription = "Disconnect",
                             onClick = onClose,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.65f)),
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_fluent_close),
-                                contentDescription = "Disconnect",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                        )
                     }
                 }
             }

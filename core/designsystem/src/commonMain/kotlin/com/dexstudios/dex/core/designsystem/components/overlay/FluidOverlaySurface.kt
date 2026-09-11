@@ -42,8 +42,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
-import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -247,33 +249,19 @@ fun FluidOverlaySurface(
         // Hover Close (X) Pill Button
         if (showHoverCloseButton && onDismiss != null) {
             val isPill = targetHeight != null && targetHeight <= 56.dp
-            Box(
+            DeXCloseButton(
+                size = DeXCloseButtonSize.Small,
+                colors = DeXCloseButtonDefaults.subtleColors(),
+                contentDescription = "Dismiss",
+                onClick = onDismiss,
                 modifier = Modifier
                     .align(if (isPill) Alignment.CenterEnd else Alignment.TopEnd)
                     .padding(
                         top = if (isPill) 0.dp else 18.dp,
                         end = if (isPill) 12.dp else 18.dp,
                     )
-                    .size(24.dp)
-                    .alpha(closeButtonAlpha)
-                    .bubbleFluidity(targetScale = 0.92f, pullFactor = 0.05f)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        onDismiss()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = org.jetbrains.compose.resources.painterResource(DeXIcons.Close),
-                    contentDescription = "Dismiss",
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+                    .alpha(closeButtonAlpha),
+            )
         }
     }
 }

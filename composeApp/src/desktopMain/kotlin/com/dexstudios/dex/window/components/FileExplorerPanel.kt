@@ -78,6 +78,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
@@ -89,7 +92,6 @@ import com.dexstudios.dex.core.designsystem.components.island.transientContentBl
 import com.dexstudios.dex.core.designsystem.components.overlay.ConfirmationPopup
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
@@ -587,11 +589,11 @@ fun FileExplorerPanel(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_fluent_close),
+                    DeXCloseButton(
+                        size = DeXCloseButtonSize.Micro,
+                        colors = DeXCloseButtonDefaults.dangerColors(),
                         contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(14.dp).clickable { viewModel.clearError() },
+                        onClick = { viewModel.clearError() },
                     )
                 }
             }

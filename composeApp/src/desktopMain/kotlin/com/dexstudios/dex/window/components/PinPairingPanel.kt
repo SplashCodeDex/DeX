@@ -67,6 +67,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
@@ -75,7 +77,6 @@ import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfi
 import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_qr_code
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_warning
 import com.dexstudios.dex.core.domain.pairing.PairingEngine
@@ -226,58 +227,11 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onCance
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            val closeInteraction = remember { MutableInteractionSource() }
-            val isCloseHovered by closeInteraction.collectIsHoveredAsState()
-            val isClosePressedRaw by closeInteraction.collectIsPressedAsState()
-            var isCloseFluidityPressed by remember { mutableStateOf(false) }
-            val isClosePressed = isClosePressedRaw || isCloseFluidityPressed
-
-            val closePressProgress by animateFloatAsState(
-                targetValue = if (isClosePressed) 1f else 0f,
-                animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
-                label = "closePressProgress",
+            DeXCloseButton(
+                size = DeXCloseButtonSize.Medium,
+                contentDescription = "Close",
+                onClick = onCancel,
             )
-            val closeElevation by animateDpAsState(
-                targetValue = (4.dp * (1f - 0.20f * closePressProgress)).coerceAtLeast(0.dp),
-                animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
-                label = "closeElevation",
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isCloseFluidityPressed = it },
-                    )
-                    .shadow(
-                        elevation = closeElevation,
-                        shape = CircleShape,
-                        spotColor = Color.Black.copy(alpha = 0.2f),
-                        ambientColor = Color.Black.copy(alpha = 0.1f),
-                    )
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .shinyGlare(
-                        shape = CircleShape,
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * closePressProgress),
-                    )
-                    .hoverable(interactionSource = closeInteraction)
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable(
-                        interactionSource = closeInteraction,
-                        indication = null,
-                        onClick = onCancel,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_fluent_close),
-                    contentDescription = "Close",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
         }
 
         // Center Content Area with QR <-> PIN Flip Transitions
