@@ -1,13 +1,8 @@
 package com.dexstudios.dex.window.components
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,7 +47,6 @@ import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityCon
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.icons.AnimatedClipboardIcon
@@ -61,7 +55,7 @@ import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Centered row of 4 flat 62x48dp pill buttons + 1 dynamic Danger Close pill.
+ * Centered row of 4 flat 62x48dp pill buttons (DND, Mirror, Transfers, Clipboard).
  *
  * Flat surface treatment (no liquid glass): state-morphing background
  * (checked = primary, danger hover = error, idle = surfaceVariant), soft ink
@@ -75,12 +69,12 @@ fun QuickActionBar(
     isTransfersActive: Boolean,
     isClipboardActive: Boolean,
     clipboardBadgeCount: Int = 0,
-    isPanelExpanded: Boolean,
-    onToggleDnd: () -> Unit,
-    onToggleMirror: () -> Unit,
-    onToggleTransfers: () -> Unit,
-    onToggleClipboard: () -> Unit,
-    onCloseExpandedPanel: () -> Unit,
+    isPanelExpanded: Boolean = false,
+    onToggleDnd: () -> Unit = {},
+    onToggleMirror: () -> Unit = {},
+    onToggleTransfers: () -> Unit = {},
+    onToggleClipboard: () -> Unit = {},
+    onCloseExpandedPanel: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -140,37 +134,6 @@ fun QuickActionBar(
                 )
             },
         )
-
-        // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 62dp)
-        val motionConfig = DynamicMotionConfig.Default
-        AnimatedVisibility(
-            visible = isPanelExpanded,
-            enter =
-            expandHorizontally(
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = motionConfig.expandDampingRatio,
-                    stiffness = motionConfig.stiffness,
-                ),
-            ) + fadeIn(),
-            exit =
-            shrinkHorizontally(
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = motionConfig.collapseDampingRatio,
-                    stiffness = motionConfig.stiffness,
-                ),
-            ) + fadeOut(),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
-                DeXQuickActionButton(
-                    icon = painterResource(Res.drawable.ic_fluent_close),
-                    tooltip = "Close",
-                    isChecked = false,
-                    isDanger = true,
-                    onClick = onCloseExpandedPanel,
-                )
-            }
-        }
     }
 }
 

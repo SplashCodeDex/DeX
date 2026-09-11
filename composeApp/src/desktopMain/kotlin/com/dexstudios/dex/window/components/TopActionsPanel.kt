@@ -1,6 +1,10 @@
 package com.dexstudios.dex.window.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +31,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_clipboard
@@ -68,7 +76,7 @@ fun TopActionsPanel(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 1. Drag Pill & Pin Handle Row
+        // 1. Drag Pill & Pin Handle Row with Top-Right Close Button
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -79,6 +87,45 @@ fun TopActionsPanel(
                 controller = controller,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // Centralized DeXCloseButton placed at top-right (red circle) when panel is expanded
+            androidx.compose.animation.AnimatedVisibility(
+                visible = controller.isExpanded,
+                enter = androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = DynamicMotionConfig.Default.expandDampingRatio,
+                        stiffness = DynamicMotionConfig.Default.stiffness,
+                    ),
+                ) + androidx.compose.animation.scaleIn(
+                    initialScale = 0.80f,
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = DynamicMotionConfig.Default.expandDampingRatio,
+                        stiffness = DynamicMotionConfig.Default.stiffness,
+                    ),
+                ),
+                exit = androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = DynamicMotionConfig.Default.collapseDampingRatio,
+                        stiffness = DynamicMotionConfig.Default.stiffness,
+                    ),
+                ) + androidx.compose.animation.scaleOut(
+                    targetScale = 0.80f,
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = DynamicMotionConfig.Default.collapseDampingRatio,
+                        stiffness = DynamicMotionConfig.Default.stiffness,
+                    ),
+                ),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp),
+            ) {
+                DeXCloseButton(
+                    size = DeXCloseButtonSize.Small,
+                    colors = DeXCloseButtonDefaults.subtleColors(),
+                    contentDescription = "Close Panel",
+                    onClick = { controller.collapsePanel() },
+                )
+            }
         }
 
         // 2. Tactile Quick Actions Row (56x44dp Pills + Dynamic Danger Close)
