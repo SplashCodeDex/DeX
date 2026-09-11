@@ -1,6 +1,8 @@
 package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,9 +13,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.network.TransferStateMonitor
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 
@@ -25,11 +30,33 @@ fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = activeTransfers.isNotEmpty(),
         enter =
-        fadeIn(DockCardAnimations.LinearFadeSpec) + slideInVertically(animationSpec = DockCardAnimations.LinearSlideSpec, initialOffsetY = { -50 }) +
-            scaleIn(initialScale = 0.9f, animationSpec = DockCardAnimations.LinearFadeSpec),
+        fadeIn(tween(180)) + slideInVertically(
+            animationSpec = spring(
+                dampingRatio = 0.58f,
+                stiffness = 320f,
+            ),
+            initialOffsetY = { -40 },
+        ) + scaleIn(
+            initialScale = 0.90f,
+            animationSpec = spring(
+                dampingRatio = 0.58f,
+                stiffness = 320f,
+            ),
+        ),
         exit =
-        fadeOut(DockCardAnimations.LinearFadeSpec) + slideOutVertically(animationSpec = DockCardAnimations.LinearSlideSpec, targetOffsetY = { -50 }) +
-            scaleOut(targetScale = 0.9f, animationSpec = DockCardAnimations.LinearFadeSpec),
+        fadeOut(tween(160)) + slideOutVertically(
+            animationSpec = spring(
+                dampingRatio = 0.70f,
+                stiffness = 380f,
+            ),
+            targetOffsetY = { -40 },
+        ) + scaleOut(
+            targetScale = 0.92f,
+            animationSpec = spring(
+                dampingRatio = 0.70f,
+                stiffness = 380f,
+            ),
+        ),
         modifier = modifier,
     ) {
         Column(
@@ -40,8 +67,15 @@ fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(
+                            elevation = 6.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            spotColor = Color.Black.copy(alpha = 0.12f),
+                            ambientColor = Color.Black.copy(alpha = 0.06f),
+                        )
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .shinyGlare(shape = RoundedCornerShape(16.dp), intensity = DefaultGlareIntensity)
                         .padding(16.dp),
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {

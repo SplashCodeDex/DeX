@@ -3,6 +3,7 @@ package com.dexstudios.dex.core.designsystem.components.overlay
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
@@ -92,6 +94,18 @@ fun FluidOverlaySurface(
         label = "surfaceHeight",
     )
 
+    // Dynamic Spring Entrance with authentic Apple overshoot & smooth alpha fade
+    val entryProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entryProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = 0.58f,
+                stiffness = 320f,
+            ),
+        )
+    }
+
     // Gesture translation along X axis with elastic spring snap
     val dragOffsetX = remember { Animatable(0f) }
     var isDismissingByGesture by remember { mutableStateOf(false) }
@@ -117,14 +131,29 @@ fun FluidOverlaySurface(
                 },
             )
             .then(sizeModifier)
-            .offset { IntOffset(dragOffsetX.value.roundToInt(), 0) }
+            .offset {
+                val currentP = entryProgress.value
+                val entranceOffsetY = (1f - currentP) * 16.dp.toPx()
+                IntOffset(dragOffsetX.value.roundToInt(), entranceOffsetY.roundToInt())
+            }
             .graphicsLayer {
+                val currentP = entryProgress.value
+                val entranceScale = if (currentP <= 1f) {
+                    lerp(0.88f, 1.0f, currentP)
+                } else {
+                    1.0f + (currentP - 1f) * 0.35f
+                }
+                val entranceAlpha = currentP.coerceIn(0f, 1f)
+
                 // Card fades completely to 0.0f by 140dp of drag travel
                 val fadeDistancePx = 140f * density
                 val dragFraction = (abs(dragOffsetX.value) / fadeDistancePx).coerceIn(0f, 1f)
-                alpha = (1f - dragFraction).coerceIn(0f, 1f)
-                scaleX = 1f - (dragFraction * 0.08f)
-                scaleY = 1f - (dragFraction * 0.08f)
+                val dragScale = 1f - (dragFraction * 0.08f)
+                val dragAlpha = (1f - dragFraction).coerceIn(0f, 1f)
+
+                alpha = (entranceAlpha * dragAlpha).coerceIn(0f, 1f)
+                scaleX = entranceScale * dragScale
+                scaleY = entranceScale * dragScale
             }
             .pointerInput(Unit) {
                 awaitPointerEventScope {

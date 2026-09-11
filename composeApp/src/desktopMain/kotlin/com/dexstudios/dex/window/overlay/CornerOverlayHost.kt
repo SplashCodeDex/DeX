@@ -132,6 +132,7 @@ fun CornerOverlayHost(overlayManager: OverlayManager) {
                                 is BannerNotification -> {
                                     NotificationBanner(
                                         title = data.title,
+                                        id = data.id,
                                         subtitle = data.subtitle,
                                         badgeText = data.badgeText,
                                         iconResource = data.iconResource,

@@ -162,7 +162,7 @@ fun OverlayTestingPlayground(overlayManager: OverlayManager, controller: DockedW
         // 1. Live File Transfer Banner (Dynamic Island)
         TestActionButton(
             title = "1. Live Transfer Banner (Dynamic Island)",
-            subtitle = "Tap to test compact pill & click-to-expand HUD",
+            subtitle = "Natural entry bloom (Expanded) -> auto-contracts to compact pill -> tap to toggle",
             iconColor = primaryColor,
         ) {
             overlayManager.showBanner(
@@ -173,7 +173,6 @@ fun OverlayTestingPlayground(overlayManager: OverlayManager, controller: DockedW
                 iconBackgroundColor = primaryContainerColor,
                 iconTint = onPrimaryContainerColor,
                 progress = 0.65f,
-                initialMorphState = BannerMorphState.Compact,
                 trailingPreview = {
                     Image(
                         painter = painterResource(Res.drawable.wallpaper_laptop),

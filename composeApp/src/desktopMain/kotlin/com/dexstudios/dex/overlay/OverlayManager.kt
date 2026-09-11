@@ -92,7 +92,7 @@ class OverlayManager(private val scope: CoroutineScope, private val soundService
         iconTint: Color? = null,
         iconBackgroundColor: Color? = null,
         progress: Float? = null,
-        initialMorphState: BannerMorphState = BannerMorphState.Compact,
+        initialMorphState: BannerMorphState? = null,
         allowInteractiveMorph: Boolean = true,
         trailingPreview: (@Composable () -> Unit)? = null,
         expandedContent: (@Composable () -> Unit)? = null,

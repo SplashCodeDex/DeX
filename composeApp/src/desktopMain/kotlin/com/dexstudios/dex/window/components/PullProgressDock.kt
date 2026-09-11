@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -81,10 +82,17 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
     Box(
         modifier = modifier
             .fillMaxWidth(0.92f)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = Color.Black.copy(alpha = 0.14f),
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+            )
             .clip(RoundedCornerShape(16.dp))
             // Raised white toast above the porcelain explorer canvas (surfaceContainerLowest).
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .shinyGlare(shape = RoundedCornerShape(16.dp), intensity = DefaultGlareIntensity)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {

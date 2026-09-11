@@ -23,6 +23,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -59,6 +61,7 @@ enum class BannerMorphState {
 fun NotificationBanner(
     title: String,
     modifier: Modifier = Modifier,
+    id: String? = null,
     subtitle: String? = null,
     badgeText: String? = null,
     iconResource: DrawableResource? = null,
@@ -66,7 +69,7 @@ fun NotificationBanner(
     iconTint: Color? = null,
     iconBackgroundColor: Color = MaterialTheme.colorScheme.primaryContainer,
     progress: Float? = null, // 0.0f to 1.0f or null for none
-    initialMorphState: BannerMorphState = BannerMorphState.Compact,
+    initialMorphState: BannerMorphState? = null,
     allowInteractiveMorph: Boolean = true,
     trailingPreview: @Composable (() -> Unit)? = null,
     expandedContent: @Composable (() -> Unit)? = null,
@@ -75,7 +78,28 @@ fun NotificationBanner(
     onHoverChanged: ((Boolean) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    var morphState by remember(initialMorphState) { mutableStateOf(initialMorphState) }
+    val hasRichContent = progress != null || subtitle != null || trailingPreview != null || expandedContent != null
+    // Natural Dynamic Island Entry: rich banners naturally bloom in Expanded state to display
+    // title, progress, speed, preview, and controls without requiring mouse hover, then smoothly
+    // contract to the compact ambient pill after the announcement window (3.5s).
+    val effectiveInitialState = initialMorphState ?: if (hasRichContent) {
+        BannerMorphState.Expanded
+    } else {
+        BannerMorphState.Compact
+    }
+
+    val bannerKey = remember(id, title) { id ?: title }
+    var morphState by remember(bannerKey) { mutableStateOf(effectiveInitialState) }
+    var userToggled by remember(bannerKey) { mutableStateOf(false) }
+
+    LaunchedEffect(bannerKey) {
+        if (hasRichContent && allowInteractiveMorph && !userToggled) {
+            delay(3500)
+            if (!userToggled) {
+                morphState = BannerMorphState.Compact
+            }
+        }
+    }
 
     val targetWidth: Dp = when (morphState) {
         BannerMorphState.Compact -> OverlayPhysics.BANNER_COMPACT_WIDTH
@@ -96,6 +120,7 @@ fun NotificationBanner(
         onHoverChanged = onHoverChanged,
         onClick = {
             if (allowInteractiveMorph) {
+                userToggled = true
                 morphState = when (morphState) {
                     BannerMorphState.Compact -> BannerMorphState.Expanded
                     BannerMorphState.Expanded -> BannerMorphState.Compact

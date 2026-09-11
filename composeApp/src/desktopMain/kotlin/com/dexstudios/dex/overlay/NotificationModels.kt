@@ -47,7 +47,7 @@ data class BannerNotification(
     val iconTint: Color? = null,
     val iconBackgroundColor: Color? = null,
     val progress: Float? = null,
-    val initialMorphState: BannerMorphState = BannerMorphState.Compact,
+    val initialMorphState: BannerMorphState? = null,
     val allowInteractiveMorph: Boolean = true,
     val trailingPreview: (@Composable () -> Unit)? = null,
     val expandedContent: (@Composable () -> Unit)? = null,

@@ -82,9 +82,9 @@ object OverlayPhysics {
         stiffness = ENTER_STIFFNESS,
     )
 
-    // Size Morphing: fluid, continuous shape morphing between states
-    const val MORPH_DAMPING = 0.70f
-    const val MORPH_STIFFNESS = 280f
+    // Size Morphing: fluid, continuous shape morphing between states with subtle overshoot
+    const val MORPH_DAMPING = 0.58f
+    const val MORPH_STIFFNESS = 300f
 
     val SizeMorphDpSpring = spring<Dp>(
         dampingRatio = MORPH_DAMPING,

@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -124,9 +125,11 @@ fun <T> FluidNotificationStack(
             Layout(
                 content = {
                     visibleItems.forEachIndexed { index, item ->
-                        val isTop = index == 0
-                        item.content(item.data, isTop) {
-                            onDismissItem(item.id)
+                        key(item.id) {
+                            val isTop = index == 0
+                            item.content(item.data, isTop) {
+                                onDismissItem(item.id)
+                            }
                         }
                     }
                 },

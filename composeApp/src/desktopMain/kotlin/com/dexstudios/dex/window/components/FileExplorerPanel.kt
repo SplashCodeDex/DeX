@@ -3,9 +3,12 @@ package com.dexstudios.dex.window.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
@@ -898,14 +901,32 @@ fun FileExplorerPanel(
                         visible = isTransferring,
                         enter =
                         slideInVertically(
-                            initialOffsetY = { 50 },
-                            animationSpec = DockCardAnimations.LinearSlideSpec,
-                        ) + fadeIn(),
+                            initialOffsetY = { 40 },
+                            animationSpec = spring(
+                                dampingRatio = 0.58f,
+                                stiffness = 320f,
+                            ),
+                        ) + scaleIn(
+                            initialScale = 0.90f,
+                            animationSpec = spring(
+                                dampingRatio = 0.58f,
+                                stiffness = 320f,
+                            ),
+                        ) + fadeIn(tween(180)),
                         exit =
                         slideOutVertically(
-                            targetOffsetY = { 50 },
-                            animationSpec = DockCardAnimations.LinearSlideSpec,
-                        ) + fadeOut(),
+                            targetOffsetY = { 40 },
+                            animationSpec = spring(
+                                dampingRatio = 0.70f,
+                                stiffness = 380f,
+                            ),
+                        ) + scaleOut(
+                            targetScale = 0.92f,
+                            animationSpec = spring(
+                                dampingRatio = 0.70f,
+                                stiffness = 380f,
+                            ),
+                        ) + fadeOut(tween(160)),
                     ) {
                         PullProgressDock(
                             clientEngine = clientEngine,
