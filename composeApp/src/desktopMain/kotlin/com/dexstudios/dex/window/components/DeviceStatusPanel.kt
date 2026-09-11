@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,8 +56,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.network.DeviceConfig
@@ -227,6 +230,15 @@ fun DeviceStatusPanel(
 
             val closeInteraction = remember { MutableInteractionSource() }
             val isCloseHovered by closeInteraction.collectIsHoveredAsState()
+            val isClosePressedRaw by closeInteraction.collectIsPressedAsState()
+            var isCloseFluidityPressed by remember { mutableStateOf(false) }
+            val isClosePressed = isClosePressedRaw || isCloseFluidityPressed
+            val motionConfig = DynamicMotionConfig.Default
+            val closePressProgress by animateFloatAsState(
+                targetValue = if (isClosePressed) 1f else 0f,
+                animationSpec = motionConfig.springSpec(isClosePressed),
+                label = "closePressProgress",
+            )
             val closeScale by animateFloatAsState(
                 targetValue = if (isCloseHovered) 1.1f else 1.0f,
                 animationSpec = tween(120),
@@ -241,7 +253,10 @@ fun DeviceStatusPanel(
                         scaleX = closeScale
                         scaleY = closeScale
                     }
-                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isCloseFluidityPressed = it },
+                    )
                     .clip(CircleShape)
                     .pointerHoverIcon(PointerIcon.Hand)
                     .background(
@@ -250,6 +265,10 @@ fun DeviceStatusPanel(
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                         },
+                    )
+                    .shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * closePressProgress),
                     )
                     .clickable(
                         interactionSource = closeInteraction,
@@ -431,11 +450,21 @@ fun DeviceStatusPanel(
         // === 4. Bottom Action: Exit Engine-Styled Send Files Pill ===
         val sendInteraction = remember { MutableInteractionSource() }
         val sendHovered by sendInteraction.collectIsHoveredAsState()
+        val isSendPressedRaw by sendInteraction.collectIsPressedAsState()
+        var isSendFluidityPressed by remember { mutableStateOf(false) }
+        val isSendPressed = isSendPressedRaw || isSendFluidityPressed
+        val motionConfig = DynamicMotionConfig.Default
+        val sendPressProgress by animateFloatAsState(
+            targetValue = if (isSendPressed) 1f else 0f,
+            animationSpec = motionConfig.springSpec(isSendPressed),
+            label = "sendPressProgress",
+        )
         val sendHoverScale by animateFloatAsState(
             targetValue = if (sendHovered) 1.05f else 1.0f,
             animationSpec = DockCardAnimations.HoverSpec,
             label = "sendHoverScale",
         )
+        val sendShadowElevation = (4.dp * (1f - 0.20f * sendPressProgress)).coerceAtLeast(0.dp)
 
         val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val targetSendBg = if (isDark) {
@@ -459,16 +488,22 @@ fun DeviceStatusPanel(
                     scaleX = sendHoverScale
                     scaleY = sendHoverScale
                 }
-                .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                .bubbleFluidity(
+                    config = DynamicFluidityConfig.Default,
+                    onPressedChanged = { isSendFluidityPressed = it },
+                )
                 .shadow(
-                    elevation = 4.dp,
+                    elevation = sendShadowElevation,
                     shape = CircleShape,
                     spotColor = Color.Black.copy(alpha = 0.2f),
                     ambientColor = Color.Black.copy(alpha = 0.1f),
                 )
                 .clip(CircleShape)
                 .background(sendBtnBgColor)
-                .shinyGlare(shape = CircleShape)
+                .shinyGlare(
+                    shape = CircleShape,
+                    intensity = DefaultGlareIntensity * (1f + 0.60f * sendPressProgress),
+                )
                 .pointerHoverIcon(PointerIcon.Hand)
                 .clickable(
                     interactionSource = sendInteraction,

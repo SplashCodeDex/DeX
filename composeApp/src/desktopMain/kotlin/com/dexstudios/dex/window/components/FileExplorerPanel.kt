@@ -17,6 +17,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -74,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.glass.verticalFadingEdge
@@ -284,6 +286,16 @@ fun FileExplorerPanel(
             ) {
                 val upDirInteraction = remember { MutableInteractionSource() }
                 val isUpDirHovered by upDirInteraction.collectIsHoveredAsState()
+                val isUpDirPressedRaw by upDirInteraction.collectIsPressedAsState()
+                var isUpDirFluidityPressed by remember { mutableStateOf(false) }
+                val isUpDirPressed = isUpDirPressedRaw || isUpDirFluidityPressed
+                val upDirPressProgress by animateFloatAsState(
+                    targetValue = if (isUpDirPressed) 1f else 0f,
+                    animationSpec = DynamicMotionConfig.Default.springSpec(isUpDirPressed),
+                    label = "upDirPressProgress",
+                )
+                val upDirShadowElevation = (12.dp * (1f - 0.20f * upDirPressProgress)).coerceAtLeast(0.dp)
+
                 val upDirScale by
                     animateFloatAsState(
                         targetValue = if (isUpDirHovered) 1.08f else 1.0f,
@@ -307,9 +319,12 @@ fun FileExplorerPanel(
                             translationY = upDirTranslateY.toPx()
                         }
                         .size(40.dp)
-                        .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                        .bubbleFluidity(
+                            config = DynamicFluidityConfig.Default,
+                            onPressedChanged = { isUpDirFluidityPressed = it },
+                        )
                         .shadow(
-                            elevation = 12.dp,
+                            elevation = upDirShadowElevation,
                             shape = CircleShape,
                             spotColor = Color.Black.copy(alpha = 0.48f),
                             ambientColor = Color.Black.copy(alpha = 0.26f),
@@ -318,6 +333,7 @@ fun FileExplorerPanel(
                             shape = CircleShape,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             opacity = 1.0f,
+                            glareIntensity = DefaultGlareIntensity * (1f + 0.60f * upDirPressProgress),
                         )
                         .alpha(if (!isAtRoot) 1.0f else 0.4f)
                         .pointerHoverIcon(if (!isAtRoot) PointerIcon.Hand else PointerIcon.Default)
@@ -462,6 +478,16 @@ fun FileExplorerPanel(
 
                 val toggleInteraction = remember { MutableInteractionSource() }
                 val isToggleHovered by toggleInteraction.collectIsHoveredAsState()
+                val isTogglePressedRaw by toggleInteraction.collectIsPressedAsState()
+                var isToggleFluidityPressed by remember { mutableStateOf(false) }
+                val isTogglePressed = isTogglePressedRaw || isToggleFluidityPressed
+                val togglePressProgress by animateFloatAsState(
+                    targetValue = if (isTogglePressed) 1f else 0f,
+                    animationSpec = DynamicMotionConfig.Default.springSpec(isTogglePressed),
+                    label = "togglePressProgress",
+                )
+                val toggleShadowElevation = (12.dp * (1f - 0.20f * togglePressProgress)).coerceAtLeast(0.dp)
+
                 val toggleScale by
                     animateFloatAsState(
                         targetValue = if (isToggleHovered) 1.08f else 1.0f,
@@ -485,9 +511,12 @@ fun FileExplorerPanel(
                             translationY = toggleTranslateY.toPx()
                         }
                         .size(40.dp)
-                        .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                        .bubbleFluidity(
+                            config = DynamicFluidityConfig.Default,
+                            onPressedChanged = { isToggleFluidityPressed = it },
+                        )
                         .shadow(
-                            elevation = 12.dp,
+                            elevation = toggleShadowElevation,
                             shape = CircleShape,
                             spotColor = Color.Black.copy(alpha = 0.48f),
                             ambientColor = Color.Black.copy(alpha = 0.26f),
@@ -496,6 +525,7 @@ fun FileExplorerPanel(
                             shape = CircleShape,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             opacity = 1.0f,
+                            glareIntensity = DefaultGlareIntensity * (1f + 0.60f * togglePressProgress),
                         )
                         .pointerHoverIcon(PointerIcon.Hand)
                         .clickable(interactionSource = toggleInteraction, indication = null) {
@@ -897,6 +927,16 @@ fun FileExplorerPanel(
                 ) {
                     val sendFilesInteraction = remember { MutableInteractionSource() }
                     val sendFilesHovered by sendFilesInteraction.collectIsHoveredAsState()
+                    val isSendFilesPressedRaw by sendFilesInteraction.collectIsPressedAsState()
+                    var isSendFilesFluidityPressed by remember { mutableStateOf(false) }
+                    val isSendFilesPressed = isSendFilesPressedRaw || isSendFilesFluidityPressed
+                    val sendFilesPressProgress by animateFloatAsState(
+                        targetValue = if (isSendFilesPressed) 1f else 0f,
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isSendFilesPressed),
+                        label = "sendFilesPressProgress",
+                    )
+                    val sendFilesShadowElevation = (8.dp * (1f - 0.20f * sendFilesPressProgress)).coerceAtLeast(0.dp)
+
                     val sendFilesScale by
                         animateFloatAsState(
                             targetValue = if (sendFilesHovered) 1.08f else 1.0f,
@@ -919,11 +959,21 @@ fun FileExplorerPanel(
                                 scaleY = sendFilesScale
                                 translationY = sendFilesTranslateY.toPx()
                             }
-                            .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                            .bubbleFluidity(
+                                config = DynamicFluidityConfig.Default,
+                                onPressedChanged = { isSendFilesFluidityPressed = it },
+                            )
+                            .shadow(
+                                elevation = sendFilesShadowElevation,
+                                shape = CircleShape,
+                                spotColor = Color.Black.copy(alpha = 0.35f),
+                                ambientColor = Color.Black.copy(alpha = 0.18f),
+                            )
                             .frostedSurface(
                                 shape = CircleShape,
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
+                                glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFilesPressProgress),
                             )
                             .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
@@ -962,6 +1012,16 @@ fun FileExplorerPanel(
 
                     val sendFoldersInteraction = remember { MutableInteractionSource() }
                     val sendFoldersHovered by sendFoldersInteraction.collectIsHoveredAsState()
+                    val isSendFoldersPressedRaw by sendFoldersInteraction.collectIsPressedAsState()
+                    var isSendFoldersFluidityPressed by remember { mutableStateOf(false) }
+                    val isSendFoldersPressed = isSendFoldersPressedRaw || isSendFoldersFluidityPressed
+                    val sendFoldersPressProgress by animateFloatAsState(
+                        targetValue = if (isSendFoldersPressed) 1f else 0f,
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isSendFoldersPressed),
+                        label = "sendFoldersPressProgress",
+                    )
+                    val sendFoldersShadowElevation = (8.dp * (1f - 0.20f * sendFoldersPressProgress)).coerceAtLeast(0.dp)
+
                     val sendFoldersScale by
                         animateFloatAsState(
                             targetValue = if (sendFoldersHovered) 1.08f else 1.0f,
@@ -984,11 +1044,21 @@ fun FileExplorerPanel(
                                 scaleY = sendFoldersScale
                                 translationY = sendFoldersTranslateY.toPx()
                             }
-                            .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                            .bubbleFluidity(
+                                config = DynamicFluidityConfig.Default,
+                                onPressedChanged = { isSendFoldersFluidityPressed = it },
+                            )
+                            .shadow(
+                                elevation = sendFoldersShadowElevation,
+                                shape = CircleShape,
+                                spotColor = Color.Black.copy(alpha = 0.35f),
+                                ambientColor = Color.Black.copy(alpha = 0.18f),
+                            )
                             .frostedSurface(
                                 shape = CircleShape,
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
+                                glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFoldersPressProgress),
                             )
                             .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
