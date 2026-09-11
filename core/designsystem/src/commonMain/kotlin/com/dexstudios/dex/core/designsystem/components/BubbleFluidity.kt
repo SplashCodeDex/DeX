@@ -158,6 +158,7 @@ private class BubbleFluidityNode(
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
                 onPressedChanged?.invoke(true)
+                val pressMark = kotlin.time.TimeSource.Monotonic.markNow()
 
                 val clampedElasticity = elasticity.coerceIn(0f, 1f)
 
@@ -269,9 +270,18 @@ private class BubbleFluidityNode(
                     onPressedChanged?.invoke(false)
                 }
 
-                // On Release: Elastic bounce back
+                // On Release: Elastic bounce back preserving velocity
+                val currentVelX = baseScaleX.velocity
+                val currentVelY = baseScaleY.velocity
+                val elapsedMs = pressMark.elapsedNow().inWholeMilliseconds
+                val remainingImpulseMs = (70L - elapsedMs).coerceAtLeast(0L)
+
                 scaleJob?.cancel()
                 scaleJob = coroutineScope.launch {
+                    if (remainingImpulseMs > 0) {
+                        delay(remainingImpulseMs)
+                    }
+
                     val clampedElasticity = elasticity.coerceIn(0f, 1f)
                     val releaseDamping = (Spring.DampingRatioHighBouncy - (0.20f * (clampedElasticity - 0.55f))).coerceIn(0.28f, 0.85f)
                     val pullStiffness = Spring.StiffnessMedium
@@ -289,10 +299,10 @@ private class BubbleFluidityNode(
                         stiffness = pullStiffness,
                     )
 
-                    launch { baseScaleX.animateTo(1f, scaleBounceSpecX) }
+                    launch { baseScaleX.animateTo(1f, scaleBounceSpecX, initialVelocity = currentVelX) }
                     launch {
                         delay(8)
-                        baseScaleY.animateTo(1f, scaleBounceSpecY)
+                        baseScaleY.animateTo(1f, scaleBounceSpecY, initialVelocity = currentVelY)
                     }
                     launch { stretchX.animateTo(0f, pullBounceSpec) }
                     launch { stretchY.animateTo(0f, pullBounceSpec) }

@@ -232,9 +232,36 @@ data class LiquidGlassShadowProperties(
 
     companion object {
         val None = LiquidGlassShadowProperties()
-        val Unexpanded = LiquidGlassShadowProperties(radius = 4.dp, alpha = 0.18f, offsetY = 2.dp)
-        val Expanded = LiquidGlassShadowProperties(radius = 28.dp, alpha = 0.30f, offsetY = 14.dp)
-        val ExpandedSearch = LiquidGlassShadowProperties(radius = 33.dp, alpha = 0.35f, offsetY = 36.dp)
+        val Unexpanded = LiquidGlassShadowProperties(
+            radius = 23.dp,
+            color = Color.Black,
+            alpha = 0.28f,
+            offset = DpOffset(0.dp, 18.dp),
+            innerRadius = 10.dp,
+            innerColor = Color.Black,
+            innerAlpha = 0.22f,
+            innerOffset = DpOffset(0.dp, 2.dp),
+        )
+        val Expanded = LiquidGlassShadowProperties(
+            radius = 28.dp,
+            color = Color.Black,
+            alpha = 0.20f,
+            offset = DpOffset(0.dp, 24.dp),
+            innerRadius = 12.dp,
+            innerColor = Color.Black,
+            innerAlpha = 0.11f,
+            innerOffset = DpOffset(0.dp, 7.dp),
+        )
+        val ExpandedSearch = LiquidGlassShadowProperties(
+            radius = 33.dp,
+            color = Color.Black,
+            alpha = 0.35f,
+            offset = DpOffset(0.dp, 36.dp),
+            innerRadius = 10.dp,
+            innerColor = Color.Black,
+            innerAlpha = 0.20f,
+            innerOffset = DpOffset(0.dp, 2.dp),
+        )
     }
 }
 
@@ -247,6 +274,10 @@ data class DynamicShadowVariants(
 ) {
     companion object {
         val Default = DynamicShadowVariants()
+        val SearchIsland = DynamicShadowVariants(
+            unexpanded = LiquidGlassShadowProperties.Unexpanded,
+            expanded = LiquidGlassShadowProperties.ExpandedSearch,
+        )
         val None = DynamicShadowVariants(LiquidGlassShadowProperties.None, LiquidGlassShadowProperties.None)
     }
 }
@@ -257,6 +288,36 @@ data class DynamicShadowVariants(
 data class DynamicColorVariants(val restingColor: Color = Color(0xFF121214), val restingAlpha: Float = 0.85f, val expandedColor: Color = Color(0xFF1E1E24), val expandedAlpha: Float = 0.88f) {
     companion object {
         val Default = DynamicColorVariants()
+        val Midnight = DynamicColorVariants(
+            restingColor = Color(0xFF000000),
+            restingAlpha = 0.95f,
+            expandedColor = Color(0xFF0A0A0E),
+            expandedAlpha = 0.92f,
+        )
+        val Slate = DynamicColorVariants(
+            restingColor = Color(0xFF0F172A),
+            restingAlpha = 0.85f,
+            expandedColor = Color(0xFF1E293B),
+            expandedAlpha = 0.88f,
+        )
+        val FrostedWhite = DynamicColorVariants(
+            restingColor = Color(0xFFFFFFFF),
+            restingAlpha = 0.70f,
+            expandedColor = Color(0xFFF8FAFC),
+            expandedAlpha = 0.85f,
+        )
+        val Indigo = DynamicColorVariants(
+            restingColor = Color(0xFF3730A3),
+            restingAlpha = 0.85f,
+            expandedColor = Color(0xFF312E81),
+            expandedAlpha = 0.90f,
+        )
+        val Emerald = DynamicColorVariants(
+            restingColor = Color(0xFF064E3B),
+            restingAlpha = 0.85f,
+            expandedColor = Color(0xFF065F46),
+            expandedAlpha = 0.90f,
+        )
     }
 }
 

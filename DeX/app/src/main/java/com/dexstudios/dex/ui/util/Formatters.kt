@@ -1,5 +1,9 @@
 package com.dexstudios.dex.ui.util
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import java.io.File
 import java.util.Locale
 
 /**
@@ -23,6 +27,41 @@ object Formatters {
             bytes >= kb -> String.format(Locale.US, "%.1f KB", bytes / kb)
             else -> "$bytes B"
         }
+    }
+
+    /**
+     * Resolves the byte size of a file given its [Uri], querying MediaStore/ContentResolver
+     * for content:// schemes or direct File metadata for file:// schemes.
+     */
+    fun resolveFileSize(context: Context, uri: Uri): Long {
+        if (uri.scheme == "content") {
+            try {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+                        if (index >= 0) {
+                            val size = cursor.getLong(index)
+                            if (size > 0L) return size
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+            try {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    val size = pfd.statSize
+                    if (size > 0L) return size
+                }
+            } catch (_: Exception) {}
+        } else if (uri.scheme == "file") {
+            try {
+                val path = uri.path
+                if (path != null) {
+                    val file = File(path)
+                    if (file.exists()) return file.length()
+                }
+            } catch (_: Exception) {}
+        }
+        return 0L
     }
 
     /**

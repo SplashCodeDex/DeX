@@ -67,6 +67,8 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.dexstudios.dex.ui.icons.MaterialSymbols
+import com.dexstudios.dex.ui.util.Formatters
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -137,6 +139,35 @@ fun MainNavigation(
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+
+    val selectedMediaUris = remember { mutableStateListOf<Uri>() }
+    val uriSizeCache = remember { mutableMapOf<Uri, Long>() }
+    var totalSelectedBytes by remember { mutableLongStateOf(0L) }
+    var isCounterPillExpanded by remember { mutableStateOf(true) }
+    var isCounterBigIslandExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedMediaUris.toList()) {
+        if (selectedMediaUris.isEmpty()) {
+            totalSelectedBytes = 0L
+            isCounterBigIslandExpanded = false
+        } else {
+            isCounterPillExpanded = true
+            withContext(Dispatchers.IO) {
+                var sum = 0L
+                for (uri in selectedMediaUris) {
+                    val cached = uriSizeCache[uri]
+                    if (cached != null) {
+                        sum += cached
+                    } else {
+                        val size = Formatters.resolveFileSize(context, uri)
+                        uriSizeCache[uri] = size
+                        sum += size
+                    }
+                }
+                totalSelectedBytes = sum
+            }
+        }
+    }
 
     val isDownloading = downloadState.isDownloading
     val isUploading = uploadState.isUploading
@@ -312,18 +343,11 @@ fun MainNavigation(
         var showPreviewDevices by remember { mutableStateOf(false) }
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
         var navPillStage by remember { mutableStateOf(NavPillExpansionStage.FullTabs) }
-        val selectedMediaUris = remember { mutableStateListOf<Uri>() }
-        var isCounterPillExpanded by remember { mutableStateOf(true) }
-
-        LaunchedEffect(selectedMediaUris.isEmpty()) {
-            if (!selectedMediaUris.isEmpty()) {
-                isCounterPillExpanded = true
-            }
-        }
 
         // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs/selection)
         PredictiveBackHandler(
-            enabled = selectedMediaUris.isNotEmpty() ||
+            enabled = isCounterBigIslandExpanded ||
+                selectedMediaUris.isNotEmpty() ||
                 TopIslandState.isAnyProfileExpanded ||
                 HistoryState.isSearchExpanded ||
                 showPreviewDevices ||
@@ -331,7 +355,9 @@ fun MainNavigation(
         ) { progressFlow ->
             try {
                 progressFlow.collect { /* progress */ }
-                if (selectedMediaUris.isNotEmpty()) {
+                if (isCounterBigIslandExpanded) {
+                    isCounterBigIslandExpanded = false
+                } else if (selectedMediaUris.isNotEmpty()) {
                     if (isCounterPillExpanded) {
                         isCounterPillExpanded = false
                     } else {
@@ -410,10 +436,11 @@ fun MainNavigation(
 
                     val isHistoryActive = activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.15f
                     val isSiblingExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed || isHistoryActive || showPreviewDevices
-                    val isAnyExpanded = isSiblingExpanded || (selectedMediaUris.isNotEmpty() && isCounterPillExpanded)
+                    val isAnyExpanded = isSiblingExpanded || (selectedMediaUris.isNotEmpty() && (isCounterPillExpanded || isCounterBigIslandExpanded))
 
-                    val isFullIslandExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
-                    val isAnyIslandExpanded = isFullIslandExpanded || islandState == IslandContentState.NAME_PILL_PROFILE
+                    val isFullIslandExpanded = islandState == IslandContentState.EXPANDED_TRANSFER ||
+                        islandState == IslandContentState.EXPANDED_PROFILE
+                    val isAnyIslandExpanded = isFullIslandExpanded || islandState == IslandContentState.NAME_PILL_PROFILE || isCounterBigIslandExpanded
 
                     val isCurrentRollerItemExpanded = when {
                         isFullIslandExpanded -> true
@@ -423,10 +450,11 @@ fun MainNavigation(
                         else -> false
                     }
 
-                    val rollerExpansionTriggerKey = when (bottomRightMode) {
-                        BottomRightButtonMode.Profile -> TopIslandState.profileStage
-                        BottomRightButtonMode.History -> isHistoryActive
-                        BottomRightButtonMode.Devices -> showPreviewDevices
+                    val rollerExpansionTriggerKey = when {
+                        bottomRightMode == BottomRightButtonMode.Profile -> TopIslandState.profileStage
+                        bottomRightMode == BottomRightButtonMode.History -> isHistoryActive
+                        bottomRightMode == BottomRightButtonMode.Devices -> showPreviewDevices
+                        else -> false
                     }
                     val rollerAnticipationState = rememberExpandingAnticipationPhysics(
                         isExpanded = isCurrentRollerItemExpanded,
@@ -480,9 +508,9 @@ fun MainNavigation(
                     }
 
                     val navPillAlpha by animateFloatAsState(
-                        targetValue = if (isFullIslandExpanded) 0f else 1f,
+                        targetValue = if (isFullIslandExpanded || isCounterBigIslandExpanded) 0f else 1f,
                         animationSpec = spring(
-                            dampingRatio = if (isFullIslandExpanded) 0.50f else 0.65f,
+                            dampingRatio = if (isFullIslandExpanded || isCounterBigIslandExpanded) 0.50f else 0.65f,
                             stiffness = 380f
                         ),
                         label = "navPillAlpha"
@@ -497,7 +525,10 @@ fun MainNavigation(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                    onClick = { TopIslandState.profileStage = ProfileExpansionStage.Collapsed }
+                                    onClick = {
+                                        TopIslandState.profileStage = ProfileExpansionStage.Collapsed
+                                        isCounterBigIslandExpanded = false
+                                    }
                                 )
                         )
                     }
@@ -601,7 +632,7 @@ fun MainNavigation(
                         // If items selected and counter is expanded: drop to IconOnly to leave room for selection counter
                         // If sibling is expanded (Profile NamePill, History, Devices) or counter is collapsed: drop from FullTabs to IconAndLabel
                         val effectiveNavStage: NavPillExpansionStage = when {
-                            selectedMediaUris.isNotEmpty() && isCounterPillExpanded -> NavPillExpansionStage.IconOnly
+                            selectedMediaUris.isNotEmpty() -> NavPillExpansionStage.IconOnly
                             isAnyExpanded -> when (navPillStage) {
                                 NavPillExpansionStage.FullTabs -> NavPillExpansionStage.IconAndLabel
                                 else -> navPillStage
@@ -693,34 +724,6 @@ fun MainNavigation(
                                     backdrop = sheetContentBackdrop,
                                     modifier = Modifier.zIndex(if (isTabsExpanded) 22f else 5f)
                                 )
-
-                                if (isMediaOrHistoryActive) {
-                                    SelectedItemsCounterPill(
-                                        selectedCount = mediaSelectedItemCount,
-                                        isExpanded = isCounterPillExpanded,
-                                        onExpandedChange = { isCounterPillExpanded = it },
-                                        onSend = {
-                                            val target = selectedDevice ?: discoveredDevices.firstOrNull()
-                                            if (target != null) {
-                                                sendFilesToTarget(target, selectedMediaUris.toList())
-                                                selectedMediaUris.clear()
-                                                collapseToHalf()
-                                            } else {
-                                                showPairingModal = true
-                                            }
-                                        },
-                                        onClear = {
-                                            selectedMediaUris.clear()
-                                        },
-                                        totalAvailableWidthDp = availableWidth,
-                                        backdrop = sheetContentBackdrop,
-                                        isSiblingExpanded = isSiblingExpanded,
-                                        modifier = Modifier
-                                            .align(Alignment.CenterStart)
-                                            .padding(start = DynamicDimensions.PillDefault.collapsedWidth + 10.dp)
-                                            .zIndex(6f)
-                                    )
-                                }
                             }
                         }
 
@@ -741,7 +744,25 @@ fun MainNavigation(
                         }
                     }
 
-                    // 2. FLOATING ROLLER / PROFILE / HISTORY BUTTON LAYER (Draws on top, samples bottomBarBackdrop!)
+                    // 2. FLOATING ROLLER / SELECTION / PROFILE DOCK LAYER (Draws on top, samples bottomBarBackdrop!)
+                    val isMediaOrHistoryActive = expansionFraction >= 0.15f
+                    val counterPillAlpha by animateFloatAsState(
+                        targetValue = if (isFullIslandExpanded) 0f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = if (isFullIslandExpanded) 0.50f else 0.65f,
+                            stiffness = 380f
+                        ),
+                        label = "counterPillAlpha"
+                    )
+                    val rollerAlpha by animateFloatAsState(
+                        targetValue = if (isCounterBigIslandExpanded) 0f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = if (isCounterBigIslandExpanded) 0.50f else 0.65f,
+                            stiffness = 380f
+                        ),
+                        label = "rollerAlpha"
+                    )
+
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -749,40 +770,102 @@ fun MainNavigation(
                             .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
                             .zIndex(if (isAnyIslandExpanded) 30f else 10f)
                     ) {
-                        // Endless Magnetic Roller Button (Devices <-> Profile <-> History)
-                        val isExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
+                        // 2A. Selection Counter Action Pill / Big Island (Aligned at BottomStart)
+                        if (isMediaOrHistoryActive && counterPillAlpha > 0.01f) {
+                            val counterStartPadding by animateDpAsState(
+                                targetValue = if (isCounterBigIslandExpanded) 0.dp else DynamicDimensions.PillDefault.collapsedWidth + 10.dp,
+                                animationSpec = spring(
+                                    dampingRatio = if (isCounterBigIslandExpanded) 0.50f else 0.56f,
+                                    stiffness = 301f
+                                ),
+                                label = "counterStartPadding"
+                            )
 
-                        val buttonHeightPx = with(density) { 56.dp.toPx() }
-                        val snapThresholdPx = buttonHeightPx * 0.40f
+                            SelectedItemsCounterPill(
+                                selectedCount = mediaSelectedItemCount,
+                                totalSizeBytes = totalSelectedBytes,
+                                selectedUris = selectedMediaUris.toList(),
+                                devices = effectiveDevices,
+                                isExpanded = isCounterPillExpanded,
+                                onExpandedChange = { isCounterPillExpanded = it },
+                                isBigIslandExpanded = isCounterBigIslandExpanded,
+                                onBigIslandExpandedChange = { isCounterBigIslandExpanded = it },
+                                onSend = {
+                                    val target = selectedDevice ?: effectiveDevices.firstOrNull()
+                                    if (target != null) {
+                                        sendFilesToTarget(target, selectedMediaUris.toList())
+                                        selectedMediaUris.clear()
+                                        totalSelectedBytes = 0L
+                                        isCounterBigIslandExpanded = false
+                                        collapseToHalf()
+                                    } else {
+                                        showPairingModal = true
+                                    }
+                                },
+                                onSendToDevice = { device ->
+                                    sendFilesToTarget(device, selectedMediaUris.toList())
+                                    selectedMediaUris.clear()
+                                    totalSelectedBytes = 0L
+                                    isCounterBigIslandExpanded = false
+                                    collapseToHalf()
+                                },
+                                onClear = {
+                                    selectedMediaUris.clear()
+                                    totalSelectedBytes = 0L
+                                    isCounterBigIslandExpanded = false
+                                },
+                                onPairDevice = {
+                                    isCounterBigIslandExpanded = false
+                                    showPairingModal = true
+                                },
+                                totalAvailableWidthDp = availableWidth,
+                                backdrop = bottomBarBackdrop,
+                                isSiblingExpanded = isSiblingExpanded,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(start = counterStartPadding)
+                                    .zIndex(if (isCounterBigIslandExpanded) 35f else 6f)
+                                    .graphicsLayer {
+                                        alpha = counterPillAlpha
+                                    }
+                            )
+                        }
 
-                        val currentY = rollerOffset.value
-                        val pullProgress = (Math.abs(currentY) / buttonHeightPx).coerceIn(0f, 1f)
+                        // 2B. Endless Magnetic Roller Button (Devices <-> Profile <-> History) (Aligned at BottomEnd)
+                        if (rollerAlpha > 0.01f) {
+                            val isExpanded = isFullIslandExpanded
 
-                        val devicesConfig = LiquidGlassPresets.IconButton
-                        val activeDevicesConfig = devicesConfig.copy(
-                            surfaceTint = MaterialTheme.colorScheme.primary,
-                            surfaceTintAlpha = 0.8f
-                        )
-                        val historyConfig = LiquidGlassPresets.HistoryIconButton
-                        val activeHistoryConfig = historyConfig.copy(
-                            surfaceTint = MaterialTheme.colorScheme.primary,
-                            surfaceTintAlpha = 0.8f
-                        ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
-                        val profileConfig = LiquidGlassPresets.ProfileIconButton
-                        val profileIslandConfig = LiquidGlassPresets.ProfileIsland
+                            val buttonHeightPx = with(density) { 56.dp.toPx() }
+                            val snapThresholdPx = buttonHeightPx * 0.40f
 
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .zIndex(if (isExpanded) 100f else 10f)
-                                .graphicsLayer {
-                                    translationX = rollerAnticipationState.translationX
-                                    scaleX = rollerAnticipationState.scaleX
-                                    scaleY = rollerAnticipationState.scaleY
-                                    alpha = 1f
-                                    clip = false
-                                }
-                                .size(islandWidth, islandHeight)
+                            val currentY = rollerOffset.value
+                            val pullProgress = (Math.abs(currentY) / buttonHeightPx).coerceIn(0f, 1f)
+
+                            val devicesConfig = LiquidGlassPresets.IconButton
+                            val activeDevicesConfig = devicesConfig.copy(
+                                surfaceTint = MaterialTheme.colorScheme.primary,
+                                surfaceTintAlpha = 0.8f
+                            )
+                            val historyConfig = LiquidGlassPresets.HistoryIconButton
+                            val activeHistoryConfig = historyConfig.copy(
+                                surfaceTint = MaterialTheme.colorScheme.primary,
+                                surfaceTintAlpha = 0.8f
+                            ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
+                            val profileConfig = LiquidGlassPresets.ProfileIconButton
+                            val profileIslandConfig = LiquidGlassPresets.ProfileIsland
+
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .zIndex(if (isExpanded) 100f else 10f)
+                                    .graphicsLayer {
+                                        translationX = rollerAnticipationState.translationX
+                                        scaleX = rollerAnticipationState.scaleX
+                                        scaleY = rollerAnticipationState.scaleY
+                                        alpha = rollerAlpha
+                                        clip = false
+                                    }
+                                    .size(islandWidth, islandHeight)
                                 .then(
                                     if (!isCurrentRollerItemExpanded) {
                                         Modifier.pointerInput(Unit) {
@@ -1001,6 +1084,7 @@ fun MainNavigation(
                             }
                         }
                     }
+                }
                 }
             },
             content = { expansionFraction, paddingValues ->

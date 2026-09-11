@@ -28,9 +28,9 @@ import kotlin.math.sqrt
 // matching liquid-glass-2026-08-17T18-35-42.json). These three are the only
 // survivors now that the kyant backdrop-sampling glass stack is gone —
 // shinyGlare never sampled backdrops, it only paints a directional rim.
-private val DefaultGlareWidth = 1.dp
-private const val DefaultGlareAngle = -52.82f
-private const val DefaultGlareIntensity = 0.78f
+val DefaultGlareWidth = 1.dp
+const val DefaultGlareAngle = -52.82f
+const val DefaultGlareIntensity = 0.78f
 
 /**
  * Applies a smooth vertical fading edge (alpha gradient mask) to scrollable containers,

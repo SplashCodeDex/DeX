@@ -1,6 +1,5 @@
 package com.dexstudios.dex.window.components
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,8 +37,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -60,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -69,8 +73,12 @@ import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_power_filled
 import com.dexstudios.dex.core.designsystem.generated.resources.profile_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
+import com.dexstudios.dex.core.network.DeviceConfig
+import com.dexstudios.dex.mirror.toImageBitmap
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Toolkit
 import java.awt.event.InputEvent
@@ -82,9 +90,9 @@ enum class ExitConfirmationStage {
 
 /**
  * BottomDockPanel:
- * - 34x34dp circular profile avatar button (opens Settings, scales to 0.6x during confirmation)
+ * - Dedicated Profile Avatar Button (34dp circular, opens Settings) with live dynamic press optics
  * - 1dp horizontal accent divider
- * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer force-exit, -62dp expansion, 3s auto-revert timer)
+ * - 2-stage Exit Engine confirmation (Shift+Click bypass, active transfer force-exit, -58dp expansion, 3s auto-revert timer)
  */
 @Composable
 fun BottomDockPanel(
@@ -101,6 +109,7 @@ fun BottomDockPanel(
     // paint-time snapshot and an upload can settle between render and click.
     clientEngine: com.dexstudios.dex.core.network.ClientEngine = org.koin.compose.koinInject(),
     fileSender: com.dexstudios.dex.desktop.transfer.DesktopFileSendService = org.koin.compose.koinInject(),
+    deviceConfig: DeviceConfig = org.koin.compose.koinInject(),
 ) {
     var confirmationStage by remember { mutableStateOf(ExitConfirmationStage.Idle) }
     var isShiftHeld by remember { mutableStateOf(false) }
@@ -117,11 +126,45 @@ fun BottomDockPanel(
     val isConfirming = confirmationStage == ExitConfirmationStage.Confirming
     val motionConfig = DynamicMotionConfig.Default
 
+    val googleProfile by deviceConfig.googleProfileFlow.collectAsState()
+    val deviceAlias by deviceConfig.aliasFlow.collectAsState()
+
+    val avatarBitmap by produceState<ImageBitmap?>(initialValue = null, googleProfile.picture) {
+        val url = googleProfile.picture
+        if (url.isBlank()) {
+            value = null
+            return@produceState
+        }
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                java.net.URI(url).toURL().readBytes().toImageBitmap()
+            }.getOrNull()
+        }
+    }
+
+    val avatarInteraction = remember { MutableInteractionSource() }
+    val avatarHovered by avatarInteraction.collectIsHoveredAsState()
+    var isAvatarFluidityPressed by remember { mutableStateOf(false) }
+    val isAvatarPressedRaw by avatarInteraction.collectIsPressedAsState()
+    val isAvatarPressed = isAvatarPressedRaw || isAvatarFluidityPressed
+    val avatarPressProgress by animateFloatAsState(
+        targetValue = if (isAvatarPressed) 1f else 0f,
+        animationSpec = motionConfig.springSpec(isAvatarPressed),
+        label = "avatarPressProgress",
+    )
+
+    val avatarHoverScale by animateFloatAsState(
+        targetValue = if (avatarHovered && !isConfirming) 1.08f else 1.0f,
+        animationSpec = DockCardAnimations.HoverSpec,
+        label = "avatarHoverScale",
+    )
+
     val avatarScale by animateFloatAsState(
         targetValue = if (isConfirming) 0.6f else 1.0f,
         animationSpec = motionConfig.springSpec(isConfirming),
         label = "avatarScale",
     )
+    val avatarShadowElevation = (4.dp * (1f - 0.20f * avatarPressProgress)).coerceAtLeast(0.dp)
 
     val exitExpandAmount by animateDpAsState(
         targetValue = if (isConfirming) 58.dp else 0.dp,
@@ -130,13 +173,21 @@ fun BottomDockPanel(
     )
 
     val exitHeight by animateDpAsState(
-        targetValue = if (isConfirming) 41.dp else 40.dp,
+        targetValue = if (isConfirming) 52.dp else 48.dp,
         animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitHeight",
     )
 
-    val exitInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val exitInteraction = remember { MutableInteractionSource() }
     val exitHovered by exitInteraction.collectIsHoveredAsState()
+    var isExitFluidityPressed by remember { mutableStateOf(false) }
+    val isExitPressedRaw by exitInteraction.collectIsPressedAsState()
+    val isExitPressed = isExitPressedRaw || isExitFluidityPressed
+    val exitPressProgress by animateFloatAsState(
+        targetValue = if (isExitPressed) 1f else 0f,
+        animationSpec = motionConfig.springSpec(isExitPressed),
+        label = "exitPressProgress",
+    )
 
     val exitButtonBgColor by animateColorAsState(
         targetValue = when {
@@ -151,6 +202,19 @@ fun BottomDockPanel(
         animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitCenterBias",
     )
+
+    val exitHoverScale by animateFloatAsState(
+        targetValue = if (exitHovered && !isConfirming) 1.08f else 1.0f,
+        animationSpec = DockCardAnimations.HoverSpec,
+        label = "exitHoverScale",
+    )
+
+    val exitShadowElevationBase by animateDpAsState(
+        targetValue = if (isConfirming) 8.dp else 4.dp,
+        animationSpec = motionConfig.springSpec(isConfirming),
+        label = "exitShadowElevation",
+    )
+    val exitShadowElevation = (exitShadowElevationBase * (1f - 0.20f * exitPressProgress)).coerceAtLeast(0.dp)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -168,16 +232,7 @@ fun BottomDockPanel(
                 .padding(bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val avatarInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            val avatarHovered by avatarInteraction.collectIsHoveredAsState()
-
-            val avatarHoverScale by animateFloatAsState(
-                targetValue = if (avatarHovered) 1.08f else 1.0f,
-                animationSpec = DockCardAnimations.HoverSpec,
-                label = "avatarHoverScale",
-            )
-
-            // 34x34dp Profile Avatar Button (Strict CircleShape, non-expanding)
+            // 34x34dp Profile Avatar Button (Non-expanding circular button, opens Settings)
             Box(
                 modifier = Modifier
                     .zIndex(if (avatarHovered) 1f else 0f)
@@ -187,10 +242,21 @@ fun BottomDockPanel(
                         scaleX = avatarScale * avatarHoverScale
                         scaleY = avatarScale * avatarHoverScale
                     }
-                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
-                    .shadow(elevation = 4.dp, shape = CircleShape, spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isAvatarFluidityPressed = it },
+                    )
+                    .shadow(
+                        elevation = avatarShadowElevation,
+                        shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = 0.20f),
+                        ambientColor = Color.Black.copy(alpha = 0.10f),
+                    )
                     .clip(CircleShape)
-                    .shinyGlare(shape = CircleShape)
+                    .shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * avatarPressProgress),
+                    )
                     .pointerHoverIcon(PointerIcon.Hand)
                     .clickable(
                         interactionSource = avatarInteraction,
@@ -199,30 +265,56 @@ fun BottomDockPanel(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(Res.drawable.profile_avatar),
-                    contentDescription = "Profile Settings",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                val avatar = avatarBitmap
+                when {
+                    avatar != null -> {
+                        Image(
+                            bitmap = avatar,
+                            contentDescription = "Profile Settings",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                        )
+                    }
+
+                    googleProfile.email.isNotBlank() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val initial = googleProfile.name.ifBlank { googleProfile.email }.firstOrNull()?.uppercase()
+                            if (initial != null) {
+                                Text(
+                                    text = initial,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Image(
+                            painter = painterResource(Res.drawable.profile_avatar),
+                            contentDescription = "Profile Settings",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                        )
+                    }
+                }
             }
-
-            val exitHoverScale by animateFloatAsState(
-                targetValue = if (exitHovered && !isConfirming) 1.08f else 1.0f,
-                animationSpec = DockCardAnimations.HoverSpec,
-                label = "exitHoverScale",
-            )
-
-            val exitShadowElevation by animateDpAsState(
-                targetValue = if (isConfirming) 8.dp else 4.dp,
-                animationSpec = motionConfig.springSpec(isConfirming),
-                label = "exitShadowElevation",
-            )
 
             // 2-Stage Exit Button Container (Strict Stadium Capsule CircleShape)
             Box(
                 modifier = Modifier
-                    .zIndex(if (exitHovered || isConfirming) 1f else 0f)
+                    .zIndex(if (exitHovered || isConfirming) 2f else 0f)
                     .weight(1f)
                     .padding(horizontal = 6.dp, vertical = 1.dp)
                     .height(exitHeight)
@@ -242,7 +334,10 @@ fun BottomDockPanel(
                         scaleX = exitHoverScale
                         scaleY = exitHoverScale
                     }
-                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isExitFluidityPressed = it },
+                    )
                     .shadow(
                         elevation = exitShadowElevation,
                         shape = CircleShape,
@@ -251,7 +346,10 @@ fun BottomDockPanel(
                     )
                     .clip(CircleShape)
                     .background(exitButtonBgColor)
-                    .shinyGlare(shape = CircleShape)
+                    .shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * exitPressProgress),
+                    )
                     .pointerHoverIcon(PointerIcon.Hand)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
@@ -291,7 +389,7 @@ fun BottomDockPanel(
                                     val transferLiveNow =
                                         clientEngine.uploadState.value.isUploading || fileSender.isSessionActive()
                                     if (isMirroringActive || transferLiveNow) {
-                                        // The label promised "Click to Force Exit" — honor it.
+                                        // The label promised "Click to Force Exit" - honor it.
                                         // A plain click while a transfer/mirror is live force-exits;
                                         // without active work a plain click only cancels (WPF parity).
                                         onExitEngine()

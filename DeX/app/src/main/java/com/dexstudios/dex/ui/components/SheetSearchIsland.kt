@@ -151,25 +151,18 @@ fun SheetSearchIsland(
                     )
                     if (HistoryState.searchQuery.isNotEmpty()) {
                         Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .clickable(onClick = { HistoryState.searchQuery = "" }),
+                            modifier = Modifier.size(44.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .background(contentColor.copy(alpha = 0.08f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = MaterialSymbols.Close,
-                                    contentDescription = "Clear",
-                                    tint = contentColor.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                            DynamicDismissButton(
+                                onClick = { HistoryState.searchQuery = "" },
+                                size = DynamicDismissButtonSize.Medium,
+                                colors = DynamicDismissButtonDefaults.colors(
+                                    containerColor = contentColor.copy(alpha = 0.08f),
+                                    contentColor = contentColor.copy(alpha = 0.60f)
+                                ),
+                                contentDescription = "Clear search"
+                            )
                         }
                     }
                 }

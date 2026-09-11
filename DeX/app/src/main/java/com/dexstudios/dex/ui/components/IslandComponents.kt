@@ -33,19 +33,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.dexstudios.dex.R
+import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.DownloadState
 import com.dexstudios.dex.network.GoogleProfile
 import com.dexstudios.dex.network.UploadState
 import com.dexstudios.dex.ui.icons.MaterialSymbols
+import com.dexstudios.dex.ui.util.Formatters
 
 enum class IslandContentState {
     IDLE,
     NAME_PILL_PROFILE,
     EXPANDED_PROFILE,
     COLLAPSED_TRANSFER,
-    EXPANDED_TRANSFER
+    EXPANDED_TRANSFER,
+    EXPANDED_SELECTION
 }
 
 @Composable
@@ -496,4 +504,171 @@ fun formatSpeed(bps: Long): String = when {
     bps >= 1024L * 1024 -> java.util.Locale.ROOT.let { String.format(it, "%.1f MB/s", bps / (1024f * 1024)) }
     bps >= 1024L -> java.util.Locale.ROOT.let { String.format(it, "%.0f KB/s", bps / 1024f) }
     else -> "$bps B/s"
+}
+
+@Composable
+fun ExpandedSelectionDispatchContent(
+    selectedUris: List<Uri>,
+    totalSizeBytes: Long,
+    devices: List<DiscoveredDevice>,
+    onSendToDevice: (DiscoveredDevice) -> Unit,
+    onDismiss: () -> Unit,
+    onPairDevice: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Top row: items telemetry and preview on the left, dismiss button on the right
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Stack of preview thumbnails (up to 3)
+                if (selectedUris.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy((-12).dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val previewUris = selectedUris.take(3)
+                        previewUris.forEachIndexed { index, uri ->
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .zIndex((3 - index).toFloat())
+                                    .clip(CircleShape)
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+                                    .background(Color.White.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column {
+                    val itemCount = selectedUris.size
+                    Text(
+                        text = "$itemCount item${if (itemCount != 1) "s" else ""} selected",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (totalSizeBytes > 0L) {
+                        Text(
+                            text = Formatters.formatBytes(totalSizeBytes),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            DynamicDismissButton(
+                onClick = onDismiss,
+                size = DynamicDismissButtonSize.Medium,
+                colors = DynamicDismissButtonDefaults.colors(
+                    containerColor = Color.White.copy(alpha = 0.14f),
+                    contentColor = Color.White
+                )
+            )
+        }
+
+        // Bottom row: target device chips
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (devices.isEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .bubbleFluidity()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onPairDevice
+                        )
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = MaterialSymbols.Devices,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.90f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Pair New Device",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
+            } else {
+                devices.forEach { device ->
+                    val rawAlias = device.info.alias.ifBlank { device.info.deviceModel }
+                    val deviceName = rawAlias.ifBlank { "DeX Device" }
+                    val isPc = device.info.deviceType.contains("pc", ignoreCase = true) ||
+                            device.info.deviceType.contains("desktop", ignoreCase = true) ||
+                            device.info.deviceModel.contains("windows", ignoreCase = true) ||
+                            device.info.deviceModel.contains("mac", ignoreCase = true)
+                    val deviceIcon = if (isPc) MaterialSymbols.Computer else MaterialSymbols.Devices
+
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .bubbleFluidity()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onSendToDevice(device) }
+                            )
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = deviceIcon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Send to $deviceName",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

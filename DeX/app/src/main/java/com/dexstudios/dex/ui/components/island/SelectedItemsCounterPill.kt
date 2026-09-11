@@ -1,16 +1,8 @@
 package com.dexstudios.dex.ui.components.island
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -33,29 +26,41 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.components.glass.LiquidGlassShadowProperties
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
 
+import com.dexstudios.dex.ui.components.DynamicDismissButton
+import com.dexstudios.dex.ui.components.DynamicDismissButtonDefaults
+import com.dexstudios.dex.ui.components.DynamicDismissButtonSize
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.mutableLongStateOf
+import com.dexstudios.dex.ui.util.Formatters
+import android.net.Uri
+import com.dexstudios.dex.network.DiscoveredDevice
+import com.dexstudios.dex.ui.components.ExpandedSelectionDispatchContent
+
 /**
- * Living dynamic pill button that inherits all expandable and non-expandable properties
- * directly from [DynamicPillButton] for the media tray selection counter action.
+ * Living dynamic pill button that directly inherits all expandable and non-expandable properties
+ * from [DynamicPillButton] for the media tray selection counter action.
  *
- * Features:
- * 1. Fluid, direction-aware entry & exit animation using [DynamicMotionConfig] overshoot springs
- *    anchored at the leading edge ([ExpansionAnchor.Start] / [TransformOrigin.Center]).
- * 2. In collapsed state: 56.dp circular capsule displaying the Send icon with count badge.
- * 3. In expanded state: Stadium pill displaying "Send ($count)" + Clear (✕) dismiss button.
- * 4. Preserves last non-zero count during exit animation so content never flashes or pops.
+ * Apple Dynamic Island 3-Tier Architecture:
+ * 1. [DynamicPillStage.Collapsed] (0.dp): At rest when no items are selected ([selectedCount] == 0).
+ * 2. [DynamicPillStage.Compact] (56.dp): When items are selected ([selectedCount] > 0) but a sibling
+ *    (Profile, History, Devices) takes center stage. Morphs down to a streamlined 56.dp circular capsule
+ *    displaying Send icon + rolling count badge, preserving spatial harmony without disappearing.
+ * 3. [DynamicPillStage.Expanded] (160.dp - 210.dp): Full stadium pill with Send action, total payload
+ *    size telemetry, and centralized [DynamicDismissButton] ('✕') when items are selected and no sibling is expanded.
+ * 4. Preserves last non-zero count and size during the collapse spring so content never flashes or pops.
  */
 @Composable
 fun SelectedItemsCounterPill(
@@ -66,8 +71,16 @@ fun SelectedItemsCounterPill(
     onClear: () -> Unit,
     totalAvailableWidthDp: Dp,
     modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
+    totalSizeBytes: Long = 0L,
     backdrop: Backdrop? = null,
     isSiblingExpanded: Boolean = false,
+    selectedUris: List<Uri> = emptyList(),
+    devices: List<DiscoveredDevice> = emptyList(),
+    onSendToDevice: (DiscoveredDevice) -> Unit = {},
+    onPairDevice: () -> Unit = {},
+    isBigIslandExpanded: Boolean = false,
+    onBigIslandExpandedChange: (Boolean) -> Unit = {},
     dimensions: DynamicDimensions = DynamicDimensions.SelectionCounterPill,
     motion: DynamicMotionConfig = DynamicMotionConfig.Default,
     fluidity: DynamicFluidityConfig = DynamicFluidityConfig.Default,
@@ -78,6 +91,15 @@ fun SelectedItemsCounterPill(
     anticipation: DynamicAnticipationConfig = DynamicAnticipationConfig.Default,
     dismissOnOutsideTap: Boolean = true,
 ) {
+    val haptic = LocalHapticFeedback.current
+
+    // Mechanical haptic tick on each count increment / decrement
+    LaunchedEffect(selectedCount) {
+        if (selectedCount > 0) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+
     // Preserve last positive count so content does not flash to 0 during the collapse/exit spring
     var lastPositiveCount by remember { mutableIntStateOf(if (selectedCount > 0) selectedCount else 1) }
     if (selectedCount > 0) {
@@ -85,12 +107,32 @@ fun SelectedItemsCounterPill(
     }
     val displayCount = if (selectedCount > 0) selectedCount else lastPositiveCount
 
+    // Preserve last positive total size during the collapse spring
+    var lastPositiveSize by remember { mutableLongStateOf(if (totalSizeBytes > 0L) totalSizeBytes else 0L) }
+    if (totalSizeBytes > 0L) {
+        lastPositiveSize = totalSizeBytes
+    }
+    val displaySize = if (totalSizeBytes > 0L) totalSizeBytes else lastPositiveSize
+    val formattedSize = remember(displaySize) {
+        if (displaySize > 0L) Formatters.formatBytes(displaySize) else ""
+    }
+
     val rowSpace = (totalAvailableWidthDp - 12.dp - 16.dp).coerceAtLeast(0.dp)
     val fullAvailableCenterWidth = (rowSpace - 132.dp).coerceAtLeast(140.dp)
     val resolvedExpandedWidth = fullAvailableCenterWidth.coerceIn(160.dp, 210.dp)
+    val resolvedFullIslandWidth = if (dimensions.fullIslandWidth != Dp.Unspecified) dimensions.fullIslandWidth else rowSpace
 
-    val activeDimensions = remember(dimensions, resolvedExpandedWidth) {
-        dimensions.copy(expandedWidth = resolvedExpandedWidth)
+    val activeDimensions = remember(dimensions, resolvedExpandedWidth, resolvedFullIslandWidth) {
+        dimensions.copy(
+            collapsedWidth = 0.dp,
+            collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
+            expandedWidth = resolvedExpandedWidth,
+            expandedHeight = 56.dp,
+            fullIslandWidth = resolvedFullIslandWidth,
+            fullIslandHeight = dimensions.fullIslandHeight
+        )
     }
 
     val surfaceTint = MaterialTheme.colorScheme.primary
@@ -102,156 +144,199 @@ fun SelectedItemsCounterPill(
         surfaceTintAlpha = 0.85f,
     ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
 
-    // Dynamic Entry & Exit Spring Specifications matching DynamicMotionConfig
-    val enterSpring = spring<Float>(
-        dampingRatio = motion.expandDampingRatio,
-        stiffness = motion.stiffness
-    )
-    val exitSpring = spring<Float>(
-        dampingRatio = motion.collapseDampingRatio,
-        stiffness = motion.stiffness
-    )
-    val enterWidthSpring = spring<IntSize>(
-        dampingRatio = motion.expandDampingRatio,
-        stiffness = motion.stiffness
-    )
-    val exitWidthSpring = spring<IntSize>(
-        dampingRatio = motion.collapseDampingRatio,
-        stiffness = motion.stiffness
-    )
+    // Apple Dynamic Island 4-Tier Spatial Regulation:
+    val counterStage = when {
+        selectedCount == 0 -> DynamicPillStage.Collapsed
+        isBigIslandExpanded -> DynamicPillStage.FullIsland
+        isSiblingExpanded -> DynamicPillStage.Compact
+        isExpanded -> DynamicPillStage.Expanded
+        else -> DynamicPillStage.Compact
+    }
 
-    AnimatedVisibility(
-        visible = selectedCount > 0,
-        enter = fadeIn(animationSpec = tween(durationMillis = 140)) +
-                scaleIn(
-                    initialScale = 0.65f,
-                    transformOrigin = TransformOrigin(0f, 0.5f),
-                    animationSpec = enterSpring
-                ) +
-                expandHorizontally(
-                    expandFrom = Alignment.Start,
-                    animationSpec = enterWidthSpring
-                ),
-        exit = fadeOut(animationSpec = tween(durationMillis = 110)) +
-               scaleOut(
-                   targetScale = 0.65f,
-                   transformOrigin = TransformOrigin(0f, 0.5f),
-                   animationSpec = exitSpring
-               ) +
-               shrinkHorizontally(
-                   shrinkTowards = Alignment.Start,
-                   animationSpec = exitWidthSpring
-               ),
-        modifier = modifier
-    ) {
-        DynamicPillButton(
-            isExpanded = isExpanded && !isSiblingExpanded,
-            onExpandedChange = onExpandedChange,
-            dimensions = activeDimensions,
-            motion = motion,
-            fluidity = fluidity,
-            expandedFluidityConfig = expandedFluidityConfig,
-            shadows = shadows,
-            colors = colors,
-            contentBlur = contentBlur,
-            collapsedGlassConfig = glassConfig,
-            expandedGlassConfig = glassConfig,
-            backdrop = backdrop,
-            dismissOnOutsideTap = dismissOnOutsideTap,
-            expansionAnchor = ExpansionAnchor.Start,
-            anticipation = anticipation,
-            collapsedContent = {
-                // Collapsed state: Send icon + counter badge
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+    DynamicPillButton(
+        stage = counterStage,
+        onStageChange = { newStage ->
+            when (newStage) {
+                DynamicPillStage.FullIsland -> {
+                    onBigIslandExpandedChange(true)
+                    onExpandedChange(true)
+                }
+                DynamicPillStage.Expanded -> {
+                    onBigIslandExpandedChange(false)
+                    onExpandedChange(true)
+                }
+                DynamicPillStage.Compact, DynamicPillStage.Collapsed -> {
+                    onBigIslandExpandedChange(false)
+                    onExpandedChange(false)
+                }
+            }
+        },
+        dimensions = activeDimensions,
+        motion = motion,
+        fluidity = fluidity,
+        expandedFluidityConfig = expandedFluidityConfig,
+        shadows = shadows,
+        colors = colors,
+        contentBlur = contentBlur,
+        collapsedGlassConfig = glassConfig,
+        compactGlassConfig = glassConfig,
+        expandedGlassConfig = glassConfig,
+        backdrop = backdrop,
+        dismissOnOutsideTap = dismissOnOutsideTap,
+        expansionAnchor = ExpansionAnchor.Start,
+        anticipation = anticipation,
+        modifier = modifier,
+        collapsedContent = {
+            // Tier 0: Resting collapsed state at 0 width
+            Box(modifier = Modifier.fillMaxSize())
+        },
+        compactContent = {
+            // Tier 1: Apple compact 56.dp circular capsule (Send icon + rolling odometer count)
+            @OptIn(ExperimentalFoundationApi::class)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onExpandedChange(true)
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onBigIslandExpandedChange(true)
+                            onLongPress?.invoke()
+                        }
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = MaterialSymbols.Send,
+                    contentDescription = "Send",
+                    tint = contentTint,
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                RollingOdometerText(
+                    count = displayCount,
+                    color = contentTint,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    motion = motion
+                )
+            }
+        },
+        expandedContent = { collapse ->
+            // Tier 2: Full stadium pill with Send action + payload telemetry + centralized DynamicDismissButton
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                @OptIn(ExperimentalFoundationApi::class)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onSend,
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onBigIslandExpandedChange(true)
+                                onLongPress?.invoke()
+                            }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
                 ) {
                     Icon(
                         imageVector = MaterialSymbols.Send,
                         contentDescription = "Send",
                         tint = contentTint,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 8.dp, end = 10.dp)
-                            .size(16.dp)
-                            .background(contentTint, CircleShape),
-                        contentAlignment = Alignment.Center
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Text(
-                            text = if (displayCount > 99) "99+" else displayCount.toString(),
-                            color = surfaceTint,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Send (",
+                                color = contentTint,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = if (formattedSize.isNotEmpty()) 14.sp else 15.sp,
+                                maxLines = 1
+                            )
+                            RollingOdometerText(
+                                count = displayCount,
+                                color = contentTint,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = if (formattedSize.isNotEmpty()) 14.sp else 15.sp,
+                                motion = motion
+                            )
+                            Text(
+                                text = ")",
+                                color = contentTint,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = if (formattedSize.isNotEmpty()) 14.sp else 15.sp,
+                                maxLines = 1
+                            )
+                        }
+                        if (formattedSize.isNotEmpty()) {
+                            Text(
+                                text = formattedSize,
+                                color = contentTint.copy(alpha = 0.75f),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
-            },
-            expandedContent = { collapse ->
-                // Expanded state: Send action + Clear (✕) button
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onSend
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Icon(
-                            imageVector = MaterialSymbols.Send,
-                            contentDescription = "Send",
-                            tint = contentTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Send ($displayCount)",
-                            color = contentTint,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    collapse()
-                                    onClear()
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = MaterialSymbols.Close,
-                            contentDescription = "Clear Selection",
-                            tint = contentTint.copy(alpha = 0.80f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
+                DynamicDismissButton(
+                    onClick = {
+                        collapse()
+                        onClear()
+                    },
+                    size = DynamicDismissButtonSize.Medium,
+                    colors = DynamicDismissButtonDefaults.colors(
+                        containerColor = contentTint.copy(alpha = 0.14f),
+                        contentColor = contentTint
+                    )
+                )
             }
-        )
-    }
+        },
+        fullIslandContent = { collapse ->
+            // Tier 3: Apple Dynamic Island Big Pill displaying selected items preview and destination devices
+            ExpandedSelectionDispatchContent(
+                selectedUris = selectedUris,
+                totalSizeBytes = displaySize,
+                devices = devices,
+                onSendToDevice = { device ->
+                    onSendToDevice(device)
+                    collapse()
+                },
+                onDismiss = {
+                    onBigIslandExpandedChange(false)
+                },
+                onPairDevice = onPairDevice
+            )
+        }
+    )
 }

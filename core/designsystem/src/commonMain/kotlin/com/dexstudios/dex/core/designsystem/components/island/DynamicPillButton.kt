@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -17,6 +18,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 
 /**
@@ -96,6 +101,8 @@ fun DynamicPillButton(
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     dimensions: DynamicDimensions = DynamicPillDefaults.DimensionsDefault,
     motion: DynamicMotionConfig = DynamicPillDefaults.MotionDefault,
     fluidity: DynamicFluidityConfig = DynamicPillDefaults.FluidityDefault,
@@ -289,7 +296,19 @@ fun DynamicPillButton(
         )
     }
 
-    val interactionSource = remember { MutableInteractionSource() }
+    var isFluidityPressed by remember { mutableStateOf(false) }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val effectivelyPressed = isPressed || isFluidityPressed
+
+    // Authentic tactile glass optics: responsive sink on press, elastic high-bouncy overshoot on release
+    val pressProgress by animateFloatAsState(
+        targetValue = if (effectivelyPressed) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = if (effectivelyPressed) activeScalePressDamping else Spring.DampingRatioHighBouncy,
+            stiffness = if (effectivelyPressed) activeScalePressSpeed else activeScaleSettleSpeed,
+        ),
+        label = "pillPressProgress",
+    )
 
     val sizeModifier = if (targetWidth.isSpecified) {
         Modifier.size(currentWidth, currentHeight)
@@ -297,7 +316,16 @@ fun DynamicPillButton(
         Modifier.fillMaxWidth().height(currentHeight)
     }
 
-    val clickModifier = if (!isExpanded && enabled) {
+    val clickModifier = if (enabled && onClick != null) {
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            },
+        )
+    } else if (!isExpanded && enabled) {
         Modifier.clickable(
             interactionSource = interactionSource,
             indication = null,
@@ -311,7 +339,7 @@ fun DynamicPillButton(
     }
 
     val hoverModifier = Modifier.pointerHoverIcon(
-        if (enabled && !isExpanded) PointerIcon.Hand else PointerIcon.Default,
+        if (enabled && (!isExpanded || onClick != null)) PointerIcon.Hand else PointerIcon.Default,
     )
 
     // Main morphing stadium container
@@ -319,16 +347,28 @@ fun DynamicPillButton(
         modifier = modifier
             .then(sizeModifier)
             .expandingAnticipation(anticipationState)
-            .bubbleFluidity(config = activeFluidity)
+            .bubbleFluidity(
+                config = activeFluidity,
+                onPressedChanged = { isFluidityPressed = it },
+            )
             .shadow(
-                elevation = currentShadowRadius,
+                elevation = (currentShadowRadius * (1f - 0.20f * pressProgress)).coerceAtLeast(0.dp),
                 shape = CircleShape,
-                spotColor = currentShadowColor.copy(alpha = currentShadowAlpha),
+                spotColor = currentShadowColor.copy(alpha = currentShadowAlpha * (1f + 0.15f * pressProgress)),
                 ambientColor = currentShadowColor.copy(alpha = currentShadowAlpha * 0.5f),
             )
             .clip(CircleShape)
             .background(currentSurfaceColor.copy(alpha = currentSurfaceAlpha))
-            .then(if (withGlare) Modifier.shinyGlare(shape = CircleShape) else Modifier)
+            .then(
+                if (withGlare) {
+                    Modifier.shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .then(hoverModifier)
             .then(clickModifier),
         contentAlignment = Alignment.Center,
@@ -343,7 +383,7 @@ fun DynamicPillButton(
                 targetState = shouldExpandBounds,
                 transitionSpec = contentTransitionSpec,
                 modifier = Modifier.transientContentBlur(
-                    trigger = shouldExpandBounds,
+                    trigger = effectivelyPressed || shouldExpandBounds,
                     config = activeContentBlur,
                     motion = activeMotionConfig,
                 ),
@@ -372,6 +412,8 @@ fun DynamicPillButton(
     config: DynamicPillConfig,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     expansionAnchor: ExpansionAnchor = ExpansionAnchor.Center,
     dismissOnOutsideTap: Boolean = true,
     withGlare: Boolean = true,
@@ -383,6 +425,8 @@ fun DynamicPillButton(
     onExpandedChange = onExpandedChange,
     modifier = modifier,
     enabled = enabled,
+    onClick = onClick,
+    interactionSource = interactionSource,
     dimensions = config.dimensions,
     motion = config.motion,
     fluidity = config.fluidity,

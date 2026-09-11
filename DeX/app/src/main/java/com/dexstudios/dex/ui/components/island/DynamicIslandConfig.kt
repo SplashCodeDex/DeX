@@ -22,14 +22,20 @@ import com.dexstudios.dex.ui.components.glass.LiquidGlassShadowProperties
 data class DynamicDimensions(
     val collapsedWidth: Dp = 56.dp,
     val collapsedHeight: Dp = 56.dp,
+    val compactWidth: Dp = collapsedWidth,
+    val compactHeight: Dp = collapsedHeight,
     val expandedWidth: Dp = 260.dp,
     val expandedHeight: Dp = 56.dp,
+    val fullIslandWidth: Dp = Dp.Unspecified,
+    val fullIslandHeight: Dp = 140.dp,
 ) {
     companion object {
         /** Default dimensions for stadium pill buttons. */
         val PillDefault = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = 260.dp,
             expandedHeight = 56.dp,
         )
@@ -38,6 +44,8 @@ data class DynamicDimensions(
         val IslandDefault = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = Dp.Unspecified,
             expandedHeight = 160.dp,
         )
@@ -46,6 +54,8 @@ data class DynamicDimensions(
         val CompactPill = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = 130.dp,
             expandedHeight = 56.dp,
         )
@@ -54,6 +64,8 @@ data class DynamicDimensions(
         val ProfilePill = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = 210.dp,
             expandedHeight = 56.dp,
         )
@@ -62,6 +74,8 @@ data class DynamicDimensions(
         val FullIsland = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = Dp.Unspecified,
             expandedHeight = 140.dp,
         )
@@ -70,18 +84,39 @@ data class DynamicDimensions(
         val TransferIsland = DynamicDimensions(
             collapsedWidth = 56.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = Dp.Unspecified,
             expandedHeight = 180.dp,
         )
 
-        /** Default dimensions for the selected items counter action pill. */
+        /** Default dimensions for the selected items counter action pill (collapsed to zero at rest). */
         val SelectionCounterPill = DynamicDimensions(
-            collapsedWidth = 56.dp,
+            collapsedWidth = 0.dp,
             collapsedHeight = 56.dp,
+            compactWidth = 56.dp,
+            compactHeight = 56.dp,
             expandedWidth = 180.dp,
             expandedHeight = 56.dp,
         )
     }
+}
+
+/**
+ * 3-Tier spatial regulation stage for Dynamic Pill Buttons (Apple Dynamic Island pattern).
+ *
+ * - [Collapsed]: Resting state (e.g. 0.dp hidden at rest, or 56.dp circular icon).
+ * - [Compact]: Regulated auxiliary state (56.dp circular capsule with icon + badge when sibling has focus).
+ * - [Expanded]: Full interactive stadium pill (160.dp - 260.dp with full actions and dismiss button).
+ */
+enum class DynamicPillStage {
+    Collapsed,
+    Compact,
+    Expanded,
+    FullIsland;
+
+    val isExpanded: Boolean get() = this == Expanded || this == FullIsland
+    val isVisible: Boolean get() = this != Collapsed
 }
 
 /**

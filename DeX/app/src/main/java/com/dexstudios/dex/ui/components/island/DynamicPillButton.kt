@@ -95,6 +95,396 @@ object DynamicPillDefaults {
  * 7. Transient optical motion blur on slot contents during rapid morphing.
  * 8. 100% decoupled from project domain models via idiomatic Compose slots.
  */
+/**
+ * Centralized, standard Dynamic Pill Button with organic overshoot spring kinematics.
+ *
+ * Unlike rectangular or squircle islands, this button maintains a strict **stadium pill geometry**
+ * ([CircleShape]) across all expansion states. When expanding horizontally or vertically, both caps
+ * remain continuous semicircles at every frame.
+ *
+ * Supports Apple Dynamic Island style 3-tier spatial regulation via [DynamicPillStage]:
+ * 1. [DynamicPillStage.Collapsed]: Compact resting state (0.dp hidden, or circle/pill).
+ * 2. [DynamicPillStage.Compact]: Regulated auxiliary state (e.g. 56.dp circular capsule showing icon + mini count).
+ * 3. [DynamicPillStage.Expanded]: Full elongated stadium pill with perfectly rounded semicircular caps.
+ */
+@Composable
+fun DynamicPillButton(
+    stage: DynamicPillStage,
+    onStageChange: (DynamicPillStage) -> Unit,
+    modifier: Modifier = Modifier,
+    dimensions: DynamicDimensions = DynamicPillDefaults.DimensionsDefault,
+    motion: DynamicMotionConfig = DynamicPillDefaults.MotionDefault,
+    fluidity: DynamicFluidityConfig = DynamicPillDefaults.FluidityDefault,
+    expandedFluidityConfig: ExpandedBubbleFluidityConfig = DynamicPillDefaults.ExpandedFluidityDefault,
+    shadows: DynamicShadowVariants = DynamicPillDefaults.ShadowsDefault,
+    colors: DynamicColorVariants = DynamicPillDefaults.ColorsDefault,
+    contentBlur: DynamicContentBlurConfig = DynamicPillDefaults.ContentBlurDefault,
+    collapsedGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIconButton.copy(shape = CircleShape),
+    compactGlassConfig: LiquidGlassConfig = collapsedGlassConfig,
+    expandedGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIsland.copy(shape = CircleShape),
+    fullIslandGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIsland.copy(shape = CircleShape),
+    backdrop: Backdrop? = null,
+    dismissOnOutsideTap: Boolean = true,
+    collapsedWidth: Dp = dimensions.collapsedWidth,
+    collapsedHeight: Dp = dimensions.collapsedHeight,
+    compactWidth: Dp = dimensions.compactWidth,
+    compactHeight: Dp = dimensions.compactHeight,
+    expandedWidth: Dp = dimensions.expandedWidth,
+    expandedHeight: Dp = dimensions.expandedHeight,
+    fullIslandWidth: Dp = dimensions.fullIslandWidth,
+    fullIslandHeight: Dp = dimensions.fullIslandHeight,
+    expandDampingRatio: Float = motion.expandDampingRatio,
+    collapseDampingRatio: Float = motion.collapseDampingRatio,
+    stiffness: Float = motion.stiffness,
+    morphSpringSpec: AnimationSpec<Dp>? = motion.springSpec,
+    unexpandedShadow: LiquidGlassShadowProperties = shadows.unexpanded,
+    expandedShadow: LiquidGlassShadowProperties = shadows.expanded,
+    restingColor: Color = if (collapsedGlassConfig.surfaceTint.isSpecified && colors == DynamicColorVariants.Default) collapsedGlassConfig.surfaceTint else colors.restingColor,
+    restingAlpha: Float = if (collapsedGlassConfig.surfaceTintAlpha > 0f && colors == DynamicColorVariants.Default) collapsedGlassConfig.surfaceTintAlpha else colors.restingAlpha,
+    expandedColor: Color = if (expandedGlassConfig.surfaceTint.isSpecified && colors == DynamicColorVariants.Default) expandedGlassConfig.surfaceTint else colors.expandedColor,
+    expandedAlpha: Float = if (expandedGlassConfig.surfaceTintAlpha > 0f && colors == DynamicColorVariants.Default) expandedGlassConfig.surfaceTintAlpha else colors.expandedAlpha,
+    fullIslandColor: Color = if (fullIslandGlassConfig.surfaceTint.isSpecified && colors == DynamicColorVariants.Default) fullIslandGlassConfig.surfaceTint else expandedColor,
+    fullIslandAlpha: Float = if (fullIslandGlassConfig.surfaceTintAlpha > 0f && colors == DynamicColorVariants.Default) fullIslandGlassConfig.surfaceTintAlpha else expandedAlpha,
+    enableBubbleFluidity: Boolean = fluidity.enabled,
+    pressScale: Float = fluidity.pressScale,
+    pullFactor: Float = fluidity.pullFactor,
+    elasticity: Float = fluidity.elasticity,
+    scalePressSpeed: Float = fluidity.scalePressSpeed,
+    scalePressDamping: Float = fluidity.scalePressDamping,
+    scaleSettleSpeed: Float = fluidity.scaleSettleSpeed,
+    enableExpandedBubbleFluidity: Boolean = expandedFluidityConfig.enabled,
+    expandedPressScale: Float = expandedFluidityConfig.pressScale ?: pressScale,
+    expandedPullFactor: Float = expandedFluidityConfig.pullFactor ?: pullFactor,
+    expandedElasticity: Float = expandedFluidityConfig.elasticity ?: elasticity,
+    expandedScalePressSpeed: Float = expandedFluidityConfig.scalePressSpeed ?: scalePressSpeed,
+    expandedScalePressDamping: Float = expandedFluidityConfig.scalePressDamping ?: scalePressDamping,
+    expandedScaleSettleSpeed: Float = expandedFluidityConfig.scaleSettleSpeed ?: scaleSettleSpeed,
+    enableContentBlur: Boolean = contentBlur.enabled,
+    maxContentBlur: Dp = contentBlur.maxBlur,
+    blurRiseDurationMillis: Int = contentBlur.riseDurationMillis,
+    blurOnExpand: Boolean = contentBlur.blurOnExpand,
+    blurOnCollapse: Boolean = contentBlur.blurOnCollapse,
+    expansionAnchor: ExpansionAnchor = ExpansionAnchor.Center,
+    anticipation: DynamicAnticipationConfig = DynamicPillDefaults.AnticipationDefault,
+    collapsedContent: @Composable () -> Unit,
+    compactContent: (@Composable () -> Unit)? = null,
+    expandedContent: @Composable (collapse: () -> Unit) -> Unit,
+    fullIslandContent: (@Composable (collapse: () -> Unit) -> Unit)? = null,
+) {
+    val haptic = LocalHapticFeedback.current
+    val isAnyExpanded = stage != DynamicPillStage.Collapsed
+    val isFullyExpanded = stage == DynamicPillStage.Expanded || stage == DynamicPillStage.FullIsland
+
+    // Anticipation directional nudge & dual-axis Poisson parallax overshoot scaling
+    val activeMotionConfig = remember(expandDampingRatio, collapseDampingRatio, stiffness) {
+        DynamicMotionConfig(
+            expandDampingRatio = expandDampingRatio,
+            collapseDampingRatio = collapseDampingRatio,
+            stiffness = stiffness
+        )
+    }
+    val activeFluidityConfig = remember(pressScale, pullFactor, elasticity, scalePressSpeed, scalePressDamping, scaleSettleSpeed) {
+        DynamicFluidityConfig(
+            pressScale = pressScale,
+            pullFactor = pullFactor,
+            elasticity = elasticity,
+            scalePressSpeed = scalePressSpeed,
+            scalePressDamping = scalePressDamping,
+            scaleSettleSpeed = scaleSettleSpeed
+        )
+    }
+    val anticipationState = rememberExpandingAnticipationPhysics(
+        isExpanded = isAnyExpanded,
+        triggerKey = stage,
+        anchor = expansionAnchor,
+        config = anticipation,
+        motion = activeMotionConfig,
+        fluidity = activeFluidityConfig
+    )
+
+    // Direction-aware spring spec: expandDampingRatio when opening, collapseDampingRatio when closing
+    val activeSpringSpec = morphSpringSpec ?: remember(isAnyExpanded, expandDampingRatio, collapseDampingRatio, stiffness) {
+        spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        )
+    }
+
+    // 1. Dynamic morphing dimensions with overshoot springs across 3 tiers
+    val shouldExpandBounds = !anticipation.enabled || anticipationState.canExpandBounds || collapsedWidth == 0.dp || stage == DynamicPillStage.Collapsed
+    val targetWidth = when (stage) {
+        DynamicPillStage.Collapsed -> collapsedWidth
+        DynamicPillStage.Compact -> if (shouldExpandBounds) compactWidth else collapsedWidth
+        DynamicPillStage.Expanded -> if (shouldExpandBounds) expandedWidth else collapsedWidth
+        DynamicPillStage.FullIsland -> if (shouldExpandBounds) fullIslandWidth else collapsedWidth
+    }
+    val targetHeight = when (stage) {
+        DynamicPillStage.Collapsed -> collapsedHeight
+        DynamicPillStage.Compact -> if (shouldExpandBounds) compactHeight else collapsedHeight
+        DynamicPillStage.Expanded -> if (shouldExpandBounds) expandedHeight else collapsedHeight
+        DynamicPillStage.FullIsland -> if (shouldExpandBounds) fullIslandHeight else collapsedHeight
+    }
+
+    val currentWidth by animateDpAsState(
+        targetValue = targetWidth,
+        animationSpec = activeSpringSpec,
+        label = "pillMorphWidth"
+    )
+    val currentHeight by animateDpAsState(
+        targetValue = targetHeight,
+        animationSpec = activeSpringSpec,
+        label = "pillMorphHeight"
+    )
+
+    // Dynamic shadow properties: morph smoothly between unexpanded and expanded states
+    val currentShadowRadius by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.radius else unexpandedShadow.radius,
+        animationSpec = activeSpringSpec,
+        label = "pillShadowRadius"
+    )
+    val currentShadowAlpha by animateFloatAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.alpha else unexpandedShadow.alpha,
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillShadowAlpha"
+    )
+    val currentShadowColor by animateColorAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.color else unexpandedShadow.color,
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillShadowColor"
+    )
+    val currentShadowOffsetX by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.offsetX else unexpandedShadow.offsetX,
+        animationSpec = activeSpringSpec,
+        label = "pillShadowOffsetX"
+    )
+    val currentShadowOffsetY by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.offsetY else unexpandedShadow.offsetY,
+        animationSpec = activeSpringSpec,
+        label = "pillShadowOffsetY"
+    )
+
+    val currentInnerShadowRadius by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.innerRadius else unexpandedShadow.innerRadius,
+        animationSpec = activeSpringSpec,
+        label = "pillInnerShadowRadius"
+    )
+    val currentInnerShadowAlpha by animateFloatAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.innerAlpha else unexpandedShadow.innerAlpha,
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillInnerShadowAlpha"
+    )
+    val currentInnerShadowColor by animateColorAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.innerColor else unexpandedShadow.innerColor,
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillInnerShadowColor"
+    )
+    val currentInnerShadowOffsetX by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.innerOffsetX else unexpandedShadow.innerOffsetX,
+        animationSpec = activeSpringSpec,
+        label = "pillInnerShadowOffsetX"
+    )
+    val currentInnerShadowOffsetY by animateDpAsState(
+        targetValue = if (isFullyExpanded) expandedShadow.innerOffsetY else unexpandedShadow.innerOffsetY,
+        animationSpec = activeSpringSpec,
+        label = "pillInnerShadowOffsetY"
+    )
+
+    // Dynamic surface color & tint: morph smoothly between resting and expanded states
+    val currentSurfaceColor by animateColorAsState(
+        targetValue = when (stage) {
+            DynamicPillStage.FullIsland -> fullIslandColor
+            DynamicPillStage.Expanded -> expandedColor
+            DynamicPillStage.Compact, DynamicPillStage.Collapsed -> restingColor
+        },
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillSurfaceColor"
+    )
+    val currentSurfaceAlpha by animateFloatAsState(
+        targetValue = when (stage) {
+            DynamicPillStage.FullIsland -> fullIslandAlpha
+            DynamicPillStage.Expanded -> expandedAlpha
+            DynamicPillStage.Compact, DynamicPillStage.Collapsed -> restingAlpha
+        },
+        animationSpec = spring(
+            dampingRatio = if (isAnyExpanded) expandDampingRatio else collapseDampingRatio,
+            stiffness = stiffness
+        ),
+        label = "pillSurfaceAlpha"
+    )
+
+    val currentShadowProperties = remember(
+        currentShadowRadius,
+        currentShadowColor,
+        currentShadowAlpha,
+        currentShadowOffsetX,
+        currentShadowOffsetY,
+        currentInnerShadowRadius,
+        currentInnerShadowColor,
+        currentInnerShadowAlpha,
+        currentInnerShadowOffsetX,
+        currentInnerShadowOffsetY
+    ) {
+        LiquidGlassShadowProperties(
+            radius = currentShadowRadius,
+            color = currentShadowColor,
+            alpha = currentShadowAlpha,
+            offset = DpOffset(currentShadowOffsetX, currentShadowOffsetY),
+            innerRadius = currentInnerShadowRadius,
+            innerColor = currentInnerShadowColor,
+            innerAlpha = currentInnerShadowAlpha,
+            innerOffset = DpOffset(currentInnerShadowOffsetX, currentInnerShadowOffsetY),
+        )
+    }
+
+    // Resolved centralized content blur and fluidity configurations
+    val activeContentBlur = remember(
+        enableContentBlur,
+        maxContentBlur,
+        blurRiseDurationMillis,
+        blurOnExpand,
+        blurOnCollapse
+    ) {
+        DynamicContentBlurConfig(
+            enabled = enableContentBlur,
+            maxBlur = maxContentBlur,
+            blurOnExpand = blurOnExpand,
+            blurOnCollapse = blurOnCollapse,
+            riseDurationMillis = blurRiseDurationMillis
+        )
+    }
+
+    val activeFluidityEnabled = if (isFullyExpanded) enableExpandedBubbleFluidity else enableBubbleFluidity
+    val activePressScale = if (isFullyExpanded) expandedPressScale else pressScale
+    val activePullFactor = if (isFullyExpanded) expandedPullFactor else pullFactor
+    val activeElasticity = if (isFullyExpanded) expandedElasticity else elasticity
+    val activeScalePressSpeed = if (isFullyExpanded) expandedScalePressSpeed else scalePressSpeed
+    val activeScalePressDamping = if (isFullyExpanded) expandedScalePressDamping else scalePressDamping
+    val activeScaleSettleSpeed = if (isFullyExpanded) expandedScaleSettleSpeed else scaleSettleSpeed
+
+    val activeFluidity = remember(
+        activeFluidityEnabled,
+        activePressScale,
+        activePullFactor,
+        activeElasticity,
+        activeScalePressSpeed,
+        activeScalePressDamping,
+        activeScaleSettleSpeed
+    ) {
+        DynamicFluidityConfig(
+            enabled = activeFluidityEnabled,
+            pressScale = activePressScale,
+            pullFactor = activePullFactor,
+            elasticity = activeElasticity,
+            scalePressSpeed = activeScalePressSpeed,
+            scalePressDamping = activeScalePressDamping,
+            scaleSettleSpeed = activeScaleSettleSpeed
+        )
+    }
+
+    // 2. Strict pill/capsule shape enforcement (semicircular caps guaranteed)
+    val pillShape = CircleShape
+    val resolvedWidth = currentWidth.coerceAtLeast(0.dp)
+    val resolvedHeight = currentHeight.coerceAtLeast(0.dp)
+
+    if (resolvedWidth > 0.01.dp || isAnyExpanded) {
+        // 3. Main morphing pill container
+        Box(
+            modifier = modifier
+                .size(resolvedWidth, resolvedHeight)
+                .expandingAnticipation(anticipationState),
+            contentAlignment = Alignment.Center
+        ) {
+            val activeConfig = remember(stage, collapsedGlassConfig, compactGlassConfig, expandedGlassConfig, fullIslandGlassConfig, currentSurfaceColor, currentSurfaceAlpha, currentShadowProperties) {
+                val base = when (stage) {
+                    DynamicPillStage.FullIsland -> fullIslandGlassConfig
+                    DynamicPillStage.Expanded -> expandedGlassConfig
+                    DynamicPillStage.Compact -> compactGlassConfig
+                    DynamicPillStage.Collapsed -> collapsedGlassConfig
+                }
+                base.withShadowProperties(currentShadowProperties).copy(
+                    shape = pillShape,
+                    surfaceTint = currentSurfaceColor,
+                    surfaceTintAlpha = currentSurfaceAlpha
+                )
+            }
+
+            LiquidGlassIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onStageChange(DynamicPillStage.Expanded)
+                },
+                enabled = !isFullyExpanded,
+                width = resolvedWidth,
+                height = resolvedHeight,
+                backdrop = backdrop,
+                config = activeConfig,
+                fluidity = activeFluidity
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(pillShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedContent(
+                        targetState = stage,
+                        transitionSpec = {
+                            fadeIn(spring(stiffness = stiffness, dampingRatio = 0.55f)) togetherWith
+                                fadeOut(spring(stiffness = stiffness, dampingRatio = 0.55f))
+                        },
+                        modifier = Modifier.transientContentBlur(
+                            trigger = stage.isVisible,
+                            config = activeContentBlur,
+                            motion = activeMotionConfig
+                        ),
+                        label = "pillSlotContent"
+                    ) { currentSlotStage ->
+                        when (currentSlotStage) {
+                            DynamicPillStage.Collapsed -> collapsedContent()
+                            DynamicPillStage.Compact -> {
+                                if (compactContent != null) compactContent()
+                                else collapsedContent()
+                            }
+                            DynamicPillStage.Expanded -> {
+                                expandedContent {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onStageChange(DynamicPillStage.Collapsed)
+                                }
+                            }
+                            DynamicPillStage.FullIsland -> {
+                                val islandSlot = fullIslandContent ?: expandedContent
+                                islandSlot {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onStageChange(DynamicPillStage.Collapsed)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Standard 2-state overload of [DynamicPillButton] maintaining 100% backward compatibility
+ * for binary expanded/collapsed components.
+ */
 @Composable
 fun DynamicPillButton(
     isExpanded: Boolean,
@@ -150,271 +540,63 @@ fun DynamicPillButton(
     anticipation: DynamicAnticipationConfig = DynamicPillDefaults.AnticipationDefault,
     collapsedContent: @Composable () -> Unit,
     expandedContent: @Composable (collapse: () -> Unit) -> Unit,
-) {
-    val haptic = LocalHapticFeedback.current
-
-    // Anticipation directional nudge & dual-axis Poisson parallax overshoot scaling
-    val activeMotionConfig = remember(expandDampingRatio, collapseDampingRatio, stiffness) {
-        DynamicMotionConfig(
-            expandDampingRatio = expandDampingRatio,
-            collapseDampingRatio = collapseDampingRatio,
-            stiffness = stiffness
-        )
-    }
-    val activeFluidityConfig = remember(pressScale, pullFactor, elasticity, scalePressSpeed, scalePressDamping, scaleSettleSpeed) {
-        DynamicFluidityConfig(
-            pressScale = pressScale,
-            pullFactor = pullFactor,
-            elasticity = elasticity,
-            scalePressSpeed = scalePressSpeed,
-            scalePressDamping = scalePressDamping,
-            scaleSettleSpeed = scaleSettleSpeed
-        )
-    }
-    val anticipationState = rememberExpandingAnticipationPhysics(
-        isExpanded = isExpanded,
-        anchor = expansionAnchor,
-        config = anticipation,
-        motion = activeMotionConfig,
-        fluidity = activeFluidityConfig
-    )
-
-    // Direction-aware spring spec: expandDampingRatio when opening, collapseDampingRatio when closing
-    val activeSpringSpec = morphSpringSpec ?: remember(isExpanded, expandDampingRatio, collapseDampingRatio, stiffness) {
-        spring(
-            dampingRatio = if (isExpanded) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        )
-    }
-
-    // 1. Dynamic morphing dimensions with overshoot springs
-    // During anticipation windup (~75ms), bounds remain at collapsed resting size while the button
-    // squishes and nudges directionally. When anticipation completes, bounds expand outward to full target size.
-    val shouldExpandBounds = isExpanded && (!anticipation.enabled || anticipationState.canExpandBounds)
-    val currentWidth by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedWidth else collapsedWidth,
-        animationSpec = activeSpringSpec,
-        label = "pillMorphWidth"
-    )
-    val currentHeight by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedHeight else collapsedHeight,
-        animationSpec = activeSpringSpec,
-        label = "pillMorphHeight"
-    )
-
-    // Dynamic shadow properties: morph smoothly between unexpanded and expanded states
-    val currentShadowRadius by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.radius else unexpandedShadow.radius,
-        animationSpec = activeSpringSpec,
-        label = "pillShadowRadius"
-    )
-    val currentShadowAlpha by animateFloatAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.alpha else unexpandedShadow.alpha,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillShadowAlpha"
-    )
-    val currentShadowColor by animateColorAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.color else unexpandedShadow.color,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillShadowColor"
-    )
-    val currentShadowOffsetX by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.offsetX else unexpandedShadow.offsetX,
-        animationSpec = activeSpringSpec,
-        label = "pillShadowOffsetX"
-    )
-    val currentShadowOffsetY by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.offsetY else unexpandedShadow.offsetY,
-        animationSpec = activeSpringSpec,
-        label = "pillShadowOffsetY"
-    )
-
-    val currentInnerShadowRadius by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.innerRadius else unexpandedShadow.innerRadius,
-        animationSpec = activeSpringSpec,
-        label = "pillInnerShadowRadius"
-    )
-    val currentInnerShadowAlpha by animateFloatAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.innerAlpha else unexpandedShadow.innerAlpha,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillInnerShadowAlpha"
-    )
-    val currentInnerShadowColor by animateColorAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.innerColor else unexpandedShadow.innerColor,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillInnerShadowColor"
-    )
-    val currentInnerShadowOffsetX by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.innerOffsetX else unexpandedShadow.innerOffsetX,
-        animationSpec = activeSpringSpec,
-        label = "pillInnerShadowOffsetX"
-    )
-    val currentInnerShadowOffsetY by animateDpAsState(
-        targetValue = if (shouldExpandBounds) expandedShadow.innerOffsetY else unexpandedShadow.innerOffsetY,
-        animationSpec = activeSpringSpec,
-        label = "pillInnerShadowOffsetY"
-    )
-
-    // Dynamic surface color & tint: morph smoothly between resting and expanded states
-    val currentSurfaceColor by animateColorAsState(
-        targetValue = if (shouldExpandBounds) expandedColor else restingColor,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillSurfaceColor"
-    )
-    val currentSurfaceAlpha by animateFloatAsState(
-        targetValue = if (shouldExpandBounds) expandedAlpha else restingAlpha,
-        animationSpec = spring(
-            dampingRatio = if (shouldExpandBounds) expandDampingRatio else collapseDampingRatio,
-            stiffness = stiffness
-        ),
-        label = "pillSurfaceAlpha"
-    )
-
-    val currentShadowProperties = remember(
-        currentShadowRadius,
-        currentShadowColor,
-        currentShadowAlpha,
-        currentShadowOffsetX,
-        currentShadowOffsetY,
-        currentInnerShadowRadius,
-        currentInnerShadowColor,
-        currentInnerShadowAlpha,
-        currentInnerShadowOffsetX,
-        currentInnerShadowOffsetY
-    ) {
-        LiquidGlassShadowProperties(
-            radius = currentShadowRadius,
-            color = currentShadowColor,
-            alpha = currentShadowAlpha,
-            offset = DpOffset(currentShadowOffsetX, currentShadowOffsetY),
-            innerRadius = currentInnerShadowRadius,
-            innerColor = currentInnerShadowColor,
-            innerAlpha = currentInnerShadowAlpha,
-            innerOffset = DpOffset(currentInnerShadowOffsetX, currentInnerShadowOffsetY),
-        )
-    }
-
-    // Resolved centralized content blur and fluidity configurations
-    val activeContentBlur = remember(
-        enableContentBlur,
-        maxContentBlur,
-        blurRiseDurationMillis,
-        blurOnExpand,
-        blurOnCollapse
-    ) {
-        DynamicContentBlurConfig(
-            enabled = enableContentBlur,
-            maxBlur = maxContentBlur,
-            blurOnExpand = blurOnExpand,
-            blurOnCollapse = blurOnCollapse,
-            riseDurationMillis = blurRiseDurationMillis
-        )
-    }
-
-    val activeFluidityEnabled = if (shouldExpandBounds) enableExpandedBubbleFluidity else enableBubbleFluidity
-    val activePressScale = if (shouldExpandBounds) expandedPressScale else pressScale
-    val activePullFactor = if (shouldExpandBounds) expandedPullFactor else pullFactor
-    val activeElasticity = if (shouldExpandBounds) expandedElasticity else elasticity
-    val activeScalePressSpeed = if (shouldExpandBounds) expandedScalePressSpeed else scalePressSpeed
-    val activeScalePressDamping = if (shouldExpandBounds) expandedScalePressDamping else scalePressDamping
-    val activeScaleSettleSpeed = if (shouldExpandBounds) expandedScaleSettleSpeed else scaleSettleSpeed
-
-    val activeFluidity = remember(
-        activeFluidityEnabled,
-        activePressScale,
-        activePullFactor,
-        activeElasticity,
-        activeScalePressSpeed,
-        activeScalePressDamping,
-        activeScaleSettleSpeed
-    ) {
-        DynamicFluidityConfig(
-            enabled = activeFluidityEnabled,
-            pressScale = activePressScale,
-            pullFactor = activePullFactor,
-            elasticity = activeElasticity,
-            scalePressSpeed = activeScalePressSpeed,
-            scalePressDamping = activeScalePressDamping,
-            scaleSettleSpeed = activeScaleSettleSpeed
-        )
-    }
-
-    // 2. Strict pill/capsule shape enforcement (semicircular caps guaranteed)
-    val pillShape = CircleShape
-
-    // 3. Main morphing pill container
-    Box(
-        modifier = modifier
-            .size(currentWidth, currentHeight)
-            .expandingAnticipation(anticipationState),
-        contentAlignment = Alignment.Center
-    ) {
-        // Enforce pill shape and apply animated color and shadow properties
-        val activeConfig = remember(shouldExpandBounds, collapsedGlassConfig, expandedGlassConfig, currentSurfaceColor, currentSurfaceAlpha, currentShadowProperties) {
-            val base = if (shouldExpandBounds) expandedGlassConfig else collapsedGlassConfig
-            base.withShadowProperties(currentShadowProperties).copy(
-                shape = pillShape,
-                surfaceTint = currentSurfaceColor,
-                surfaceTintAlpha = currentSurfaceAlpha
-            )
-        }
-
-        LiquidGlassIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onExpandedChange(true)
-            },
-            enabled = !isExpanded,
-            width = currentWidth,
-            height = currentHeight,
-            backdrop = backdrop,
-            config = activeConfig,
-            fluidity = activeFluidity
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(pillShape),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = shouldExpandBounds,
-                    transitionSpec = contentTransitionSpec,
-                    modifier = Modifier.transientContentBlur(
-                        trigger = shouldExpandBounds,
-                        config = activeContentBlur,
-                        motion = activeMotionConfig
-                    ),
-                    label = "pillSlotContent"
-                ) { expandedState ->
-                    if (expandedState) {
-                        expandedContent {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onExpandedChange(false)
-                        }
-                    } else {
-                        collapsedContent()
-                    }
-                }
-            }
-        }
-    }
-}
+) = DynamicPillButton(
+    stage = if (isExpanded) DynamicPillStage.Expanded else DynamicPillStage.Collapsed,
+    onStageChange = { onExpandedChange(it == DynamicPillStage.Expanded) },
+    modifier = modifier,
+    dimensions = dimensions,
+    motion = motion,
+    fluidity = fluidity,
+    expandedFluidityConfig = expandedFluidityConfig,
+    shadows = shadows,
+    colors = colors,
+    contentBlur = contentBlur,
+    collapsedGlassConfig = collapsedGlassConfig,
+    compactGlassConfig = collapsedGlassConfig,
+    expandedGlassConfig = expandedGlassConfig,
+    backdrop = backdrop,
+    dismissOnOutsideTap = dismissOnOutsideTap,
+    collapsedWidth = collapsedWidth,
+    collapsedHeight = collapsedHeight,
+    compactWidth = collapsedWidth,
+    compactHeight = collapsedHeight,
+    expandedWidth = expandedWidth,
+    expandedHeight = expandedHeight,
+    expandDampingRatio = expandDampingRatio,
+    collapseDampingRatio = collapseDampingRatio,
+    stiffness = stiffness,
+    morphSpringSpec = morphSpringSpec,
+    unexpandedShadow = unexpandedShadow,
+    expandedShadow = expandedShadow,
+    restingColor = restingColor,
+    restingAlpha = restingAlpha,
+    expandedColor = expandedColor,
+    expandedAlpha = expandedAlpha,
+    enableBubbleFluidity = enableBubbleFluidity,
+    pressScale = pressScale,
+    pullFactor = pullFactor,
+    elasticity = elasticity,
+    scalePressSpeed = scalePressSpeed,
+    scalePressDamping = scalePressDamping,
+    scaleSettleSpeed = scaleSettleSpeed,
+    enableExpandedBubbleFluidity = enableExpandedBubbleFluidity,
+    expandedPressScale = expandedPressScale,
+    expandedPullFactor = expandedPullFactor,
+    expandedElasticity = expandedElasticity,
+    expandedScalePressSpeed = expandedScalePressSpeed,
+    expandedScalePressDamping = expandedScalePressDamping,
+    expandedScaleSettleSpeed = expandedScaleSettleSpeed,
+    enableContentBlur = enableContentBlur,
+    maxContentBlur = maxContentBlur,
+    blurRiseDurationMillis = blurRiseDurationMillis,
+    blurOnExpand = blurOnExpand,
+    blurOnCollapse = blurOnCollapse,
+    expansionAnchor = expansionAnchor,
+    anticipation = anticipation,
+    collapsedContent = collapsedContent,
+    compactContent = null,
+    expandedContent = expandedContent
+)
 
 /**
  * Overload of [DynamicPillButton] accepting a unified [DynamicPillConfig].

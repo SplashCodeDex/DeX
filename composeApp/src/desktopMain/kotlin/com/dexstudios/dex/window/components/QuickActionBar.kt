@@ -27,7 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -203,7 +206,16 @@ fun DeXQuickActionButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressedRaw by interactionSource.collectIsPressedAsState()
+    var isFluidityPressed by remember { mutableStateOf(false) }
+    val isPressed = isPressedRaw || isFluidityPressed
+    val motionConfig = DynamicMotionConfig.Default
+    val pressProgress by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = motionConfig.springSpec(isPressed),
+        label = "btnPressProgress",
+    )
+    val shadowElevation = (4.dp * (1f - 0.20f * pressProgress)).coerceAtLeast(0.dp)
 
     // Tactile Scale: 1.0 -> 1.08 (hover)
     val scale by animateFloatAsState(
@@ -257,9 +269,12 @@ fun DeXQuickActionButton(
                 this.translationY = translateY.toPx()
             }
             .size(width = 62.dp, height = 48.dp)
-            .bubbleFluidity(config = DynamicFluidityConfig.Default)
+            .bubbleFluidity(
+                config = DynamicFluidityConfig.Default,
+                onPressedChanged = { isFluidityPressed = it },
+            )
             .shadow(
-                elevation = 4.dp,
+                elevation = shadowElevation,
                 shape = CircleShape,
                 spotColor = Color.Black.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.1f),
@@ -267,7 +282,10 @@ fun DeXQuickActionButton(
             .clip(CircleShape)
             .background(backgroundColor, CircleShape)
             .background(hoverOverlayColor, CircleShape)
-            .shinyGlare(shape = CircleShape)
+            .shinyGlare(
+                shape = CircleShape,
+                intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
+            )
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(
                 interactionSource = interactionSource,

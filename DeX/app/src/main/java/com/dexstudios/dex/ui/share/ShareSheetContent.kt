@@ -274,18 +274,4 @@ fun UploadProgressContent(
     }
 }
 
-internal fun resolveFileSize(context: Context, uri: Uri): Long {
-    if (uri.scheme == "content") {
-        try {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val index = cursor.getColumnIndex(OpenableColumns.SIZE)
-                    if (index >= 0) {
-                        return cursor.getLong(index)
-                    }
-                }
-            }
-        } catch (_: Exception) {}
-    }
-    return 0L
-}
+internal fun resolveFileSize(context: Context, uri: Uri): Long = Formatters.resolveFileSize(context, uri)
