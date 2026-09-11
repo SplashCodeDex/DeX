@@ -73,6 +73,14 @@ data class DynamicDimensions(
             expandedWidth = Dp.Unspecified,
             expandedHeight = 180.dp,
         )
+
+        /** Default dimensions for the selected items counter action pill. */
+        val SelectionCounterPill = DynamicDimensions(
+            collapsedWidth = 56.dp,
+            collapsedHeight = 56.dp,
+            expandedWidth = 180.dp,
+            expandedHeight = 56.dp,
+        )
     }
 }
 

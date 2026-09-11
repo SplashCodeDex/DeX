@@ -51,6 +51,7 @@ test_udp.ps1
 
 # IDE artifacts
 DeX/.artifacts/
+DeX/.idea/
 
 # Local OAuth credentials - NEVER commit
 Archived_Legacy_WPF/**/oauth.local.json

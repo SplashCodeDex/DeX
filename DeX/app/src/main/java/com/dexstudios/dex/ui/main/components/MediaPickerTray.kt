@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -128,10 +129,10 @@ fun MediaPickerTray(
     onSend: (List<Uri>) -> Unit,
     onClose: () -> Unit,
     onSelectionChanged: ((Int) -> Unit)? = null,
+    selectedUris: SnapshotStateList<Uri> = remember { mutableStateListOf<Uri>() },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val selectedUris = remember { mutableStateListOf<Uri>() }
 
     LaunchedEffect(selectedUris.size) {
         onSelectionChanged?.invoke(selectedUris.size)
@@ -493,37 +494,6 @@ fun MediaPickerTray(
             }
         }
 
-        // --- 3. Floating Bottom Send Action Bar ---
-        AnimatedVisibility(
-            visible = selectedUris.isNotEmpty(),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LiquidGlassButton(
-                    text = "Send ${selectedUris.size} item${if (selectedUris.size > 1) "s" else ""}",
-                    onClick = {
-                        try {
-                            mediaPlayerRef.value?.stop()
-                            mediaPlayerRef.value?.release()
-                            mediaPlayerRef.value = null
-                            playingUri = null
-                        } catch (_: Exception) {}
-                        val urisToSend = selectedUris.toList()
-                        selectedUris.clear()
-                        onSend(urisToSend)
-                    },
-                    backdrop = backdrop,
-                    icon = MaterialSymbols.Send,
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                )
-            }
-        }
     }
 }
 

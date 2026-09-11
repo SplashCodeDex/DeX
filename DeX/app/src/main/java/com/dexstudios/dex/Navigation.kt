@@ -312,17 +312,21 @@ fun MainNavigation(
         var showPreviewDevices by remember { mutableStateOf(false) }
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
         var navPillStage by remember { mutableStateOf(NavPillExpansionStage.FullTabs) }
+        val selectedMediaUris = remember { mutableStateListOf<Uri>() }
 
-        // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs)
+        // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs/selection)
         PredictiveBackHandler(
-            enabled = TopIslandState.isAnyProfileExpanded ||
+            enabled = selectedMediaUris.isNotEmpty() ||
+                TopIslandState.isAnyProfileExpanded ||
                 HistoryState.isSearchExpanded ||
                 showPreviewDevices ||
                 navPillStage != NavPillExpansionStage.IconOnly
         ) { progressFlow ->
             try {
                 progressFlow.collect { /* progress */ }
-                if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
+                if (selectedMediaUris.isNotEmpty()) {
+                    selectedMediaUris.clear()
+                } else if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
                     TopIslandState.profileStage = ProfileExpansionStage.Collapsed
                 } else if (showPreviewDevices) {
                     showPreviewDevices = false
@@ -378,6 +382,7 @@ fun MainNavigation(
                         activeExpandedMode = lastMediaMode
                         navPillStage = NavPillExpansionStage.FullTabs
                         TopIslandState.collapseProfile()
+                        selectedMediaUris.clear()
                     }
                 }
 
@@ -390,7 +395,7 @@ fun MainNavigation(
                     val availableWidth = maxWidth
                     val rowSpace = (availableWidth - 12.dp - 16.dp).coerceAtLeast(0.dp)
                     val namePillTargetWidth = (rowSpace - 120.dp - 10.dp).coerceIn(180.dp, 210.dp)
-                    var mediaSelectedItemCount by remember { mutableIntStateOf(0) }
+                    val mediaSelectedItemCount = selectedMediaUris.size
 
                     val isHistoryActive = activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.15f
                     val isAnyExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed || isHistoryActive || showPreviewDevices
@@ -572,9 +577,7 @@ fun MainNavigation(
                                                 }
                                                 collapseToHalf()
                                             },
-                                            onSelectionChanged = { count ->
-                                                mediaSelectedItemCount = count
-                                            },
+                                            selectedUris = selectedMediaUris,
                                             onClose = { collapseToHalf() },
                                         )
                                     }
@@ -678,6 +681,32 @@ fun MainNavigation(
                                     backdrop = sheetContentBackdrop,
                                     modifier = Modifier.zIndex(if (isTabsExpanded) 22f else 5f)
                                 )
+
+                                if (mediaSelectedItemCount > 0 && isMediaOrHistoryActive) {
+                                    SelectedItemsCounterPill(
+                                        selectedCount = mediaSelectedItemCount,
+                                        onSend = {
+                                            val target = selectedDevice ?: discoveredDevices.firstOrNull()
+                                            if (target != null) {
+                                                sendFilesToTarget(target, selectedMediaUris.toList())
+                                                selectedMediaUris.clear()
+                                                collapseToHalf()
+                                            } else {
+                                                showPairingModal = true
+                                            }
+                                        },
+                                        onClear = {
+                                            selectedMediaUris.clear()
+                                        },
+                                        totalAvailableWidthDp = availableWidth,
+                                        backdrop = sheetContentBackdrop,
+                                        isSiblingExpanded = isAnyExpanded,
+                                        modifier = Modifier
+                                            .align(Alignment.CenterStart)
+                                            .padding(start = DynamicDimensions.PillDefault.collapsedWidth + 10.dp)
+                                            .zIndex(6f)
+                                    )
+                                }
                             }
                         }
 
