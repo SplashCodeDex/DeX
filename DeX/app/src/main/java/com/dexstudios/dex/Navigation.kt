@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -772,13 +773,13 @@ fun MainNavigation(
                     ) {
                         // 2A. Selection Counter Action Pill / Big Island (Aligned at BottomStart)
                         if (isMediaOrHistoryActive && counterPillAlpha > 0.01f) {
-                            val counterStartPadding by animateDpAsState(
+                            val counterStartOffset by animateDpAsState(
                                 targetValue = if (isCounterBigIslandExpanded) 0.dp else DynamicDimensions.PillDefault.collapsedWidth + 10.dp,
                                 animationSpec = spring(
                                     dampingRatio = if (isCounterBigIslandExpanded) 0.50f else 0.56f,
                                     stiffness = 301f
                                 ),
-                                label = "counterStartPadding"
+                                label = "counterStartOffset"
                             )
 
                             SelectedItemsCounterPill(
@@ -823,7 +824,7 @@ fun MainNavigation(
                                 isSiblingExpanded = isSiblingExpanded,
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
-                                    .padding(start = counterStartPadding)
+                                    .offset { IntOffset(x = counterStartOffset.roundToPx(), y = 0) }
                                     .zIndex(if (isCounterBigIslandExpanded) 35f else 6f)
                                     .graphicsLayer {
                                         alpha = counterPillAlpha

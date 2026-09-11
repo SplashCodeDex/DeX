@@ -154,7 +154,7 @@ fun LiquidGlassIconButton(
             )
     } else {
         Modifier
-            .size(width, height)
+            .size(width.coerceAtLeast(0.dp), height.coerceAtLeast(0.dp))
             .then(fluidityModifier)
             .clip(config.shape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
