@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +51,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +63,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_check
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
@@ -216,11 +223,17 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onCance
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .bubbleFluidity()
-                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(14.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
-                    .clip(RoundedCornerShape(14.dp))
+                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = 0.2f),
+                        ambientColor = Color.Black.copy(alpha = 0.1f),
+                    )
+                    .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .shinyGlare(shape = RoundedCornerShape(14.dp))
+                    .shinyGlare(shape = CircleShape)
+                    .pointerHoverIcon(PointerIcon.Hand)
                     .clickable { onCancel() },
                 contentAlignment = Alignment.Center,
             ) {
@@ -506,17 +519,30 @@ private fun PairingStatusMessage(message: String?, modifier: Modifier = Modifier
 private fun PairingActionButton(label: String, background: Color, contentColor: Color, onClick: () -> Unit, leadingIcon: androidx.compose.ui.graphics.painter.Painter? = null) {
     Box(
         modifier = Modifier
-            .bubbleFluidity()
+            .bubbleFluidity(config = DynamicFluidityConfig.Default)
             .defaultMinSize(minWidth = 80.dp)
-            .shadow(elevation = 4.dp, shape = RoundedCornerShape(12.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
-            .clip(RoundedCornerShape(12.dp))
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                spotColor = Color.Black.copy(alpha = 0.2f),
+                ambientColor = Color.Black.copy(alpha = 0.1f),
+            )
+            .clip(CircleShape)
             .background(background)
-            .shinyGlare(shape = RoundedCornerShape(12.dp))
+            .shinyGlare(shape = CircleShape)
+            .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.transientContentBlur(
+                trigger = label,
+                config = DynamicContentBlurConfig.Default,
+                motion = DynamicMotionConfig.Default,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (leadingIcon != null) {
                 Icon(
                     painter = leadingIcon,

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.onClick
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,8 +57,10 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -74,6 +77,10 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.glass.verticalFadingEdge
+import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.components.overlay.ConfirmationPopup
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
@@ -300,19 +307,20 @@ fun FileExplorerPanel(
                             translationY = upDirTranslateY.toPx()
                         }
                         .size(40.dp)
-                        .bubbleFluidity()
+                        .bubbleFluidity(config = DynamicFluidityConfig.Default)
                         .shadow(
                             elevation = 12.dp,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = CircleShape,
                             spotColor = Color.Black.copy(alpha = 0.48f),
                             ambientColor = Color.Black.copy(alpha = 0.26f),
                         )
                         .frostedSurface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = CircleShape,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             opacity = 1.0f,
                         )
                         .alpha(if (!isAtRoot) 1.0f else 0.4f)
+                        .pointerHoverIcon(if (!isAtRoot) PointerIcon.Hand else PointerIcon.Default)
                         .clickable(
                             interactionSource = upDirInteraction,
                             indication = null,
@@ -359,15 +367,15 @@ fun FileExplorerPanel(
                         .weight(2f)
                         .padding(horizontal = 12.dp)
                         .height(40.dp)
-                        .bubbleFluidity(targetScale = 1.10f, pullFactor = 0.15f)
+                        .bubbleFluidity(config = DynamicFluidityConfig.Default)
                         .shadow(
                             elevation = 12.dp,
-                            shape = RoundedCornerShape(30.dp),
+                            shape = CircleShape,
                             spotColor = Color.Black.copy(alpha = 0.48f),
                             ambientColor = Color.Black.copy(alpha = 0.26f),
                         )
                         .frostedSurface(
-                            shape = RoundedCornerShape(30.dp),
+                            shape = CircleShape,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             opacity = 1.0f,
                         )
@@ -477,39 +485,49 @@ fun FileExplorerPanel(
                             translationY = toggleTranslateY.toPx()
                         }
                         .size(40.dp)
-                        .bubbleFluidity()
+                        .bubbleFluidity(config = DynamicFluidityConfig.Default)
                         .shadow(
                             elevation = 12.dp,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = CircleShape,
                             spotColor = Color.Black.copy(alpha = 0.48f),
                             ambientColor = Color.Black.copy(alpha = 0.26f),
                         )
                         .frostedSurface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = CircleShape,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             opacity = 1.0f,
                         )
+                        .pointerHoverIcon(PointerIcon.Hand)
                         .clickable(interactionSource = toggleInteraction, indication = null) {
                             viewModel.toggleMode()
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painter =
-                        if (mode == ExplorerMode.History) {
-                            painterResource(Res.drawable.ic_fluent_history)
-                        } else {
-                            painterResource(Res.drawable.ic_fluent_smartphone)
-                        },
-                        contentDescription = "Toggle Explorer Mode",
-                        tint =
-                        if (mode == ExplorerMode.Saf) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                        modifier = Modifier.size(20.dp),
-                    )
+                    Box(
+                        modifier = Modifier.transientContentBlur(
+                            trigger = mode,
+                            config = DynamicContentBlurConfig.Default,
+                            motion = DynamicMotionConfig.Default,
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter =
+                            if (mode == ExplorerMode.History) {
+                                painterResource(Res.drawable.ic_fluent_history)
+                            } else {
+                                painterResource(Res.drawable.ic_fluent_smartphone)
+                            },
+                            contentDescription = "Toggle Explorer Mode",
+                            tint =
+                            if (mode == ExplorerMode.Saf) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
 
@@ -901,12 +919,13 @@ fun FileExplorerPanel(
                                 scaleY = sendFilesScale
                                 translationY = sendFilesTranslateY.toPx()
                             }
-                            .bubbleFluidity()
+                            .bubbleFluidity(config = DynamicFluidityConfig.Default)
                             .frostedSurface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = CircleShape,
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
                             )
+                            .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
                                 interactionSource = sendFilesInteraction,
                                 indication = null,
@@ -965,12 +984,13 @@ fun FileExplorerPanel(
                                 scaleY = sendFoldersScale
                                 translationY = sendFoldersTranslateY.toPx()
                             }
-                            .bubbleFluidity()
+                            .bubbleFluidity(config = DynamicFluidityConfig.Default)
                             .frostedSurface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = CircleShape,
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
                             )
+                            .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
                                 interactionSource = sendFoldersInteraction,
                                 indication = null,

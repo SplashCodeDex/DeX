@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -35,12 +36,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_history
@@ -132,15 +139,23 @@ fun QuickActionBar(
         )
 
         // 5. Dynamic Collapsible Danger Close Pill (0dp <-> 62dp)
+        val motionConfig = DynamicMotionConfig.Default
         AnimatedVisibility(
             visible = isPanelExpanded,
             enter =
             expandHorizontally(
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS),
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = motionConfig.expandDampingRatio,
+                    stiffness = motionConfig.stiffness,
+                ),
             ) + fadeIn(),
             exit =
-            shrinkHorizontally(animationSpec = androidx.compose.animation.core.spring(dampingRatio = DockCardPhysics.SPRING_DAMPING_RATIO, stiffness = DockCardPhysics.SPRING_STIFFNESS)) +
-                fadeOut(),
+            shrinkHorizontally(
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = motionConfig.collapseDampingRatio,
+                    stiffness = motionConfig.stiffness,
+                ),
+            ) + fadeOut(),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -242,12 +257,18 @@ fun DeXQuickActionButton(
                 this.translationY = translateY.toPx()
             }
             .size(width = 62.dp, height = 48.dp)
-            .bubbleFluidity()
-            .shadow(elevation = 4.dp, shape = RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.2f), ambientColor = Color.Black.copy(alpha = 0.1f))
-            .clip(RoundedCornerShape(22.dp))
-            .background(backgroundColor, RoundedCornerShape(22.dp))
-            .background(hoverOverlayColor, RoundedCornerShape(22.dp))
-            .shinyGlare(shape = RoundedCornerShape(22.dp))
+            .bubbleFluidity(config = DynamicFluidityConfig.Default)
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                spotColor = Color.Black.copy(alpha = 0.2f),
+                ambientColor = Color.Black.copy(alpha = 0.1f),
+            )
+            .clip(CircleShape)
+            .background(backgroundColor, CircleShape)
+            .background(hoverOverlayColor, CircleShape)
+            .shinyGlare(shape = CircleShape)
+            .pointerHoverIcon(PointerIcon.Hand)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -255,7 +276,16 @@ fun DeXQuickActionButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        iconContent(iconColor)
+        Box(
+            modifier = Modifier.transientContentBlur(
+                trigger = isChecked,
+                config = DynamicContentBlurConfig.Default,
+                motion = DynamicMotionConfig.Default,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            iconContent(iconColor)
+        }
 
         if (badgeCount > 0) {
             // Contrast Inversion for Badge Counter
