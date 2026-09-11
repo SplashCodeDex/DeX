@@ -1,8 +1,13 @@
 package com.dexstudios.dex.window.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +26,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.network.ClientEngine
@@ -94,17 +109,47 @@ fun PullProgressDock(clientEngine: ClientEngine, onCancel: () -> Unit, modifier:
                     )
                 }
 
-                Icon(
-                    painter = painterResource(Res.drawable.ic_fluent_close),
-                    contentDescription = "Cancel Transfer",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .bubbleFluidity()
-                        .clip(CircleShape)
-                        .clickable { onCancel() }
-                        .padding(2.dp),
+                val cancelInteraction = remember { MutableInteractionSource() }
+                val isCancelHovered by cancelInteraction.collectIsHoveredAsState()
+                val isCancelPressedRaw by cancelInteraction.collectIsPressedAsState()
+                var isCancelFluidityPressed by remember { mutableStateOf(false) }
+                val isCancelPressed = isCancelPressedRaw || isCancelFluidityPressed
+
+                val cancelPressProgress by animateFloatAsState(
+                    targetValue = if (isCancelPressed) 1f else 0f,
+                    animationSpec = DynamicMotionConfig.Default.springSpec(isCancelPressed),
+                    label = "cancelPressProgress",
                 )
+
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .bubbleFluidity(
+                            config = DynamicFluidityConfig.Default,
+                            onPressedChanged = { isCancelFluidityPressed = it },
+                        )
+                        .clip(CircleShape)
+                        .background(if (isCancelHovered) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                        .shinyGlare(
+                            shape = CircleShape,
+                            intensity = if (isCancelHovered) DefaultGlareIntensity * (1f + 0.60f * cancelPressProgress) else 0f,
+                        )
+                        .hoverable(interactionSource = cancelInteraction)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .clickable(
+                            interactionSource = cancelInteraction,
+                            indication = null,
+                            onClick = onCancel,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_fluent_close),
+                        contentDescription = "Cancel Transfer",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

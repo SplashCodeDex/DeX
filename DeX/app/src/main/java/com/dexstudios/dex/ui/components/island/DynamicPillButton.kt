@@ -401,7 +401,7 @@ fun DynamicPillButton(
     val resolvedWidth = currentWidth.coerceAtLeast(0.dp)
     val resolvedHeight = currentHeight.coerceAtLeast(0.dp)
 
-    if (resolvedWidth > 0.01.dp || isAnyExpanded) {
+    if (resolvedWidth >= 1.dp && resolvedHeight >= 1.dp) {
         // 3. Main morphing pill container
         Box(
             modifier = modifier

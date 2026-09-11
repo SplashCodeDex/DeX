@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -28,10 +30,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_pin
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
@@ -104,18 +112,35 @@ fun DragPillHandle(controller: DockedWindowStateController, modifier: Modifier =
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Pin Button
-                val pinHoverState = remember { MutableInteractionSource() }
-                val isPinHovered by pinHoverState.collectIsHoveredAsState()
+                val pinInteraction = remember { MutableInteractionSource() }
+                val isPinHovered by pinInteraction.collectIsHoveredAsState()
+                val isPinPressedRaw by pinInteraction.collectIsPressedAsState()
+                var isPinFluidityPressed by remember { mutableStateOf(false) }
+                val isPinPressed = isPinPressedRaw || isPinFluidityPressed
+
+                val pinPressProgress by animateFloatAsState(
+                    targetValue = if (isPinPressed) 1f else 0f,
+                    animationSpec = DynamicMotionConfig.Default.springSpec(isPinPressed),
+                    label = "pinPressProgress",
+                )
 
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
-                        .bubbleFluidity()
+                        .size(18.dp)
+                        .bubbleFluidity(
+                            config = DynamicFluidityConfig.Default,
+                            onPressedChanged = { isPinFluidityPressed = it },
+                        )
                         .clip(RoundedCornerShape(4.dp))
                         .background(if (isPinHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else Color.Transparent)
-                        .hoverable(pinHoverState)
+                        .shinyGlare(
+                            shape = RoundedCornerShape(4.dp),
+                            intensity = if (isPinHovered) DefaultGlareIntensity * (1f + 0.60f * pinPressProgress) else 0f,
+                        )
+                        .hoverable(pinInteraction)
+                        .pointerHoverIcon(PointerIcon.Hand)
                         .clickable(
-                            interactionSource = pinHoverState,
+                            interactionSource = pinInteraction,
                             indication = null,
                         ) { controller.isPinned = !controller.isPinned },
                     contentAlignment = Alignment.Center,

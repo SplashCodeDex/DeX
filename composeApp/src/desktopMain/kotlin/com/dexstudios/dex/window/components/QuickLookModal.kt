@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -43,8 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_article
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
@@ -200,6 +206,21 @@ fun QuickLookModal(
                     // "Open with App" Primary Action Button
                     val openInteraction = remember { MutableInteractionSource() }
                     val isOpenHovered by openInteraction.collectIsHoveredAsState()
+                    val isOpenPressedRaw by openInteraction.collectIsPressedAsState()
+                    var isOpenFluidityPressed by remember { mutableStateOf(false) }
+                    val isOpenPressed = isOpenPressedRaw || isOpenFluidityPressed
+
+                    val openPressProgress by animateFloatAsState(
+                        targetValue = if (isOpenPressed) 1f else 0f,
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isOpenPressed),
+                        label = "openPressProgress",
+                    )
+                    val openElevation by animateDpAsState(
+                        targetValue = (3.dp * (1f - 0.20f * openPressProgress)).coerceAtLeast(0.dp),
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isOpenPressed),
+                        label = "openElevation",
+                    )
+
                     val openScale by animateFloatAsState(
                         targetValue = if (isOpenHovered) 1.05f else 1.0f,
                         animationSpec = tween(300, easing = DockCardPhysics.HoverEase),
@@ -212,9 +233,24 @@ fun QuickLookModal(
                                 scaleX = openScale
                                 scaleY = openScale
                             }
-                            .bubbleFluidity()
+                            .bubbleFluidity(
+                                config = DynamicFluidityConfig.Default,
+                                onPressedChanged = { isOpenFluidityPressed = it },
+                            )
+                            .shadow(
+                                elevation = openElevation,
+                                shape = RoundedCornerShape(9.dp),
+                                spotColor = Color.Black.copy(alpha = 0.2f),
+                                ambientColor = Color.Black.copy(alpha = 0.1f),
+                            )
                             .clip(RoundedCornerShape(9.dp))
                             .background(MaterialTheme.colorScheme.primary)
+                            .shinyGlare(
+                                shape = RoundedCornerShape(9.dp),
+                                intensity = DefaultGlareIntensity * (1f + 0.60f * openPressProgress),
+                            )
+                            .hoverable(interactionSource = openInteraction)
+                            .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
                                 interactionSource = openInteraction,
                                 indication = null,
@@ -233,13 +269,50 @@ fun QuickLookModal(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
+                    val closeInteraction = remember { MutableInteractionSource() }
+                    val isCloseHovered by closeInteraction.collectIsHoveredAsState()
+                    val isClosePressedRaw by closeInteraction.collectIsPressedAsState()
+                    var isCloseFluidityPressed by remember { mutableStateOf(false) }
+                    val isClosePressed = isClosePressedRaw || isCloseFluidityPressed
+
+                    val closePressProgress by animateFloatAsState(
+                        targetValue = if (isClosePressed) 1f else 0f,
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
+                        label = "closePressProgress",
+                    )
+                    val closeElevation by animateDpAsState(
+                        targetValue = (2.dp * (1f - 0.20f * closePressProgress)).coerceAtLeast(0.dp),
+                        animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
+                        label = "closeElevation",
+                    )
+
                     // Close Button
                     Box(
                         modifier = Modifier
                             .size(26.dp)
+                            .bubbleFluidity(
+                                config = DynamicFluidityConfig.Default,
+                                onPressedChanged = { isCloseFluidityPressed = it },
+                            )
+                            .shadow(
+                                elevation = closeElevation,
+                                shape = CircleShape,
+                                spotColor = Color.Black.copy(alpha = 0.15f),
+                                ambientColor = Color.Black.copy(alpha = 0.08f),
+                            )
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                            .clickable(onClick = onDismiss),
+                            .shinyGlare(
+                                shape = CircleShape,
+                                intensity = DefaultGlareIntensity * (1f + 0.60f * closePressProgress),
+                            )
+                            .hoverable(interactionSource = closeInteraction)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .clickable(
+                                interactionSource = closeInteraction,
+                                indication = null,
+                                onClick = onDismiss,
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -502,13 +575,49 @@ private fun GenericMetadataPreviewPane(item: ExplorerFileItem, file: File, ext: 
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val locInteraction = remember { MutableInteractionSource() }
+        val isLocHovered by locInteraction.collectIsHoveredAsState()
+        val isLocPressedRaw by locInteraction.collectIsPressedAsState()
+        var isLocFluidityPressed by remember { mutableStateOf(false) }
+        val isLocPressed = isLocPressedRaw || isLocFluidityPressed
+
+        val locPressProgress by animateFloatAsState(
+            targetValue = if (isLocPressed) 1f else 0f,
+            animationSpec = DynamicMotionConfig.Default.springSpec(isLocPressed),
+            label = "locPressProgress",
+        )
+        val locElevation by animateDpAsState(
+            targetValue = (2.dp * (1f - 0.20f * locPressProgress)).coerceAtLeast(0.dp),
+            animationSpec = DynamicMotionConfig.Default.springSpec(isLocPressed),
+            label = "locElevation",
+        )
+
         // Open Location Button
         Box(
             modifier = Modifier
-                .bubbleFluidity()
+                .bubbleFluidity(
+                    config = DynamicFluidityConfig.Default,
+                    onPressedChanged = { isLocFluidityPressed = it },
+                )
+                .shadow(
+                    elevation = locElevation,
+                    shape = RoundedCornerShape(8.dp),
+                    spotColor = Color.Black.copy(alpha = 0.15f),
+                    ambientColor = Color.Black.copy(alpha = 0.08f),
+                )
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable(onClick = onOpenLocation)
+                .shinyGlare(
+                    shape = RoundedCornerShape(8.dp),
+                    intensity = DefaultGlareIntensity * (1f + 0.60f * locPressProgress),
+                )
+                .hoverable(interactionSource = locInteraction)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable(
+                    interactionSource = locInteraction,
+                    indication = null,
+                    onClick = onOpenLocation,
+                )
                 .padding(horizontal = 14.dp, vertical = 6.dp),
         ) {
             Text(

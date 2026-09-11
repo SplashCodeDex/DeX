@@ -43,8 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,7 +55,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
@@ -210,6 +216,20 @@ fun DeviceListPanel(
 private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressedRaw by interactionSource.collectIsPressedAsState()
+    var isFluidityPressed by remember { mutableStateOf(false) }
+    val isPressed = isPressedRaw || isFluidityPressed
+
+    val pressProgress by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
+        label = "deviceRowPressProgress",
+    )
+    val elevation by animateDpAsState(
+        targetValue = (if (isHovered || device.isActive) 3.dp else 0.dp) * (1f - 0.20f * pressProgress),
+        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
+        label = "deviceRowElevation",
+    )
 
     val cardBg = when {
         isHovered || device.isActive -> MaterialTheme.colorScheme.surfaceVariant
@@ -237,11 +257,24 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
                 scaleX = scale
                 scaleY = scale
             }
-            .bubbleFluidity()
+            .bubbleFluidity(
+                config = DynamicFluidityConfig.Default,
+                onPressedChanged = { isFluidityPressed = it },
+            )
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(12.dp),
+                spotColor = Color.Black.copy(alpha = 0.15f),
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+            )
             .clip(RoundedCornerShape(12.dp))
             .background(cardBg)
-            .shinyGlare(shape = RoundedCornerShape(12.dp))
+            .shinyGlare(
+                shape = RoundedCornerShape(12.dp),
+                intensity = if (isHovered || device.isActive) DefaultGlareIntensity * (1f + 0.60f * pressProgress) else 0f,
+            )
             .hoverable(interactionSource = interactionSource)
+            .pointerHoverIcon(PointerIcon.Hand)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -520,13 +553,49 @@ private fun DeviceEmptyState(isVisible: Boolean, onViewDeviceStatus: () -> Unit 
 
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
 
+            val demoInteraction = remember { MutableInteractionSource() }
+            val isDemoHovered by demoInteraction.collectIsHoveredAsState()
+            val isDemoPressedRaw by demoInteraction.collectIsPressedAsState()
+            var isDemoFluidityPressed by remember { mutableStateOf(false) }
+            val isDemoPressed = isDemoPressedRaw || isDemoFluidityPressed
+
+            val demoPressProgress by animateFloatAsState(
+                targetValue = if (isDemoPressed) 1f else 0f,
+                animationSpec = DynamicMotionConfig.Default.springSpec(isDemoPressed),
+                label = "demoPressProgress",
+            )
+            val demoElevation by animateDpAsState(
+                targetValue = (2.dp * (1f - 0.20f * demoPressProgress)).coerceAtLeast(0.dp),
+                animationSpec = DynamicMotionConfig.Default.springSpec(isDemoPressed),
+                label = "demoElevation",
+            )
+
             // Demo Action Pill
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isDemoFluidityPressed = it },
+                    )
+                    .shadow(
+                        elevation = demoElevation,
+                        shape = RoundedCornerShape(20.dp),
+                        spotColor = Color.Black.copy(alpha = 0.15f),
+                        ambientColor = Color.Black.copy(alpha = 0.08f),
+                    )
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f))
-                    .bubbleFluidity()
-                    .clickable { onViewDeviceStatus() }
+                    .shinyGlare(
+                        shape = RoundedCornerShape(20.dp),
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * demoPressProgress),
+                    )
+                    .hoverable(interactionSource = demoInteraction)
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .clickable(
+                        interactionSource = demoInteraction,
+                        indication = null,
+                        onClick = { onViewDeviceStatus() },
+                    )
                     .padding(horizontal = 14.dp, vertical = 7.dp),
                 contentAlignment = Alignment.Center,
             ) {

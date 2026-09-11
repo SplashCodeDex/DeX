@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -18,6 +19,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +67,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -220,21 +226,49 @@ fun PinPairingPanel(state: PinPairingUiState, onToggleQrPin: () -> Unit, onCance
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            val closeInteraction = remember { MutableInteractionSource() }
+            val isCloseHovered by closeInteraction.collectIsHoveredAsState()
+            val isClosePressedRaw by closeInteraction.collectIsPressedAsState()
+            var isCloseFluidityPressed by remember { mutableStateOf(false) }
+            val isClosePressed = isClosePressedRaw || isCloseFluidityPressed
+
+            val closePressProgress by animateFloatAsState(
+                targetValue = if (isClosePressed) 1f else 0f,
+                animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
+                label = "closePressProgress",
+            )
+            val closeElevation by animateDpAsState(
+                targetValue = (4.dp * (1f - 0.20f * closePressProgress)).coerceAtLeast(0.dp),
+                animationSpec = DynamicMotionConfig.Default.springSpec(isClosePressed),
+                label = "closeElevation",
+            )
+
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .bubbleFluidity(config = DynamicFluidityConfig.Default)
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isCloseFluidityPressed = it },
+                    )
                     .shadow(
-                        elevation = 4.dp,
+                        elevation = closeElevation,
                         shape = CircleShape,
                         spotColor = Color.Black.copy(alpha = 0.2f),
                         ambientColor = Color.Black.copy(alpha = 0.1f),
                     )
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .shinyGlare(shape = CircleShape)
+                    .shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * closePressProgress),
+                    )
+                    .hoverable(interactionSource = closeInteraction)
                     .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable { onCancel() },
+                    .clickable(
+                        interactionSource = closeInteraction,
+                        indication = null,
+                        onClick = onCancel,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -517,21 +551,49 @@ private fun PairingStatusMessage(message: String?, modifier: Modifier = Modifier
  */
 @Composable
 private fun PairingActionButton(label: String, background: Color, contentColor: Color, onClick: () -> Unit, leadingIcon: androidx.compose.ui.graphics.painter.Painter? = null) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressedRaw by interactionSource.collectIsPressedAsState()
+    var isFluidityPressed by remember { mutableStateOf(false) }
+    val isPressed = isPressedRaw || isFluidityPressed
+
+    val pressProgress by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
+        label = "pairingBtnPressProgress",
+    )
+    val elevation by animateDpAsState(
+        targetValue = (4.dp * (1f - 0.20f * pressProgress)).coerceAtLeast(0.dp),
+        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
+        label = "pairingBtnElevation",
+    )
+
     Box(
         modifier = Modifier
-            .bubbleFluidity(config = DynamicFluidityConfig.Default)
+            .bubbleFluidity(
+                config = DynamicFluidityConfig.Default,
+                onPressedChanged = { isFluidityPressed = it },
+            )
             .defaultMinSize(minWidth = 80.dp)
             .shadow(
-                elevation = 4.dp,
+                elevation = elevation,
                 shape = CircleShape,
                 spotColor = Color.Black.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.1f),
             )
             .clip(CircleShape)
             .background(background)
-            .shinyGlare(shape = CircleShape)
+            .shinyGlare(
+                shape = CircleShape,
+                intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
+            )
+            .hoverable(interactionSource = interactionSource)
             .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
             .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {

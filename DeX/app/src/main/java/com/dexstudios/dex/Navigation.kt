@@ -819,7 +819,7 @@ fun MainNavigation(
                                     showPairingModal = true
                                 },
                                 totalAvailableWidthDp = availableWidth,
-                                backdrop = bottomBarBackdrop,
+                                backdrop = sheetContentBackdrop,
                                 isSiblingExpanded = isSiblingExpanded,
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)

@@ -122,7 +122,7 @@ fun LiquidGlassIconButton(
         Modifier
     }
 
-    val glassModifier = if (backdrop != null) {
+    val glassModifier = if (backdrop != null && width >= 1.dp && height >= 1.dp) {
         Modifier
             .size(width, height)
             .then(fluidityModifier)

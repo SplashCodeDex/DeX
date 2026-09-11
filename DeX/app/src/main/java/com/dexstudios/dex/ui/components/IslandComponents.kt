@@ -534,14 +534,17 @@ fun ExpandedSelectionDispatchContent(
             ) {
                 // Stack of preview thumbnails (up to 3)
                 if (selectedUris.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy((-12).dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    val previewUris = selectedUris.take(3)
+                    val stackWidth = 36.dp + ((previewUris.size - 1) * 24).dp
+                    Box(
+                        modifier = Modifier
+                            .size(width = stackWidth, height = 36.dp),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        val previewUris = selectedUris.take(3)
                         previewUris.forEachIndexed { index, uri ->
                             Box(
                                 modifier = Modifier
+                                    .padding(start = (index * 24).dp)
                                     .size(36.dp)
                                     .zIndex((3 - index).toFloat())
                                     .clip(CircleShape)

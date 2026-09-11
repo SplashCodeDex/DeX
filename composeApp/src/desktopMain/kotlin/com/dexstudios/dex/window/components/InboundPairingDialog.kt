@@ -1,13 +1,19 @@
 package com.dexstudios.dex.window.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,16 +22,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
+import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
+import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.domain.pairing.PairingEngine
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.delay
@@ -96,90 +110,142 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
     Box(
         modifier = Modifier
             .width(360.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = cardShape,
+                spotColor = Color.Black.copy(alpha = 0.25f),
+                ambientColor = Color.Black.copy(alpha = 0.12f),
+            )
+            .clip(cardShape)
+            .background(MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(24.dp),
+                shape = cardShape,
             )
-            .clip(cardShape),
+            .shinyGlare(shape = cardShape),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .background(MaterialTheme.colorScheme.surface),
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Text(
+                text = "Pairing Request",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "$alias wants to connect.\nEnter the ${PairingEngine.PIN_LENGTH}-digit PIN displayed on the device.",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // PIN Entry Input
+            BasicTextField(
+                value = pinText,
+                onValueChange = { newValue ->
+                    val digitsOnly = newValue.filter { it.isDigit() }
+                    if (digitsOnly.length <= PairingEngine.PIN_LENGTH) {
+                        pinText = digitsOnly
+                        if (digitsOnly.length == PairingEngine.PIN_LENGTH) {
+                            onPinEntered(digitsOnly)
+                        }
+                    }
+                },
+                modifier = Modifier.focusRequester(focusRequester),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                textStyle = LocalTextStyle.current.copy(
+                    color = Color.Transparent,
+                ),
+                cursorBrush = SolidColor(Color.Transparent),
+                decorationBox = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val pinString = pinText.padEnd(PairingEngine.PIN_LENGTH, ' ')
+                        for (i in 0 until PairingEngine.PIN_LENGTH) {
+                            val digit = if (i < pinString.length && pinString[i] != ' ') pinString[i].toString() else ""
+                            PinDigitBox(
+                                digit = digit,
+                                isFilled = digit.isNotBlank(),
+                                isError = false,
+                            )
+                        }
+                    }
+                },
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Expires in ${remainingSeconds}s",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val cancelInteraction = remember { MutableInteractionSource() }
+            val isCancelHovered by cancelInteraction.collectIsHoveredAsState()
+            val isCancelPressedRaw by cancelInteraction.collectIsPressedAsState()
+            var isCancelFluidityPressed by remember { mutableStateOf(false) }
+            val isCancelPressed = isCancelPressedRaw || isCancelFluidityPressed
+
+            val cancelPressProgress by animateFloatAsState(
+                targetValue = if (isCancelPressed) 1f else 0f,
+                animationSpec = DynamicMotionConfig.Default.springSpec(isCancelPressed),
+                label = "cancelPressProgress",
+            )
+            val cancelElevation by animateDpAsState(
+                targetValue = (2.dp * (1f - 0.20f * cancelPressProgress)).coerceAtLeast(0.dp),
+                animationSpec = DynamicMotionConfig.Default.springSpec(isCancelPressed),
+                label = "cancelElevation",
+            )
+
+            Box(
+                modifier = Modifier
+                    .bubbleFluidity(
+                        config = DynamicFluidityConfig.Default,
+                        onPressedChanged = { isCancelFluidityPressed = it },
+                    )
+                    .defaultMinSize(minWidth = 100.dp)
+                    .shadow(
+                        elevation = cancelElevation,
+                        shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = 0.15f),
+                        ambientColor = Color.Black.copy(alpha = 0.08f),
+                    )
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .shinyGlare(
+                        shape = CircleShape,
+                        intensity = DefaultGlareIntensity * (1f + 0.60f * cancelPressProgress),
+                    )
+                    .hoverable(interactionSource = cancelInteraction)
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .clickable(
+                        interactionSource = cancelInteraction,
+                        indication = null,
+                        onClick = onCancel,
+                    )
+                    .padding(horizontal = 24.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "Pairing Request",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "$alias wants to connect.\nEnter the ${PairingEngine.PIN_LENGTH}-digit PIN displayed on the device.",
+                    text = "Cancel",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // PIN Entry Input
-                BasicTextField(
-                    value = pinText,
-                    onValueChange = { newValue ->
-                        val digitsOnly = newValue.filter { it.isDigit() }
-                        if (digitsOnly.length <= PairingEngine.PIN_LENGTH) {
-                            pinText = digitsOnly
-                            if (digitsOnly.length == PairingEngine.PIN_LENGTH) {
-                                onPinEntered(digitsOnly)
-                            }
-                        }
-                    },
-                    modifier = Modifier.focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    textStyle = LocalTextStyle.current.copy(
-                        color = Color.Transparent,
-                    ),
-                    cursorBrush = SolidColor(Color.Transparent),
-                    decorationBox = {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            val pinString = pinText.padEnd(PairingEngine.PIN_LENGTH, ' ')
-                            for (i in 0 until PairingEngine.PIN_LENGTH) {
-                                val digit = if (i < pinString.length && pinString[i] != ' ') pinString[i].toString() else ""
-                                PinDigitBox(
-                                    digit = digit,
-                                    isFilled = digit.isNotBlank(),
-                                    isError = false,
-                                )
-                            }
-                        }
-                    },
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = "Expires in ${remainingSeconds}s",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TextButton(onClick = onCancel) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.error)
-                }
             }
         }
     }
