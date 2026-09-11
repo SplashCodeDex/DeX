@@ -2,6 +2,7 @@ package com.dexstudios.dex
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +24,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -31,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -52,7 +57,11 @@ import com.dexstudios.dex.ui.main.MainScreenViewModel
 import com.dexstudios.dex.ui.main.components.DeviceCarousel
 import com.dexstudios.dex.ui.main.components.MediaPickerTray
 import com.dexstudios.dex.ui.main.components.MediaTrayTab
-import com.dexstudios.dex.ui.state.TopAppBarState
+import com.dexstudios.dex.ui.components.SheetSearchIsland
+import com.dexstudios.dex.ui.components.island.*
+import com.dexstudios.dex.ui.history.HistoryState
+import com.dexstudios.dex.ui.state.TopIslandState
+import com.dexstudios.dex.ui.state.ProfileExpansionStage
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -67,6 +76,8 @@ import org.koin.compose.koinInject
 import timber.log.Timber
 
 enum class BottomRightButtonMode {
+    // [EXPERIMENTED BUTTON - DO NOT TOUCH] Toggle preview mock devices.
+    // This is strictly an experimented button that stays where it was in the bottom-right roller button, never in the navbar collapsible.
     Devices,
     Profile,
     History
@@ -102,7 +113,15 @@ fun MainNavigation(
     var selectedDevice by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var showPairingModal by remember { mutableStateOf(false) }
     var activeExpandedMode by remember { mutableStateOf(SheetExpandedMode.Photos) }
+    var lastMediaMode by remember { mutableStateOf(SheetExpandedMode.Photos) }
     var bottomRightMode by remember { mutableStateOf(BottomRightButtonMode.Profile) }
+    var showPlayground by remember { mutableStateOf(false) }
+
+    LaunchedEffect(activeExpandedMode) {
+        if (activeExpandedMode != SheetExpandedMode.History) {
+            lastMediaMode = activeExpandedMode
+        }
+    }
 
     // Infinite Roller Offset (Pixels). Center is 0f.
     val rollerOffset = remember { Animatable(0f) }
@@ -125,8 +144,9 @@ fun MainNavigation(
     val islandState by remember {
         derivedStateOf {
             when {
-                TopAppBarState.isProfileExpanded && isTransferActive -> IslandContentState.EXPANDED_TRANSFER
-                TopAppBarState.isProfileExpanded -> IslandContentState.EXPANDED_PROFILE
+                TopIslandState.profileStage == ProfileExpansionStage.FullIsland && isTransferActive -> IslandContentState.EXPANDED_TRANSFER
+                TopIslandState.profileStage == ProfileExpansionStage.FullIsland -> IslandContentState.EXPANDED_PROFILE
+                TopIslandState.profileStage == ProfileExpansionStage.NamePill -> IslandContentState.NAME_PILL_PROFILE
                 isTransferActive -> IslandContentState.COLLAPSED_TRANSFER
                 else -> IslandContentState.IDLE
             }
@@ -137,28 +157,35 @@ fun MainNavigation(
     val containerSize = LocalWindowInfo.current.containerSize
     val screenWidth = with(density) { containerSize.width.toDp() }
     val expandedWidth = screenWidth - 32.dp
+    // Dynamic Island bouncy expansion variables moved to inner scope
 
-    val islandWidth by animateDpAsState(
-        targetValue = if (islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE) expandedWidth else 56.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "islandWidth"
-    )
-    val islandHeight by animateDpAsState(
-        targetValue = when (islandState) {
-            IslandContentState.EXPANDED_TRANSFER -> 180.dp
-            IslandContentState.EXPANDED_PROFILE -> 140.dp
-            else -> 56.dp
-        },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "islandHeight"
-    )
+    // Transient optical content blur during profile morphing (8dp peak, 75ms rise, spring dissipate)
+    val profileContentBlur = remember { Animatable(0f) }
+    var hasProfileBlurSettledInitial by remember { mutableStateOf(false) }
+
+    LaunchedEffect(TopIslandState.profileStage) {
+        if (!hasProfileBlurSettledInitial) {
+            hasProfileBlurSettledInitial = true
+            return@LaunchedEffect
+        }
+        profileContentBlur.animateTo(
+            targetValue = DynamicContentBlurConfig.Default.maxBlur.value,
+            animationSpec = DynamicContentBlurConfig.Default.riseAnimationSpec
+        )
+        profileContentBlur.animateTo(
+            targetValue = 0f,
+            animationSpec = DynamicMotionConfig.Default.springSpec(
+                isExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed
+            )
+        )
+    }
 
     // Onboarding state hoisted so both the sheet content and the overlay below can react to it
     val onboardingPrefs = remember { context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!onboardingPrefs.getBoolean("onboarding_done", false)) }
 
     LaunchedEffect(showOnboarding) {
-        TopAppBarState.isOnboardingVisible = showOnboarding
+        TopIslandState.isOnboardingVisible = showOnboarding
     }
 
     // QR Code Scanner Launcher
@@ -283,13 +310,20 @@ fun MainNavigation(
         }
         var showPreviewDevices by remember { mutableStateOf(false) }
         val effectiveDevices = if (showPreviewDevices) previewMockDevices else discoveredDevices
+        var isTabsExpanded by remember { mutableStateOf(false) }
 
-        // Predictive back gesture handling for expanded overlays (profile/search)
-        PredictiveBackHandler(enabled = TopAppBarState.isProfileExpanded || TopAppBarState.isSearchExpanded) { progressFlow ->
+        // Predictive back gesture handling for expanded overlays (profile/search/devices/tabs)
+        PredictiveBackHandler(enabled = TopIslandState.isAnyProfileExpanded || HistoryState.isSearchExpanded || showPreviewDevices || isTabsExpanded) { progressFlow ->
             try {
                 progressFlow.collect { /* progress */ }
-                TopAppBarState.isProfileExpanded = false
-                TopAppBarState.isSearchExpanded = false
+                if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
+                    TopIslandState.profileStage = ProfileExpansionStage.Collapsed
+                } else if (showPreviewDevices) {
+                    showPreviewDevices = false
+                } else if (isTabsExpanded) {
+                    isTabsExpanded = false
+                }
+                HistoryState.isSearchExpanded = false
             } catch (_: kotlin.coroutines.cancellation.CancellationException) {
                 // Cancelled
             }
@@ -301,13 +335,13 @@ fun MainNavigation(
         NavBottomSheet(
             backdrop = contentBackdrop,
             initialTier = SheetTier.Half,
-            modifier = Modifier.zIndex(if (TopAppBarState.isProfileExpanded) 3f else 0f),
+            modifier = Modifier.zIndex(if (TopIslandState.isProfileExpanded) 3f else 0f),
             onDismiss = onDismiss,
             sheetContent = { expansionFraction, currentTier, halfHeightDp, expandTo, collapseToHalf ->
-                // Automatically cycle roller button to History when expanding, and reset to Profile when collapsed
-                val targetRollerMode = remember(expansionFraction) {
+                // Automatically cycle roller button to History when expanding History, and reset to Profile when fully collapsed
+                val targetRollerMode = remember(expansionFraction, activeExpandedMode) {
                     when {
-                        expansionFraction >= 0.25f -> BottomRightButtonMode.History
+                        activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.25f -> BottomRightButtonMode.History
                         expansionFraction <= 0.05f -> BottomRightButtonMode.Profile
                         else -> bottomRightMode
                     }
@@ -315,10 +349,13 @@ fun MainNavigation(
 
                 LaunchedEffect(targetRollerMode) {
                     if (targetRollerMode != bottomRightMode && !isMagneticLocked) {
-                        val buttonHeightPx = with(density) { 56.dp.toPx() }
+                        val buttonHeightPx = with(density) { DynamicDimensions.PillDefault.collapsedHeight.toPx() }
                         val targetY = if (targetRollerMode == BottomRightButtonMode.History) -buttonHeightPx else buttonHeightPx
                         try {
-                            rollerOffset.animateTo(targetY, spring(stiffness = Spring.StiffnessMediumLow))
+                            rollerOffset.animateTo(
+                                targetY,
+                                DynamicMotionConfig.Default.springSpec(isExpanded = true)
+                            )
                             bottomRightMode = targetRollerMode
                         } finally {
                             withContext(NonCancellable) {
@@ -330,7 +367,9 @@ fun MainNavigation(
 
                 LaunchedEffect(expansionFraction <= 0.05f) {
                     if (expansionFraction <= 0.05f) {
-                        activeExpandedMode = SheetExpandedMode.Photos
+                        activeExpandedMode = lastMediaMode
+                        isTabsExpanded = false
+                        TopIslandState.collapseProfile()
                     }
                 }
 
@@ -341,10 +380,91 @@ fun MainNavigation(
 
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val availableWidth = maxWidth
-                    val isExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
+                    val rowSpace = (availableWidth - 12.dp - 16.dp).coerceAtLeast(0.dp)
+                    val namePillTargetWidth = (rowSpace - 120.dp - 10.dp).coerceIn(180.dp, 210.dp)
+                    var mediaSelectedItemCount by remember { mutableIntStateOf(0) }
+
+                    val isHistoryActive = activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.15f
+                    val isAnyExpanded = TopIslandState.profileStage != ProfileExpansionStage.Collapsed || isHistoryActive || showPreviewDevices
+
+                    val isFullIslandExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
+                    val isAnyIslandExpanded = isFullIslandExpanded || islandState == IslandContentState.NAME_PILL_PROFILE
+
+                    val isCurrentRollerItemExpanded = when {
+                        isFullIslandExpanded -> true
+                        bottomRightMode == BottomRightButtonMode.Profile -> TopIslandState.profileStage != ProfileExpansionStage.Collapsed
+                        bottomRightMode == BottomRightButtonMode.History -> isHistoryActive
+                        bottomRightMode == BottomRightButtonMode.Devices -> showPreviewDevices
+                        else -> false
+                    }
+
+                    val rollerExpansionTriggerKey = when (bottomRightMode) {
+                        BottomRightButtonMode.Profile -> TopIslandState.profileStage
+                        BottomRightButtonMode.History -> isHistoryActive
+                        BottomRightButtonMode.Devices -> showPreviewDevices
+                    }
+                    val rollerAnticipationState = rememberExpandingAnticipationPhysics(
+                        isExpanded = isCurrentRollerItemExpanded,
+                        triggerKey = rollerExpansionTriggerKey,
+                        anchor = ExpansionAnchor.End,
+                        motion = DynamicMotionConfig.Default,
+                        fluidity = DynamicFluidityConfig.Default,
+                    )
+                    val canExpandRollerBounds = if (isCurrentRollerItemExpanded) rollerAnticipationState.canExpandBounds else false
+
+                    val islandMotionSpec = remember(isCurrentRollerItemExpanded) {
+                        DynamicMotionConfig.Default.resolveSpringSpec(isCurrentRollerItemExpanded)
+                    }
+
+                    val islandWidth by animateDpAsState(
+                        targetValue = when {
+                            !isCurrentRollerItemExpanded -> DynamicDimensions.PillDefault.collapsedWidth
+                            !canExpandRollerBounds -> when {
+                                bottomRightMode == BottomRightButtonMode.Profile && TopIslandState.profileStage == ProfileExpansionStage.FullIsland -> namePillTargetWidth
+                                else -> DynamicDimensions.PillDefault.collapsedWidth
+                            }
+                            isFullIslandExpanded -> expandedWidth
+                            bottomRightMode == BottomRightButtonMode.Profile -> when {
+                                TopIslandState.profileStage == ProfileExpansionStage.NamePill -> namePillTargetWidth
+                                else -> DynamicDimensions.PillDefault.collapsedWidth
+                            }
+                            bottomRightMode == BottomRightButtonMode.History -> if (isHistoryActive) DynamicDimensions.CompactPill.expandedWidth else DynamicDimensions.PillDefault.collapsedWidth
+                            bottomRightMode == BottomRightButtonMode.Devices -> if (showPreviewDevices) DynamicDimensions.CompactPill.expandedWidth else DynamicDimensions.PillDefault.collapsedWidth
+                            else -> DynamicDimensions.PillDefault.collapsedWidth
+                        },
+                        animationSpec = islandMotionSpec,
+                        label = "islandWidth"
+                    )
+                    val islandHeight by animateDpAsState(
+                        targetValue = when {
+                            !isCurrentRollerItemExpanded || !canExpandRollerBounds -> DynamicDimensions.PillDefault.collapsedHeight
+                            isFullIslandExpanded -> when (islandState) {
+                                IslandContentState.EXPANDED_TRANSFER -> DynamicDimensions.TransferIsland.expandedHeight
+                                else -> DynamicDimensions.FullIsland.expandedHeight
+                            }
+                            else -> DynamicDimensions.PillDefault.collapsedHeight
+                        },
+                        animationSpec = islandMotionSpec,
+                        label = "islandHeight"
+                    )
+
+                    LaunchedEffect(expansionFraction < 0.15f) {
+                        if (expansionFraction < 0.15f) {
+                            isTabsExpanded = false
+                        }
+                    }
+
+                    val navPillAlpha by animateFloatAsState(
+                        targetValue = if (isFullIslandExpanded) 0f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = if (isFullIslandExpanded) 0.50f else 0.65f,
+                            stiffness = 380f
+                        ),
+                        label = "navPillAlpha"
+                    )
 
                     // Invisible dismissal layer to catch taps outside the expanded island
-                    if (isExpanded) {
+                    if (isAnyIslandExpanded) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -352,7 +472,7 @@ fun MainNavigation(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                    onClick = { TopAppBarState.isProfileExpanded = false }
+                                    onClick = { TopIslandState.profileStage = ProfileExpansionStage.Collapsed }
                                 )
                         )
                     }
@@ -444,6 +564,9 @@ fun MainNavigation(
                                                 }
                                                 collapseToHalf()
                                             },
+                                            onSelectionChanged = { count ->
+                                                mediaSelectedItemCount = count
+                                            },
                                             onClose = { collapseToHalf() },
                                         )
                                     }
@@ -451,31 +574,92 @@ fun MainNavigation(
                             }
                         }
 
+                        // Dismissal layer for expanded nav tabs: tapping anywhere on sheet collapses tabs back to active icon
+                        if (isTabsExpanded && expansionFraction >= 0.15f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(15f)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { isTabsExpanded = false }
+                                    )
+                            )
+                        }
+
                         // 1B. Floating Navboard Pill (Draws on top of sheet, samples sheetContentBackdrop)
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
-                                .zIndex(5f)
-                        ) {
-                            MorphingSheetNavPill(
-                                expansionFraction = expansionFraction,
-                                totalAvailableWidthDp = availableWidth,
-                                halfHeightDp = halfHeightDp,
-                                actionText = if (effectiveDevices.isNotEmpty()) "Send File" else "Pair Device",
-                                onActionClick = {
-                                    if (effectiveDevices.isNotEmpty()) {
-                                        activeExpandedMode = SheetExpandedMode.Photos
-                                        expandTo(SheetTier.High)
-                                    } else {
-                                        showPairingModal = true
+                        if (navPillAlpha > 0.01f) {
+                            val isDevicePaired = AuthState.pairedFingerprints.isNotEmpty() || (showPreviewDevices && effectiveDevices.isNotEmpty())
+                            val actionText = if (isDevicePaired) "Send Files" else "Pair Device"
+                            val isMediaOrHistoryActive = expansionFraction >= 0.15f
+
+                            // Auto-collapse nav tabs when sibling expands
+                            LaunchedEffect(isAnyExpanded) {
+                                if (isAnyExpanded) isTabsExpanded = false
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth()
+                                    .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
+                                    .zIndex(if (isTabsExpanded) 22f else 5f)
+                                    .graphicsLayer {
+                                        alpha = navPillAlpha
                                     }
-                                },
-                                selectedMode = activeExpandedMode,
-                                onSelectMode = { activeExpandedMode = it },
-                                backdrop = sheetContentBackdrop,
-                                modifier = Modifier.zIndex(5f)
+                            ) {
+                                MorphingSheetNavPill(
+                                    isMediaActive = isMediaOrHistoryActive,
+                                    isTabsExpanded = isTabsExpanded,
+                                    isSiblingExpanded = isAnyExpanded,
+                                    hasSelectedItems = mediaSelectedItemCount > 0,
+                                    onToggleTabsExpanded = { 
+                                        isTabsExpanded = !isTabsExpanded 
+                                        if (isTabsExpanded) {
+                                            TopIslandState.collapseProfile()
+                                            showPreviewDevices = false
+                                            if (activeExpandedMode == SheetExpandedMode.History) {
+                                                activeExpandedMode = lastMediaMode
+                                            }
+                                        }
+                                    },
+                                    onCollapseTabs = { isTabsExpanded = false },
+                                    selectedMode = if (activeExpandedMode == SheetExpandedMode.History) lastMediaMode else activeExpandedMode,
+                                    onSelectMode = { 
+                                        activeExpandedMode = it 
+                                        lastMediaMode = it
+                                    },
+                                    actionText = actionText,
+                                    onActionClick = {
+                                        if (isDevicePaired) {
+                                            activeExpandedMode = lastMediaMode
+                                            expandTo(SheetTier.High)
+                                        } else {
+                                            showPairingModal = true
+                                        }
+                                    },
+                                    totalAvailableWidthDp = availableWidth,
+                                    halfHeightDp = halfHeightDp,
+                                    backdrop = sheetContentBackdrop,
+                                    modifier = Modifier.zIndex(if (isTabsExpanded) 22f else 5f)
+                                )
+                            }
+                        }
+
+                        // 1C. Floating Search Island (Draws on top of sheet, samples sheetContentBackdrop)
+                        if (activeExpandedMode == SheetExpandedMode.History && expansionFraction >= 0.15f) {
+                            val contentProgress = ((expansionFraction - 0.18f) / 0.35f).coerceIn(0f, 1f)
+                            SheetSearchIsland(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .statusBarsPadding()
+                                    .padding(top = 16.dp, end = 16.dp)
+                                    .graphicsLayer {
+                                        alpha = contentProgress
+                                        translationY = (20.dp * (1f - contentProgress)).toPx()
+                                    },
+                                backdrop = sheetContentBackdrop
                             )
                         }
                     }
@@ -486,7 +670,7 @@ fun MainNavigation(
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
                             .padding(start = 12.dp, end = 16.dp, bottom = 14.dp)
-                            .zIndex(10f)
+                            .zIndex(if (isAnyIslandExpanded) 30f else 10f)
                     ) {
                         // Endless Magnetic Roller Button (Devices <-> Profile <-> History)
                         val isExpanded = islandState == IslandContentState.EXPANDED_TRANSFER || islandState == IslandContentState.EXPANDED_PROFILE
@@ -502,6 +686,11 @@ fun MainNavigation(
                             surfaceTint = MaterialTheme.colorScheme.primary,
                             surfaceTintAlpha = 0.8f
                         )
+                        val historyConfig = LiquidGlassPresets.HistoryIconButton
+                        val activeHistoryConfig = historyConfig.copy(
+                            surfaceTint = MaterialTheme.colorScheme.primary,
+                            surfaceTintAlpha = 0.8f
+                        ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
                         val profileConfig = LiquidGlassPresets.ProfileIconButton
                         val profileIslandConfig = LiquidGlassPresets.ProfileIsland
 
@@ -510,42 +699,55 @@ fun MainNavigation(
                                 .align(Alignment.BottomEnd)
                                 .zIndex(if (isExpanded) 100f else 10f)
                                 .graphicsLayer {
+                                    translationX = rollerAnticipationState.translationX
+                                    scaleX = rollerAnticipationState.scaleX
+                                    scaleY = rollerAnticipationState.scaleY
                                     alpha = 1f
-                                    scaleX = 1f
-                                    scaleY = 1f
                                     clip = false
                                 }
                                 .size(islandWidth, islandHeight)
-                                .pointerInput(Unit) {
-                                    detectVerticalDragGestures(
-                                        onDragStart = { isMagneticLocked = false; hasMagneticHapticTriggered = false },
-                                        onVerticalDrag = { _, dragAmount ->
-                                            if (isMagneticLocked || isExpanded) return@detectVerticalDragGestures
+                                .then(
+                                    if (!isCurrentRollerItemExpanded) {
+                                        Modifier.pointerInput(Unit) {
+                                            detectVerticalDragGestures(
+                                                onDragStart = { isMagneticLocked = false; hasMagneticHapticTriggered = false },
+                                                onVerticalDrag = { _, dragAmount ->
+                                                    if (isMagneticLocked) return@detectVerticalDragGestures
 
-                                             val nextY = rollerOffset.value + dragAmount
-                                             if (Math.abs(nextY) > snapThresholdPx) {
-                                                 isMagneticLocked = true
-                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                     val nextY = rollerOffset.value + dragAmount
+                                                     if (Math.abs(nextY) > snapThresholdPx) {
+                                                         isMagneticLocked = true
+                                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
-                                                 scope.launch {
-                                                     val targetY = if (nextY > 0) buttonHeightPx else -buttonHeightPx
-                                                     rollerOffset.animateTo(targetY, spring(stiffness = Spring.StiffnessMediumLow))
+                                                         scope.launch {
+                                                             val targetY = if (nextY > 0) buttonHeightPx else -buttonHeightPx
+                                                             rollerOffset.animateTo(
+                                                                 targetY,
+                                                                 DynamicMotionConfig.Default.springSpec(isExpanded = true)
+                                                             )
 
-                                                     bottomRightMode = if (nextY > 0) bottomRightMode.prev() else bottomRightMode.next()
-                                                     rollerOffset.snapTo(0f)
-                                                 }
-                                             } else {
-                                                 scope.launch { rollerOffset.snapTo(nextY) }
-                                             }
-                                         },
-                                        onDragEnd = {
-                                            if (!isMagneticLocked) {
-                                                scope.launch { rollerOffset.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) }
-                                            }
-                                            isMagneticLocked = false
+                                                             bottomRightMode = if (nextY > 0) bottomRightMode.prev() else bottomRightMode.next()
+                                                             rollerOffset.snapTo(0f)
+                                                         }
+                                                     } else {
+                                                         scope.launch { rollerOffset.snapTo(nextY) }
+                                                     }
+                                                 },
+                                                onDragEnd = {
+                                                    if (!isMagneticLocked) {
+                                                        scope.launch {
+                                                            rollerOffset.animateTo(
+                                                                0f,
+                                                                DynamicMotionConfig.Default.springSpec(isExpanded = false)
+                                                            )
+                                                        }
+                                                    }
+                                                    isMagneticLocked = false
+                                                }
+                                            )
                                         }
-                                    )
-                                }
+                                    } else Modifier
+                                )
                         ) {
                             val nextMode = if (currentY > 0) bottomRightMode.prev() else bottomRightMode.next()
 
@@ -567,21 +769,37 @@ fun MainNavigation(
                                         }
                                         LiquidGlassIconButton(
                                             onClick = {
-                                                if (!isMagneticLocked && (bottomRightMode == BottomRightButtonMode.Profile || isExpanded)) {
-                                                    TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded
-                                                    if (TopAppBarState.isProfileExpanded) TopAppBarState.isSearchExpanded = false
+                                                if (!isMagneticLocked) {
+                                                    if (isTransferActive) {
+                                                        TopIslandState.profileStage = if (TopIslandState.profileStage == ProfileExpansionStage.FullIsland) {
+                                                            ProfileExpansionStage.Collapsed
+                                                        } else {
+                                                            ProfileExpansionStage.FullIsland
+                                                        }
+                                                    } else if (bottomRightMode == BottomRightButtonMode.Profile) {
+                                                        TopIslandState.advanceProfileStage()
+                                                        if (TopIslandState.profileStage != ProfileExpansionStage.Collapsed) {
+                                                            HistoryState.isSearchExpanded = false
+                                                        }
+                                                    }
                                                 }
                                             },
+                                            enabled = true,
                                             width = islandWidth,
                                             height = islandHeight,
                                             backdrop = bottomBarBackdrop,
-                                            config = if (isExpanded) profileIslandConfig else profileConfig
+                                            config = if (isExpanded) profileIslandConfig else profileConfig,
+                                            enableBubbleFluidity = true,
                                         ) {
+                                            val currentProfileBlur = profileContentBlur.value
+                                            val profileBlurModifier = if (currentProfileBlur > 0.5f) Modifier.blur(currentProfileBlur.dp) else Modifier
+
                                             AnimatedContent(
                                                 targetState = islandState,
                                                 transitionSpec = {
                                                     fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                                                 },
+                                                modifier = profileBlurModifier,
                                                 label = "islandContent"
                                             ) { state ->
                                                 when (state) {
@@ -592,7 +810,7 @@ fun MainNavigation(
                                                             onCancel = {
                                                                 if (isDownloading) TcpDownloadService.cancelDownload(context)
                                                                 else viewModel.clientEngine.cancelUpload(context)
-                                                                TopAppBarState.isProfileExpanded = false
+                                                                TopIslandState.collapseProfile()
                                                             }
                                                         )
                                                     }
@@ -613,6 +831,12 @@ fun MainNavigation(
                                                                     }
                                                                 }
                                                             }
+                                                        )
+                                                    }
+                                                    IslandContentState.NAME_PILL_PROFILE -> {
+                                                        ProfileNamePillContent(
+                                                            profile = googleProfile,
+                                                            isPro = false
                                                         )
                                                     }
                                                     IslandContentState.COLLAPSED_TRANSFER -> {
@@ -638,18 +862,27 @@ fun MainNavigation(
                                     // Normal Devices / History Button
                                     RollerButtonItem(
                                         mode = bottomRightMode,
+                                        width = islandWidth,
+                                        height = islandHeight,
                                         isSettled = !isMagneticLocked && Math.abs(currentY) < 2f,
                                         showPreviewDevices = showPreviewDevices,
                                         activeDevicesConfig = activeDevicesConfig,
                                         devicesConfig = devicesConfig,
+                                        historyConfig = historyConfig,
+                                        activeHistoryConfig = activeHistoryConfig,
+                                        isHistoryActive = isHistoryActive,
                                         profileConfig = profileConfig,
                                         googleProfile = googleProfile,
                                         contentBackdrop = bottomBarBackdrop,
                                         onTogglePreview = { showPreviewDevices = !showPreviewDevices },
-                                        onExpandProfile = { TopAppBarState.isProfileExpanded = !TopAppBarState.isProfileExpanded },
+                                        onExpandProfile = { TopIslandState.advanceProfileStage() },
                                         onOpenHistory = {
-                                            activeExpandedMode = SheetExpandedMode.History
-                                            expandTo(SheetTier.High)
+                                            if (activeExpandedMode == SheetExpandedMode.History && currentTier == SheetTier.High) {
+                                                collapseToHalf()
+                                            } else {
+                                                activeExpandedMode = SheetExpandedMode.History
+                                                expandTo(SheetTier.High)
+                                            }
                                         }
                                     )
                                 }
@@ -670,14 +903,21 @@ fun MainNavigation(
                                         showPreviewDevices = showPreviewDevices,
                                         activeDevicesConfig = activeDevicesConfig,
                                         devicesConfig = devicesConfig,
+                                        historyConfig = historyConfig,
+                                        activeHistoryConfig = activeHistoryConfig,
+                                        isHistoryActive = isHistoryActive,
                                         profileConfig = profileConfig,
                                         googleProfile = googleProfile,
                                         contentBackdrop = bottomBarBackdrop,
                                         onTogglePreview = {},
                                         onExpandProfile = {},
                                         onOpenHistory = {
-                                            activeExpandedMode = SheetExpandedMode.History
-                                            expandTo(SheetTier.High)
+                                            if (activeExpandedMode == SheetExpandedMode.History && currentTier == SheetTier.High) {
+                                                collapseToHalf()
+                                            } else {
+                                                activeExpandedMode = SheetExpandedMode.History
+                                                expandTo(SheetTier.High)
+                                            }
                                         }
                                     )
                                 }
@@ -708,19 +948,6 @@ fun MainNavigation(
         )
         }
 
-        // Hidden while the onboarding sheet owns the screen
-        if (!showOnboarding) {
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.zIndex(if (TopAppBarState.isSearchExpanded) 3f else 1f)
-        ) {
-            FloatingTopAppBar(
-                backdrop = contentBackdrop
-            )
-        }
-        }
 
         // Pair Request Prompt
         incomingPairRequest?.let { req ->
@@ -789,70 +1016,278 @@ fun MainNavigation(
                 }
             )
         }
+
+        // Dynamic Experimenting Lab Launcher Button
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 12.dp)
+                .zIndex(150f)
+        ) {
+            Button(
+                onClick = { showPlayground = true },
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSystemInDarkTheme()) Color(0xFF1E293B) else Color.White,
+                    contentColor = if (isSystemInDarkTheme()) Color.White else Color.Black
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                modifier = Modifier.height(38.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = MaterialSymbols.Tune,
+                        contentDescription = "Dynamic Experimenting Lab",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Lab",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
+        // Dynamic Experimenting Lab Overlay
+        if (showPlayground) {
+            BackHandler(enabled = true) {
+                showPlayground = false
+            }
+            DynamicIslandPlayground(
+                onDismiss = { showPlayground = false },
+                backdrop = contentBackdrop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(500f)
+            )
+        }
     }
 }
 
 /**
  * Living Liquid Glass Bottom Navbar:
- * Single authentic liquid glass component that sits at the bottom of the sheet.
- * At rest: Solid opaque black action button (0% background refraction, authentic specular liquid glare).
- * As sheet expands: Dynamically reduces surface tint alpha, shows refractions of media passing underneath,
- * bounces in the 4 tabs, and activates the liquid glass highlighter lens.
+ * Full stadium expandable pill that sits at the bottom of the sheet.
+ * - When resting (no media/history active): It is the full expanded stadium pill.
+ *   - "Pair Device" when no device is paired at all.
+ *   - "Send Files" when a device is already paired.
+ * - When media/history is active: Contracts into a 56dp stadium action button showing
+ *   only the active mode icon (Photos or Audio), with CodeDeX's tuned overshoot springs
+ *   (0.5f/0.56f @ 170f) and tactile bubble fluidity.
+ * - When tapped during active media: Expands smoothly to reveal the liquid glass nav tabs
+ *   (Photos, Audio, Files), collapsing back to the active icon on selection or outside tap.
  */
 @Composable
 private fun MorphingSheetNavPill(
-    expansionFraction: Float,
-    totalAvailableWidthDp: Dp,
-    halfHeightDp: Dp,
-    actionText: String,
-    onActionClick: () -> Unit,
+    isMediaActive: Boolean,
+    isTabsExpanded: Boolean,
+    isSiblingExpanded: Boolean = false,
+    hasSelectedItems: Boolean = false,
+    onToggleTabsExpanded: () -> Unit,
+    onCollapseTabs: () -> Unit,
     selectedMode: SheetExpandedMode,
     onSelectMode: (SheetExpandedMode) -> Unit,
+    actionText: String,
+    onActionClick: () -> Unit,
+    totalAvailableWidthDp: Dp,
+    halfHeightDp: Dp,
     backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
-    // Sizing: Fixed width alongside the 56dp roller button (with 12dp start padding, 16dp end padding, 14dp gap)
-    val fixedWidth = (totalAvailableWidthDp - 16.dp - 12.dp - 56.dp - 14.dp).coerceAtLeast(160.dp)
-    val fixedHeight = 56.dp
+    val isDark = isSystemInDarkTheme()
+    val rowSpace = (totalAvailableWidthDp - 16.dp - 12.dp).coerceAtLeast(0.dp)
+    val fullWidth = (rowSpace - DynamicDimensions.PillDefault.collapsedWidth - 14.dp).coerceAtLeast(160.dp)
+    val contractedWidth = (rowSpace - DynamicDimensions.ProfilePill.expandedWidth - 10.dp).coerceIn(115.dp, DynamicDimensions.CompactPill.expandedWidth)
+    val height = DynamicDimensions.PillDefault.collapsedHeight
+    val pillShape = CircleShape
+
+    val actualTabsExpanded = isTabsExpanded || (!isSiblingExpanded && !hasSelectedItems)
+    val isFullPill = !isMediaActive || actualTabsExpanded
+
+    val navPillAnticipationState = rememberExpandingAnticipationPhysics(
+        isExpanded = isFullPill,
+        anchor = ExpansionAnchor.Start,
+        motion = DynamicMotionConfig.Default,
+        fluidity = DynamicFluidityConfig.Default,
+    )
+    val shouldExpandNavBounds = if (isFullPill) navPillAnticipationState.canExpandBounds else false
+    val targetWidth = if (shouldExpandNavBounds) fullWidth else contractedWidth
+
+    val morphSpring = remember(isFullPill) {
+        DynamicMotionConfig.Default.resolveSpringSpec(isFullPill)
+    }
+
+    val animatedWidth by animateDpAsState(
+        targetValue = targetWidth,
+        animationSpec = morphSpring,
+        label = "navPillWidth"
+    )
+
+    // Optical content blur during state transitions
+    val contentBlur = remember { Animatable(0f) }
+    var hasBlurSettledInitial by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isFullPill) {
+        if (!hasBlurSettledInitial) {
+            hasBlurSettledInitial = true
+            return@LaunchedEffect
+        }
+        contentBlur.animateTo(
+            targetValue = DynamicContentBlurConfig.Default.maxBlur.value,
+            animationSpec = DynamicContentBlurConfig.Default.riseAnimationSpec
+        )
+        contentBlur.animateTo(
+            targetValue = 0f,
+            animationSpec = DynamicMotionConfig.Default.springSpec(isExpanded = isFullPill)
+        )
+    }
+
+    val buttonTint = if (isDark) Color.White else Color.Black
+    val contentTint = if (isDark) Color.Black else Color.White
+
+    val glassConfig = LiquidGlassPresets.NavBar.copy(
+        shape = pillShape,
+        surfaceTint = buttonTint,
+        surfaceTintAlpha = 0.95f
+    )
+
     val samplingHeight = (halfHeightDp * 0.55f).coerceAtLeast(220.dp)
     val lensHeight = samplingHeight * 1.12f
 
-    val items = remember(selectedMode, onSelectMode) {
+    val tabItems = remember(selectedMode, onSelectMode, onCollapseTabs) {
         listOf(
             SegmentedControlItem(
                 title = "Photos",
                 icon = MaterialSymbols.Photo,
                 isSelected = selectedMode == SheetExpandedMode.Photos,
-                onClick = { onSelectMode(SheetExpandedMode.Photos) },
+                onClick = {
+                    onSelectMode(SheetExpandedMode.Photos)
+                    onCollapseTabs()
+                },
             ),
             SegmentedControlItem(
                 title = "Audio",
                 icon = MaterialSymbols.MusicNote,
                 isSelected = selectedMode == SheetExpandedMode.Audio,
-                onClick = { onSelectMode(SheetExpandedMode.Audio) },
+                onClick = {
+                    onSelectMode(SheetExpandedMode.Audio)
+                    onCollapseTabs()
+                },
             ),
             SegmentedControlItem(
                 title = "Files",
                 icon = MaterialSymbols.Folder,
                 isSelected = selectedMode == SheetExpandedMode.Files,
-                onClick = { onSelectMode(SheetExpandedMode.Files) },
+                onClick = {
+                    onSelectMode(SheetExpandedMode.Files)
+                    onCollapseTabs()
+                },
             ),
         )
     }
 
-    // Single unified LiquidGlassSegmentedControl component!
-    LiquidGlassSegmentedControl(
-        items = items,
-        backdrop = backdrop,
-        totalWidth = fixedWidth,
-        visibleHeight = fixedHeight,
-        samplingHeight = samplingHeight,
-        lensHeight = lensHeight,
-        expansionFraction = expansionFraction,
-        actionText = actionText,
-        onActionClick = onActionClick,
-        modifier = modifier.size(fixedWidth, fixedHeight),
-    )
+    Box(
+        modifier = modifier
+            .size(animatedWidth, height)
+            .expandingAnticipation(navPillAnticipationState)
+            .clip(pillShape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!isMediaActive) {
+            LiquidGlassIconButton(
+                onClick = onActionClick,
+                backdrop = backdrop,
+                config = glassConfig,
+                width = animatedWidth,
+                height = height,
+                modifier = Modifier.size(animatedWidth, height)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(pillShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = actionText,
+                        color = contentTint,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        } else if (!actualTabsExpanded) {
+            val activeIcon = when (selectedMode) {
+                SheetExpandedMode.Audio -> MaterialSymbols.MusicNote
+                SheetExpandedMode.Files -> MaterialSymbols.Folder
+                else -> MaterialSymbols.Photo
+            }
+
+            LiquidGlassIconButton(
+                onClick = onToggleTabsExpanded,
+                backdrop = backdrop,
+                config = glassConfig,
+                width = animatedWidth,
+                height = height,
+                modifier = Modifier.size(animatedWidth, height)
+            ) {
+                val currentBlur = contentBlur.value
+                val blurMod = if (currentBlur > 0.5f) Modifier.blur(currentBlur.dp) else Modifier
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(pillShape)
+                        .then(blurMod),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = activeIcon,
+                        contentDescription = when (selectedMode) {
+                            SheetExpandedMode.Audio -> "Audio"
+                            SheetExpandedMode.Files -> "Files"
+                            else -> "Photos"
+                        },
+                        tint = contentTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = when (selectedMode) {
+                            SheetExpandedMode.Audio -> "Audio"
+                            SheetExpandedMode.Files -> "Files"
+                            else -> "Photos"
+                        },
+                        color = contentTint,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        } else {
+            LiquidGlassSegmentedControl(
+                items = tabItems,
+                backdrop = backdrop,
+                totalWidth = fullWidth,
+                visibleHeight = height,
+                samplingHeight = samplingHeight,
+                lensHeight = lensHeight,
+                expansionFraction = 1f,
+                modifier = Modifier.size(fullWidth, height)
+            )
+        }
+    }
 }
 
 /**
@@ -865,13 +1300,46 @@ private fun RollerButtonItem(
     showPreviewDevices: Boolean,
     activeDevicesConfig: LiquidGlassConfig,
     devicesConfig: LiquidGlassConfig,
+    historyConfig: LiquidGlassConfig,
+    activeHistoryConfig: LiquidGlassConfig,
+    isHistoryActive: Boolean,
     profileConfig: LiquidGlassConfig,
     googleProfile: GoogleProfile,
     contentBackdrop: Backdrop?,
     onTogglePreview: () -> Unit,
     onExpandProfile: () -> Unit,
     onOpenHistory: () -> Unit,
+    width: Dp = DynamicDimensions.PillDefault.collapsedWidth,
+    height: Dp = DynamicDimensions.PillDefault.collapsedHeight,
 ) {
+    val iconSpringScale by animateFloatAsState(
+        targetValue = if (isSettled) 1.0f else 0.82f,
+        animationSpec = DynamicMotionConfig.Default.springSpec(isExpanded = isSettled),
+        label = "rollerIconScale"
+    )
+
+    val isItemExpanded = (mode == BottomRightButtonMode.History && isHistoryActive) ||
+        (mode == BottomRightButtonMode.Devices && showPreviewDevices)
+    val itemBlur = remember { Animatable(0f) }
+    var hasItemBlurSettled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isItemExpanded) {
+        if (!hasItemBlurSettled) {
+            hasItemBlurSettled = true
+            return@LaunchedEffect
+        }
+        itemBlur.animateTo(
+            targetValue = DynamicContentBlurConfig.Default.maxBlur.value,
+            animationSpec = DynamicContentBlurConfig.Default.riseAnimationSpec
+        )
+        itemBlur.animateTo(
+            targetValue = 0f,
+            animationSpec = DynamicMotionConfig.Default.springSpec(isExpanded = isItemExpanded)
+        )
+    }
+
+    val itemBlurModifier = if (itemBlur.value > 0.5f) Modifier.blur(itemBlur.value.dp) else Modifier
+
     LiquidGlassIconButton(
         onClick = {
             if (isSettled) {
@@ -882,36 +1350,101 @@ private fun RollerButtonItem(
                 }
             }
         },
+        width = width,
+        height = height,
         backdrop = contentBackdrop,
         config = when (mode) {
             BottomRightButtonMode.Profile -> profileConfig
             BottomRightButtonMode.Devices -> if (showPreviewDevices) activeDevicesConfig else devicesConfig
-            BottomRightButtonMode.History -> devicesConfig
-        }
+            BottomRightButtonMode.History -> if (isHistoryActive) activeHistoryConfig else historyConfig
+        },
     ) {
-        when (mode) {
-            BottomRightButtonMode.Devices -> {
-                Icon(
-                    imageVector = MaterialSymbols.Devices,
-                    contentDescription = "Toggle Preview Connected Devices",
-                    tint = if (showPreviewDevices) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            BottomRightButtonMode.Profile -> {
-                CollapsedProfileContent(
-                    profile = googleProfile,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            BottomRightButtonMode.History -> {
-                Icon(
-                    imageVector = MaterialSymbols.History,
-                    contentDescription = "Transfer History",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = iconSpringScale
+                    scaleY = iconSpringScale
+                }
+                .then(itemBlurModifier)
+        ) {
+            when (mode) {
+                BottomRightButtonMode.Devices -> {
+                    // [EXPERIMENTED BUTTON - DO NOT TOUCH] Toggle preview mock devices.
+                    // This is strictly an experimented button that stays where it was in the bottom-right roller button, never in the navbar collapsible.
+                    if (showPreviewDevices) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = MaterialSymbols.Devices,
+                                contentDescription = "Toggle Preview Connected Devices",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Devices",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 14.sp,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = MaterialSymbols.Devices,
+                            contentDescription = "Toggle Preview Connected Devices",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                BottomRightButtonMode.Profile -> {
+                    CollapsedProfileContent(
+                        profile = googleProfile,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                BottomRightButtonMode.History -> {
+                    if (isHistoryActive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = MaterialSymbols.History,
+                                contentDescription = "Transfer History",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "History",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 14.sp,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = MaterialSymbols.History,
+                            contentDescription = "Transfer History",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             }
         }
     }

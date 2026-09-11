@@ -26,8 +26,8 @@ object LiquidGlassTokens {
     val RestRefraction = 0.8f
     val GlareAngle = -52.82f
     val GlareFalloff = 2.5f
-    val GlareFactor = 0.8f
-    val GlareRestAlpha = 0.2f
+    val GlareFactor = 0.95f
+    val GlareRestAlpha = 0.80f
 
     val SheetGlareAngle = -52.82f
     val SheetGlareFalloff = 3.5f
@@ -50,6 +50,128 @@ object LiquidGlassTokens {
 }
 
 /**
+ * Complete shadow parameter configuration encapsulating both outer drop shadow
+ * and inner rim shadow for liquid glass surfaces.
+ *
+ * Includes all shadow parameters across both drop shadows and inner shadows:
+ * - Drop Shadow: [radius], [color], [alpha], [offset] ([offsetX], [offsetY])
+ * - Inner Shadow: [innerRadius], [innerColor], [innerAlpha], [innerOffset] ([innerOffsetX], [innerOffsetY])
+ *
+ * @param radius Outer drop shadow blur radius (0.dp disables drop shadow).
+ * @param color Outer drop shadow base color.
+ * @param alpha Outer drop shadow opacity (0f..1f).
+ * @param offset Outer drop shadow translation offset (x, y).
+ * @param innerRadius Inner shadow blur radius (0.dp disables inner shadow).
+ * @param innerColor Inner shadow base color.
+ * @param innerAlpha Inner shadow opacity (0f..1f).
+ * @param innerOffset Inner shadow translation offset (x, y).
+ */
+data class LiquidGlassShadowProperties(
+    val radius: Dp = 0.dp,
+    val color: Color = Color.Black,
+    val alpha: Float = 0.20f,
+    val offset: DpOffset = DpOffset.Zero,
+    val innerRadius: Dp = 0.dp,
+    val innerColor: Color = Color.Black,
+    val innerAlpha: Float = 0f,
+    val innerOffset: DpOffset = DpOffset.Zero,
+) {
+    val offsetX: Dp get() = offset.x
+    val offsetY: Dp get() = offset.y
+    val innerOffsetX: Dp get() = innerOffset.x
+    val innerOffsetY: Dp get() = innerOffset.y
+
+    constructor(
+        radius: Dp = 0.dp,
+        color: Color = Color.Black,
+        alpha: Float = 0.20f,
+        offsetX: Dp = 0.dp,
+        offsetY: Dp = 0.dp,
+        innerRadius: Dp = 0.dp,
+        innerColor: Color = Color.Black,
+        innerAlpha: Float = 0f,
+        innerOffsetX: Dp = 0.dp,
+        innerOffsetY: Dp = 0.dp,
+    ) : this(
+        radius = radius,
+        color = color,
+        alpha = alpha,
+        offset = DpOffset(offsetX, offsetY),
+        innerRadius = innerRadius,
+        innerColor = innerColor,
+        innerAlpha = innerAlpha,
+        innerOffset = DpOffset(innerOffsetX, innerOffsetY),
+    )
+
+    /** Resolved Backdrop outer drop shadow, or null if disabled. */
+    val dropShadow: Shadow?
+        get() = if (radius > 0.dp && alpha > 0f) {
+            Shadow(
+                radius = radius,
+                color = color.copy(alpha = alpha),
+                offset = offset
+            )
+        } else null
+
+    /** Resolved Backdrop inner shadow, or null if disabled. */
+    val innerShadow: InnerShadow?
+        get() = if (innerRadius > 0.dp && innerAlpha > 0f) {
+            InnerShadow(
+                radius = innerRadius,
+                offset = innerOffset,
+                color = innerColor,
+                alpha = innerAlpha
+            )
+        } else null
+
+    companion object {
+        /** Unexpanded (resting/collapsed) shadow variant. CodeDeX tuned elevation with volumetric glass bezel. */
+        val Unexpanded = LiquidGlassShadowProperties(
+            radius = 23.dp,
+            color = Color.Black,
+            alpha = 0.28f,
+            offset = DpOffset(0.dp, 18.dp),
+            innerRadius = 10.dp,
+            innerColor = Color.Black,
+            innerAlpha = 0.22f,
+            innerOffset = DpOffset(0.dp, 2.dp),
+        )
+
+        /** Expanded shadow variant. CodeDeX tuned deep atmospheric floating sheet shadow. */
+        val Expanded = LiquidGlassShadowProperties(
+            radius = 28.dp,
+            color = Color.Black,
+            alpha = 0.20f,
+            offset = DpOffset(0.dp, 24.dp),
+            innerRadius = 12.dp,
+            innerColor = Color.Black,
+            innerAlpha = 0.11f,
+            innerOffset = DpOffset(0.dp, 7.dp),
+        )
+
+        /** Search Island expanded shadow variant. Matches signature search island deep elevation. */
+        val ExpandedSearch = LiquidGlassShadowProperties(
+            radius = LiquidGlassTokens.ExpandedSearchShadowRadius,
+            color = Color.Black,
+            alpha = 0.25f,
+            offset = LiquidGlassTokens.ExpandedSearchShadowOffset,
+            innerRadius = LiquidGlassTokens.InnerShadowRadius,
+            innerColor = LiquidGlassTokens.InnerShadowColor,
+            innerAlpha = LiquidGlassTokens.InnerShadowAlpha,
+            innerOffset = LiquidGlassTokens.InnerShadowOffset,
+        )
+
+        /** Flat / disabled shadows (for nested or flat glass elements). */
+        val None = LiquidGlassShadowProperties(
+            radius = 0.dp,
+            alpha = 0f,
+            innerRadius = 0.dp,
+            innerAlpha = 0f,
+        )
+    }
+}
+
+/**
  * Central, reusable configuration for a liquid glass surface.
  */
 data class LiquidGlassConfig(
@@ -65,6 +187,7 @@ data class LiquidGlassConfig(
     val surfaceTintAlpha: Float = LiquidGlassTokens.DarkTintAlpha,
     val glareFalloff: Float = LiquidGlassTokens.GlareFalloff,
     val glareFactor: Float = LiquidGlassTokens.GlareFactor * 100f,
+    val glareRestAlpha: Float = LiquidGlassTokens.GlareRestAlpha,
     val glareAngle: Float = LiquidGlassTokens.GlareAngle,
     val useAmbientHighlight: Boolean = false,
     val shadowRadius: Dp = 0.dp,
@@ -73,7 +196,8 @@ data class LiquidGlassConfig(
     val innerShadowRadius: Dp = LiquidGlassTokens.InnerShadowRadius,
     val innerShadowOffset: DpOffset = LiquidGlassTokens.InnerShadowOffset,
     val innerShadowColor: Color = LiquidGlassTokens.InnerShadowColor,
-    val innerShadowAlpha: Float = LiquidGlassTokens.InnerShadowAlpha
+    val innerShadowAlpha: Float = LiquidGlassTokens.InnerShadowAlpha,
+    val shadowProperties: LiquidGlassShadowProperties? = null,
 ) {
     val highlight: Highlight
         get() = if (useAmbientHighlight) {
@@ -88,8 +212,41 @@ data class LiquidGlassConfig(
             )
         }
 
+    /**
+     * Computes dynamic specular highlight reacting to physical touch compression [progress] (0f = rest, 1f = compressed).
+     *
+     * In authentic Apple glass optics, physical compression concentrates light along the incident rim:
+     * - Specular glare alpha flares from [glareRestAlpha] up to [glareFactor] / 100f.
+     * - Falloff tightens slightly, sharpening the rim reflection.
+     */
+    fun dynamicHighlight(progress: Float): Highlight {
+        if (useAmbientHighlight) return Highlight.Ambient
+        val peakAlpha = glareFactor / 100f
+        val baseAlpha = glareRestAlpha.coerceAtMost(peakAlpha)
+        val animatedAlpha = (baseAlpha + (peakAlpha - baseAlpha) * progress).coerceIn(0f, 1f)
+        val animatedFalloff = glareFalloff * (1f + 0.25f * progress.coerceIn(0f, 1.5f))
+        return Highlight(
+            style = HighlightStyle.Default(
+                angle = glareAngle,
+                falloff = animatedFalloff
+            ),
+            alpha = animatedAlpha
+        )
+    }
+
+    /** Resolved outer drop shadow, delegating to [shadowProperties] when present or fallback fields. */
+    val dropShadow: Shadow?
+        get() = shadowProperties?.dropShadow ?: if (shadowRadius > 0.dp) {
+            Shadow(
+                radius = shadowRadius,
+                color = shadowColor,
+                offset = shadowOffset
+            )
+        } else null
+
+    /** Resolved inner shadow, delegating to [shadowProperties] when present or fallback fields. */
     val innerShadow: InnerShadow?
-        get() = if (innerShadowAlpha > 0f || innerShadowRadius > 0.dp) {
+        get() = shadowProperties?.innerShadow ?: if (innerShadowAlpha > 0f || innerShadowRadius > 0.dp) {
             InnerShadow(
                 radius = innerShadowRadius,
                 offset = innerShadowOffset,
@@ -97,6 +254,18 @@ data class LiquidGlassConfig(
                 alpha = innerShadowAlpha
             )
         } else null
+
+    /** Returns a copy with updated [LiquidGlassShadowProperties] and synchronized legacy fields. */
+    fun withShadowProperties(properties: LiquidGlassShadowProperties): LiquidGlassConfig = copy(
+        shadowProperties = properties,
+        shadowRadius = properties.radius,
+        shadowColor = properties.color.copy(alpha = properties.alpha),
+        shadowOffset = properties.offset,
+        innerShadowRadius = properties.innerRadius,
+        innerShadowOffset = properties.innerOffset,
+        innerShadowColor = properties.innerColor,
+        innerShadowAlpha = properties.innerAlpha
+    )
 }
 
 /**
@@ -138,10 +307,10 @@ object LiquidGlassPresets {
         @Composable get() {
             val isDark = isSystemInDarkTheme()
             return MasterSpec.copy(
-                shadowRadius = 4.dp,
+                shape = CircleShape,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
                 surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.35f
-            )
+            ).withShadowProperties(LiquidGlassShadowProperties.Unexpanded)
         }
 
     /**
@@ -151,10 +320,22 @@ object LiquidGlassPresets {
         @Composable get() {
             val isDark = isSystemInDarkTheme()
             return MasterSpec.copy(
-                shadowRadius = 4.dp,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
                 surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.75f
-            )
+            ).withShadowProperties(LiquidGlassShadowProperties.Unexpanded)
+        }
+
+    /**
+     * Dedicated preset for the History button (collapsed).
+     */
+    val HistoryIconButton: LiquidGlassConfig
+        @Composable get() {
+            val isDark = isSystemInDarkTheme()
+            return MasterSpec.copy(
+                shape = CircleShape,
+                surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
+                surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.35f
+            ).withShadowProperties(LiquidGlassShadowProperties.Unexpanded)
         }
 
     /**
@@ -181,15 +362,12 @@ object LiquidGlassPresets {
         @Composable get() {
             val isDark = isSystemInDarkTheme()
             return MasterSpec.copy(
-                shape = RoundedCornerShape(48.dp),
+                shape = CircleShape,
                 blurRadius = 2.dp,
                 restRefraction = 1.05f,
-                shadowRadius = LiquidGlassTokens.ExpandedSearchShadowRadius,
-                shadowOffset = LiquidGlassTokens.ExpandedSearchShadowOffset,
-                shadowColor = LiquidGlassTokens.ExpandedSearchShadowColor,
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
                 surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.5f
-            )
+            ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
         }
 
     /**
@@ -200,13 +378,11 @@ object LiquidGlassPresets {
             val isDark = isSystemInDarkTheme()
             return MasterSpec.copy(
                 shape = RoundedCornerShape(48.dp),
-                blurRadius = 2.dp,
+                blurRadius = 24.dp,
                 restRefraction = 1.05f,
-                shadowRadius = 12.dp,
-                shadowOffset = DpOffset(0.dp, 4.dp),
                 surfaceTint = MaterialTheme.colorScheme.surfaceVariant,
                 surfaceTintAlpha = if (isDark) LiquidGlassTokens.DarkTintAlpha else 0.45f
-            )
+            ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
         }
 
     /**

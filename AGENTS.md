@@ -21,6 +21,20 @@
 
 ### AVOID GLOW effects.
 
+UI DESIGNS ASTHETICS:
+Motion kinematics & timing (frame-by-frame trajectory, acceleration, and deceleration)
+Spring overshoot & oscillation (how far it overshoots the target boundary and how many cycles it takes to settle)
+Fluid morphing (how corner radii, bounds, and content morph simultaneously between collapsed and expanded states)
+Gesture fluidity (touch tracking vs. release momentum)
+And what you described is pure gold:
+"Subtle bouncy, fluent morphing, dynamic expanding/contracting/collapsing states with overshoot springs"
+
+That is the exact philosophy behind the best physical interfaces in the world (like Apple's Dynamic Island and fluid navigation gestures):
+
+Overshoot Springs: Never stopping dead at the boundary like a linear animation. When it expands or collapses, it springs slightly past the target (~1.03x–1.05x) and settles elastically.
+Fluent Shape Morphing: The container's width, height, corner radius, and backdrop refraction all interpolate as one cohesive organic membrane.
+Subtle Bounciness: Bouncy enough to feel alive, playful, and physical, without feeling goofy or jello-like.
+
 ### YOU MUST USE THE MOST ADVANCED AND ROBUST PATTERNS, ARCHITECTURES, AND TECHNOLOGIES AVAILABLE FOR KOTLIN MULTIPLATFORM AND COMPOSE FOR DESKTOP
 
 ## SCOPE: DeX ECOSYSTEM — Desktop First, Shared Core (AMENDED 2026-09-01, user-approved)

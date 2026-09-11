@@ -248,26 +248,23 @@ fun MainScreen(
                     }
 
                     // Consolidated and prioritized: Real Trusted Devices (Active Transfer > Recency)
-                    val search = com.dexstudios.dex.ui.state.TopAppBarState.searchQuery
-                    val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint, search) {
+                    val consolidatedTrusted = remember(trustedLocal, rosterDevices, uploadState.targetFingerprint, downloadState.sourceFingerprint) {
                         val map = mutableMapOf<String, DiscoveredDevice>()
                         // WAN devices baseline
                         rosterDevices.forEach { map[it.info.fingerprint] = it }
                         // Local trusted devices overwrite roster (LAN is preferred/faster)
                         trustedLocal.forEach { map[it.info.fingerprint] = it }
 
-                        map.values.filter { it.info.alias.contains(search, ignoreCase = true) }
-                            .sortedWith(
-                                compareByDescending<DiscoveredDevice> {
-                                    (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
-                                }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
-                                    .thenByDescending { it.lastSeenTimestamp }
-                            ).toList()
+                        map.values.sortedWith(
+                            compareByDescending<DiscoveredDevice> {
+                                (it.info.fingerprint == uploadState.targetFingerprint || it.info.fingerprint == downloadState.sourceFingerprint)
+                            }.thenByDescending { AuthState.pairedTimes[it.info.fingerprint] ?: 0L }
+                                .thenByDescending { it.lastSeenTimestamp }
+                        ).toList()
                     }
 
-                    val filteredUntrusted = remember(untrustedDevices, search) {
-                        untrustedDevices.filter { it.info.alias.contains(search, ignoreCase = true) }
-                    }
+                    val search = ""
+                    val filteredUntrusted = untrustedDevices
 
                     if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact) {
                         MainScreenCompact(

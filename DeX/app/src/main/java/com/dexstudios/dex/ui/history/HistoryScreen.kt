@@ -54,11 +54,11 @@ import com.dexstudios.dex.network.TransferHistory
 import com.dexstudios.dex.network.TransferRecord
 import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
 import com.dexstudios.dex.ui.components.bubbleFluidity
-import com.dexstudios.dex.ui.state.TopAppBarState
-import com.dexstudios.dex.ui.state.HistoryDirection
-import com.dexstudios.dex.ui.state.HistoryType
-import com.dexstudios.dex.ui.state.HistorySort
-import com.dexstudios.dex.ui.state.HistoryViewMode
+import com.dexstudios.dex.ui.history.HistoryState
+import com.dexstudios.dex.ui.history.HistoryDirection
+import com.dexstudios.dex.ui.history.HistoryType
+import com.dexstudios.dex.ui.history.HistorySort
+import com.dexstudios.dex.ui.history.HistoryViewMode
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.util.Calendar
@@ -72,13 +72,13 @@ fun HistoryScreen(
 ) {
     val context = LocalContext.current
     val allItems by TransferHistory.items.collectAsStateWithLifecycle()
-    val search = TopAppBarState.searchQuery
-    val dirFilter = TopAppBarState.historyDirectionFilter
-    val typeFilter = TopAppBarState.historyTypeFilter
-    val sortOrder = TopAppBarState.historySortOrder
-    val viewMode = TopAppBarState.historyViewMode
-    val isFilterVisible = TopAppBarState.isHistoryFilterVisible
-    val isSearchExpanded = TopAppBarState.isSearchExpanded
+    val search = HistoryState.searchQuery
+    val dirFilter = HistoryState.directionFilter
+    val typeFilter = HistoryState.typeFilter
+    val sortOrder = HistoryState.sortOrder
+    val viewMode = HistoryState.viewMode
+    val isFilterVisible = HistoryState.isFilterVisible
+    val isSearchExpanded = HistoryState.isSearchExpanded
 
     val items = remember(allItems, search, dirFilter, typeFilter, sortOrder) {
         allItems.asSequence()
@@ -224,11 +224,11 @@ fun HistoryScreen(
                         )
                         if (!isSearchExpanded) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { TopAppBarState.isHistoryFilterVisible = !isFilterVisible }) {
+                                IconButton(onClick = { HistoryState.isFilterVisible = !isFilterVisible }) {
                                     Icon(DeXIcons.FilterList, null, tint = if (isFilterVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 IconButton(onClick = {
-                                    TopAppBarState.historyViewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
+                                    HistoryState.viewMode = if (viewMode == HistoryViewMode.LIST) HistoryViewMode.GRID else HistoryViewMode.LIST
                                 }) {
                                     Icon(if (viewMode == HistoryViewMode.LIST) DeXIcons.GridView else DeXIcons.ViewList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
@@ -262,7 +262,7 @@ fun HistoryScreen(
                                                         HistorySort.SIZE_DESC -> "Largest"
                                                         HistorySort.NAME_ASC -> "A-Z"
                                                     }) },
-                                                    onClick = { TopAppBarState.historySortOrder = order; showSortSubmenu = false; showMoreMenu = false },
+                                                    onClick = { HistoryState.sortOrder = order; showSortSubmenu = false; showMoreMenu = false },
                                                     leadingIcon = { if (sortOrder == order) Icon(DeXIcons.Check, null, modifier = Modifier.size(18.dp)) }
                                                 )
                                             }
@@ -286,11 +286,11 @@ fun HistoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             HistoryDirection.entries.forEach { dir ->
-                                HistoryFilterChip(label = dir.name.lowercase().replaceFirstChar { it.uppercase() }, selected = dirFilter == dir, onClick = { TopAppBarState.historyDirectionFilter = dir })
+                                HistoryFilterChip(label = dir.name.lowercase().replaceFirstChar { it.uppercase() }, selected = dirFilter == dir, onClick = { HistoryState.directionFilter = dir })
                             }
                             Box(modifier = Modifier.height(16.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)).align(Alignment.CenterVertically))
                             HistoryType.entries.forEach { type ->
-                                HistoryFilterChip(label = type.name.lowercase().replaceFirstChar { it.uppercase() }, selected = typeFilter == type, onClick = { TopAppBarState.historyTypeFilter = type })
+                                HistoryFilterChip(label = type.name.lowercase().replaceFirstChar { it.uppercase() }, selected = typeFilter == type, onClick = { HistoryState.typeFilter = type })
                             }
                         }
                     }

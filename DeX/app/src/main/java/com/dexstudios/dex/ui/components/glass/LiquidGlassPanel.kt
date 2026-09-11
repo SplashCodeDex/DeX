@@ -49,11 +49,7 @@ fun LiquidGlassPanel(
                 }
             },
             highlight = { config.highlight },
-            shadow = {
-                if (config.shadowRadius > 0.dp) {
-                    Shadow(radius = config.shadowRadius, color = config.shadowColor, offset = config.shadowOffset)
-                } else null
-            },
+            shadow = { config.dropShadow },
             innerShadow = { config.innerShadow },
             onDrawSurface = {
                 if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {

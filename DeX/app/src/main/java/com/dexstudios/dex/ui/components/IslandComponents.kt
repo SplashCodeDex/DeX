@@ -42,6 +42,7 @@ import com.dexstudios.dex.ui.icons.MaterialSymbols
 
 enum class IslandContentState {
     IDLE,
+    NAME_PILL_PROFILE,
     EXPANDED_PROFILE,
     COLLAPSED_TRANSFER,
     EXPANDED_TRANSFER
@@ -66,7 +67,7 @@ fun CollapsedProfileContent(
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
-            val initial = profile.name.ifBlank { profile.email }.firstOrNull()?.uppercase()?.toString()
+            val initial = profile.name.ifBlank { profile.email }.firstOrNull()?.uppercase()
             if (initial != null) {
                 Text(
                     text = initial,
@@ -87,6 +88,89 @@ fun CollapsedProfileContent(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(32.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun ProfileNamePillContent(
+    profile: GoogleProfile,
+    isPro: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (profile.picture.isNotBlank()) {
+            AsyncImage(
+                model = profile.picture,
+                contentDescription = "Profile",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+            )
+        } else if (profile.email.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                val initial = profile.name.ifBlank { profile.email }.firstOrNull()?.uppercase()
+                if (initial != null) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier.size(34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = MaterialSymbols.AccountCircle,
+                    contentDescription = "Profile",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = profile.name.ifBlank { "User" },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = if (isPro) "PRO" else "FREE",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
         }
     }
 }

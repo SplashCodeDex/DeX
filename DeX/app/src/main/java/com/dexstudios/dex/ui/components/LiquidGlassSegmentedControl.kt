@@ -63,8 +63,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.ui.components.glass.LiquidGlassConfig
+import com.dexstudios.dex.ui.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.ui.components.island.DynamicMotionConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import com.dexstudios.dex.ui.components.glass.LiquidGlassShadowProperties
 import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.DeXTheme
@@ -89,7 +92,7 @@ data class SegmentedControlItem(
 /**
  * 1:1 High-Performance Liquid Glass Segmented Pill Control with Signature Bulging Physics.
  *
- * Implements the exact optical and physics pipeline from [FloatingPillNavBar]:
+ * Implements an authentic optical and physics pipeline:
  * 1. Base Layer (Track board + items) captured into a local [Backdrop].
  * 2. Floating Liquid Glass Highlighter sampling the captured layer with real-time refraction,
  *    3D vertical and horizontal bulging (+18dp height bulge, +60dp width stretch, lens magnification),
@@ -128,7 +131,7 @@ fun LiquidGlassSegmentedControl(
     val selectedCenterDp = horizontalPadding + (itemWidth * selectedIndex) + (itemWidth / 2f)
     val isPeaking = pressedIndex != null && pressedIndex != selectedIndex
 
-    // Add a directional peak shift towards the pressed tab (1:1 with FloatingPillNavBar)
+    // Add a directional peak shift towards the pressed tab
     val peakShiftDp =
         if (isPeaking) {
             val pressedCenterDp =
@@ -137,85 +140,8 @@ fun LiquidGlassSegmentedControl(
             if (diff > 0.dp) 20.dp else -20.dp
         } else 0.dp
 
-    // Stretch width to create a teardrop shape pointing towards the finger (1:1 with FloatingPillNavBar)
+    // Stretch width to create a teardrop shape pointing towards the finger
     val peakStretchDp = if (isPeaking) 24.dp else 0.dp
-
-    // --- Highlighter dynamic sizing & signature bulge on interact ---
-    // At rest: sits neatly aligned inside track slot (itemWidth - 6dp, visibleHeight - 8dp)
-    // On interact: BULGES OUT vertically (+16dp over track) and expands horizontally
-    val restWidth = (itemWidth - 6.dp).coerceAtLeast(40.dp)
-    val interactWidth = itemWidth * 1.35f
-
-    val highlighterWidth by
-        animateDpAsState(
-            targetValue = (if (isInteracting) interactWidth else restWidth) + peakStretchDp,
-            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessLow),
-            label = "hlW",
-        )
-    val highlighterHeight by
-        animateDpAsState(
-            targetValue = if (isInteracting) visibleHeight + 16.dp else visibleHeight - 8.dp,
-            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessLow),
-            label = "hlH",
-        )
-
-    // --- Dynamic lens & refraction warp on interact (1:1 with FloatingPillNavBar) ---
-    val animatedLensHeight by
-        animateDpAsState(
-            targetValue = if (isInteracting) lensHeight else 0.dp,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "lensH",
-        )
-    val animatedLensAmount by
-        animateDpAsState(
-            targetValue = if (isInteracting) lensAmount else 0.dp,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "lensA",
-        )
-    val animatedRefraction by
-        animateFloatAsState(
-            targetValue = if (isInteracting) restRefraction else 0.20f,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "refr",
-        )
-
-    // --- Elevation transition on interact (1:1 with FloatingPillNavBar) ---
-    val animatedShadow by
-        animateDpAsState(
-            targetValue = if (isInteracting) 30.dp else 0.dp,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "shadow",
-        )
-
-    // --- Dynamic blur on interact (1:1 with FloatingPillNavBar) ---
-    val animatedBlur by
-        animateDpAsState(
-            targetValue = if (isInteracting) 0.50.dp else 0.dp,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "blur",
-        )
-
-    // --- Inner shadow on interact (1:1 with FloatingPillNavBar) ---
-    val animatedInnerShadowRadius by
-        animateDpAsState(
-            targetValue = if (isInteracting) 12.dp else 0.dp,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "innerShadowR",
-        )
-    val animatedInnerShadowAlpha by
-        animateFloatAsState(
-            targetValue = if (isInteracting) 0.45f else 0f,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "innerShadowA",
-        )
-
-    // --- Dynamic specular glare boost on interact ---
-    val animatedGlareAlpha by
-        animateFloatAsState(
-            targetValue = if (isInteracting) 0.85f else LiquidGlassTokens.GlareRestAlpha,
-            animationSpec = spring(stiffness = Spring.StiffnessLow),
-            label = "glareA",
-        )
 
     // --- Highlighter position: drag follows finger, otherwise follows selected tab (with peak offset) ---
     val targetCenterDp =
@@ -227,20 +153,163 @@ fun LiquidGlassSegmentedControl(
 
     val centerX = remember { Animatable(targetCenterDp.value) }
 
+    // --- Kinematic Springs: CodeDeX tuned signature overshoot springs & direction-aware dual damping ---
+    val lensSlideSpring = remember { spring<Float>(dampingRatio = 0.5f, stiffness = 170f) }
+
+    val isMoving = centerX.isRunning
+    val isHighlighterActive = isInteracting || isMoving
+
     LaunchedEffect(targetCenterDp.value, dragX != null) {
         if (dragX != null) {
             centerX.snapTo(targetCenterDp.value)
         } else {
             centerX.animateTo(
                 targetValue = targetCenterDp.value,
-                animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+                animationSpec = lensSlideSpring,
             )
         }
     }
 
-    // --- Tint transitions: active while interacting OR still springing ---
-    val isMoving = centerX.isRunning || abs(centerX.value - targetCenterDp.value) > 0.5f
-    val isHighlighterActive = isInteracting || isMoving
+    val bulgeSpringDp = remember(isInteracting) {
+        spring<Dp>(
+            dampingRatio = if (isInteracting) 0.5f else 0.56f,
+            stiffness = 170f
+        )
+    }
+    val bulgeSpringFloat = remember(isInteracting) {
+        spring<Float>(
+            dampingRatio = if (isInteracting) 0.5f else 0.56f,
+            stiffness = 170f
+        )
+    }
+    val activeSpringDp = remember(isHighlighterActive) {
+        spring<Dp>(
+            dampingRatio = if (isHighlighterActive) 0.5f else 0.56f,
+            stiffness = 170f
+        )
+    }
+    val activeSpringFloat = remember(isHighlighterActive) {
+        spring<Float>(
+            dampingRatio = if (isHighlighterActive) 0.5f else 0.56f,
+            stiffness = 170f
+        )
+    }
+
+    // --- Highlighter dynamic sizing & signature bulge on interact ---
+    // At rest: sits neatly aligned inside track slot (itemWidth - 6dp, visibleHeight - 8dp)
+    // On interact: BULGES OUT vertically (+16dp over track) and expands horizontally
+    val restWidth = (itemWidth - 6.dp).coerceAtLeast(40.dp)
+    val interactWidth = itemWidth * 1.35f
+
+    val highlighterWidth by
+        animateDpAsState(
+            targetValue = (if (isInteracting) interactWidth else restWidth) + peakStretchDp,
+            animationSpec = bulgeSpringDp,
+            label = "hlW",
+        )
+    val highlighterHeight by
+        animateDpAsState(
+            targetValue = if (isInteracting) visibleHeight + 16.dp else visibleHeight - 8.dp,
+            animationSpec = bulgeSpringDp,
+            label = "hlH",
+        )
+
+    // --- Dynamic lens & refraction warp on interact ---
+    val animatedLensHeight by
+        animateDpAsState(
+            targetValue = if (isInteracting) lensHeight else 0.dp,
+            animationSpec = bulgeSpringDp,
+            label = "lensH",
+        )
+    val animatedLensAmount by
+        animateDpAsState(
+            targetValue = if (isInteracting) lensAmount else 0.dp,
+            animationSpec = bulgeSpringDp,
+            label = "lensA",
+        )
+    val animatedRefraction by
+        animateFloatAsState(
+            targetValue = if (isInteracting) restRefraction else 0.20f,
+            animationSpec = bulgeSpringFloat,
+            label = "refr",
+        )
+
+    // --- Multi-Tier Liquid Glass Shadows (CodeDeX Tuned Preference) ---
+    val unexpandedShadow = LiquidGlassShadowProperties.Unexpanded
+    val expandedShadow = LiquidGlassShadowProperties.Expanded
+
+    val animatedShadowRadius by
+        animateDpAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.radius else unexpandedShadow.radius,
+            animationSpec = activeSpringDp,
+            label = "shadowRadius",
+        )
+    val animatedShadowAlpha by
+        animateFloatAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.alpha else unexpandedShadow.alpha,
+            animationSpec = activeSpringFloat,
+            label = "shadowAlpha",
+        )
+    val animatedShadowOffsetY by
+        animateDpAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.offsetY else unexpandedShadow.offsetY,
+            animationSpec = activeSpringDp,
+            label = "shadowOffsetY",
+        )
+    val animatedInnerShadowRadius by
+        animateDpAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.innerRadius else unexpandedShadow.innerRadius,
+            animationSpec = activeSpringDp,
+            label = "innerShadowR",
+        )
+    val animatedInnerShadowAlpha by
+        animateFloatAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.innerAlpha else unexpandedShadow.innerAlpha,
+            animationSpec = activeSpringFloat,
+            label = "innerShadowA",
+        )
+    val animatedInnerShadowOffsetY by
+        animateDpAsState(
+            targetValue = if (isHighlighterActive) expandedShadow.innerOffsetY else unexpandedShadow.innerOffsetY,
+            animationSpec = activeSpringDp,
+            label = "innerShadowOffsetY",
+        )
+
+    val currentShadowProperties = remember(
+        animatedShadowRadius,
+        animatedShadowAlpha,
+        animatedShadowOffsetY,
+        animatedInnerShadowRadius,
+        animatedInnerShadowAlpha,
+        animatedInnerShadowOffsetY
+    ) {
+        LiquidGlassShadowProperties(
+            radius = animatedShadowRadius,
+            color = Color.Black,
+            alpha = animatedShadowAlpha,
+            offset = DpOffset(0.dp, animatedShadowOffsetY),
+            innerRadius = animatedInnerShadowRadius,
+            innerColor = Color.Black,
+            innerAlpha = animatedInnerShadowAlpha,
+            innerOffset = DpOffset(0.dp, animatedInnerShadowOffsetY)
+        )
+    }
+
+    // --- Dynamic blur on interact / slide ---
+    val animatedBlur by
+        animateDpAsState(
+            targetValue = if (isHighlighterActive) 1.5.dp else 0.dp,
+            animationSpec = activeSpringDp,
+            label = "blur",
+        )
+
+    // --- Dynamic specular glare boost on interact ---
+    val animatedGlareAlpha by
+        animateFloatAsState(
+            targetValue = if (isInteracting) 0.85f else LiquidGlassTokens.GlareRestAlpha,
+            animationSpec = bulgeSpringFloat,
+            label = "glareA",
+        )
 
     // --- Dynamic Highlighter Tint (Exact 1:1 match to Apple reference) ---
     val hlRestTint = if (isDark) Color.White else Color.Black
@@ -276,8 +345,8 @@ fun LiquidGlassSegmentedControl(
                 .size(totalWidth, visibleHeight)
                 .graphicsLayer { clip = false }
                 .bubbleFluidity(
-                    targetScale = 0.95f,
-                    pullFactor = 0.10f,
+                    targetScale = 0.96f,
+                    pullFactor = 0.04f,
                     onPhysicsUpdated = { s, tx, ty ->
                         currentScale = s
                         currentTx = tx
@@ -489,7 +558,6 @@ fun LiquidGlassSegmentedControl(
         if (morphProgress > 0.15f) {
             val tabsBounceFraction = ((morphProgress - 0.18f) / 0.55f).coerceIn(0f, 1f)
             val highlighterEase = FastOutSlowInEasing.transform(tabsBounceFraction)
-            val indicatorOffset = centerX.value.dp - (highlighterWidth / 2f)
             val hlYOffset = 10.dp * (1f - highlighterEase)
 
             Box(
@@ -504,7 +572,9 @@ fun LiquidGlassSegmentedControl(
                         Modifier.align(Alignment.CenterStart)
                             .size(highlighterWidth, highlighterHeight)
                             .graphicsLayer {
-                                translationX = indicatorOffset.toPx()
+                                val centerPx = with(density) { centerX.value.dp.toPx() }
+                                val widthPx = highlighterWidth.toPx()
+                                translationX = centerPx - (widthPx / 2f)
                                 translationY = hlYOffset.toPx()
                                 alpha = highlighterEase
                                 clip = false
@@ -516,21 +586,19 @@ fun LiquidGlassSegmentedControl(
                             .zIndex(10f),
                     shape = pillShape,
                     config =
-                        LiquidGlassPresets.IconButton.copy(
-                            shape = pillShape,
-                            blurRadius = animatedBlur,
-                            lensHeight = animatedLensHeight,
-                            lensAmount = animatedLensAmount,
-                            surfaceTint = animatedTint,
-                            surfaceTintAlpha = animatedTintAlpha,
-                            restRefraction = animatedRefraction,
-                            shadowRadius = animatedShadow,
-                            depthEffect = true,
-                            glareFactor = animatedGlareAlpha * 100f,
-                            innerShadowRadius = animatedInnerShadowRadius,
-                            innerShadowAlpha = animatedInnerShadowAlpha,
-                            innerShadowOffset = DpOffset(0.dp, 6.dp),
-                        ),
+                        LiquidGlassPresets.IconButton
+                            .withShadowProperties(currentShadowProperties)
+                            .copy(
+                                shape = pillShape,
+                                blurRadius = animatedBlur,
+                                lensHeight = animatedLensHeight,
+                                lensAmount = animatedLensAmount,
+                                surfaceTint = animatedTint,
+                                surfaceTintAlpha = animatedTintAlpha,
+                                restRefraction = animatedRefraction,
+                                depthEffect = true,
+                                glareFactor = animatedGlareAlpha * 100f,
+                            ),
                     content = {},
                 )
             }
@@ -562,6 +630,7 @@ private fun SegmentedTabItem(
                 } else {
                     if (isDark) Color.White.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.90f)
                 },
+            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
             label = "segIconColor",
         )
 
@@ -573,15 +642,22 @@ private fun SegmentedTabItem(
                 } else {
                     if (isDark) Color.White.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.90f)
                 },
+            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
             label = "segLabelColor",
         )
+
+    val iconScale by animateFloatAsState(
+        targetValue = if (item.isSelected) DynamicFluidityConfig.Default.pressScale else 1.0f,
+        animationSpec = DynamicMotionConfig.Default.springSpec(isExpanded = item.isSelected),
+        label = "segIconScale"
+    )
 
     Column(
         modifier =
             modifier
                 .fillMaxHeight()
                 .clip(CircleShape)
-                .bubbleFluidity(targetScale = 1.12f, pullFactor = 0.04f)
+                .bubbleFluidity(targetScale = 0.90f, pullFactor = 0.08f)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -600,9 +676,14 @@ private fun SegmentedTabItem(
                 imageVector = item.icon,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier
+                    .size(21.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    },
             )
-            Spacer(modifier = Modifier.height(1.dp))
+            Spacer(modifier = Modifier.height(2.dp))
         }
 
         Text(

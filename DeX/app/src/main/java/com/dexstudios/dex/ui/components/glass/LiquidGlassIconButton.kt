@@ -1,7 +1,9 @@
 package com.dexstudios.dex.ui.components.glass
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,7 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +28,7 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.ui.components.bubbleFluidity
+import com.dexstudios.dex.ui.components.island.DynamicFluidityConfig
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -50,24 +55,54 @@ import com.kyant.backdrop.shadow.Shadow
 fun LiquidGlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     width: Dp = 56.dp,
     height: Dp = 56.dp,
     config: LiquidGlassConfig = LiquidGlassConfig(),
     backdrop: Backdrop? = LocalBackdrop.current,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    indication: Indication? = null,
+    enableBubbleFluidity: Boolean = true,
+    pressScale: Float = DynamicFluidityConfig.Default.pressScale,
+    pullFactor: Float = DynamicFluidityConfig.Default.pullFactor,
+    elasticity: Float = DynamicFluidityConfig.Default.elasticity,
+    scalePressSpeed: Float = DynamicFluidityConfig.Default.scalePressSpeed,
+    scalePressDamping: Float = DynamicFluidityConfig.Default.scalePressDamping,
+    scaleSettleSpeed: Float = DynamicFluidityConfig.Default.scaleSettleSpeed,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    var isFluidityPressed by remember { mutableStateOf(false) }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val effectivelyPressed = isPressed || isFluidityPressed
+
+    // Authentic Apple glass optics: responsive sink on press, elastic high-bouncy overshoot on release
     val pressProgress by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f),
+        targetValue = if (effectivelyPressed) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = if (effectivelyPressed) scalePressDamping else Spring.DampingRatioHighBouncy,
+            stiffness = if (effectivelyPressed) scalePressSpeed else scaleSettleSpeed,
+        ),
         label = "liquidPress",
     )
+
+    val fluidityModifier = if (enableBubbleFluidity) {
+        Modifier.bubbleFluidity(
+            targetScale = pressScale,
+            pullFactor = pullFactor,
+            elasticity = elasticity,
+            scalePressSpeed = scalePressSpeed,
+            scalePressDamping = scalePressDamping,
+            scaleSettleSpeed = scaleSettleSpeed,
+            onPressedChanged = { isFluidityPressed = it }
+        )
+    } else {
+        Modifier
+    }
 
     val glassModifier = if (backdrop != null) {
         Modifier
             .size(width, height)
-            .bubbleFluidity()
+            .then(fluidityModifier)
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { config.shape },
@@ -75,8 +110,8 @@ fun LiquidGlassIconButton(
                     if (config.vibrancyEnabled) vibrancy()
                     blur((config.blurRadius * (1f - (0.5f * pressProgress))).toPx())
                     if (config.lensHeight > 0.dp && config.lensAmount > 0.dp) {
-                        // Resting refraction base + press boost
-                        val refraction = config.restRefraction + (1f - config.restRefraction) * pressProgress
+                        // Touch compression increases lens refraction depth by ~1.15x resting depth
+                        val refraction = config.restRefraction * (1f + 0.15f * pressProgress)
                         lens(
                             refractionHeight = (config.lensHeight * refraction).toPx(),
                             refractionAmount = (config.lensAmount * refraction).toPx(),
@@ -85,12 +120,8 @@ fun LiquidGlassIconButton(
                         )
                     }
                 },
-                highlight = { config.highlight },
-                shadow = {
-                    if (config.shadowRadius > 0.dp) {
-                        Shadow(radius = config.shadowRadius, color = config.shadowColor, offset = config.shadowOffset)
-                    } else null
-                },
+                highlight = { config.dynamicHighlight(pressProgress) },
+                shadow = { config.dropShadow },
                 innerShadow = { config.innerShadow },
                 onDrawSurface = {
                     if (config.surfaceTint.isSpecified && config.surfaceTintAlpha > 0f) {
@@ -101,7 +132,7 @@ fun LiquidGlassIconButton(
     } else {
         Modifier
             .size(width, height)
-            .bubbleFluidity()
+            .then(fluidityModifier)
             .clip(config.shape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
             .border(1.dp, Color.White.copy(alpha = 0.2f), config.shape)
@@ -111,11 +142,13 @@ fun LiquidGlassIconButton(
         modifier = modifier
             .then(glassModifier)
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
-                indication = LocalIndication.current,
+                indication = indication,
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center,
         content = content
     )
 }
+

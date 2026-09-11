@@ -127,10 +127,15 @@ fun MediaPickerTray(
     onTabChange: ((MediaTrayTab) -> Unit)? = null,
     onSend: (List<Uri>) -> Unit,
     onClose: () -> Unit,
+    onSelectionChanged: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val selectedUris = remember { mutableStateListOf<Uri>() }
+
+    LaunchedEffect(selectedUris.size) {
+        onSelectionChanged?.invoke(selectedUris.size)
+    }
 
     val pagerState = rememberPagerState(
         initialPage = currentTab.ordinal,
@@ -509,7 +514,9 @@ fun MediaPickerTray(
                             mediaPlayerRef.value = null
                             playingUri = null
                         } catch (_: Exception) {}
-                        onSend(selectedUris.toList())
+                        val urisToSend = selectedUris.toList()
+                        selectedUris.clear()
+                        onSend(urisToSend)
                     },
                     backdrop = backdrop,
                     icon = MaterialSymbols.Send,

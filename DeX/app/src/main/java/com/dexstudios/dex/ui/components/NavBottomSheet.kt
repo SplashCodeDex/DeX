@@ -2,6 +2,7 @@ package com.dexstudios.dex.ui.components
 
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -115,8 +116,8 @@ fun NavBottomSheet(
 
         val springSpec = remember {
             spring<Float>(
-                dampingRatio = 0.74f,
-                stiffness = 350f
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = 400f
             )
         }
 
@@ -237,7 +238,7 @@ fun NavBottomSheet(
             content(expansionFraction, PaddingValues(bottom = with(density) { (totalHeightPx * 0.5f).toDp() }))
 
             // Dimming scrim activates smoothly as sheet expands past 50%
-            val isIslandExpanded = com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded || com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded
+            val isIslandExpanded = com.dexstudios.dex.ui.state.TopIslandState.isProfileExpanded || com.dexstudios.dex.ui.history.HistoryState.isSearchExpanded
             val baseScrimAlpha = baseScrimAlphaFor(expansionFraction)
             val scrimAlpha = if (isIslandExpanded) 0.75f else baseScrimAlpha
 
@@ -253,8 +254,8 @@ fun NavBottomSheet(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onClick = {
-                                        com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded = false
-                                        com.dexstudios.dex.ui.state.TopAppBarState.isSearchExpanded = false
+                                        com.dexstudios.dex.ui.state.TopIslandState.isProfileExpanded = false
+                                        com.dexstudios.dex.ui.history.HistoryState.isSearchExpanded = false
                                     }
                                 )
                             } else {
@@ -303,7 +304,7 @@ fun NavBottomSheet(
                                     }
                                 }
                                 // Collapse profile island if it's expanded when tapping the top area
-                                com.dexstudios.dex.ui.state.TopAppBarState.isProfileExpanded = false
+                                com.dexstudios.dex.ui.state.TopIslandState.isProfileExpanded = false
                             }
                             // When drag is disabled the click is consumed (no-op): the sheet stays locked
                         }

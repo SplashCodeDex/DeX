@@ -75,6 +75,7 @@ import timber.log.Timber
 enum class PlaygroundSettingsCategory(val title: String) {
     ALL("All"),
     MOTION("Springs & Motion"),
+    ANTICIPATION("Anticipation & Overshoot"),
     FLUIDITY("Tactile Fluidity"),
     PARALLAX("Parallax Scaling"),
     SHADOWS("Shadow Variants"),
@@ -96,9 +97,9 @@ fun DynamicIslandPlayground(
     var isCompanionExpanded by remember { mutableStateOf(false) }
 
     // Live physics tuning states - CodeDeX Tuned Defaults
-    var expandDamping by remember { mutableFloatStateOf(0.40f) }
+    var expandDamping by remember { mutableFloatStateOf(0.5f) }
     var collapseDamping by remember { mutableFloatStateOf(0.56f) }
-    var stiffness by remember { mutableFloatStateOf(301f) }
+    var stiffness by remember { mutableFloatStateOf(170f) }
     var pressScale by remember { mutableFloatStateOf(1.08f) }
     var pullFactor by remember { mutableFloatStateOf(0.14f) }
     var elasticity by remember { mutableFloatStateOf(0.13f) }
@@ -143,6 +144,32 @@ fun DynamicIslandPlayground(
     var blurRiseDuration by remember { mutableFloatStateOf(75f) }
     var blurOnExpand by remember { mutableStateOf(true) }
     var blurOnCollapse by remember { mutableStateOf(true) }
+
+    // Live expanding anticipation tuning states
+    var enableAnticipation by remember { mutableStateOf(true) }
+    var anticipationNudge by remember { mutableFloatStateOf(32f) }
+    var anticipationSquishScale by remember { mutableFloatStateOf(1.25f) }
+    var anticipationDuration by remember { mutableFloatStateOf(70f) }
+    var overshootVelocityMultiplier by remember { mutableFloatStateOf(-20f) }
+    var anticipationNudgeSpeed by remember { mutableFloatStateOf(350f) }
+
+    val liveAnticipation = remember(
+        enableAnticipation,
+        anticipationNudge,
+        anticipationSquishScale,
+        anticipationDuration,
+        overshootVelocityMultiplier,
+        anticipationNudgeSpeed
+    ) {
+        DynamicAnticipationConfig(
+            enabled = enableAnticipation,
+            nudgeDistance = anticipationNudge.dp,
+            squishScale = anticipationSquishScale,
+            anticipationDurationMillis = anticipationDuration.toInt(),
+            overshootVelocityMultiplier = overshootVelocityMultiplier,
+            nudgeSpeed = anticipationNudgeSpeed
+        )
+    }
 
     // Active configuration category tab for playground controls
     var activeCategory by remember { mutableStateOf(PlaygroundSettingsCategory.ALL) }
@@ -307,6 +334,15 @@ fun DynamicIslandPlayground(
             appendLine("    expandedAlpha = ${"%.2f".format(expandedButtonAlpha)}f")
             appendLine(")")
             appendLine()
+            appendLine("val myAnticipation = DynamicAnticipationConfig(")
+            appendLine("    enabled = $enableAnticipation,")
+            appendLine("    nudgeDistance = ${"%.1f".format(anticipationNudge)}.dp,")
+            appendLine("    squishScale = ${"%.2f".format(anticipationSquishScale)}f,")
+            appendLine("    anticipationDurationMillis = ${anticipationDuration.toInt()},")
+            appendLine("    overshootVelocityMultiplier = ${"%.1f".format(overshootVelocityMultiplier)}f,")
+            appendLine("    nudgeSpeed = ${anticipationNudgeSpeed.toInt()}f")
+            appendLine(")")
+            appendLine()
             appendLine("val myContentBlur = DynamicContentBlurConfig(")
             appendLine("    enabled = $enableContentBlur,")
             appendLine("    maxBlur = ${maxContentBlur.toInt()}.dp,")
@@ -372,6 +408,8 @@ fun DynamicIslandPlayground(
                         shadows = liveShadows,
                         colors = liveColors,
                         contentBlur = liveContentBlur,
+                        expansionAnchor = ExpansionAnchor.Start,
+                        anticipation = liveAnticipation,
                         backdrop = backdrop,
                         collapsedContent = {
                             // Collapsed Mock Pill: Circle with Action Icon & status
@@ -488,6 +526,8 @@ fun DynamicIslandPlayground(
                         shadows = liveShadows,
                         colors = liveColors,
                         contentBlur = liveContentBlur,
+                        expansionAnchor = ExpansionAnchor.End,
+                        anticipation = liveAnticipation,
                         backdrop = backdrop,
                         collapsedContent = {
                             // Collapsed Mock Pill: Circle with toggleable Action Icon & status
@@ -700,9 +740,9 @@ fun DynamicIslandPlayground(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            expandDamping = 0.40f
+                            expandDamping = 0.5f
                             collapseDamping = 0.56f
-                            stiffness = 301f
+                            stiffness = 170f
                             pressScale = 1.08f
                             pullFactor = 0.14f
                             elasticity = 0.13f
@@ -731,6 +771,12 @@ fun DynamicIslandPlayground(
                             blurOnExpand = true
                             blurOnCollapse = true
                             pillExpandedFluidity = true
+                            enableAnticipation = true
+                            anticipationNudge = 32f
+                            anticipationSquishScale = 1.25f
+                            anticipationDuration = 70f
+                            overshootVelocityMultiplier = -20f
+                            anticipationNudgeSpeed = 350f
                             Toast.makeText(context, "Applied CodeDeX Tuned Defaults", Toast.LENGTH_SHORT).show()
                         },
                         shape = CircleShape,
@@ -796,10 +842,10 @@ fun DynamicIslandPlayground(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    PresetChip("Default", expandDamping == 0.40f && collapseDamping == 0.56f && stiffness == 301f) {
-                                        expandDamping = 0.40f
+                                    PresetChip("Default", expandDamping == 0.5f && collapseDamping == 0.56f && stiffness == 170f) {
+                                        expandDamping = 0.5f
                                         collapseDamping = 0.56f
-                                        stiffness = 301f
+                                        stiffness = 170f
                                     }
                                     PresetChip("Snappy", expandDamping == 0.75f && collapseDamping == 0.85f && stiffness == 600f) {
                                         expandDamping = 0.75f
@@ -819,7 +865,7 @@ fun DynamicIslandPlayground(
                                 Slider(
                                     value = expandDamping,
                                     onValueChange = { expandDamping = it },
-                                    valueRange = 0.35f..1.0f
+                                    valueRange = 0.15f..1.20f
                                 )
 
                                 // Collapsing Damping Ratio Slider
@@ -827,7 +873,7 @@ fun DynamicIslandPlayground(
                                 Slider(
                                     value = collapseDamping,
                                     onValueChange = { collapseDamping = it },
-                                    valueRange = 0.35f..1.0f
+                                    valueRange = 0.15f..1.20f
                                 )
 
                                 // Stiffness Slider
@@ -835,7 +881,125 @@ fun DynamicIslandPlayground(
                                 Slider(
                                     value = stiffness,
                                     onValueChange = { stiffness = it },
-                                    valueRange = 150f..900f
+                                    valueRange = 30f..1500f
+                                )
+                            }
+
+                            // 1B. ANTICIPATION & OVERSHOOT SECTION
+                            if (activeCategory == PlaygroundSettingsCategory.ALL || activeCategory == PlaygroundSettingsCategory.ANTICIPATION) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text("EXPANDING ANTICIPATION & OVERSHOOT SCALING", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    PresetChip("Anticipation: ${if (enableAnticipation) "ENABLED" else "DISABLED"}", selected = enableAnticipation) {
+                                        enableAnticipation = !enableAnticipation
+                                    }
+                                    PresetChip("Default (+32dp)", enableAnticipation && anticipationNudge == 32f && anticipationSquishScale == 1.25f && anticipationDuration == 70f && overshootVelocityMultiplier == -20f && anticipationNudgeSpeed == 350f) {
+                                        enableAnticipation = true
+                                        anticipationNudge = 32f
+                                        anticipationSquishScale = 1.25f
+                                        anticipationDuration = 70f
+                                        overshootVelocityMultiplier = -20f
+                                        anticipationNudgeSpeed = 350f
+                                    }
+                                    PresetChip("Recoil (-5dp Windup)", enableAnticipation && anticipationNudge == -5f && anticipationSquishScale == 0.94f) {
+                                        enableAnticipation = true
+                                        anticipationNudge = -5f
+                                        anticipationSquishScale = 0.94f
+                                        anticipationDuration = 85f
+                                        overshootVelocityMultiplier = 22f
+                                    }
+                                    PresetChip("Forward Lunge (+8dp)", enableAnticipation && anticipationNudge == 8f && anticipationSquishScale == 0.92f) {
+                                        enableAnticipation = true
+                                        anticipationNudge = 8f
+                                        anticipationSquishScale = 0.92f
+                                        anticipationDuration = 90f
+                                        overshootVelocityMultiplier = 28f
+                                    }
+                                    PresetChip("Swell Charge (1.10x)", enableAnticipation && anticipationSquishScale == 1.10f) {
+                                        enableAnticipation = true
+                                        anticipationNudge = 0f
+                                        anticipationSquishScale = 1.10f
+                                        anticipationDuration = 90f
+                                        overshootVelocityMultiplier = 20f
+                                    }
+                                    PresetChip("Undershoot (-18f)", enableAnticipation && overshootVelocityMultiplier == -18f) {
+                                        enableAnticipation = true
+                                        anticipationNudge = -3f
+                                        anticipationSquishScale = 0.96f
+                                        anticipationDuration = 70f
+                                        overshootVelocityMultiplier = -18f
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                // Nudge Distance Slider (-35dp to +35dp)
+                                val nudgeModeLabel = when {
+                                    anticipationNudge < -0.1f -> " (Recoil / Pull-back windup)"
+                                    anticipationNudge > 0.1f -> " (Lunge / Forward shift)"
+                                    else -> " (Center stationary)"
+                                }
+                                val nudgeFormatted = if (anticipationNudge > 0.05f) "+${"%.1f".format(anticipationNudge)}" else "%.1f".format(anticipationNudge)
+                                Text("Anticipation Nudge: ${nudgeFormatted}dp$nudgeModeLabel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Slider(
+                                    value = anticipationNudge,
+                                    onValueChange = { anticipationNudge = it },
+                                    valueRange = -35f..35f
+                                )
+
+                                // Nudge Speed Slider (50f to 1500f)
+                                val nudgeSpeedLabel = when {
+                                    anticipationNudgeSpeed < 250f -> " (Soft / Relaxed)"
+                                    anticipationNudgeSpeed > 600f -> " (Snappy / Instant)"
+                                    else -> " (Natural Organic)"
+                                }
+                                Text("Anticipation Nudge Speed: ${anticipationNudgeSpeed.toInt()}f$nudgeSpeedLabel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Slider(
+                                    value = anticipationNudgeSpeed,
+                                    onValueChange = { anticipationNudgeSpeed = it },
+                                    valueRange = 100f..1500f
+                                )
+
+                                // Scale Slider (0.50x to 1.40x)
+                                val scaleModeLabel = when {
+                                    anticipationSquishScale < 0.99f -> " (Squish compression)"
+                                    anticipationSquishScale > 1.01f -> " (Swell charge-up)"
+                                    else -> " (Neutral scale)"
+                                }
+                                Text("Windup Scale: ${"%.2f".format(anticipationSquishScale)}x$scaleModeLabel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Slider(
+                                    value = anticipationSquishScale,
+                                    onValueChange = { anticipationSquishScale = it },
+                                    valueRange = 0.50f..1.40f
+                                )
+
+                                // Windup Duration Slider (0ms to 400ms)
+                                Text("Windup Duration: ${anticipationDuration.toInt()}ms (Energy gathering)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Slider(
+                                    value = anticipationDuration,
+                                    onValueChange = { anticipationDuration = it },
+                                    valueRange = 0f..400f
+                                )
+
+                                // Overshoot Velocity Multiplier Slider (-40f to +70f)
+                                val velocityModeLabel = when {
+                                    overshootVelocityMultiplier > 0.1f -> " (Elastic Overshoot)"
+                                    overshootVelocityMultiplier < -0.1f -> " (Damped Undershoot)"
+                                    else -> " (Smooth Settle)"
+                                }
+                                val velocityFormatted = if (overshootVelocityMultiplier > 0.05f) "+${"%.1f".format(overshootVelocityMultiplier)}" else "%.1f".format(overshootVelocityMultiplier)
+                                Text("Overshoot Velocity: ${velocityFormatted}f$velocityModeLabel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Slider(
+                                    value = overshootVelocityMultiplier,
+                                    onValueChange = { overshootVelocityMultiplier = it },
+                                    valueRange = -40f..70f
                                 )
                             }
 
