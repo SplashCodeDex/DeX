@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,7 +123,7 @@ fun DynamicPillButton(
     collapsedGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIconButton.copy(shape = CircleShape),
     compactGlassConfig: LiquidGlassConfig = collapsedGlassConfig,
     expandedGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIsland.copy(shape = CircleShape),
-    fullIslandGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIsland.copy(shape = CircleShape),
+    fullIslandGlassConfig: LiquidGlassConfig = LiquidGlassPresets.ProfileIsland,
     backdrop: Backdrop? = null,
     dismissOnOutsideTap: Boolean = true,
     collapsedWidth: Dp = dimensions.collapsedWidth,
@@ -396,8 +397,21 @@ fun DynamicPillButton(
         )
     }
 
-    // 2. Strict pill/capsule shape enforcement (semicircular caps guaranteed)
-    val pillShape = CircleShape
+    // 2. Strict pill/capsule shape enforcement with fluent corner radius morphing
+    // Collapsed/Compact/Expanded (56dp height) use 28.dp radius (perfect stadium caps)
+    // FullIsland (140dp height) uses 48.dp radius (matching Profile Island 1:1)
+    val targetCornerRadius = when (stage) {
+        DynamicPillStage.FullIsland -> 48.dp
+        else -> 28.dp
+    }
+    val currentCornerRadius by animateDpAsState(
+        targetValue = targetCornerRadius,
+        animationSpec = activeSpringSpec,
+        label = "pillCornerRadius"
+    )
+    val dynamicShape = remember(currentCornerRadius) {
+        RoundedCornerShape(currentCornerRadius)
+    }
     val resolvedWidth = currentWidth.coerceAtLeast(0.dp)
     val resolvedHeight = currentHeight.coerceAtLeast(0.dp)
 
@@ -409,7 +423,7 @@ fun DynamicPillButton(
                 .expandingAnticipation(anticipationState),
             contentAlignment = Alignment.Center
         ) {
-            val activeConfig = remember(stage, collapsedGlassConfig, compactGlassConfig, expandedGlassConfig, fullIslandGlassConfig, currentSurfaceColor, currentSurfaceAlpha, currentShadowProperties) {
+            val activeConfig = remember(stage, collapsedGlassConfig, compactGlassConfig, expandedGlassConfig, fullIslandGlassConfig, currentSurfaceColor, currentSurfaceAlpha, currentShadowProperties, dynamicShape) {
                 val base = when (stage) {
                     DynamicPillStage.FullIsland -> fullIslandGlassConfig
                     DynamicPillStage.Expanded -> expandedGlassConfig
@@ -417,7 +431,7 @@ fun DynamicPillButton(
                     DynamicPillStage.Collapsed -> collapsedGlassConfig
                 }
                 base.withShadowProperties(currentShadowProperties).copy(
-                    shape = pillShape,
+                    shape = dynamicShape,
                     surfaceTint = currentSurfaceColor,
                     surfaceTintAlpha = currentSurfaceAlpha
                 )
@@ -438,7 +452,7 @@ fun DynamicPillButton(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(pillShape),
+                        .clip(dynamicShape),
                     contentAlignment = Alignment.Center
                 ) {
                     AnimatedContent(

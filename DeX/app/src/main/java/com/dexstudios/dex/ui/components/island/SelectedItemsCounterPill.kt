@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -139,7 +140,13 @@ fun SelectedItemsCounterPill(
     val contentTint = MaterialTheme.colorScheme.onPrimary
 
     val glassConfig = LiquidGlassPresets.NavBar.copy(
-        shape = CircleShape,
+        shape = RoundedCornerShape(28.dp),
+        surfaceTint = surfaceTint,
+        surfaceTintAlpha = 0.85f,
+    ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
+
+    val profileIslandGlassConfig = LiquidGlassPresets.ProfileIsland.copy(
+        shape = RoundedCornerShape(48.dp),
         surfaceTint = surfaceTint,
         surfaceTintAlpha = 0.85f,
     ).withShadowProperties(LiquidGlassShadowProperties.Expanded)
@@ -181,6 +188,7 @@ fun SelectedItemsCounterPill(
         collapsedGlassConfig = glassConfig,
         compactGlassConfig = glassConfig,
         expandedGlassConfig = glassConfig,
+        fullIslandGlassConfig = profileIslandGlassConfig,
         backdrop = backdrop,
         dismissOnOutsideTap = dismissOnOutsideTap,
         expansionAnchor = ExpansionAnchor.Start,

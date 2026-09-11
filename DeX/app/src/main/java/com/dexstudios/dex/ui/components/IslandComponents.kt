@@ -12,15 +12,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -516,9 +525,78 @@ fun ExpandedSelectionDispatchContent(
     onPairDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+    val dismissThresholdPx = with(density) { 44.dp.toPx() }
+
+    // Interactive Drag-to-Dismiss Gesture state
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedDragOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(
+            dampingRatio = 0.65f,
+            stiffness = 380f
+        ),
+        label = "dragOffsetY"
+    )
+
+    // Apple Staggered Pop-in Animators (25ms cascade)
+    val thumbPopProgress = remember { Animatable(0f) }
+    val textPopProgress = remember { Animatable(0f) }
+    val dismissPopProgress = remember { Animatable(0f) }
+    val devicesPopProgress = remember { Animatable(0f) }
+
+    val popSpec = spring<Float>(
+        dampingRatio = 0.65f,
+        stiffness = 380f
+    )
+
+    LaunchedEffect(Unit) {
+        launch { thumbPopProgress.animateTo(1f, popSpec) }
+        delay(25)
+        launch { textPopProgress.animateTo(1f, popSpec) }
+        delay(25)
+        launch { dismissPopProgress.animateTo(1f, popSpec) }
+        delay(25)
+        launch { devicesPopProgress.animateTo(1f, popSpec) }
+    }
+
+    val dragModifier = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onDragStart = { },
+            onVerticalDrag = { change, dragAmount ->
+                change.consume()
+                if (dragAmount > 0f) {
+                    // Downward drag with fluid 0.25f rubberband resistance
+                    dragOffsetY = (dragOffsetY + dragAmount * 0.25f).coerceAtLeast(0f)
+                } else {
+                    // Upward tension resistance
+                    dragOffsetY = (dragOffsetY + dragAmount * 0.10f)
+                }
+            },
+            onDragEnd = {
+                if (dragOffsetY >= dismissThresholdPx) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    dragOffsetY = 0f
+                    onDismiss()
+                } else {
+                    dragOffsetY = 0f
+                }
+            },
+            onDragCancel = {
+                dragOffsetY = 0f
+            }
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .then(dragModifier)
+            .graphicsLayer {
+                translationY = animatedDragOffsetY
+                alpha = (1f - (animatedDragOffsetY / (dismissThresholdPx * 2.5f))).coerceIn(0.4f, 1f)
+            }
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -532,13 +610,20 @@ fun ExpandedSelectionDispatchContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Stack of preview thumbnails (up to 3)
+                // Stack of preview thumbnails (up to 3) with staggered pop-in
                 if (selectedUris.isNotEmpty()) {
                     val previewUris = selectedUris.take(3)
                     val stackWidth = 36.dp + ((previewUris.size - 1) * 24).dp
+                    val thumbProgress = thumbPopProgress.value
                     Box(
                         modifier = Modifier
-                            .size(width = stackWidth, height = 36.dp),
+                            .size(width = stackWidth, height = 36.dp)
+                            .graphicsLayer {
+                                scaleX = 0.85f + 0.15f * thumbProgress
+                                scaleY = 0.85f + 0.15f * thumbProgress
+                                alpha = thumbProgress.coerceIn(0f, 1f)
+                                translationX = with(density) { ((1f - thumbProgress) * -12).dp.toPx() }
+                            },
                         contentAlignment = Alignment.CenterStart
                     ) {
                         previewUris.forEachIndexed { index, uri ->
@@ -563,7 +648,15 @@ fun ExpandedSelectionDispatchContent(
                     }
                 }
 
-                Column {
+                val textProgress = textPopProgress.value
+                Column(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = 0.90f + 0.10f * textProgress
+                        scaleY = 0.90f + 0.10f * textProgress
+                        alpha = textProgress.coerceIn(0f, 1f)
+                        translationX = with(density) { ((1f - textProgress) * -8).dp.toPx() }
+                    }
+                ) {
                     val itemCount = selectedUris.size
                     Text(
                         text = "$itemCount item${if (itemCount != 1) "s" else ""} selected",
@@ -585,20 +678,36 @@ fun ExpandedSelectionDispatchContent(
                 }
             }
 
-            DynamicDismissButton(
-                onClick = onDismiss,
-                size = DynamicDismissButtonSize.Medium,
-                colors = DynamicDismissButtonDefaults.colors(
-                    containerColor = Color.White.copy(alpha = 0.14f),
-                    contentColor = Color.White
+            val dismissProgress = dismissPopProgress.value
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = 0.85f + 0.15f * dismissProgress
+                    scaleY = 0.85f + 0.15f * dismissProgress
+                    alpha = dismissProgress.coerceIn(0f, 1f)
+                }
+            ) {
+                DynamicDismissButton(
+                    onClick = onDismiss,
+                    size = DynamicDismissButtonSize.Medium,
+                    colors = DynamicDismissButtonDefaults.colors(
+                        containerColor = Color.White.copy(alpha = 0.14f),
+                        contentColor = Color.White
+                    )
                 )
-            )
+            }
         }
 
-        // Bottom row: target device chips
+        // Bottom row: target device chips with staggered pop-in
+        val devicesProgress = devicesPopProgress.value
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = 0.92f + 0.08f * devicesProgress
+                    scaleY = 0.92f + 0.08f * devicesProgress
+                    alpha = devicesProgress.coerceIn(0f, 1f)
+                    translationY = with(density) { ((1f - devicesProgress) * 8).dp.toPx() }
+                }
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
