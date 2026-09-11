@@ -1,5 +1,12 @@
 # Changelog
 ## [Unreleased]
+### Added
+- **[minor] Multi-Tier Dynamic Island Selection Counter with Interactive Inspection Carousel (`SelectedItemsCounterPill.kt`, `IslandComponents.kt`, `Formatters.kt`, `Navigation.kt`)**:
+  - **Tier 1 (Compact 56dp Circular Capsule)**: Displays the latest selected media thumbnail disc (`MediaThumbnailDisc`) with an anchored top-right floating count badge (`RollingOdometerText`) driven by an elastic pulse swell (`1.25x` overshoot spring at `dampingRatio = 0.40f, stiffness = 380f`) on every selection change.
+  - **Tier 2 (Middle Stadium Pill ~180–220dp x 56dp)**: Left-aligned stacked circular preview discs (up to 3 items with +N overflow badge) featuring direct touch routing: tapping preview discs directly opens In-Island Inspection mode; tapping the selection telemetry label opens standard Big Island gallery view; tapping the dedicated Send action button immediately dispatches to the active target device; tapping '×' (`DynamicDismissButton`) clears selections.
+  - **Tier 3 (Big Island Dispatch Board ~152dp / ~248dp)**: Dual-mode dynamic board morphing organically between standard gallery mode (~152dp height) and interactive In-Island Inspection mode (~248dp height). Features a top thumbnail strip (`LazyRow`) with active selection accent rings auto-centering the active item, synchronized with a swipeable center carousel (`HorizontalPager`) rendering rich semantic cards (`InIslandPreviewCard`) specialized for Photos, Videos (with micro play glyph), Audio (vinyl disc with metadata), and Documents (MIME chip with byte size). Each card hosts an anchored '×' removal button that updates telemetry and collapses smoothly. Downward flick gesture dismisses back to gallery view, and pinned bottom target device row enables one-tap dispatch.
+  - **Centralized Metadata Helpers (`Formatters.kt`)**: Added safe, non-blocking `resolveFileName(context, uri)` and `resolveMimeType(context, uri)` supporting both `content://` and `file://` schemes.
+
 ### Fixed
 - **[fix] Relocate Expanded Panel Close Button from QuickActionBar to Dock Top-Right Corner (`TopActionsPanel.kt`, `QuickActionBar.kt`)**:
   - **Clean Quick Actions Row (`QuickActionBar.kt`)**: Removed the ad-hoc collapsible 5th danger close pill from `QuickActionBar`. The quick actions row now permanently retains its balanced, centered 4-pill layout (DND, Mirror, Transfers, Clipboard) without squishing or re-layout jumps when an expanded subpanel is opened.

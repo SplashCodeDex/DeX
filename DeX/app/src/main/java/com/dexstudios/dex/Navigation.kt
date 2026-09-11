@@ -815,6 +815,9 @@ fun MainNavigation(
                                     totalSelectedBytes = 0L
                                     isCounterBigIslandExpanded = false
                                 },
+                                onRemoveUri = { uri ->
+                                    selectedMediaUris.remove(uri)
+                                },
                                 onPairDevice = {
                                     isCounterBigIslandExpanded = false
                                     showPairingModal = true

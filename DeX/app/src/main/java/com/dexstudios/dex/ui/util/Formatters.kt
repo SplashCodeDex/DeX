@@ -82,4 +82,47 @@ object Formatters {
         if (speedBps <= 0L) return "0 B/s"
         return "${formatBytes(speedBps)}/s"
     }
+
+    /**
+     * Resolves the display filename from a [Uri].
+     */
+    fun resolveFileName(context: Context, uri: Uri): String {
+        if (uri.scheme == "content") {
+            try {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index >= 0) {
+                            val name = cursor.getString(index)
+                            if (!name.isNullOrBlank()) return name
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        } else if (uri.scheme == "file") {
+            val path = uri.path
+            if (path != null) {
+                val name = File(path).name
+                if (name.isNotBlank()) return name
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast('/') ?: "File"
+    }
+
+    /**
+     * Resolves the MIME type from a [Uri], falling back to file extension mapping or generic binary.
+     */
+    fun resolveMimeType(context: Context, uri: Uri): String {
+        val type = try {
+            context.contentResolver.getType(uri)
+        } catch (_: Exception) { null }
+        if (!type.isNullOrBlank()) return type
+
+        val ext = android.webkit.MimeTypeMap.getFileExtensionFromUrl(uri.toString())
+        if (!ext.isNullOrBlank()) {
+            val mapped = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase(Locale.ROOT))
+            if (!mapped.isNullOrBlank()) return mapped
+        }
+        return "*/*"
+    }
 }

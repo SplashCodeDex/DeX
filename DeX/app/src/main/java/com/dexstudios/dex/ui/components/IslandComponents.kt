@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.net.Uri
@@ -55,6 +56,12 @@ import com.dexstudios.dex.network.GoogleProfile
 import com.dexstudios.dex.network.UploadState
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.util.Formatters
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.rememberCoroutineScope
 
 enum class IslandContentState {
     IDLE,
@@ -515,6 +522,364 @@ fun formatSpeed(bps: Long): String = when {
     else -> "$bps B/s"
 }
 
+/**
+ * Semantic circular preview thumbnail disc for media items across all dynamic island tiers.
+ * Automatically resolves image, video, audio, and file representations.
+ */
+@Composable
+fun MediaThumbnailDisc(
+    uri: Uri,
+    modifier: Modifier = Modifier,
+    size: Dp = 36.dp,
+    contentTint: Color = Color.White,
+    borderWidth: Dp = 1.dp,
+    borderColor: Color = Color.White.copy(alpha = 0.35f),
+    backgroundColor: Color = Color.White.copy(alpha = 0.15f)
+) {
+    val context = LocalContext.current
+    val mimeType = remember(uri) { Formatters.resolveMimeType(context, uri) }
+    val isImage = mimeType.startsWith("image/")
+    val isVideo = mimeType.startsWith("video/")
+    val isAudio = mimeType.startsWith("audio/")
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .border(borderWidth, borderColor, CircleShape)
+            .background(backgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            isImage -> {
+                AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            isVideo -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size((size * 0.48f).coerceAtLeast(14.dp))
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.60f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.PlayArrow,
+                            contentDescription = "Video",
+                            tint = Color.White,
+                            modifier = Modifier.size((size * 0.32f).coerceAtLeast(10.dp))
+                        )
+                    }
+                }
+            }
+            isAudio -> {
+                Icon(
+                    imageVector = MaterialSymbols.MusicNote,
+                    contentDescription = "Audio",
+                    tint = contentTint,
+                    modifier = Modifier.size((size * 0.55f).coerceAtLeast(14.dp))
+                )
+            }
+            else -> {
+                Icon(
+                    imageVector = MaterialSymbols.Article,
+                    contentDescription = "File",
+                    tint = contentTint,
+                    modifier = Modifier.size((size * 0.55f).coerceAtLeast(14.dp))
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Interactive swipeable preview card inside the In-Island Preview Inspector carousel.
+ * Renders rich semantic cards for Photos, Videos, Audio tracks, and Documents/APKs.
+ */
+@Composable
+fun InIslandPreviewCard(
+    uri: Uri,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val fileName = remember(uri) { Formatters.resolveFileName(context, uri) }
+    val mimeType = remember(uri) { Formatters.resolveMimeType(context, uri) }
+    val fileSize = remember(uri) { Formatters.resolveFileSize(context, uri) }
+    val formattedSize = remember(fileSize) { if (fileSize > 0L) Formatters.formatBytes(fileSize) else "" }
+
+    val isImage = mimeType.startsWith("image/")
+    val isVideo = mimeType.startsWith("video/")
+    val isAudio = mimeType.startsWith("audio/")
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.10f))
+            .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+    ) {
+        when {
+            isImage -> {
+                AsyncImage(
+                    model = uri,
+                    contentDescription = fileName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (formattedSize.isNotEmpty()) {
+                            Text(
+                                text = formattedSize,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+            isVideo -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = fileName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.60f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.PlayArrow,
+                            contentDescription = "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = fileName,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (formattedSize.isNotEmpty()) {
+                                Text(
+                                    text = formattedSize,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.75f),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            isAudio -> {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.MusicNote,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.White.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "AUDIO",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontSize = 9.sp
+                                )
+                            }
+                            if (formattedSize.isNotEmpty()) {
+                                Text(
+                                    text = formattedSize,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.70f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            else -> {
+                val ext = fileName.substringAfterLast('.', "").uppercase()
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.Article,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (ext.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.White.copy(alpha = 0.15f))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = ext.take(5),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = 0.90f),
+                                        fontSize = 9.sp
+                                    )
+                                }
+                            }
+                            if (formattedSize.isNotEmpty()) {
+                                Text(
+                                    text = formattedSize,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.70f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Top-Right '×' Remove Button
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(6.dp)
+                .zIndex(10f)
+        ) {
+            DynamicDismissButton(
+                onClick = onRemove,
+                size = DynamicDismissButtonSize.Small,
+                colors = DynamicDismissButtonDefaults.colors(
+                    containerColor = Color.Black.copy(alpha = 0.55f),
+                    contentColor = Color.White
+                )
+            )
+        }
+    }
+}
+
 @Composable
 fun ExpandedSelectionDispatchContent(
     selectedUris: List<Uri>,
@@ -523,11 +888,38 @@ fun ExpandedSelectionDispatchContent(
     onSendToDevice: (DiscoveredDevice) -> Unit,
     onDismiss: () -> Unit,
     onPairDevice: () -> Unit,
+    onRemoveUri: (Uri) -> Unit = {},
+    previewingIndex: Int? = null,
+    onPreviewingIndexChange: (Int?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val dismissThresholdPx = with(density) { 44.dp.toPx() }
+
+    val isInspecting = previewingIndex != null && selectedUris.isNotEmpty()
+    val safePage = (previewingIndex ?: 0).coerceIn(0, (selectedUris.size - 1).coerceAtLeast(0))
+    val pagerState = rememberPagerState(initialPage = safePage) { selectedUris.size }
+
+    LaunchedEffect(previewingIndex) {
+        if (previewingIndex != null && previewingIndex in selectedUris.indices && pagerState.currentPage != previewingIndex) {
+            pagerState.animateScrollToPage(previewingIndex)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (isInspecting && previewingIndex != pagerState.currentPage) {
+            onPreviewingIndexChange(pagerState.currentPage)
+        }
+    }
+
+    val thumbnailListState = rememberLazyListState()
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedUris.isNotEmpty() && isInspecting) {
+            thumbnailListState.animateScrollToItem(pagerState.currentPage)
+        }
+    }
 
     // Interactive Drag-to-Dismiss Gesture state
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
@@ -597,7 +989,7 @@ fun ExpandedSelectionDispatchContent(
                 translationY = animatedDragOffsetY
                 alpha = (1f - (animatedDragOffsetY / (dismissThresholdPx * 2.5f))).coerceIn(0.4f, 1f)
             }
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         // Top row: items telemetry and preview on the left, dismiss button on the right
@@ -606,94 +998,228 @@ fun ExpandedSelectionDispatchContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Stack of preview thumbnails (up to 3) with staggered pop-in
-                if (selectedUris.isNotEmpty()) {
-                    val previewUris = selectedUris.take(3)
-                    val stackWidth = 36.dp + ((previewUris.size - 1) * 24).dp
-                    val thumbProgress = thumbPopProgress.value
-                    Box(
-                        modifier = Modifier
-                            .size(width = stackWidth, height = 36.dp)
-                            .graphicsLayer {
-                                scaleX = 0.85f + 0.15f * thumbProgress
-                                scaleY = 0.85f + 0.15f * thumbProgress
-                                alpha = thumbProgress.coerceIn(0f, 1f)
-                                translationX = with(density) { ((1f - thumbProgress) * -12).dp.toPx() }
-                            },
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        previewUris.forEachIndexed { index, uri ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(start = (index * 24).dp)
-                                    .size(36.dp)
-                                    .zIndex((3 - index).toFloat())
-                                    .clip(CircleShape)
-                                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-                                    .background(Color.White.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
+            if (isInspecting) {
+                // Inspection mode: Horizontally scrollable strip of thumbnail discs synchronized with carousel
+                LazyRow(
+                    state = thumbnailListState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    itemsIndexed(selectedUris, key = { _, uri -> uri.toString() }) { index, uri ->
+                        val isSelected = index == pagerState.currentPage
+                        val discBorder = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.35f)
+                        val discWidth = if (isSelected) 2.dp else 1.dp
+                        val discScale by animateFloatAsState(
+                            targetValue = if (isSelected) 1.08f else 1.0f,
+                            animationSpec = spring(dampingRatio = 0.50f, stiffness = 400f),
+                            label = "discScale"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = discScale
+                                    scaleY = discScale
+                                }
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (isSelected) {
+                                            onPreviewingIndexChange(null)
+                                        } else {
+                                            scope.launch { pagerState.animateScrollToPage(index) }
+                                        }
+                                    }
                                 )
-                            }
+                        ) {
+                            MediaThumbnailDisc(
+                                uri = uri,
+                                size = 36.dp,
+                                borderWidth = discWidth,
+                                borderColor = discBorder
+                            )
                         }
                     }
                 }
 
-                val textProgress = textPopProgress.value
-                Column(
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = 0.90f + 0.10f * textProgress
-                        scaleY = 0.90f + 0.10f * textProgress
-                        alpha = textProgress.coerceIn(0f, 1f)
-                        translationX = with(density) { ((1f - textProgress) * -8).dp.toPx() }
-                    }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val itemCount = selectedUris.size
-                    Text(
-                        text = "$itemCount item${if (itemCount != 1) "s" else ""} selected",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    // Collapse chevron button to return from inspection to standard gallery view (~152dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.14f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onPreviewingIndexChange(null)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.ExpandMore,
+                            contentDescription = "Collapse Preview",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DynamicDismissButton(
+                        onClick = onDismiss,
+                        size = DynamicDismissButtonSize.Medium,
+                        colors = DynamicDismissButtonDefaults.colors(
+                            containerColor = Color.White.copy(alpha = 0.14f),
+                            contentColor = Color.White
+                        )
                     )
-                    if (totalSizeBytes > 0L) {
+                }
+            } else {
+                // Standard Gallery mode: Preview thumbnails + telemetry
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (selectedUris.isNotEmpty()) {
+                        val previewUris = selectedUris.take(3)
+                        val stackWidth = 36.dp + ((previewUris.size - 1) * 24).dp
+                        val thumbProgress = thumbPopProgress.value
+                        Box(
+                            modifier = Modifier
+                                .size(width = stackWidth, height = 36.dp)
+                                .graphicsLayer {
+                                    scaleX = 0.85f + 0.15f * thumbProgress
+                                    scaleY = 0.85f + 0.15f * thumbProgress
+                                    alpha = thumbProgress.coerceIn(0f, 1f)
+                                    translationX = with(density) { ((1f - thumbProgress) * -12).dp.toPx() }
+                                },
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            previewUris.forEachIndexed { index, uri ->
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = (index * 24).dp)
+                                        .zIndex((3 - index).toFloat())
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                onPreviewingIndexChange(index)
+                                            }
+                                        )
+                                ) {
+                                    MediaThumbnailDisc(
+                                        uri = uri,
+                                        size = 36.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val textProgress = textPopProgress.value
+                    Column(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = 0.90f + 0.10f * textProgress
+                                scaleY = 0.90f + 0.10f * textProgress
+                                alpha = textProgress.coerceIn(0f, 1f)
+                                translationX = with(density) { ((1f - textProgress) * -8).dp.toPx() }
+                            }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onPreviewingIndexChange(0)
+                                }
+                            )
+                    ) {
+                        val itemCount = selectedUris.size
+                        val itemSuffix = if (itemCount != 1) "s" else ""
                         Text(
-                            text = Formatters.formatBytes(totalSizeBytes),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.75f),
+                            text = "$itemCount item$itemSuffix selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (totalSizeBytes > 0L) {
+                            Text(
+                                text = Formatters.formatBytes(totalSizeBytes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
-            }
 
-            val dismissProgress = dismissPopProgress.value
-            Box(
-                modifier = Modifier.graphicsLayer {
-                    scaleX = 0.85f + 0.15f * dismissProgress
-                    scaleY = 0.85f + 0.15f * dismissProgress
-                    alpha = dismissProgress.coerceIn(0f, 1f)
-                }
-            ) {
-                DynamicDismissButton(
-                    onClick = onDismiss,
-                    size = DynamicDismissButtonSize.Medium,
-                    colors = DynamicDismissButtonDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.14f),
-                        contentColor = Color.White
+                val dismissProgress = dismissPopProgress.value
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = 0.85f + 0.15f * dismissProgress
+                        scaleY = 0.85f + 0.15f * dismissProgress
+                        alpha = dismissProgress.coerceIn(0f, 1f)
+                    }
+                ) {
+                    DynamicDismissButton(
+                        onClick = onDismiss,
+                        size = DynamicDismissButtonSize.Medium,
+                        colors = DynamicDismissButtonDefaults.colors(
+                            containerColor = Color.White.copy(alpha = 0.14f),
+                            contentColor = Color.White
+                        )
                     )
-                )
+                }
+            }
+        }
+
+        // Center Area: Interactive swipeable preview carousel (active during inspection mode)
+        if (isInspecting) {
+            HorizontalPager(
+                state = pagerState,
+                pageSpacing = 10.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(108.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { change, dragAmount ->
+                            if (dragAmount > 20f) {
+                                change.consume()
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onPreviewingIndexChange(null)
+                            }
+                        }
+                    }
+            ) { pageIndex ->
+                if (pageIndex in selectedUris.indices) {
+                    val pageUri = selectedUris[pageIndex]
+                    InIslandPreviewCard(
+                        uri = pageUri,
+                        onRemove = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onRemoveUri(pageUri)
+                            if (selectedUris.size <= 1) {
+                                onDismiss()
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 
