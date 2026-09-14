@@ -58,7 +58,12 @@ class UploadWorker(
         val ip = inputData.getString(TransferWorkKeys.IP) ?: return@withContext Result.failure()
         val port = inputData.getInt(TransferWorkKeys.PORT, -1)
         if (port == -1) return@withContext Result.failure()
-        val urisJson = inputData.getString(TransferWorkKeys.URIS) ?: return@withContext Result.failure()
+        val urisJson = try {
+            UploadManifestStore.readInput(applicationContext, inputData, id)
+        } catch (e: Exception) {
+            Timber.e(e, "Cannot read upload manifest")
+            return@withContext Result.failure()
+        } ?: return@withContext Result.failure()
 
         val deviceConfig by inject<DeviceConfig>()
 

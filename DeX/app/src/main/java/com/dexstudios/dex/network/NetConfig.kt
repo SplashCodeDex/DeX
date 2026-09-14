@@ -35,6 +35,7 @@ object TransferWorkKeys {
     const val PORT = "port"
     const val HTTPS_PORT = "httpsPort"
     const val URIS = "uris"
+    const val URI_MANIFEST = "uriManifest"
     const val FILES = "files"
     const val TOTAL_BYTES = "totalBytes"
     const val DEST_DIR_URI = "destDirUri"
