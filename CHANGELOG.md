@@ -1,5 +1,8 @@
 # Changelog
 ## [Unreleased]
+### Fixed
+- **[fix] Desktop upload retries**: Whole-batch transport failures remain failures on the first upload attempt, enabling capped retries and relay fallback after exhaustion. HTTP rejections remain terminal. Added retry-count and HTTP-rejection regression tests; execution is pending.
+
 ### Added
 - **[minor] Multi-Tier Dynamic Island Selection Counter with Interactive Inspection Carousel (`SelectedItemsCounterPill.kt`, `IslandComponents.kt`, `Formatters.kt`, `Navigation.kt`)**:
   - **Tier 1 (Compact 56dp Circular Capsule)**: Displays the latest selected media thumbnail disc (`MediaThumbnailDisc`) with an anchored top-right floating count badge (`RollingOdometerText`) driven by an elastic pulse swell (`1.25x` overshoot spring at `dampingRatio = 0.40f, stiffness = 380f`) on every selection change.

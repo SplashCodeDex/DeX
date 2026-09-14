@@ -199,7 +199,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     }
 
     /** Runs one direct-push session with capped transport retries. Returns true when delivered. */
-    private suspend fun runSession(entries: List<Pair<File, String?>>, target: DiscoveredDevice): Boolean {
+    internal suspend fun runSession(entries: List<Pair<File, String?>>, target: DiscoveredDevice): Boolean {
         val peerName = lanTargetName(target)
 
         var attempt = 0
@@ -351,8 +351,9 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         val transportAllFailed = failed.isNotEmpty() && failed.size == outcomes.size && !anyHttpError
         val deliveredAny = outcomes.any { it.second.ok }
 
-        if (transportAllFailed && suppressFailurePaint) {
-            // A retry pass re-runs everything — don't paint a failure state in between
+        if (transportAllFailed) {
+            // Preserve the first attempt's transport failure too: presentation policy
+            // must not turn failure into delivery and bypass retries/relay fallback.
             return SessionOutcome(transportAllFailed = true)
         }
 
