@@ -66,6 +66,7 @@ Phase gates that require user decisions before work starts: 030 (after 024 DONE)
 
 ## Dependency notes
 
+- Transfer audit (2026-09-14): IN PROGRESS — transport retries, awaited hosted lifetime and post-stream completion are implemented on review branches. STOP before release until network/desktop regressions and live cancellation/slow-download checks pass. No wire values, dependency versions, production deployment or legacy files change. Automated test execution is pending.
 - Plans 040/041 (2026-09-03): module-split refactors, both P2. Sequence: 040 → 041,
   both after plan 032 lands (032 is actively editing the same core/network + core/data
   edges). Neither blocks the 033+ platform phases.
