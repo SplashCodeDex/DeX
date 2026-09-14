@@ -201,10 +201,10 @@ class ShareTargetActivity : ComponentActivity() {
                                     showSheet = false
                                 },
                                 onSendToDevice = { device ->
-                                    sendUrisToDevice(device, sharedUris)
-                                    clientEngine.resetUploadState()
-                                    startActivity(Intent(this@ShareTargetActivity, MainActivity::class.java))
-                                    finish()
+                                    sendUrisToDevice(device, sharedUris) {
+                                        startActivity(Intent(this@ShareTargetActivity, MainActivity::class.java))
+                                        finish()
+                                    }
                                 }
                             )
                         }
@@ -253,7 +253,6 @@ class ShareTargetActivity : ComponentActivity() {
                         },
                         onSendToDevice = { device ->
                             sendUrisToDevice(device, sharedUris)
-                            clientEngine.resetUploadState()
                         }
                     )
                 }
@@ -292,8 +291,7 @@ class ShareTargetActivity : ComponentActivity() {
                     ?.getValue(fingerprint)
             }
             if (device != null) {
-                sendUrisToDevice(device, sharedUris)
-                finish()
+                sendUrisToDevice(device, sharedUris) { finish() }
             } else {
                 // True AirDrop behavior: keep the share alive behind an ongoing
                 // notification and fire it the moment the PC appears, instead of
@@ -310,23 +308,26 @@ class ShareTargetActivity : ComponentActivity() {
         }
     }
 
-    private fun sendUrisToDevice(device: DiscoveredDevice, uris: List<Uri>) {
-        clientEngine.resetUploadState()
+    private var isEnqueuing = false
 
-        val urisJson = try {
-            Json.encodeToString(uris.map { it.toString() })
-        } catch (e: Exception) {
-            Timber.e(e, "Operation failed")
-            return
+    private fun sendUrisToDevice(device: DiscoveredDevice, uris: List<Uri>, onEnqueued: () -> Unit = {}) {
+        if (isEnqueuing) return
+        val pendingUris = uris.toList()
+        isEnqueuing = true
+        lifecycleScope.launch {
+            try {
+                val urisJson = withContext(Dispatchers.IO) { Json.encodeToString(pendingUris.map { it.toString() }) }
+                clientEngine.activeWorkId = UploadWorkRequestFactory.enqueue(this@ShareTargetActivity, device, urisJson)
+                onEnqueued()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Cannot queue shared files")
+                Toast.makeText(this@ShareTargetActivity, "Could not queue files. Please try again.", Toast.LENGTH_LONG).show()
+            } finally {
+                isEnqueuing = false
+            }
         }
-
-        val workRequest = com.dexstudios.dex.network.UploadWorkRequestFactory.create(
-            device = device,
-            urisJson = urisJson
-        )
-
-        clientEngine.activeWorkId = workRequest.id
-        WorkManager.getInstance(this).enqueue(workRequest)
     }
 
     private fun saveToSandbox() {

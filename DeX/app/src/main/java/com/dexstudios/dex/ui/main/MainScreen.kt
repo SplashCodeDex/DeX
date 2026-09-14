@@ -144,6 +144,22 @@ fun MainScreen(
             }
     }
 
+    val uploadQueueScope = rememberCoroutineScope()
+    fun enqueuePickedFiles(device: DiscoveredDevice, urisJson: String, punch: Boolean) {
+        uploadQueueScope.launch {
+            try {
+                viewModel.clientEngine.activeWorkId = com.dexstudios.dex.network.UploadWorkRequestFactory.enqueue(
+                    context, device, urisJson, punch = punch
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Cannot queue picked files")
+                Toast.makeText(context, "Could not queue files. Please try again.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     // Modern Android Photo/File Picker
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
@@ -163,18 +179,7 @@ fun MainScreen(
                 return@rememberLauncherForActivityResult
             }
 
-            val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.PunchSendWorker>()
-                .setInputData(
-                    workDataOf(
-                        TransferWorkKeys.TARGET_FINGERPRINT to rosterTarget.info.fingerprint,
-                        TransferWorkKeys.TARGET_ALIAS to rosterTarget.info.alias,
-                        TransferWorkKeys.URIS to urisJson
-                    )
-                )
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-
-            WorkManager.getInstance(context).enqueue(workRequest)
+            enqueuePickedFiles(rosterTarget, urisJson, punch = true)
             return@rememberLauncherForActivityResult
         }
 
@@ -190,34 +195,7 @@ fun MainScreen(
                 return@let
             }
 
-            val inputData = workDataOf(
-                TransferWorkKeys.IP to device.ip,
-                TransferWorkKeys.PORT to device.info.port,
-                TransferWorkKeys.URIS to urisJson,
-                TransferWorkKeys.TARGET_FINGERPRINT to device.info.fingerprint,
-                TransferWorkKeys.TARGET_ALIAS to device.info.alias
-            ).let { base ->
-                val identityHash = device.info.identityHash
-                val googleSub = device.info.googleSub
-                if (identityHash != null || googleSub != null) {
-                    androidx.work.Data.Builder().putAll(base)
-                        .apply {
-                            identityHash?.let { putString(TransferWorkKeys.TARGET_IDENTITY_HASH, it) }
-                            googleSub?.let { putString(TransferWorkKeys.TARGET_GOOGLE_SUB, it) }
-                        }
-                        .build()
-                } else {
-                    base
-                }
-            }
-
-            val workRequest = OneTimeWorkRequestBuilder<com.dexstudios.dex.network.UploadWorker>()
-                .setInputData(inputData)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
-
-            viewModel.clientEngine.activeWorkId = workRequest.id
-            WorkManager.getInstance(context).enqueue(workRequest)
+            enqueuePickedFiles(device, urisJson, punch = false)
         }
     }
 

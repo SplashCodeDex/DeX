@@ -247,31 +247,27 @@ fun MainNavigation(
             }
     }
 
-    // File Send Dispatcher
+    // Keep selections until durable enqueue succeeds, including manifest publication.
+    var isEnqueuingUpload by remember { mutableStateOf(false) }
     val sendFilesToTarget: (DiscoveredDevice, List<Uri>) -> Unit = { target, uris ->
-        if (uris.isNotEmpty()) {
-            Toast.makeText(
-                context,
-                "Sending ${uris.size} item(s) to ${target.info.alias.ifEmpty { target.info.deviceModel }}",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            viewModel.clientEngine.resetUploadState()
-            val urisJson = try {
-                Json.encodeToString(uris.map { it.toString() })
-            } catch (e: Exception) {
-                Timber.e(e, "Operation failed")
-                ""
-            }
-
-            if (urisJson.isNotEmpty()) {
-                val workRequest = com.dexstudios.dex.network.UploadWorkRequestFactory.create(
-                    device = target,
-                    urisJson = urisJson
-                )
-
-                viewModel.clientEngine.activeWorkId = workRequest.id
-                WorkManager.getInstance(context).enqueue(workRequest)
+        if (uris.isNotEmpty() && !isEnqueuingUpload) {
+            val pendingUris = uris.toList()
+            isEnqueuingUpload = true
+            scope.launch {
+                try {
+                    val urisJson = withContext(Dispatchers.IO) { Json.encodeToString(pendingUris.map { it.toString() }) }
+                    viewModel.clientEngine.activeWorkId = UploadWorkRequestFactory.enqueue(context, target, urisJson)
+                    selectedMediaUris.removeAll(pendingUris.toSet())
+                    isCounterBigIslandExpanded = false
+                    Toast.makeText(context, "Queued ${pendingUris.size} item(s)", Toast.LENGTH_SHORT).show()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Cannot queue selected files")
+                    Toast.makeText(context, "Could not queue files. Your selection is retained.", Toast.LENGTH_LONG).show()
+                } finally {
+                    isEnqueuingUpload = false
+                }
             }
         }
     }
@@ -791,9 +787,6 @@ fun MainNavigation(
                                     val target = selectedDevice ?: effectiveDevices.firstOrNull()
                                     if (target != null) {
                                         sendFilesToTarget(target, selectedMediaUris.toList())
-                                        selectedMediaUris.clear()
-                                        totalSelectedBytes = 0L
-                                        isCounterBigIslandExpanded = false
                                         collapseToHalf()
                                     } else {
                                         showPairingModal = true
@@ -801,9 +794,6 @@ fun MainNavigation(
                                 },
                                 onSendToDevice = { device ->
                                     sendFilesToTarget(device, selectedMediaUris.toList())
-                                    selectedMediaUris.clear()
-                                    totalSelectedBytes = 0L
-                                    isCounterBigIslandExpanded = false
                                     collapseToHalf()
                                 },
                                 onClear = {

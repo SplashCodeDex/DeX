@@ -92,23 +92,17 @@ object PendingShareForwarder : KoinComponent {
         notificationHelper.cancelPendingShareNotification(fingerprint)
     }
 
-    private fun send(item: PendingShare, device: DiscoveredDevice) {
+    private suspend fun send(item: PendingShare, device: DiscoveredDevice) {
         val context = appContext ?: return
-        clientEngine.resetUploadState()
-
-        val urisJson = try {
-            Json.encodeToString(item.uris.map { it.toString() })
+        try {
+            val urisJson = Json.encodeToString(item.uris.map { it.toString() })
+            clientEngine.activeWorkId = UploadWorkRequestFactory.enqueue(context, device, urisJson)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Timber.e(e, "PendingShare: cannot serialize URIs")
-            return
+            Timber.e(e, "PendingShare: cannot queue files; saving to sandbox")
+            val saved = SafStorage.saveUrisToSandbox(context, item.uris)
+            notificationHelper.showPendingShareSavedNotification(saved, item.uris.size)
         }
-
-        val workRequest = UploadWorkRequestFactory.create(
-            device = device,
-            urisJson = urisJson
-        )
-
-        clientEngine.activeWorkId = workRequest.id
-        WorkManager.getInstance(context).enqueue(workRequest)
     }
 }
