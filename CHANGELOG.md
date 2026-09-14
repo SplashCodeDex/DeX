@@ -1,6 +1,8 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Desktop transfer ownership**: The sender awaits hosted delivery instead of releasing its job after prompting. Cancellation keeps ownership until cleanup finishes, duplicate sends no longer overwrite progress, and completion no longer uses detached callbacks. WAN upload cancellation is propagated with bounded session cleanup. Added a session-ownership regression test; execution is pending.
+- **[fix] Hosted-download lifetime**: Hosted pushes can now be awaited through delivery/expiry. Cancelling the awaiting caller revokes hosted tokens and cancels active response streams. Completion is recorded only after the full response body is written and flushed, not when a request starts. Added lifetime, cancellation and missing-file regressions; execution is pending.
 - **[fix] Desktop upload retries**: Whole-batch transport failures remain failures on the first upload attempt, enabling capped retries and relay fallback after exhaustion. HTTP rejections remain terminal. Added retry-count and HTTP-rejection regression tests; execution is pending.
 
 ### Added

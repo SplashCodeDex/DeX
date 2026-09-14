@@ -249,6 +249,7 @@ class ShareRoutesTest {
             parameter("token", "pulltok")
         }
         assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(false, RelayService.hostedFileLastAccess.containsKey("file-9"))
     }
 
     @Test
