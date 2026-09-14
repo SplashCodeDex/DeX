@@ -147,26 +147,22 @@ fun MainNavigation(
     var isCounterPillExpanded by remember { mutableStateOf(true) }
     var isCounterBigIslandExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selectedMediaUris.toList()) {
-        if (selectedMediaUris.isEmpty()) {
+    val selectionSnapshot = selectedMediaUris.toList()
+    val sizeCalculator = remember(context) {
+        com.dexstudios.dex.ui.util.SelectionSizeCalculator<Uri>(
+            resolveSize = { Formatters.resolveFileSize(context, it) }
+        )
+    }
+    LaunchedEffect(selectionSnapshot, sizeCalculator) {
+        if (selectionSnapshot.isEmpty()) {
             totalSelectedBytes = 0L
             isCounterBigIslandExpanded = false
         } else {
             isCounterPillExpanded = true
-            withContext(Dispatchers.IO) {
-                var sum = 0L
-                for (uri in selectedMediaUris) {
-                    val cached = uriSizeCache[uri]
-                    if (cached != null) {
-                        sum += cached
-                    } else {
-                        val size = Formatters.resolveFileSize(context, uri)
-                        uriSizeCache[uri] = size
-                        sum += size
-                    }
-                }
-                totalSelectedBytes = sum
-            }
+            val result = sizeCalculator.calculate(selectionSnapshot, uriSizeCache.toMap())
+            if (selectedMediaUris.toList() != selectionSnapshot) return@LaunchedEffect
+            uriSizeCache.putAll(result.sizes)
+            totalSelectedBytes = result.totalBytes
         }
     }
 
