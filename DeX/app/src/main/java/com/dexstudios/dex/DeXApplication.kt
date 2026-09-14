@@ -15,6 +15,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import timber.log.Timber
+import kotlinx.coroutines.launch
 import com.dexstudios.dex.BuildConfig
 
 class DeXApplication : Application(), SingletonImageLoader.Factory {
@@ -38,6 +39,10 @@ class DeXApplication : Application(), SingletonImageLoader.Factory {
             androidLogger()
             androidContext(this@DeXApplication)
             modules(appModule)
+        }
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
+            runCatching { com.dexstudios.dex.network.UploadWorkRequestFactory.pruneFinished(this@DeXApplication) }
+                .onFailure { Timber.w(it, "Manifest cleanup deferred") }
         }
     }
 

@@ -1,5 +1,8 @@
 # Changelog
 ## [Unreleased]
+### Fixed
+- **[fix] Android upload manifests**: Work requests now reference app-private, work-ID-keyed URI manifests instead of embedding unbounded URI JSON in WorkManager Data. Upload and punch workers retain compatibility with old inline jobs. Manifests survive retries and are cleaned only after WorkManager confirms terminal state. Added large-selection, recreation, compatibility and cleanup tests; execution is pending.
+
 ### Added
 - **[minor] Multi-Tier Dynamic Island Selection Counter with Interactive Inspection Carousel (`SelectedItemsCounterPill.kt`, `IslandComponents.kt`, `Formatters.kt`, `Navigation.kt`)**:
   - **Tier 1 (Compact 56dp Circular Capsule)**: Displays the latest selected media thumbnail disc (`MediaThumbnailDisc`) with an anchored top-right floating count badge (`RollingOdometerText`) driven by an elastic pulse swell (`1.25x` overshoot spring at `dampingRatio = 0.40f, stiffness = 380f`) on every selection change.

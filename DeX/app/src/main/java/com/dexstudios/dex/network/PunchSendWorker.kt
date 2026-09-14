@@ -41,7 +41,12 @@ class PunchSendWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val targetFingerprint = inputData.getString(TransferWorkKeys.TARGET_FINGERPRINT) ?: return@withContext Result.failure()
-        val urisJson = inputData.getString(TransferWorkKeys.URIS) ?: return@withContext Result.failure()
+        val urisJson = try {
+            UploadManifestStore.readInput(applicationContext, inputData, id)
+        } catch (e: Exception) {
+            Timber.e(e, "Cannot read punch upload manifest")
+            return@withContext Result.failure()
+        } ?: return@withContext Result.failure()
 
         val uris = try {
             DexJson.decodeFromString<List<String>>(urisJson).map { it.toUri() }
