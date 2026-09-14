@@ -31,7 +31,7 @@ jobs:
         run: ./gradlew.bat :composeApp:desktopTest --console=plain
 
       - name: Library module tests
-        run: ./gradlew.bat :core:data:desktopTest :core:designsystem:desktopTest :core:network:desktopTest :feature:discovery:desktopTest :feature:settings:desktopTest --console=plain
+        run: ./gradlew.bat :core:data:desktopTest :core:designsystem:desktopTest :core:network:desktopTest :core:protocol:desktopTest :core:domain:desktopTest :core:sync:desktopTest --console=plain
 
   validate-android:
     runs-on: ubuntu-latest
@@ -48,6 +48,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build Android app (standalone project in DeX/)
+      - name: Build and test Android app (standalone project in DeX/)
         working-directory: DeX
-        run: ./gradlew :app:assembleDebug --console=plain
+        run: sh ./gradlew :app:assembleDebug :app:testDebugUnitTest --console=plain

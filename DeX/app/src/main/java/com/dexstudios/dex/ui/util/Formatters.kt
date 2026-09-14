@@ -3,6 +3,9 @@ package com.dexstudios.dex.ui.util
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -10,6 +13,21 @@ import java.util.Locale
  * Centralized formatting utilities for byte sizes, durations, and speeds across the DeX UI (Plan 024 Phase 2).
  */
 object Formatters {
+
+    data class UriMetadata(val fileName: String, val mimeType: String, val sizeBytes: Long)
+
+    /** Resolves provider metadata off the caller's thread; cancellation prevents stale publication. */
+    suspend fun resolveMetadata(
+        context: Context,
+        uri: Uri,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ): UriMetadata = withContext(ioDispatcher) {
+        UriMetadata(
+            fileName = resolveFileName(context, uri),
+            mimeType = resolveMimeType(context, uri),
+            sizeBytes = resolveFileSize(context, uri)
+        )
+    }
 
     /**
      * Formats byte count into a human-readable string with units (B, KB, MB, GB, TB).

@@ -3,6 +3,12 @@
 .gradle
 build
 **/build
+# The prebuilt Docker target consumes only the tested server artifact.
+!server/build/
+server/build/*
+!server/build/libs/
+server/build/libs/*
+!server/build/libs/dex-server-all.jar
 .idea
 *.log
 DeX

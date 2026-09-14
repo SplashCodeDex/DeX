@@ -3,6 +3,7 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
+      target: ${DEX_SERVER_BUILD_TARGET:-runtime}
     image: dex-server:latest
     container_name: dex-server
     restart: unless-stopped

@@ -1,9 +1,53 @@
 package com.dexstudios.dex.ui.util
 
+import android.content.ContentResolver
+import android.content.Context
+import android.database.Cursor
+import android.net.Uri
+import android.provider.OpenableColumns
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.concurrent.Executors
 
 class FormattersTest {
+
+    @Test
+    fun resolveMetadataUsesIoDispatcherForEveryProviderCall() {
+        val context = mockk<Context>()
+        val resolver = mockk<ContentResolver>()
+        val uri = mockk<Uri>()
+        val cursor = mockk<Cursor>(relaxed = true)
+        val providerThreads = mutableListOf<Thread>()
+        every { context.contentResolver } returns resolver
+        every { uri.scheme } returns "content"
+        every { cursor.moveToFirst() } returns true
+        every { cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME) } returns 0
+        every { cursor.getColumnIndex(OpenableColumns.SIZE) } returns 1
+        every { cursor.getString(0) } returns "photo.jpg"
+        every { cursor.getLong(1) } returns 2048L
+        every { resolver.query(uri, any<Array<String>>(), null, null, null) } answers {
+            providerThreads.add(Thread.currentThread())
+            cursor
+        }
+        every { resolver.getType(uri) } answers {
+            providerThreads.add(Thread.currentThread())
+            "image/jpeg"
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        executor.asCoroutineDispatcher().use { dispatcher ->
+            val ioThread = executor.submit<Thread> { Thread.currentThread() }.get()
+            val metadata = runBlocking { Formatters.resolveMetadata(context, uri, dispatcher) }
+            assertEquals(Formatters.UriMetadata("photo.jpg", "image/jpeg", 2048L), metadata)
+            assertEquals(listOf(ioThread, ioThread, ioThread), providerThreads)
+        }
+        verify(exactly = 2) { cursor.close() }
+    }
+
 
     @Test
     fun formatBytesHandlesAllRanges() {

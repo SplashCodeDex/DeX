@@ -19,7 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -28,8 +30,10 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -537,7 +541,11 @@ fun MediaThumbnailDisc(
     backgroundColor: Color = Color.White.copy(alpha = 0.15f)
 ) {
     val context = LocalContext.current
-    val mimeType = remember(uri) { Formatters.resolveMimeType(context, uri) }
+    val mimeType by key(context, uri) {
+        produceState(initialValue = "") {
+            value = withContext(Dispatchers.IO) { Formatters.resolveMimeType(context, uri) }
+        }
+    }
     val isImage = mimeType.startsWith("image/")
     val isVideo = mimeType.startsWith("video/")
     val isAudio = mimeType.startsWith("audio/")
@@ -614,9 +622,14 @@ fun InIslandPreviewCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val fileName = remember(uri) { Formatters.resolveFileName(context, uri) }
-    val mimeType = remember(uri) { Formatters.resolveMimeType(context, uri) }
-    val fileSize = remember(uri) { Formatters.resolveFileSize(context, uri) }
+    val metadata by key(context, uri) {
+        produceState<Formatters.UriMetadata?>(initialValue = null) {
+            value = Formatters.resolveMetadata(context, uri)
+        }
+    }
+    val fileName = metadata?.fileName.orEmpty()
+    val mimeType = metadata?.mimeType.orEmpty()
+    val fileSize = metadata?.sizeBytes ?: 0L
     val formattedSize = remember(fileSize) { if (fileSize > 0L) Formatters.formatBytes(fileSize) else "" }
 
     val isImage = mimeType.startsWith("image/")
