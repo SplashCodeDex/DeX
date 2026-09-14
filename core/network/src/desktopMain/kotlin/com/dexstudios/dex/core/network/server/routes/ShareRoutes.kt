@@ -17,6 +17,10 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -475,12 +479,38 @@ private suspend fun respondHostedFile(call: ApplicationCall, legacyTokenSemantic
         return
     }
 
-    RelayService.markPulled(fileId)
     val file = File(filePath)
-    if (!file.exists()) {
+    if (!file.isFile) {
         call.respond(HttpStatusCode.NotFound)
         return
     }
-
-    call.respondFile(file)
+    val length = file.length()
+    val mimeType = withContext(Dispatchers.IO) {
+        java.nio.file.Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+    }
+    call.respondBytesWriter(contentType = io.ktor.http.ContentType.parse(mimeType), contentLength = length) {
+        val downloadJob = currentCoroutineContext().job
+        if (!RelayService.registerDownload(fileId, downloadJob)) throw CancellationException("Hosted transfer revoked")
+        try {
+            withContext(Dispatchers.IO) {
+                file.inputStream().use { input ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var remaining = length
+                    while (remaining > 0L) {
+                        currentCoroutineContext().ensureActive()
+                        if (!RelayService.touchHosted(fileId)) throw CancellationException("Hosted transfer revoked")
+                        val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                        if (count < 0) throw java.io.EOFException("Hosted file changed during download")
+                        writeFully(buffer, 0, count)
+                        remaining -= count
+                    }
+                    flush()
+                    currentCoroutineContext().ensureActive()
+                    RelayService.markPulled(fileId)
+                }
+            }
+        } finally {
+            RelayService.unregisterDownload(fileId, downloadJob)
+        }
+    }
 }

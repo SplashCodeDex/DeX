@@ -7,6 +7,9 @@ import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import com.dexstudios.dex.core.protocol.FieldNames
 import com.dexstudios.dex.core.protocol.MessageTypes
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -30,6 +33,7 @@ data class RelayReceivedFile(val fileName: String, val absolutePath: String, val
  */
 class HostedPush internal constructor(val pushId: String, internal val fileIds: Set<String>, internal val onCompleted: (() -> Unit)?, internal val onExpired: (() -> Unit)?) {
     internal val pulled = ConcurrentHashMap.newKeySet<String>()
+    internal val completion = CompletableDeferred<Boolean>()
 
     @Volatile
     internal var finished: Boolean = false
@@ -132,37 +136,65 @@ object RelayService {
         }
     }
 
-    private fun removeHosted(id: String) {
-        hostedFiles.remove(id)
-        hostedFileTokens.remove(id)
-        hostedFileLastAccess.remove(id)
+    private val hostedLock = Any()
+    private val activeDownloads = mutableMapOf<String, MutableSet<Job>>()
+
+    fun registerDownload(fileId: String, job: Job): Boolean = synchronized(hostedLock) {
+        if (!hostedFiles.containsKey(fileId)) return@synchronized false
+        activeDownloads.getOrPut(fileId) { mutableSetOf() }.add(job)
+        true
     }
 
-    private fun finishPush(push: HostedPush, completed: Boolean) {
+    fun unregisterDownload(fileId: String, job: Job) = synchronized(hostedLock) {
+        activeDownloads[fileId]?.let { jobs ->
+            jobs.remove(job)
+            if (jobs.isEmpty()) activeDownloads.remove(fileId)
+        }
+    }
+
+    fun touchHosted(fileId: String): Boolean = synchronized(hostedLock) {
+        if (!hostedFiles.containsKey(fileId)) return@synchronized false
+        hostedFileLastAccess[fileId] = System.currentTimeMillis()
+        true
+    }
+
+    private fun removeHosted(id: String, cancelDownloads: Boolean = true) {
+        val jobs = synchronized(hostedLock) {
+            hostedFiles.remove(id)
+            hostedFileTokens.remove(id)
+            hostedFileLastAccess.remove(id)
+            activeDownloads.remove(id)?.toList().orEmpty()
+        }
+        if (cancelDownloads) jobs.forEach { it.cancel(CancellationException("Hosted transfer ended")) }
+    }
+
+    private fun finishPush(push: HostedPush, completed: Boolean, notifyCallbacks: Boolean = true) {
         synchronized(push) {
             if (push.finished) return
             push.finished = true
         }
         pushes.remove(push.pushId)
-        // The push is settled: either every file was pulled or the offer died. Either way
-        // its hosting slots are spent — release them instead of waiting out the TTL.
-        for (id in push.fileIds) removeHosted(id)
-        // Invoked inline: callbacks only touch UI state + history logs, and synchronous
-        // delivery keeps completion semantics deterministic for every producer path.
-        if (completed) {
-            push.onCompleted?.invoke()
-        } else {
-            push.onExpired?.invoke()
+        for (id in push.fileIds) removeHosted(id, cancelDownloads = !completed)
+        try {
+            if (notifyCallbacks) {
+                if (completed) push.onCompleted?.invoke() else push.onExpired?.invoke()
+            }
+        } catch (e: Exception) {
+            co.touchlab.kermit.Logger.w("Hosted transfer callback failed: ${e.message}")
+        } finally {
+            push.completion.complete(completed)
         }
     }
 
-    /** Records that [fileId] was actually downloaded by a peer. Drives push completion. */
+    /** Call only after the complete response body has been written and flushed. */
     fun markPulled(fileId: String) {
-        hostedFileLastAccess[fileId] = System.currentTimeMillis()
+        if (!touchHosted(fileId)) return
         for (push in pushes.values) {
-            if (push.fileIds.contains(fileId)) {
-                push.pulled.add(fileId)
-                if (push.pulled.containsAll(push.fileIds)) finishPush(push, completed = true)
+            synchronized(push) {
+                if (!push.finished && push.fileIds.contains(fileId)) {
+                    push.pulled.add(fileId)
+                    if (push.pulled.containsAll(push.fileIds)) finishPush(push, completed = true)
+                }
             }
         }
     }
@@ -226,9 +258,10 @@ object RelayService {
      *
      * The returned boolean means ONLY that the prompt reached the device. Transfer reality is
      * reported through [onCompleted] (every file pulled by the peer) / [onExpired] (TTL lapsed
-     * without a complete pull).
+     * without a complete pull). With [awaitCompletion], the caller stays suspended until
+     * delivery/expiry, and cancelling it revokes the hosted files and active responses.
      */
-    suspend fun hostAndPushAsync(targetFingerprint: String, files: List<Pair<String, String?>>, senderAlias: String, onCompleted: (() -> Unit)? = null, onExpired: (() -> Unit)? = null): Boolean {
+    suspend fun hostAndPushAsync(targetFingerprint: String, files: List<Pair<String, String?>>, senderAlias: String, onCompleted: (() -> Unit)? = null, onExpired: (() -> Unit)? = null, awaitCompletion: Boolean = false): Boolean {
         if (targetFingerprint.isEmpty() || files.isEmpty()) return false
         if (!WebSocketConnectionManager.isTrusted(targetFingerprint)) return false
 
@@ -259,35 +292,38 @@ object RelayService {
         }
 
         if (fileMap.isEmpty()) return false
-        pushes[pushId] = HostedPush(pushId, ids, onCompleted, onExpired)
+        val push = HostedPush(pushId, ids, onCompleted, onExpired)
+        pushes[pushId] = push
         ensureMaintenanceLoop()
-
-        val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
-        val prepareReq = PrepareUploadRequestDto(
-            info = RegisterDto(
-                alias = senderAlias,
-                version = "2.0",
-                deviceModel = "PC",
-                deviceType = "desktop",
-                fingerprint = deviceConfig.fingerprint.ifEmpty { "desktop-migration" },
-                port = com.dexstudios.dex.core.network.DeXPorts.HTTPS,
-                quicPort = com.dexstudios.dex.core.network.DeXPorts.QUIC,
-                tcpFallbackPort = com.dexstudios.dex.core.network.DeXPorts.PULL,
-                protocol = "localsend",
-                download = true,
-            ),
-            files = fileMap,
-        )
-
-        val jsonStr = buildJsonObject {
-            put(FieldNames.TYPE, MessageTypes.PREPARE_UPLOAD)
-            put(FieldNames.DATA, Json.encodeToJsonElement(PrepareUploadRequestDto.serializer(), prepareReq))
-        }.toString()
-
-        val delivered = WebSocketConnectionManager.sendToTrusted(targetFingerprint, jsonStr)
-        if (!delivered) {
-            pushes.remove(pushId)?.let { finishPush(it, completed = false) }
+        var delivered = false
+        try {
+            val deviceConfig = org.koin.core.context.GlobalContext.get().get<com.dexstudios.dex.core.network.DeviceConfig>()
+            val prepareReq = PrepareUploadRequestDto(
+                info = RegisterDto(
+                    alias = senderAlias,
+                    version = "2.0",
+                    deviceModel = "PC",
+                    deviceType = "desktop",
+                    fingerprint = deviceConfig.fingerprint.ifEmpty { "desktop-migration" },
+                    port = com.dexstudios.dex.core.network.DeXPorts.HTTPS,
+                    quicPort = com.dexstudios.dex.core.network.DeXPorts.QUIC,
+                    tcpFallbackPort = com.dexstudios.dex.core.network.DeXPorts.PULL,
+                    protocol = "localsend",
+                    download = true,
+                ),
+                files = fileMap,
+            )
+            val jsonStr = buildJsonObject {
+                put(FieldNames.TYPE, MessageTypes.PREPARE_UPLOAD)
+                put(FieldNames.DATA, Json.encodeToJsonElement(PrepareUploadRequestDto.serializer(), prepareReq))
+            }.toString()
+            delivered = WebSocketConnectionManager.sendToTrusted(targetFingerprint, jsonStr)
+            if (!delivered) finishPush(push, completed = false)
+            return if (delivered && awaitCompletion) push.completion.await() else delivered
+        } finally {
+            // Awaiting callers own the hosted lifetime. Cancellation revokes tokens and
+            // active streams without firing completion/expiry callbacks into another session.
+            if (!delivered || awaitCompletion) finishPush(push, completed = false, notifyCallbacks = false)
         }
-        return delivered
     }
 }
