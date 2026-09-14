@@ -1,5 +1,8 @@
 # Changelog
 ## [Unreleased]
+### Fixed
+- **[fix] Audit follow-up: validation, deployment and Android preview responsiveness**: Unix workflow calls now use explicit shell interpreters; Windows release uses `gradlew.bat`. Validation targets the existing core modules and runs Android unit tests. Server deployment selects a prebuilt Docker target for the CI-tested JAR while retaining the default full-source build; missing inputs fail before container replacement. Android selection thumbnails and preview cards resolve provider metadata on `Dispatchers.IO`, with URI-keyed loading state and a dispatcher regression test. Runtime/build verification remains pending; GitLab CI migration is not included.
+
 ### Added
 - **[minor] Multi-Tier Dynamic Island Selection Counter with Interactive Inspection Carousel (`SelectedItemsCounterPill.kt`, `IslandComponents.kt`, `Formatters.kt`, `Navigation.kt`)**:
   - **Tier 1 (Compact 56dp Circular Capsule)**: Displays the latest selected media thumbnail disc (`MediaThumbnailDisc`) with an anchored top-right floating count badge (`RollingOdometerText`) driven by an elastic pulse swell (`1.25x` overshoot spring at `dampingRatio = 0.40f, stiffness = 380f`) on every selection change.

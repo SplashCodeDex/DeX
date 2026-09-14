@@ -66,6 +66,7 @@ Phase gates that require user decisions before work starts: 030 (after 024 DONE)
 
 ## Dependency notes
 
+- Audit follow-up (2026-09-14, plan 032 deployment path): IN PROGRESS. Preserve the default source-build target; CI explicitly selects the tested-JAR target. STOP before container replacement if the selected target lacks its source checkout or artifact. Code changes are prepared; clean-checkout Docker builds, bundle deployment and Android regression execution remain pending. No production deployment or GitLab runner configuration is performed.
 - Plans 040/041 (2026-09-03): module-split refactors, both P2. Sequence: 040 → 041,
   both after plan 032 lands (032 is actively editing the same core/network + core/data
   edges). Neither blocks the 033+ platform phases.

@@ -34,7 +34,7 @@ jobs:
 
       # Gate: the server contract suite must pass before anything ships.
       - name: Build fat JAR + run server tests
-        run: ./gradlew :server:test :server:shadowJar --no-daemon
+        run: sh ./gradlew :server:test :server:shadowJar --no-daemon
 
       # Bundle = server sources only (compose, Dockerfile, Caddyfile, scripts).
       # Excludes: build outputs (JAR ships separately), and .env — the VPS env file
@@ -82,6 +82,6 @@ jobs:
               exit 1
             fi
             cd /opt/dex/server
-            ./scripts/deploy.sh
+            bash ./scripts/deploy.sh prebuilt
             rm -f /tmp/dex-deploy-bundle.tgz /tmp/dex-server-all.jar
 REMOTE

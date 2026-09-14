@@ -48,11 +48,28 @@ fi
 
 echo "Deploying for domain: ${DEX_DOMAIN:-localhost}"
 
-# 3. Build fat JAR if gradle is present locally, or rely on Docker multi-stage
-if [ -f "../gradlew" ] && [ ! -f "build/libs/dex-server-all.jar" ]; then
-    echo "Building dex-server-all.jar via Gradle..."
-    (cd .. && ./gradlew :server:shadowJar --no-daemon)
-fi
+# 3. Select the source build or the exact artifact already tested by CI.
+# An explicit argument wins over .env so CI cannot silently rebuild another artifact.
+export DEX_SERVER_BUILD_TARGET="${1:-${DEX_SERVER_BUILD_TARGET:-runtime}}"
+case "${DEX_SERVER_BUILD_TARGET}" in
+    runtime)
+        if [ ! -f "../gradlew" ] || [ ! -d "../core" ]; then
+            echo "ERROR: Source deployment requires a complete repository checkout."
+            echo "For the CI bundle, use: bash scripts/deploy.sh prebuilt"
+            exit 1
+        fi
+        ;;
+    prebuilt)
+        if [ ! -s "build/libs/dex-server-all.jar" ]; then
+            echo "ERROR: Prebuilt deployment requires build/libs/dex-server-all.jar from CI."
+            exit 1
+        fi
+        ;;
+    *)
+        echo "ERROR: Unknown build target '${DEX_SERVER_BUILD_TARGET}'; use runtime or prebuilt."
+        exit 1
+        ;;
+esac
 
 # 4. Bring up containers
 echo "Starting containers via Docker Compose..."
