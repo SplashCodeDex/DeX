@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import android.util.Base64
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,10 +45,16 @@ class FileShareManager(
     private val deviceConfig: DeviceConfig,
     private val client: ClientEngine,
     private val context: Context,
+    wsServiceOverride: WebSocketClientService? = null,
+    discoveryEngineOverride: DiscoveryEngine? = null,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
 ) : KoinComponent {
-    private val wsService: WebSocketClientService by inject()
-    private val discoveryEngine: DiscoveryEngine by inject()
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val wsService: WebSocketClientService by lazy {
+        wsServiceOverride ?: getKoin().get()
+    }
+    private val discoveryEngine: DiscoveryEngine by lazy {
+        discoveryEngineOverride ?: getKoin().get()
+    }
     private val json = DexJson
 
     /** requestId -> true once the PC asks us to abort that pull. */
@@ -60,8 +67,8 @@ class FileShareManager(
     fun handleRequest(type: String, data: JsonObject) {
         val requestId = data[ProtocolKeys.REQUEST_ID]?.jsonPrimitive?.content ?: return
         when (type) {
-            ProtocolKeys.LIST_SHARED_FOLDERS -> replyList(requestId)
-            ProtocolKeys.BROWSE_FOLDER -> replyBrowse(requestId, data)
+            ProtocolKeys.LIST_SHARED_FOLDERS -> scope.launch { replyList(requestId) }
+            ProtocolKeys.BROWSE_FOLDER -> scope.launch { replyBrowse(requestId, data) }
             ProtocolKeys.PULL_FILES -> scope.launch { replyPull(requestId, data) }
             ProtocolKeys.PULL_CANCEL -> cancelledRequests[requestId] = true
             ProtocolKeys.GRANT_SHARED_FOLDER -> scope.launch { replyGrant(requestId) }
@@ -220,68 +227,85 @@ class FileShareManager(
         // Hold a foreground service so Android doesn't kill the process mid-pull.
         PullForegroundService.start(context, requestId, fileMeta.size)
 
-        val pcAlias = wsService.connectedFingerprint?.let { fp -> discoveryEngine.devices.value[fp]?.info?.alias } ?: "PC"
+        var replySent = false
+        try {
+            val pcAlias = wsService.connectedFingerprint?.let { fp -> discoveryEngine.devices.value[fp]?.info?.alias } ?: "PC"
 
-        coroutineScope {
-            val jobs = fileMeta.map { (key, m) ->
-                launch(Dispatchers.IO) {
-                    semaphore.acquire()
-                    try {
-                        if (!scope.isActive || isStopped(requestId)) { cancelled = true; return@launch }
-                        val fileId = prepareRequest.files.getValue(key).id
-                        val fileToken = response.files[fileId]
+            coroutineScope {
+                val jobs = fileMeta.map { (key, m) ->
+                    launch(Dispatchers.IO) {
+                        semaphore.acquire()
+                        try {
+                            if (!scope.isActive || isStopped(requestId)) { cancelled = true; return@launch }
+                            val fileId = prepareRequest.files.getValue(key).id
+                            val fileToken = response.files[fileId]
 
-                        if (fileToken == null || fileToken == NetConfig.SKIP_TOKEN) {
-                            saved.add(m.name)
-                            doneCount.incrementAndGet()
-                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
-                            reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
-                            return@launch
-                        }
+                            if (fileToken == null || fileToken == NetConfig.SKIP_TOKEN) {
+                                saved.add(m.name)
+                                doneCount.incrementAndGet()
+                                TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
+                                reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
+                                return@launch
+                            }
 
-                        // Per-file retry: re-attempt a failed file once before reporting it.
-                        var ok = false
-                        var reason = "upload failed"
-                        for (i in 1..MAX_FILE_RETRIES) {
-                            if (!scope.isActive || isStopped(requestId)) { cancelled = true; reason = "cancelled"; break }
-                            val stream = runCatching { context.contentResolver.openInputStream(m.uri.toUri()) }.getOrNull()
-                            if (stream == null) { reason = "unreadable"; break }
-                            val outcome = stream.use { input ->
-                                if (client.quicAvailable()) {
-                                    client.uploadFileQuic(pcIp, port, response.sessionId, fileId, m.name, fileToken, input, m.size) { d ->
-                                        sentBytes.addAndGet(d)
-                                        reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
-                                    }
-                                } else {
-                                    client.uploadFile(pcIp, port, response.sessionId, fileId, m.name, fileToken, input, m.size) { d ->
-                                        sentBytes.addAndGet(d)
-                                        reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
+                            // Per-file retry: re-attempt a failed file once before reporting it.
+                            var ok = false
+                            var reason = "upload failed"
+                            for (i in 1..MAX_FILE_RETRIES) {
+                                if (!scope.isActive || isStopped(requestId)) { cancelled = true; reason = "cancelled"; break }
+                                val stream = runCatching { context.contentResolver.openInputStream(m.uri.toUri()) }.getOrNull()
+                                if (stream == null) { reason = "unreadable"; break }
+                                val outcome = stream.use { input ->
+                                    if (client.quicAvailable()) {
+                                        client.uploadFileQuic(pcIp, port, response.sessionId, fileId, m.name, fileToken, input, m.size) { d ->
+                                            sentBytes.addAndGet(d)
+                                            reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
+                                        }
+                                    } else {
+                                        client.uploadFile(pcIp, port, response.sessionId, fileId, m.name, fileToken, input, m.size) { d ->
+                                            sentBytes.addAndGet(d)
+                                            reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
+                                        }
                                     }
                                 }
+                                if (outcome.ok) { ok = true; break }
+                                reason = if (outcome.httpStatus == -1) "network error" else "http ${outcome.httpStatus}"
                             }
-                            if (outcome.ok) { ok = true; break }
-                            reason = if (outcome.httpStatus == -1) "network error" else "http ${outcome.httpStatus}"
-                        }
 
-                        doneCount.incrementAndGet()
-                        if (ok) {
-                            saved.add(m.name)
-                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
-                        } else {
-                            failed[m.name] = reason
-                            TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias, status = "failed")
+                            doneCount.incrementAndGet()
+                            if (ok) {
+                                saved.add(m.name)
+                                TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias)
+                            } else {
+                                failed[m.name] = reason
+                                TransferHistory.log(context, m.name, m.size, "sent", m.uri, peerDevice = pcAlias, status = "failed")
+                            }
+                            reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
+                        } finally {
+                            semaphore.release()
                         }
-                        reportProgress(requestId, doneCount.get(), fileMeta.size, sentBytes.get(), totalBytes, m.name)
-                    } finally {
-                        semaphore.release()
                     }
                 }
+                jobs.joinAll()
             }
-            jobs.joinAll()
-        }
 
-        sendPullReply(requestId, saved.toList(), failed.entries.map { it.key to it.value }, cancelled)
+            replySent = true
+            sendPullReply(requestId, saved.toList(), failed.entries.map { it.key to it.value }, cancelled)
+        } catch (e: Exception) {
+            Timber.e(e, "Pull coroutine failed or cancelled for request $requestId")
+            if (!replySent) {
+                val isCancelled = cancelled || isStopped(requestId) || e is CancellationException
+                sendPullReply(requestId, saved.toList(), failed.entries.map { it.key to it.value }, cancelled = isCancelled)
+            }
+            throw e
+        } finally {
+            PullForegroundService.stop(context)
+            cancelledRequests.remove(requestId)
+            lastProgressReport.remove(requestId)
+        }
     }
+
+    internal fun isCancelled(requestId: String): Boolean = isStopped(requestId)
 
     private fun isStopped(requestId: String): Boolean = cancelledRequests[requestId] == true
 
@@ -333,9 +357,9 @@ class FileShareManager(
         })
     }
 
-    /** SAF display name for a file, falling back to the name the PC provided. */
-    private fun resolveName(f: PullFileDto2): String {
-        return runCatching {
+    /** SAF display name for a file, falling back to the name the PC provided, sanitized against traversal and blanks. */
+    internal fun resolveName(f: PullFileDto2): String {
+        val raw = runCatching {
             context.contentResolver.query(f.uri.toUri(), null, null, null, null)?.use { c ->
                 if (c.moveToFirst()) {
                     val n = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -343,6 +367,16 @@ class FileShareManager(
                 } else f.name
             } ?: f.name
         }.getOrNull() ?: f.name
+        return sanitizeName(raw)
+    }
+
+    internal fun sanitizeName(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return "unnamed_file"
+        val base = trimmed.substringAfterLast('/').substringAfterLast('\\').trim()
+        if (base.isEmpty()) return "unnamed_file"
+        val scrubbed = base.replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1F]"), "_").trimEnd(' ', '.')
+        return scrubbed.ifEmpty { "unnamed_file" }
     }
 
     private suspend fun replyGrant(requestId: String) {
