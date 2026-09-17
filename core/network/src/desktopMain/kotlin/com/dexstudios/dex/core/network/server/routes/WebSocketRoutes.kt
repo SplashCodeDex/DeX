@@ -244,7 +244,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                                 val accepted = dataObj?.get(FieldNames.ACCEPTED)?.jsonPrimitive?.content?.toBoolean() == true
                                 val claimedPin = dataObj?.get(FieldNames.PIN)?.jsonPrimitive?.contentOrNull
                                 val verifiedByPin = accepted && fingerprint != null &&
-                                    pairingEngine.verifyInboundPin(fingerprint, claimedPin.orEmpty())
+                                    !claimedPin.isNullOrBlank() &&
+                                    pairingEngine.verifyInboundPin(fingerprint, claimedPin)
                                 when {
                                     // Peer proved knowledge of the displayed PIN: grant trust,
                                     // persist BOTH sides (we store a freshly minted pairing
@@ -266,14 +267,17 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                                         pairingEngine.handlePairResponse(fingerprint, true)
                                     }
 
-                                    // Trust assertion without PIN proof is never persisted; the desktop
-                                    // user can still grant access manually via the pairing panel.
-                                    accepted -> {
-                                        Logger.i("Rejected pair-response from $fingerprint: PIN not proven")
+                                    // Peer explicitly rejected the pairing offer
+                                    !accepted -> {
                                         pairingEngine.handlePairResponse(fingerprint, false)
                                     }
 
-                                    else -> pairingEngine.handlePairResponse(fingerprint, false)
+                                    // Trust assertion without PIN proof or with unverified PIN is never persisted;
+                                    // the desktop user can still grant access manually via the pairing panel,
+                                    // unless maximum failed attempts locked out the offer.
+                                    else -> {
+                                        Logger.i("Rejected automatic pair-response from $fingerprint: PIN not proven")
+                                    }
                                 }
                             }
 

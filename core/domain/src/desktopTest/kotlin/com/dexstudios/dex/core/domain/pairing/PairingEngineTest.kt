@@ -12,6 +12,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -182,6 +183,48 @@ class PairingEngineTest {
         assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", pin.drop(1) + if (pin.last() != '0') '0' else '1'), "Wrong PIN must not verify")
         assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", ""), "Blank PIN must not verify")
         assertTrue(!pairingEngine.verifyInboundPin("other-fp", pin), "Wrong fingerprint must not verify")
+    }
+
+    @Test
+    fun `verifyInboundPin locks out session to Error after maximum failed attempts`() = runTest {
+        val pin = pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
+        val wrongPin = "00000"
+
+        // Attempt 1: wrong PIN increments failed attempts to 1, sets isError, remains in PinPhase
+        val result1 = pairingEngine.verifyInboundPin("inbound-fp", wrongPin)
+        assertFalse(result1)
+        val state1 = assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+        assertEquals(1, state1.failedAttempts)
+        assertTrue(state1.isError)
+
+        // Telemetry entering fresh digits clears isError
+        pairingEngine.handlePinDigitEntered("inbound-fp", 1)
+        val stateWithDigits = assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+        assertFalse(stateWithDigits.isError)
+
+        // Attempt 2: wrong PIN increments failed attempts to 2
+        val result2 = pairingEngine.verifyInboundPin("inbound-fp", wrongPin)
+        assertFalse(result2)
+        val state2 = assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+        assertEquals(2, state2.failedAttempts)
+        assertTrue(state2.isError)
+
+        // Foreign fingerprint wrong attempt does not increment victim's failed attempts
+        val foreignResult = pairingEngine.verifyInboundPin("attacker-fp", wrongPin)
+        assertFalse(foreignResult)
+        val stateAfterAttacker = assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+        assertEquals(2, stateAfterAttacker.failedAttempts)
+
+        // Attempt 3: reaching MAX_PIN_ATTEMPTS locks out the offer permanently
+        val result3 = pairingEngine.verifyInboundPin("inbound-fp", wrongPin)
+        assertFalse(result3)
+        val state3 = assertIs<PairingState.Error>(pairingEngine.state.value)
+        assertEquals("Too many failed PIN attempts", state3.message)
+
+        // Subsequent attempt with the CORRECT pin MUST fail because session is locked out
+        val result4 = pairingEngine.verifyInboundPin("inbound-fp", pin)
+        assertFalse(result4, "Correct PIN must not verify after lockout")
+        assertIs<PairingState.Error>(pairingEngine.state.value)
     }
 
     @Test

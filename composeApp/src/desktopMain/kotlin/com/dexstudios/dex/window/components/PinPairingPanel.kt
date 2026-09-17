@@ -702,7 +702,7 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
         is PairingState.Success -> PinPairingUiState.Success
 
         is PairingState.Error -> PinPairingUiState.PinView(
-            subtitle = "Pairing failed",
+            subtitle = s.message.ifBlank { "Pairing failed" },
             isError = true,
             remainingSeconds = remainingSeconds,
         )

@@ -27,8 +27,16 @@ sealed interface PairingState {
         val alias: String = "",
     ) : PairingState
 
-    data class PinPhase(val ip: String, val fingerprint: String, val pinCode: String, val digitCount: Int, val isError: Boolean = false, val expiresAtMillis: Long = 0L, val alias: String = "") :
-        PairingState
+    data class PinPhase(
+        val ip: String,
+        val fingerprint: String,
+        val pinCode: String,
+        val digitCount: Int,
+        val isError: Boolean = false,
+        val expiresAtMillis: Long = 0L,
+        val alias: String = "",
+        val failedAttempts: Int = 0,
+    ) : PairingState
 
     data object Success : PairingState
     data class Error(val message: String) : PairingState
@@ -158,7 +166,10 @@ class PairingEngine(
         if (!isPendingPeer(fingerprint)) return
         val current = _state.value
         if (current is PairingState.PinPhase) {
-            _state.value = current.copy(digitCount = digitCount.coerceIn(0, PIN_LENGTH))
+            _state.value = current.copy(
+                digitCount = digitCount.coerceIn(0, PIN_LENGTH),
+                isError = if (digitCount > 0 && current.isError) false else current.isError,
+            )
         }
     }
 
@@ -225,15 +236,35 @@ class PairingEngine(
      * the PIN generated for [fingerprint] by the currently active, unexpired inbound pairing.
      * A connected peer that merely asserts accepted=true without proving knowledge of the
      * displayed PIN must never be persisted as trusted.
+     *
+     * Consecutive failed attempts against the active offer are rate-limited. Once failed
+     * attempts reach [MAX_PIN_ATTEMPTS], the offer is immediately locked out and transitioned
+     * to [PairingState.Error], invalidating any subsequent verification attempts.
      */
     fun verifyInboundPin(fingerprint: String, pin: String): Boolean {
         val current = _state.value
-        return current is PairingState.PinPhase &&
-            current.fingerprint == fingerprint &&
-            pin.isNotBlank() &&
-            pin == current.pinCode &&
-            current.expiresAtMillis > 0L &&
-            nowMillis() <= current.expiresAtMillis
+        if (current !is PairingState.PinPhase) return false
+        if (current.fingerprint != fingerprint) return false
+        if (current.expiresAtMillis <= 0L || nowMillis() > current.expiresAtMillis) return false
+
+        val trimmed = pin.trim()
+        if (trimmed.isEmpty()) return false
+
+        if (trimmed == current.pinCode) {
+            return true
+        }
+
+        val newAttempts = current.failedAttempts + 1
+        if (newAttempts >= MAX_PIN_ATTEMPTS) {
+            expiryJob?.cancel()
+            _state.value = PairingState.Error("Too many failed PIN attempts")
+        } else {
+            _state.value = current.copy(
+                failedAttempts = newAttempts,
+                isError = true,
+            )
+        }
+        return false
     }
 
     /**
@@ -288,9 +319,7 @@ class PairingEngine(
         expiryJob = scope.launch {
             delay(PIN_TTL_MS)
             val current = _state.value
-            val expiredPinOffer = current is PairingState.PinPhase &&
-                !current.isError &&
-                current.fingerprint == fingerprint
+            val expiredPinOffer = current is PairingState.PinPhase && current.fingerprint == fingerprint
             val expiredQrOffer = current is PairingState.QrPhase && current.fingerprint == fingerprint
             if (expiredPinOffer || expiredQrOffer) {
                 _state.value = PairingState.Error("Pairing timed out")
@@ -303,6 +332,12 @@ class PairingEngine(
         const val PIN_TTL_SECONDS = 60
 
         private val PIN_TTL_MS = PIN_TTL_SECONDS * 1000L
+
+        /**
+         * Maximum consecutive failed PIN verification attempts before the pairing offer
+         * is permanently invalidated and locked out.
+         */
+        const val MAX_PIN_ATTEMPTS = 3
 
         /**
          * Canonical PIN length. The legacy WPF server minted Random().Next(10000, 99999) —
