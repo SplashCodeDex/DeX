@@ -10,49 +10,80 @@ object HashUtils {
     private const val PARTIAL_SIZE = 32768 // 32KB
 
     fun computePartialHash(context: Context, uri: Uri, fileSize: Long): String? {
-        if (fileSize == 0L) return null
+        if (fileSize <= 0L) return null
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                computePartialHash(stream, fileSize)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Operation failed")
+            null
+        }
+    }
+
+    private fun readFully(stream: java.io.InputStream, buffer: ByteArray, offset: Int, length: Int): Int {
+        var totalRead = 0
+        while (totalRead < length) {
+            val count = stream.read(buffer, offset + totalRead, length - totalRead)
+            if (count == -1) break
+            totalRead += count
+        }
+        return totalRead
+    }
+
+    private fun skipFully(stream: java.io.InputStream, bytesToSkip: Long): Long {
+        var totalSkipped = 0L
+        val discard = ByteArray(8192)
+        while (totalSkipped < bytesToSkip) {
+            val remaining = bytesToSkip - totalSkipped
+            val skipped = stream.skip(remaining)
+            if (skipped > 0) {
+                totalSkipped += skipped
+            } else {
+                val toRead = min(remaining, discard.size.toLong()).toInt()
+                val read = stream.read(discard, 0, toRead)
+                if (read <= 0) break
+                totalSkipped += read
+            }
+        }
+        return totalSkipped
+    }
+
+    fun computePartialHash(stream: java.io.InputStream, fileSize: Long): String? {
+        if (fileSize <= 0L) return null
         return try {
             val md = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(PARTIAL_SIZE)
 
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                // Hash first 32KB
-                val bytesReadHead = stream.read(buffer, 0, PARTIAL_SIZE)
-                if (bytesReadHead > 0) {
-                    md.update(buffer, 0, bytesReadHead)
-                }
+            // Read head fully (up to 32KB)
+            val headToRead = min(fileSize, PARTIAL_SIZE.toLong()).toInt()
+            val bytesReadHead = readFully(stream, buffer, 0, headToRead)
+            if (bytesReadHead > 0) {
+                md.update(buffer, 0, bytesReadHead)
+            }
 
-                // If file is large enough, skip to the last 32KB and hash it
-                if (fileSize > PARTIAL_SIZE * 2) {
-                    val bytesToSkip = fileSize - bytesReadHead - PARTIAL_SIZE
-                    var skipped = 0L
-                    while (skipped < bytesToSkip) {
-                        val s = stream.skip(bytesToSkip - skipped)
-                        if (s <= 0) {
-                            // Fallback if skip() fails to advance (e.g. some custom InputStreams)
-                            val readBytes = stream.read(buffer, 0, min(buffer.size.toLong(), bytesToSkip - skipped).toInt())
-                            if (readBytes == -1) break
-                            skipped += readBytes
-                        } else {
-                            skipped += s
-                        }
-                    }
-                    val bytesReadTail = stream.read(buffer, 0, PARTIAL_SIZE)
+            // If file is large enough, skip to the last 32KB and hash it
+            if (fileSize > PARTIAL_SIZE * 2) {
+                val bytesToSkip = fileSize - bytesReadHead - PARTIAL_SIZE
+                val skipped = skipFully(stream, bytesToSkip)
+                if (skipped == bytesToSkip) {
+                    val bytesReadTail = readFully(stream, buffer, 0, PARTIAL_SIZE)
                     if (bytesReadTail > 0) {
                         md.update(buffer, 0, bytesReadTail)
                     }
-                } else if (fileSize > bytesReadHead) {
-                    // File is between 32KB and 64KB, just read the rest
-                    var remaining = fileSize - bytesReadHead
-                    while (remaining > 0) {
-                        val read = stream.read(buffer, 0, min(remaining, PARTIAL_SIZE.toLong()).toInt())
-                        if (read == -1) break
-                        md.update(buffer, 0, read)
-                        remaining -= read
-                    }
+                }
+            } else if (fileSize > bytesReadHead) {
+                // File is between 32KB and 64KB, just read the rest
+                var remaining = fileSize - bytesReadHead
+                while (remaining > 0) {
+                    val toRead = min(remaining, buffer.size.toLong()).toInt()
+                    val read = readFully(stream, buffer, 0, toRead)
+                    if (read <= 0) break
+                    md.update(buffer, 0, read)
+                    remaining -= read
                 }
             }
-            
+
             md.digest().joinToString("") { "%02X".format(it) }
         } catch (e: Exception) {
             Timber.e(e, "Operation failed")

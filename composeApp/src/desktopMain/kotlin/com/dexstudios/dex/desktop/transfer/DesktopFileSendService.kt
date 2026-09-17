@@ -1,5 +1,6 @@
 package com.dexstudios.dex.desktop.transfer
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.ClientEngine
 import com.dexstudios.dex.core.network.DeviceConfig
@@ -570,49 +571,81 @@ class DesktopFileSendService(
         }
     }
 
+    private fun readFully(stream: java.io.InputStream, buffer: ByteArray, offset: Int, length: Int): Int {
+        var totalRead = 0
+        while (totalRead < length) {
+            val count = stream.read(buffer, offset + totalRead, length - totalRead)
+            if (count == -1) break
+            totalRead += count
+        }
+        return totalRead
+    }
+
+    private fun skipFully(stream: java.io.InputStream, bytesToSkip: Long): Long {
+        var totalSkipped = 0L
+        val discard = ByteArray(8192)
+        while (totalSkipped < bytesToSkip) {
+            val remaining = bytesToSkip - totalSkipped
+            val skipped = stream.skip(remaining)
+            if (skipped > 0) {
+                totalSkipped += skipped
+            } else {
+                val toRead = kotlin.math.min(remaining, discard.size.toLong()).toInt()
+                val read = stream.read(discard, 0, toRead)
+                if (read <= 0) break
+                totalSkipped += read
+            }
+        }
+        return totalSkipped
+    }
+
     /**
      * SHA-256 over the first and last 32KB of the file — mirrors the Android sender so
      * both sides agree on the dedupe/diff fingerprint contract. The receiver uses this to
      * answer "[SKIP]" for identical content instead of duplicating files.
      */
-    private fun computePartialHash(file: File): String? {
-        val fileSize = file.length()
-        if (fileSize == 0L) return null
+    internal fun computePartialHash(stream: java.io.InputStream, fileSize: Long): String? {
+        if (fileSize <= 0L) return null
         return try {
             val md = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(PARTIAL_SIZE)
-            FileInputStream(file).use { stream ->
-                val headBytes = stream.read(buffer, 0, PARTIAL_SIZE)
-                if (headBytes > 0) md.update(buffer, 0, headBytes)
 
-                if (fileSize > PARTIAL_SIZE * 2) {
-                    val bytesToSkip = fileSize - headBytes - PARTIAL_SIZE
-                    var skipped = 0L
-                    while (skipped < bytesToSkip) {
-                        val s = stream.skip(bytesToSkip - skipped)
-                        if (s <= 0) {
-                            val readBytes = stream.read(buffer, 0, min(buffer.size.toLong(), bytesToSkip - skipped).toInt())
-                            if (readBytes == -1) break
-                            skipped += readBytes
-                        } else {
-                            skipped += s
-                        }
-                    }
-                    val tailBytes = stream.read(buffer, 0, PARTIAL_SIZE)
+            // Read head fully (up to 32KB)
+            val headToRead = kotlin.math.min(fileSize, PARTIAL_SIZE.toLong()).toInt()
+            val headBytes = readFully(stream, buffer, 0, headToRead)
+            if (headBytes > 0) md.update(buffer, 0, headBytes)
+
+            if (fileSize > PARTIAL_SIZE * 2) {
+                val bytesToSkip = fileSize - headBytes - PARTIAL_SIZE
+                val skipped = skipFully(stream, bytesToSkip)
+                if (skipped == bytesToSkip) {
+                    val tailBytes = readFully(stream, buffer, 0, PARTIAL_SIZE)
                     if (tailBytes > 0) md.update(buffer, 0, tailBytes)
-                } else if (fileSize > headBytes) {
-                    var remaining = fileSize - headBytes
-                    while (remaining > 0) {
-                        val read = stream.read(buffer, 0, min(remaining, PARTIAL_SIZE.toLong()).toInt())
-                        if (read == -1) break
-                        md.update(buffer, 0, read)
-                        remaining -= read
-                    }
+                }
+            } else if (fileSize > headBytes) {
+                var remaining = fileSize - headBytes
+                while (remaining > 0) {
+                    val toRead = kotlin.math.min(remaining, buffer.size.toLong()).toInt()
+                    val read = readFully(stream, buffer, 0, toRead)
+                    if (read <= 0) break
+                    md.update(buffer, 0, read)
+                    remaining -= read
                 }
             }
             md.digest().joinToString("") { "%02X".format(it) }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Logger.e("DesktopFileSendService: Failed to compute partial hash", e)
+            null
+        }
+    }
+
+    private fun computePartialHash(file: File): String? {
+        val fileSize = file.length()
+        if (fileSize <= 0L) return null
+        return try {
+            FileInputStream(file).use { computePartialHash(it, fileSize) }
+        } catch (e: Exception) {
+            Logger.e("DesktopFileSendService: Failed to open file for partial hash: ${file.absolutePath}", e)
             null
         }
     }

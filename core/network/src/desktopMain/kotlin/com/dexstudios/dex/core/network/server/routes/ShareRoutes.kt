@@ -50,7 +50,7 @@ object ReceivedFileIndex {
 
     private fun key(size: Long, partialHash: String?): String? {
         if (size <= 0L || partialHash.isNullOrEmpty()) return null
-        return "$size:$partialHash"
+        return "$size:${partialHash.uppercase()}"
     }
 
     /** Returns the stored path when identical content was already received, else null. */

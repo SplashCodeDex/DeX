@@ -1,6 +1,9 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Partial hash stream chunking and case normalization (`HashUtils.kt`, `DesktopFileSendService.kt`, `ShareRoutes.kt`, `HashUtilsTest.kt`, `DesktopFileSendPartialHashTest.kt`)**:
+  - **Stream Chunking Protection**: `HashUtils.computePartialHash` (Android) and `DesktopFileSendService.computePartialHash` (Desktop) now use dedicated `readFully` and `skipFully` routines instead of relying on single `read(...)` or `skip(...)` invocations. Dynamic streams (such as Android ContentResolver pipes, network sockets, or buffered chunk streams) that return partial byte arrays (e.g. 1KB–8KB chunks) are read up to the full required 32KB window, preventing truncated slice hashes and false cache misses.
+  - **Hash Case Normalization**: `ReceivedFileIndex.key` normalizes partial hashes via `.uppercase()` so that uppercase hexadecimal formats (from Android and desktop senders) and any lowercase variants match deterministically, ensuring robust cross-platform deduplication.
 - **[fix] Received file index size verification & bounded deduplication cache (`ShareRoutes.kt`, `ReceivedFileIndexTest.kt`)**:
   - **Live Content Integrity**: `ReceivedFileIndex.findLive` now verifies that the cached file on disk not only exists, but is a regular file whose current length exactly matches the indexed payload size. Stale entries whose disk files have been truncated, modified, or replaced with directories are automatically invalidated and evicted from the deduplication index, preventing false `[SKIP]` responses that would cause peers to withhold transfers and lead to corrupt/missing data in onward relays.
   - **Invalid Size & Hash Guard**: `ReceivedFileIndex.record` and key generation reject non-positive sizes (`size <= 0`) and missing/empty partial hashes, preventing malformed dedupe entries.
