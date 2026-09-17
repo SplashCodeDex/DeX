@@ -10,6 +10,10 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -64,6 +68,66 @@ class RelayServiceTest {
         mockkObject(WebSocketConnectionManager)
         every { WebSocketConnectionManager.isTrusted(fingerprint) } returns true
         coEvery { WebSocketConnectionManager.sendToTrusted(any(), any()) } returns true
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `cancelling an awaited push revokes files and streams without a late completion`() = runTest {
+        startKoinWithDeviceConfig()
+        stubTrustedSession("fp_phone")
+        val file = Files.createTempFile("dex-cancel", ".bin").toFile()
+        var completed = false
+        var expired = false
+        try {
+            val pending = async {
+                RelayService.hostAndPushAsync(
+                    "fp_phone",
+                    listOf(file.absolutePath to null),
+                    "PC",
+                    onCompleted = { completed = true },
+                    onExpired = { expired = true },
+                    awaitCompletion = true,
+                )
+            }
+            runCurrent()
+            val id = RelayService.hostedFiles.keys.single()
+            val streamJob = Job()
+            assertTrue(RelayService.registerDownload(id, streamJob))
+            assertFalse(pending.isCompleted)
+            pending.cancelAndJoin()
+            assertTrue(streamJob.isCancelled)
+            assertTrue(RelayService.hostedFiles.isEmpty())
+            assertTrue(RelayService.hostedFileTokens.isEmpty())
+            RelayService.markPulled(id)
+            assertFalse(RelayService.hostedFileLastAccess.containsKey(id))
+            assertFalse(completed)
+            assertFalse(expired)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `awaited push stays pending until every file has finished`() = runTest {
+        startKoinWithDeviceConfig()
+        stubTrustedSession("fp_phone")
+        val first = Files.createTempFile("dex-first", ".bin").toFile()
+        val second = Files.createTempFile("dex-second", ".bin").toFile()
+        try {
+            val pending = async {
+                RelayService.hostAndPushAsync("fp_phone", listOf(first.absolutePath to null, second.absolutePath to null), "PC", awaitCompletion = true)
+            }
+            runCurrent()
+            val ids = RelayService.hostedFiles.keys.toList()
+            RelayService.markPulled(ids[0])
+            assertFalse(pending.isCompleted)
+            RelayService.markPulled(ids[1])
+            assertTrue(pending.await())
+        } finally {
+            first.delete()
+            second.delete()
+        }
     }
 
     @Test

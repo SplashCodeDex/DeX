@@ -19,12 +19,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.put
 import java.io.File
 import java.io.FileInputStream
@@ -50,7 +55,12 @@ import kotlin.math.min
  * the relay path before giving up — a retried session never duplicates files because the
  * receiver dedupes via content hashes and answers "[SKIP]".
  */
-class DesktopFileSendService(private val clientEngine: ClientEngine, private val discoveryEngine: DiscoveryEngine, private val deviceConfig: DeviceConfig) {
+class DesktopFileSendService(
+    private val clientEngine: ClientEngine,
+    private val discoveryEngine: DiscoveryEngine,
+    private val deviceConfig: DeviceConfig,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+) {
     companion object {
         private const val MAX_CONCURRENT_UPLOADS = 3
         private const val PARTIAL_SIZE = 32768
@@ -59,7 +69,6 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         private const val SKIP_TOKEN = "[SKIP]"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionJob: Job? = null
 
     @Volatile
@@ -74,7 +83,8 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         _preferredTargetFingerprint.value = fingerprint
     }
 
-    fun isSessionActive(): Boolean = sessionJob?.isActive == true
+    @Synchronized
+    fun isSessionActive(): Boolean = sessionJob?.isCompleted == false
 
     /**
      * Sends [files] to the resolved target device. LAN direct delivery runs first when the
@@ -82,30 +92,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
      * WebSocket pull relay, where the phone/PC pulls hosted files over its persistent session.
      */
     fun sendFiles(files: List<File>, targetFingerprint: String? = null) {
-        val regularFiles = files.filter { it.isFile }
-        if (regularFiles.isEmpty()) return
-
-        if (isSessionActive()) {
-            clientEngine.updateUploadState(
-                UploadState(fileName = regularFiles.first().name, error = "A transfer is already in progress", isUploading = false),
-            )
-            return
-        }
-
-        sessionJob = scope.launch {
-            sessionCancelled = false
-            val lanTarget = resolveDirectTarget(targetFingerprint)
-            if (lanTarget != null) {
-                val delivered = runSession(regularFiles.map { it to null as String? }, lanTarget)
-                // Direct push failed at transport level (device vanished mid-flight): escalate to
-                // the pull path instead of dead-ending the user — but never after user cancel
-                if (!delivered && !sessionCancelled) {
-                    sendViaRelay(regularFiles.map { it.absolutePath to null }, targetFingerprint ?: lanTarget.info.fingerprint, lanTargetName(lanTarget))
-                }
-            } else {
-                sendViaRelay(regularFiles.map { it.absolutePath to null }, targetFingerprint, null)
-            }
-        }
+        sendEntries(files.filter { it.isFile }.map { it to null }, targetFingerprint)
     }
 
     /**
@@ -144,18 +131,15 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
     }
 
     /** Entry-point wrapper used by drag-drop / dialogs (no relative paths). */
+    @Synchronized
     private fun sendEntries(entries: List<Pair<File, String?>>, targetFingerprint: String?) {
         if (entries.isEmpty()) return
-
         if (isSessionActive()) {
-            clientEngine.updateUploadState(
-                UploadState(fileName = entries.first().first.name, error = "A transfer is already in progress", isUploading = false),
-            )
+            co.touchlab.kermit.Logger.i("A transfer is already in progress; keeping its state unchanged")
             return
         }
-
+        sessionCancelled = false
         sessionJob = scope.launch {
-            sessionCancelled = false
             val lanTarget = resolveDirectTarget(targetFingerprint)
             if (lanTarget != null) {
                 val delivered = runSession(entries, lanTarget)
@@ -189,17 +173,18 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         return null
     }
 
+    @Synchronized
     fun cancelActiveSession() {
         sessionCancelled = true
         sessionJob?.cancel()
-        sessionJob = null
+        // A cancelling job still owns the transfer until its hosted cleanup completes.
         clientEngine.updateUploadState(
             clientEngine.uploadState.value.copy(isUploading = false, error = "Upload cancelled"),
         )
     }
 
     /** Runs one direct-push session with capped transport retries. Returns true when delivered. */
-    private suspend fun runSession(entries: List<Pair<File, String?>>, target: DiscoveredDevice): Boolean {
+    internal suspend fun runSession(entries: List<Pair<File, String?>>, target: DiscoveredDevice): Boolean {
         val peerName = lanTargetName(target)
 
         var attempt = 0
@@ -343,7 +328,7 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                 }
             }
         } catch (e: CancellationException) {
-            return SessionOutcome(transportAllFailed = false, wasCancelled = true)
+            throw e
         }
 
         val failed = outcomes.filter { !it.second.ok }
@@ -351,8 +336,9 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         val transportAllFailed = failed.isNotEmpty() && failed.size == outcomes.size && !anyHttpError
         val deliveredAny = outcomes.any { it.second.ok }
 
-        if (transportAllFailed && suppressFailurePaint) {
-            // A retry pass re-runs everything — don't paint a failure state in between
+        if (transportAllFailed) {
+            // Preserve the first attempt's transport failure too: presentation policy
+            // must not turn failure into delivery and bypass retries/relay fallback.
             return SessionOutcome(transportAllFailed = true)
         }
 
@@ -399,8 +385,8 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
      * Exactly ONE candidate receives the prompt — spraying every connected phone would
      * trigger duplicate pulls.
      *
-     * Success here means ONLY "the peer was prompted"; real completion arrives via the
-     * relay callbacks once every byte has been pulled (or the offer expires untouched).
+     * The session remains owned until every hosted file finishes or the offer expires.
+     * Cancelling the caller also revokes the hosted offer and active response streams.
      */
     private suspend fun sendViaRelay(files: List<Pair<String, String?>>, explicitFingerprint: String?, knownPeerName: String?): Boolean {
         val pairedSet = AuthState.pairedFingerprints.value
@@ -449,44 +435,36 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
             if (wanDelivered) return true
         }
 
+        currentCoroutineContext().ensureActive()
+        clientEngine.updateUploadState(
+            UploadState(
+                fileName = if (files.size == 1) File(files.first().first).name else "Waiting for $peerName",
+                totalFiles = files.size,
+                isUploading = true,
+                peerName = peerName,
+                targetFingerprint = chosenFingerprint,
+            ),
+        )
         val delivered = com.dexstudios.dex.core.network.services.RelayService.hostAndPushAsync(
             targetFingerprint = chosenFingerprint,
             files = files,
             senderAlias = alias,
-            onCompleted = {
+            awaitCompletion = true,
+        )
+        currentCoroutineContext().ensureActive()
+        synchronized(this) {
+            if (sessionCancelled) return false
+            if (delivered) {
                 files.forEach { logSent(File(it.first), peerName) }
                 clientEngine.finishUpload(files.size, files.size)
-            },
-            onExpired = {
+            } else {
                 clientEngine.updateUploadState(
                     UploadState(
-                        fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "${files.size} files",
-                        error = "$peerName did not pick up the files - the offer expired",
+                        error = "$peerName did not complete the transfer (not connected or offer expired)",
                         isUploading = false,
                     ),
                 )
-            },
-        )
-
-        if (delivered) {
-            // Prompt reached the device; completion is reported by the callbacks above
-            clientEngine.updateUploadState(
-                UploadState(
-                    fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "Waiting for $peerName",
-                    totalFiles = files.size,
-                    isUploading = true,
-                    peerName = peerName,
-                    targetFingerprint = chosenFingerprint,
-                ),
-            )
-        } else {
-            clientEngine.updateUploadState(
-                UploadState(
-                    fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "${files.size} files",
-                    error = "$peerName is not connected - open DeX on the phone and try again",
-                    isUploading = false,
-                ),
-            )
+            }
         }
         return delivered
     }
@@ -515,6 +493,8 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
         for (file in regularFiles) {
             val session = try {
                 wanClient.openSession(targetFingerprint)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 co.touchlab.kermit.Logger.i("[DesktopFileSendService] Could not open WAN relay session: ${e.message}")
                 return false
@@ -546,6 +526,11 @@ class DesktopFileSendService(private val clientEngine: ClientEngine, private val
                 }
                 sentCount++
                 logSent(file, peerName)
+            } catch (e: CancellationException) {
+                withContext(NonCancellable) {
+                    withTimeoutOrNull(5_000L) { runCatching { wanClient.closeSession(session) } }
+                }
+                throw e
             } catch (e: Exception) {
                 co.touchlab.kermit.Logger.i("[DesktopFileSendService] WAN relay upload error for ${file.name}: ${e.message}")
                 try {
