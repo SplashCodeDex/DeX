@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.auth.AuthState
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -91,7 +92,24 @@ class ClientEngine(
         }
     }
 
+    private val cancelHandlers = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    fun registerCancelHandler(handler: () -> Unit) {
+        cancelHandlers.add(handler)
+    }
+
+    fun unregisterCancelHandler(handler: () -> Unit) {
+        cancelHandlers.remove(handler)
+    }
+
     fun cancelUpload() {
+        cancelHandlers.forEach { handler ->
+            try {
+                handler()
+            } catch (e: Exception) {
+                Logger.e("Error invoking upload cancel handler", e)
+            }
+        }
         activeWorkId?.let {
             onCancelUpload?.invoke(it)
         }

@@ -75,6 +75,12 @@ class DesktopFileSendService(
     @Volatile
     private var sessionCancelled: Boolean = false
 
+    init {
+        clientEngine.registerCancelHandler {
+            cancelActiveSession()
+        }
+    }
+
     /** User-pinned default send destination; honored for drops and as first relay candidate. */
     private val _preferredTargetFingerprint = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val preferredTargetFlow = _preferredTargetFingerprint.asStateFlow()
@@ -337,6 +343,10 @@ class DesktopFileSendService(
         val transportAllFailed = failed.isNotEmpty() && failed.size == outcomes.size && !anyHttpError
         val deliveredAny = outcomes.any { it.second.ok }
 
+        if (sessionCancelled) {
+            return SessionOutcome(transportAllFailed = false, wasCancelled = true, deliveredAny = deliveredAny)
+        }
+
         if (transportAllFailed) {
             // Preserve the first attempt's transport failure too: presentation policy
             // must not turn failure into delivery and bypass retries/relay fallback.
@@ -541,6 +551,7 @@ class DesktopFileSendService(
             }
         }
 
+        if (sessionCancelled) return false
         clientEngine.finishUpload(regularFiles.size, regularFiles.size)
         return true
     }

@@ -374,6 +374,25 @@ class ClientEngineTransferContractTest {
         assertFalse(clientEngine.uploadState.value.isUploading)
     }
 
+    @Test
+    fun `cancelUpload invokes registered session cancel handlers`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var sessionCancelled = false
+        val clientEngine = ClientEngine(
+            HttpClient(MockEngine { respondOk() }),
+        )
+        clientEngine.registerCancelHandler { sessionCancelled = true }
+
+        clientEngine.cancelUpload()
+
+        assertTrue(sessionCancelled, "Registered cancel handler must be invoked on cancelUpload")
+        assertEquals("Upload cancelled", clientEngine.uploadState.value.error)
+        assertFalse(clientEngine.uploadState.value.isUploading)
+
+        sessionCancelled = false
+        clientEngine.unregisterCancelHandler { sessionCancelled = true } // test unregistering
+    }
+
     private fun String.toQueryValue(key: String): String? = substringAfter('?', "").split('&')
         .map { it.split('=', limit = 2) }
         .firstOrNull { it.first() == key }

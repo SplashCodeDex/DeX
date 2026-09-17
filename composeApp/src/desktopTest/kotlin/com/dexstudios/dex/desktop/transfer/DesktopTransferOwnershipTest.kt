@@ -54,4 +54,49 @@ class DesktopTransferOwnershipTest {
             file.delete()
         }
     }
+
+    @Test
+    fun clientEngineCancelUploadCancelsDesktopSendSessionAndPreventsFinishUpload() = runTest {
+        val state = MutableStateFlow(UploadState())
+        val cancelHandlers = mutableListOf<() -> Unit>()
+        val client = mockk<ClientEngine>(relaxed = true) {
+            every { uploadState } returns state
+            every { registerCancelHandler(any()) } answers {
+                cancelHandlers.add(firstArg())
+            }
+            every { cancelUpload() } answers {
+                cancelHandlers.forEach { it.invoke() }
+                state.value = state.value.copy(isUploading = false, error = "Upload cancelled")
+            }
+        }
+        every { client.updateUploadState(any()) } answers { state.value = firstArg() }
+
+        val discovery = mockk<DiscoveryEngine> {
+            every { devices } returns MutableStateFlow(emptyMap<String, DiscoveredDevice>())
+        }
+        val config = mockk<DeviceConfig>(relaxed = true)
+        mockkObject(RelayService)
+        val gate = CompletableDeferred<Boolean>()
+        coEvery { RelayService.hostAndPushAsync(any(), any(), any(), any(), any(), true) } coAnswers { gate.await() }
+        val service = DesktopFileSendService(client, discovery, config, backgroundScope)
+        val file = Files.createTempFile("dex-client-cancel", ".bin").toFile()
+        try {
+            service.sendFiles(listOf(file), "phone")
+            runCurrent()
+            assertTrue(service.isSessionActive(), "Session must be active initially")
+            assertTrue(state.value.isUploading)
+
+            // When UI calls client.cancelUpload(), DesktopFileSendService must be cancelled
+            client.cancelUpload()
+            runCurrent()
+
+            assertFalse(service.isSessionActive(), "Active send session in DesktopFileSendService must be cancelled")
+            gate.complete(true)
+            runCurrent()
+            verify(exactly = 0) { client.finishUpload(any(), any()) }
+        } finally {
+            service.cancelActiveSession()
+            file.delete()
+        }
+    }
 }

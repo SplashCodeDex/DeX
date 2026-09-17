@@ -88,6 +88,58 @@ class TransferOverlayBridgeTest {
     }
 
     @Test
+    fun testUploadCancellationDismissesBannerAndCancelsActiveSession() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val testScope = TestScope(testDispatcher)
+
+        val overlayManager = OverlayManager(scope = testScope, soundService = null)
+        val uploadFlow = MutableStateFlow(UploadState())
+        val pullFlow = MutableStateFlow(PullProgressState())
+
+        var cancelUploadCalled = false
+        val clientEngine = mockk<ClientEngine>(relaxed = true) {
+            io.mockk.every { uploadState } returns uploadFlow
+            io.mockk.every { cancelUpload() } answers {
+                cancelUploadCalled = true
+                uploadFlow.value = UploadState(isUploading = false, error = "Upload cancelled")
+            }
+        }
+        val fileExplorerService = mockk<FileExplorerService>(relaxed = true) {
+            io.mockk.every { pullProgress } returns pullFlow
+        }
+
+        val bridge = TransferOverlayBridge(
+            overlayManager = overlayManager,
+            clientEngine = clientEngine,
+            fileExplorerService = fileExplorerService,
+            scope = testScope,
+        )
+        bridge.start()
+
+        // 1. Upload starts
+        uploadFlow.value = UploadState(
+            isUploading = true,
+            fileName = "archive.tar.gz",
+            progress = 0.40f,
+            speedBps = 10_000_000L,
+        )
+        testScope.advanceUntilIdle()
+
+        assertEquals(1, overlayManager.actionAlerts.value.size)
+        val banner = overlayManager.actionAlerts.value.first() as BannerNotification
+        assertEquals("archive.tar.gz", banner.title)
+
+        // 2. User clicks cancel on banner
+        banner.onActionClick?.invoke()
+        testScope.advanceUntilIdle()
+
+        assertTrue(cancelUploadCalled, "cancelUpload must be invoked on clientEngine")
+        assertEquals(0, overlayManager.actionAlerts.value.size, "Banner must be dismissed")
+
+        bridge.stop()
+    }
+
+    @Test
     fun testPullSuccessSpawnsAirDropCompletionCardWithOpenAndFolder() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val testScope = TestScope(testDispatcher)
