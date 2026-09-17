@@ -168,6 +168,20 @@ class ReceiveStorageTest {
     }
 
     @Test
+    fun `uniqueDest appends fileName when relativePath is a directory without filename`() {
+        val dest = ReceiveStorage.uniqueDest(tempDir, "report.pdf", "documents/reports")
+        assertEquals("report.pdf", dest.name)
+        assertEquals(File(tempDir, "documents${File.separator}reports${File.separator}report.pdf").absolutePath, dest.absolutePath)
+    }
+
+    @Test
+    fun `uniqueDest appends fileName when relativePath ends with trailing slash`() {
+        val dest = ReceiveStorage.uniqueDest(tempDir, "photo.jpg", "DCIM/")
+        assertEquals("photo.jpg", dest.name)
+        assertEquals(File(tempDir, "DCIM${File.separator}photo.jpg").absolutePath, dest.absolutePath)
+    }
+
+    @Test
     fun `safeCommit succeeds on Windows with reserved device name`() {
         val dest = ReceiveStorage.uniqueDest(tempDir, "con.txt")
         val part = File(tempDir, "con.txt.part.test.1").apply { writeText("device content") }

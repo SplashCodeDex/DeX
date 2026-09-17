@@ -64,6 +64,7 @@ object ReceiveStorage {
         var base: File = if (relativePath.isNullOrBlank()) {
             File(downloadsFolder, safeName)
         } else {
+            val hasTrailingSlash = relativePath.endsWith("/") || relativePath.endsWith("\\")
             val normalizedRel = relativePath.replace("\\", "/").removePrefix("/").removeSuffix("/")
             if (normalizedRel.contains("..")) {
                 File(downloadsFolder, safeName)
@@ -73,7 +74,10 @@ object ReceiveStorage {
                     File(downloadsFolder, safeName)
                 } else {
                     val safeSegments = segments.map { sanitizeFileName(it) }
-                    val relPath = safeSegments.joinToString(File.separator)
+                    val shouldAppendName = !safeSegments.last().equals(safeName, ignoreCase = true) &&
+                        (hasTrailingSlash || !safeSegments.last().contains('.'))
+                    val allSegments = if (shouldAppendName) safeSegments + safeName else safeSegments
+                    val relPath = allSegments.joinToString(File.separator)
                     val resolved = downloadsFolder.toPath().resolve(relPath).normalize()
                     if (resolved.startsWith(downloadsFolder.toPath())) resolved.toFile() else File(downloadsFolder, safeName)
                 }
