@@ -125,4 +125,31 @@ class DesktopPullServiceTest {
         val parts = tempDir.listFiles { f -> f.name.contains(".part") } ?: emptyArray()
         assertEquals(0, parts.size, "Failed transfer must not leak .part staging file")
     }
+
+    @Test
+    fun `pull properly encodes token and fileId in download URL`() = runBlocking {
+        val payload = "Encoded token content"
+        var capturedUrl = ""
+        val engine = MockEngine { request ->
+            capturedUrl = request.url.toString()
+            respond(
+                content = payload.toByteArray(),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentLength, payload.length.toString()),
+            )
+        }
+        val pullService = DesktopPullService(HttpClient(engine), sessionTtlMillis = 0L)
+        val file = PullFileDto(
+            fileId = "item 1",
+            fileName = "item.txt",
+            size = payload.length.toLong(),
+            token = "secret+token/value==",
+        )
+
+        val job = pullService.downloadBatch("127.0.0.1", 48424, 0, listOf(file), "fp-sender", "SenderDevice")
+        job.join()
+
+        assertTrue(capturedUrl.contains("item+1") || capturedUrl.contains("item%201"), "fileId must be URL encoded in $capturedUrl")
+        assertTrue(capturedUrl.contains("token=secret%2Btoken%2Fvalue%3D%3D") || capturedUrl.contains("secret%2Btoken"), "Token must be URL encoded in $capturedUrl")
+    }
 }

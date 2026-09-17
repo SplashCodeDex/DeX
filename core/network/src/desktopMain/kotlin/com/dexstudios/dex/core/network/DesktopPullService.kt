@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
@@ -110,11 +111,13 @@ class DesktopPullService(private val httpClient: HttpClient, private val scope: 
     /** Streams one file over HTTPS with a plain-HTTP pull-port fallback; verifies length and commits safely. */
     private suspend fun pullOne(senderIp: String, httpsPort: Int, tcpFallbackPort: Int, file: PullFileDto, dest: File, sessionId: String): File? {
         dest.parentFile?.mkdirs()
-        val part = File(dest.parentFile ?: ReceiveStorage.downloadsDir(), "${dest.name}.part.$sessionId.${file.fileId}")
-        val tokenPart = file.token?.let { "?token=$it" } ?: ""
+        val safeFileId = ReceiveStorage.sanitizeFileName(file.fileId)
+        val part = File(dest.parentFile ?: ReceiveStorage.downloadsDir(), "${dest.name}.part.$sessionId.$safeFileId")
+        val encodedFileId = java.net.URLEncoder.encode(file.fileId, "UTF-8")
+        val tokenPart = file.token?.let { "?token=${java.net.URLEncoder.encode(it, "UTF-8")}" } ?: ""
         val attempts = buildList {
-            if (httpsPort > 0) add("https://$senderIp:$httpsPort/download/${file.fileId}$tokenPart")
-            if (tcpFallbackPort > 0) add("http://$senderIp:$tcpFallbackPort/download/${file.fileId}$tokenPart")
+            if (httpsPort > 0) add("https://$senderIp:$httpsPort/download/$encodedFileId$tokenPart")
+            if (tcpFallbackPort > 0) add("http://$senderIp:$tcpFallbackPort/download/$encodedFileId$tokenPart")
         }
 
         try {
@@ -137,30 +140,29 @@ class DesktopPullService(private val httpClient: HttpClient, private val scope: 
     }
 
     private suspend fun streamToFile(url: String, part: File, expectedSize: Long, expectComplete: Boolean): Boolean = withContext(Dispatchers.IO) {
-        part.parentFile?.mkdirs()
         try {
-            part.outputStream().use { output ->
-                val response = httpClient.get(url) {
-                    // Connect + inactivity guards only — a WHOLE-request timeout would abort
-                    // legitimate multi-GB streams mid-flight.
-                    timeout {
-                        connectTimeoutMillis = 10_000
-                        socketTimeoutMillis = 30_000
-                        requestTimeoutMillis = null
-                    }
+            val response = httpClient.get(url) {
+                // Connect + inactivity guards only — a WHOLE-request timeout would abort
+                // legitimate multi-GB streams mid-flight.
+                timeout {
+                    connectTimeoutMillis = 10_000
+                    socketTimeoutMillis = 30_000
+                    requestTimeoutMillis = null
                 }
-                if (!response.status.isSuccess()) return@withContext false
-                val declaredLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull()
+            }
+            if (!response.status.isSuccess()) return@withContext false
+            val declaredLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull()
 
+            part.parentFile?.mkdirs()
+            part.outputStream().use { output ->
                 val channel = response.bodyAsChannel()
                 val buffer = ByteArray(COPY_BUFFER)
                 var received = 0L
                 while (!channel.isClosedForRead) {
-                    channel.awaitContent()
-                    val packet = channel.readRemaining(buffer.size.toLong())
-                    if (packet.exhausted()) break
-                    while (!packet.exhausted()) {
-                        val n = packet.readAtMostTo(buffer, 0, buffer.size)
+                    ensureActive()
+                    val n = channel.readAvailable(buffer, 0, buffer.size)
+                    if (n == -1) break
+                    if (n > 0) {
                         output.write(buffer, 0, n)
                         received += n
                     }
