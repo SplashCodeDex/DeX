@@ -37,18 +37,53 @@ object ReceiveStorage {
         }
 
         synchronized(this) {
-            var counter = 1
-            while (base.exists()) {
-                val nameWithoutExt = base.nameWithoutExtension
-                val ext = base.extension
-                base = if (ext.isNotEmpty()) {
-                    File(base.parentFile, "$nameWithoutExt ($counter).$ext")
-                } else {
-                    File(base.parentFile, "$nameWithoutExt ($counter)")
+            return firstFreeDestination(base)
+        }
+    }
+
+    /**
+     * Resolves [destFile] to an available destination path, appending sequential indexes
+     * "name (1).ext", "name (2).ext" on collision. Extracts base name and extension once so
+     * successive collisions never produce nested parentheses like "name (1) (2).ext".
+     */
+    fun firstFreeDestination(destFile: File): File {
+        if (!destFile.exists()) return destFile
+        val parent = destFile.parentFile ?: return destFile
+        val baseName = destFile.nameWithoutExtension
+        val ext = destFile.extension
+        val suffix = if (ext.isNotEmpty()) ".$ext" else ""
+        for (counter in 1 until 1000) {
+            val candidate = File(parent, "$baseName ($counter)$suffix")
+            if (!candidate.exists()) return candidate
+        }
+        return destFile
+    }
+
+    /**
+     * Safely promotes [partFile] to [destFile] without ever overwriting or deleting an existing file.
+     * If [destFile] already exists, claims the next free sequential name via [firstFreeDestination].
+     * Falls back to copy+delete across filesystem boundaries, cleaning up on any failure.
+     */
+    fun safeCommit(partFile: File, destFile: File): File? {
+        if (!partFile.exists()) return null
+        synchronized(this) {
+            val free = firstFreeDestination(destFile)
+            if (partFile.renameTo(free)) {
+                return free
+            }
+            // Rename failed (e.g. cross-volume or filesystem lock); fall back to copy
+            return try {
+                partFile.inputStream().buffered().use { input ->
+                    free.outputStream().buffered().use { output ->
+                        input.copyTo(output)
+                    }
                 }
-                counter++
+                partFile.delete()
+                free
+            } catch (_: Exception) {
+                runCatching { free.delete() }
+                null
             }
         }
-        return base
     }
 }

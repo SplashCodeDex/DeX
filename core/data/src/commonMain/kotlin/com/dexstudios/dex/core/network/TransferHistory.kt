@@ -37,7 +37,18 @@ object TransferHistory : KoinComponent {
     private val KEY_TRANSFERS = stringPreferencesKey("transfers")
     private const val MAX_ENTRIES = 200
 
-    private val dataStore: DataStore<Preferences> by inject()
+    @kotlin.jvm.Volatile
+    var overrideDataStore: DataStore<Preferences>? = null
+
+    private fun resolveDataStore(): DataStore<Preferences>? {
+        overrideDataStore?.let { return it }
+        return try {
+            org.koin.core.context.GlobalContext.getOrNull()?.get<DataStore<Preferences>>()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutationMutex = Mutex()
     private var isLoaded = false
@@ -101,24 +112,26 @@ object TransferHistory : KoinComponent {
 
     private suspend fun reload() {
         mutationMutex.withLock {
-            val loaded = read()
+            val store = resolveDataStore()
+            val loaded = store?.let { read(it) } ?: emptyList()
             _items.value = loaded
             isLoaded = true
         }
     }
 
     private suspend fun mutateLocked(transform: (List<TransferRecord>) -> List<TransferRecord>) {
+        val store = resolveDataStore()
         if (!isLoaded) {
-            _items.value = read()
+            _items.value = store?.let { read(it) } ?: emptyList()
             isLoaded = true
         }
         val updated = transform(_items.value)
         _items.value = updated
-        write(updated)
+        store?.let { write(it, updated) }
     }
 
-    private suspend fun read(): List<TransferRecord> {
-        val raw = dataStore.data.map { prefs -> prefs[KEY_TRANSFERS] }.firstOrNull() ?: return emptyList()
+    private suspend fun read(store: DataStore<Preferences>): List<TransferRecord> {
+        val raw = store.data.map { prefs -> prefs[KEY_TRANSFERS] }.firstOrNull() ?: return emptyList()
         return try {
             Json.decodeFromString<List<TransferRecord>>(raw)
         } catch (_: Exception) {
@@ -126,9 +139,9 @@ object TransferHistory : KoinComponent {
         }
     }
 
-    private suspend fun write(items: List<TransferRecord>) {
+    private suspend fun write(store: DataStore<Preferences>, items: List<TransferRecord>) {
         val raw = Json.encodeToString(items)
-        dataStore.edit { prefs ->
+        store.edit { prefs ->
             prefs[KEY_TRANSFERS] = raw
         }
     }

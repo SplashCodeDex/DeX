@@ -140,12 +140,7 @@ class ClientEngine(
         try {
             val remainingLength = (fileSize - resumeOffset).coerceAtLeast(0L)
             if (resumeOffset > 0L) {
-                var skipped = 0L
-                while (skipped < resumeOffset) {
-                    val n = stream.skip(resumeOffset - skipped)
-                    if (n <= 0) break
-                    skipped += n
-                }
+                skipFully(stream, resumeOffset)
             }
 
             val response = client.post("https://$ip:$port/api/localsend/v2/upload") {
@@ -270,6 +265,32 @@ class ClientEngine(
                 false
             }
         }
+
+    companion object {
+        /**
+         * Safely advances [stream] by exactly [bytesToSkip] bytes. Falls back to reading into
+         * a scratch buffer when [java.io.InputStream.skip] returns 0 or negative (common on
+         * Android ContentResolver, network, or buffered streams). Throws [java.io.EOFException]
+         * if EOF is reached prematurely, preventing truncated streams from resuming corrupt data.
+         */
+        fun skipFully(stream: java.io.InputStream, bytesToSkip: Long) {
+            var remaining = bytesToSkip
+            val buf = ByteArray(8192)
+            while (remaining > 0L) {
+                val skipped = stream.skip(remaining)
+                if (skipped > 0L) {
+                    remaining -= skipped
+                } else {
+                    val toRead = minOf(remaining, buf.size.toLong()).toInt()
+                    val read = stream.read(buf, 0, toRead)
+                    if (read == -1) {
+                        throw java.io.EOFException("Premature end of stream while skipping $bytesToSkip bytes (reached EOF after ${bytesToSkip - remaining} bytes)")
+                    }
+                    remaining -= read
+                }
+            }
+        }
+    }
 }
 
 data class UploadState(

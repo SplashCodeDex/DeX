@@ -422,7 +422,7 @@ class DesktopFileSendService(
         clientEngine.resetUploadState()
         clientEngine.updateUploadState(
             UploadState(
-                fileName = if (files.size == 1) files.first().first.substringAfterLast('/') else "Preparing ${files.size} files",
+                fileName = if (files.size == 1) File(files.first().first).name else "Preparing ${files.size} files",
                 totalFiles = files.size,
                 isUploading = true,
                 peerName = peerName,

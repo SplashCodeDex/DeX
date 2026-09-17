@@ -139,9 +139,37 @@ class ClientEngineTransferContractTest {
         assertTrue(outcome.ok)
         assertEquals(200, outcome.httpStatus)
         assertTrue(capturedUrl!!.contains("/api/localsend/v2/upload"))
-        assertEquals("sess-9", capturedUrl!!.toQueryValue("sessionId"))
-        assertEquals("rid-1", capturedUrl!!.toQueryValue("fileId"))
-        assertEquals("pulltok", capturedUrl!!.toQueryValue("token"))
+        assertEquals("sess-9", capturedUrl.toQueryValue("sessionId"))
+        assertEquals("rid-1", capturedUrl.toQueryValue("fileId"))
+        assertEquals("pulltok", capturedUrl.toQueryValue("token"))
+    }
+
+    @Test
+    fun `skipFully accurately skips offset on stream where skip returns 0`() {
+        val rawData = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)
+        val stream = object : ByteArrayInputStream(rawData) {
+            override fun skip(n: Long): Long = 0L // Force fallback to scratch buffer
+        }
+
+        ClientEngine.skipFully(stream, 3L)
+        val remaining = ByteArray(5)
+        val read = stream.read(remaining)
+        assertEquals(5, read)
+        assertEquals(listOf<Byte>(4, 5, 6, 7, 8), remaining.toList())
+    }
+
+    @Test
+    fun `skipFully throws EOFException when stream ends prematurely`() {
+        val rawData = byteArrayOf(1, 2)
+        val stream = ByteArrayInputStream(rawData)
+
+        var caught = false
+        try {
+            ClientEngine.skipFully(stream, 5L)
+        } catch (_: java.io.EOFException) {
+            caught = true
+        }
+        assertTrue(caught, "skipFully must throw EOFException on premature stream end")
     }
 
     @Test

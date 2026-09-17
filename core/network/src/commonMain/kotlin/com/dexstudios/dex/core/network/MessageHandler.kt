@@ -102,14 +102,14 @@ class MessageHandler(
                 }
 
                 MessageTypes.LIST_SHARED_FOLDERS, MessageTypes.BROWSE_FOLDER, MessageTypes.PULL_FILES, MessageTypes.GRANT_SHARED_FOLDER ->
-                    engine.handleFileExplorerRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))
+                    engine.handleFileExplorerRequest(type, dataElement)
 
                 else -> {
                     Logger.i("Unknown message type received: $type")
                 }
             }
         } catch (e: Exception) {
-            Logger.i("ERROR: `Failed to parse WebSocket message")
+            Logger.i("Failed to parse WebSocket message: ${e.message}")
         }
     }
 

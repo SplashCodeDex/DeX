@@ -96,7 +96,7 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
             val transferId = java.util.UUID.randomUUID().toString()
             monitor.updateIncomingProgress(transferId, alias, 1, 0)
             val dest = com.dexstudios.dex.core.network.server.ReceiveStorage.uniqueDest(downloadsFolder, fileName)
-            val part = java.io.File(dest.parentFile, "${dest.name}.part")
+            val part = java.io.File(dest.parentFile, "${dest.name}.part.$sessionId.$transferId")
             try {
                 val relayClient = com.dexstudios.dex.core.network.sync.WanRelayClient(
                     client = httpClient,
@@ -110,21 +110,19 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
                 if (totalBytes > 0 && part.length() != totalBytes) {
                     throw IllegalStateException("Size mismatch: expected $totalBytes, got ${part.length()}")
                 }
-                if (!part.renameTo(dest)) {
-                    part.copyTo(dest, overwrite = true)
-                    part.delete()
-                }
+                val committed = com.dexstudios.dex.core.network.server.ReceiveStorage.safeCommit(part, dest)
+                    ?: throw IllegalStateException("Could not commit WAN relay file to destination")
                 com.dexstudios.dex.core.network.TransferHistoryRecorder.recordCompleted(
-                    name = dest.name,
-                    size = dest.length(),
+                    name = committed.name,
+                    size = committed.length(),
                     direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
-                    uri = dest.absolutePath,
+                    uri = committed.absolutePath,
                     peerDevice = alias,
                 )
                 monitor.updateIncomingProgress(transferId, alias, 1, 1)
-                Logger.i("[DesktopPlatformEngine] WAN relay download completed: ${dest.absolutePath}")
+                Logger.i("[DesktopPlatformEngine] WAN relay download completed: ${committed.absolutePath}")
             } catch (e: Exception) {
-                part.delete()
+                runCatching { if (part.exists()) part.delete() }
                 com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
                     name = fileName,
                     size = totalBytes,
