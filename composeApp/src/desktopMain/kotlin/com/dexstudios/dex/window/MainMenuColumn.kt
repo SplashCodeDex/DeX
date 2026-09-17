@@ -174,8 +174,11 @@ fun MainMenuColumn(
     val serverPort = devices.firstOrNull()?.info?.port ?: DeXPorts.HTTPS
     val serverIpPortText = "$serverIp:$serverPort"
 
-    // Dedicated Live Screen Mirroring Window
-    if (isMirroringActive) {
+    // Dedicated Live Screen Mirroring Window — PAUSED (PausedFeatures.SCREEN_MIRROR).
+    // Mirroring is not an immediate feature: the window is unreachable while the pause holds
+    // and the toggle below stays inert. Re-enable together with the transport gate (see the
+    // resume checklist in PausedFeatures).
+    if (isMirroringActive && !com.dexstudios.dex.core.network.PausedFeatures.isPaused(com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR)) {
         val activeDeviceName = devices.firstOrNull()?.info?.alias ?: "Connected Phone"
         MirrorWindow(
             peerName = activeDeviceName,
@@ -203,7 +206,15 @@ fun MainMenuColumn(
                 isDndActive = isDndActive,
                 onToggleDnd = { deviceConfig.dndEnabled = !isDndActive },
                 isMirroringActive = isMirroringActive,
-                onToggleMirror = { isMirroringActive = !isMirroringActive },
+                onToggleMirror = {
+                    // PAUSED: never activate the stream. The notice states why instead of
+                    // letting the toggle look broken.
+                    if (com.dexstudios.dex.core.network.PausedFeatures.isPaused(com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR)) {
+                        Logger.i(com.dexstudios.dex.core.network.PausedFeatures.pauseNotice(com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR))
+                    } else {
+                        isMirroringActive = !isMirroringActive
+                    }
+                },
                 isTransfersActive = controller.expandedPanel == ExpandedPanel.FileExplorer,
                 onToggleTransfers = {
                     if (controller.expandedPanel == ExpandedPanel.FileExplorer) {

@@ -17,6 +17,15 @@
 - Connections are keyed by the `fingerprint` query parameter (`WebSocketConnectionManager`).
 - Unverified sockets are allowed to connect so they can pair; verified sockets present a token.
 - Frames: JSON text (`{"type": "...", "data": {...}}`) for control, binary for mirror video.
+- INBOUND trust gate: `set-clipboard`, `pull-progress`, `telemetry`, the `*-reply` family,
+  `device-roster`, `peer-endpoint` and `relay-transfer` are accepted ONLY from a session that
+  PROVED trust (paired token, same-account `identity-proof`, or PIN pairing). An untrusted socket
+  may run the pairing/identity handshake and nothing else; anything else is dropped and logged
+  (`WebSocketRoutes` carries the classification table). `pair-response` and `pin-digit-entered`
+  are additionally bound to the fingerprint that owns the pending offer, so a stale or foreign
+  peer can never resolve or drive the pairing in progress.
+- Screen mirroring is PAUSED in this release (`PausedFeatures.SCREEN_MIRROR`): `mirror-start`,
+  `mirror-config`, `mirror-stop` and inbound binary frames are dropped at the boundary.
 
 ## Message catalogue
 
@@ -31,7 +40,7 @@ Direction is from the **desktop server** perspective. `→` = received by deskto
 | `pair-accepted` | ← | `token`, `fingerprint` | Grant confirmation carrying the freshly minted per-device pairing token and the desktop's own fingerprint; receiver persists both so reconnects authenticate without re-pairing |
 | `identity-challenge` | ← | `nonce: base64` | Sent to untrusted sessions when we are signed in; proof-of-possession of the shared account ID |
 | `identity-proof` | → | `mac: base64(HMAC-SHA256(nonce, googleSub))` | Same-account proof. The sub itself never crosses the wire; success upgrades ONLY the live session (no persistence) |
-| `pin-digit-entered` | → | `digitCount: int` | Live keystroke telemetry while the phone types (note: field is `digitCount`, inside `data`) |
+| `pin-digit-entered` | → | `digitCount: int` | Live keystroke telemetry while the phone types (note: field is `digitCount`, inside `data`); applied only from the peer that owns the pending offer |
 | `trust-check` | ↔ | `isTrusted: bool`, `fingerprint?: string` | Trust reconciliation; receiver downgrades local trust when peer reports distrust |
 | `unpair` | → | `fingerprint` (sender's OWN) | Peer-initiated revocation: desktop removes that pairing, downgrades the session, and never accepts a third-party fingerprint here |
 | `prepare-upload` | ↔ | `PrepareUploadRequestDto { info: RegisterDto, files: Map<id, FileDto> }` | LocalSend v2 transfer offer |
@@ -44,7 +53,7 @@ Direction is from the **desktop server** perspective. `→` = received by deskto
 | `relay-offer` | ↔ | `sessionId`, `streamToken`, `relayUrl`, `fileName`, `size`, `fingerprint`, `alias?` | Cloud relay E2EE streaming transfer offer (Plan 032) |
 | `set-clipboard` | ← | `text` | Clipboard sync push (receiver remembers it to avoid echo) |
 | `wallpaper-updated` | ← | — | Invalidate wallpaper cache |
-| `mirror-start` / `mirror-stop` | ← | — | Toggle screen mirroring (binary frames follow on same socket) |
+| `mirror-start` / `mirror-stop` | ← | — | PAUSED in this release — dropped at the boundary (`PausedFeatures.SCREEN_MIRROR`); binary frames would follow on the same socket |
 | `list-shared-folders` / `browse-folder` / `pull-files` / `grant-shared-folder` | ← | request-scoped; replies carry `requestId` and resolve via `DexRequestStore` | File explorer over WS |
 | `telemetry` | → | optional `battery`, `wifiSsid`, `wifiRssi` | Periodic device telemetry |
 

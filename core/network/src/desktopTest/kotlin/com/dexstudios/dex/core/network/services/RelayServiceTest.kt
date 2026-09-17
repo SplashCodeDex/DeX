@@ -45,6 +45,7 @@ class RelayServiceTest {
         RelayService.relaySessionFiles.clear()
         RelayService.relaySessionAliases.clear()
         RelayService.relaySessionExpected.clear()
+        RelayService.relaySessionDeduped.clear()
     }
 
     @After
@@ -57,6 +58,7 @@ class RelayServiceTest {
         RelayService.relaySessionFiles.clear()
         RelayService.relaySessionAliases.clear()
         RelayService.relaySessionExpected.clear()
+        RelayService.relaySessionDeduped.clear()
     }
 
     private fun startKoinWithDeviceConfig(fingerprint: String = "") {
@@ -300,6 +302,56 @@ class RelayServiceTest {
 
         val delivered = RelayService.relayUploadedSession("sess-relay", "fp_target")
         assertTrue(delivered, "relay-transfer must be honored after the upload session record was removed")
+    }
+
+    @Test
+    fun `relayUploadedSession forwards deduplicated files that were never re-uploaded`() = runTest {
+        // Regression: the onward manifest was built from staging alone, so files answered
+        // "[SKIP]" at prepare time (never uploaded) silently vanished from the A -> PC -> B hop.
+        startKoinWithDeviceConfig()
+        stubTrustedSession("fp_target")
+        val tempDir = Files.createTempDirectory("dex_relay_dedup").toFile()
+        val alreadyHere = Files.write(tempDir.resolve("existing.bin").toPath(), byteArrayOf(7)).toFile()
+        val staged = Files.write(tempDir.resolve("new.bin").toPath(), byteArrayOf(8)).toFile()
+
+        val jsonSlot = slot<String>()
+        coEvery { WebSocketConnectionManager.sendToTrusted("fp_target", capture(jsonSlot)) } returns true
+
+        RelayService.trackRelayExpected("sess-dedup", 1) // one file still to upload
+        RelayService.trackRelayDeduped("sess-dedup", listOf(RelayReceivedFile("existing.bin", alreadyHere.absolutePath)))
+        RelayService.trackRelayFile("sess-dedup", "new.bin", staged.absolutePath, "Pixel")
+
+        assertTrue(RelayService.relayUploadedSession("sess-dedup", "fp_target"))
+
+        val request = Json.decodeFromJsonElement(
+            PrepareUploadRequestDto.serializer(),
+            requireNotNull(Json.parseToJsonElement(jsonSlot.captured).jsonObject["data"]),
+        )
+        assertEquals(setOf("existing.bin", "new.bin"), request.files.values.map { it.fileName }.toSet())
+    }
+
+    @Test
+    fun `relayUploadedSession forwards an entirely deduplicated batch instead of failing`() = runTest {
+        // An all-[SKIP] batch uploads nothing, so the old code resolved an empty manifest and
+        // answered relay-error although every file was already sitting on this PC.
+        startKoinWithDeviceConfig()
+        stubTrustedSession("fp_target")
+        val tempDir = Files.createTempDirectory("dex_relay_all_dedup").toFile()
+        val alreadyHere = Files.write(tempDir.resolve("only.bin").toPath(), byteArrayOf(9)).toFile()
+
+        val jsonSlot = slot<String>()
+        coEvery { WebSocketConnectionManager.sendToTrusted("fp_target", capture(jsonSlot)) } returns true
+
+        RelayService.trackRelayExpected("sess-all-dedup", 0)
+        RelayService.trackRelayDeduped("sess-all-dedup", listOf(RelayReceivedFile("only.bin", alreadyHere.absolutePath)))
+
+        assertTrue(RelayService.relayUploadedSession("sess-all-dedup", "fp_target"))
+
+        val request = Json.decodeFromJsonElement(
+            PrepareUploadRequestDto.serializer(),
+            requireNotNull(Json.parseToJsonElement(jsonSlot.captured).jsonObject["data"]),
+        )
+        assertEquals(listOf("only.bin"), request.files.values.map { it.fileName })
     }
 
     @Test

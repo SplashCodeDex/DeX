@@ -88,9 +88,18 @@ class MessageHandler(
 
                 MessageTypes.WALLPAPER_UPDATED -> WallpaperState.notifyUpdated()
 
-                MessageTypes.MIRROR_START -> engine.handleMirrorStart()
-
-                MessageTypes.MIRROR_STOP -> engine.handleMirrorStop()
+                // Screen mirroring is PAUSED (see PausedFeatures.SCREEN_MIRROR): the capture
+                // side must not start, whatever the other end sends — a paused feature never
+                // asks for MediaProjection consent and never streams frames.
+                MessageTypes.MIRROR_START, MessageTypes.MIRROR_STOP -> {
+                    if (PausedFeatures.isPaused(PausedFeatures.SCREEN_MIRROR)) {
+                        Logger.i("Ignored $type — ${PausedFeatures.pauseNotice(PausedFeatures.SCREEN_MIRROR)}")
+                    } else if (type == MessageTypes.MIRROR_START) {
+                        engine.handleMirrorStart()
+                    } else {
+                        engine.handleMirrorStop()
+                    }
+                }
 
                 MessageTypes.LIST_SHARED_FOLDERS, MessageTypes.BROWSE_FOLDER, MessageTypes.PULL_FILES, MessageTypes.GRANT_SHARED_FOLDER ->
                     engine.handleFileExplorerRequest(type, dataElement as? JsonObject ?: JsonObject(emptyMap()))

@@ -5,7 +5,19 @@
 
 ---
 
-### IMPORTANT: YOU MUST ALWAYS READ THE LEGACY ARCHIVED_LEGACY_WPF/ CODEBASE FOR ACTUAL VALUES TO ACHEIVE 1:1 AND NEVER VISUAL GUESS
+### IMPORTANT: YOU MUST NEVER VISUAL-GUESS A VALUE OR A BEHAVIOR.
+
+The `ARCHIVED_LEGACY_WPF/` tree was **DELIBERATELY REMOVED** (user decision, 2026-09-17) once its
+migration completed and it had served its purpose. Do not go looking for it, do not treat its
+absence as a defect, and do not reconstruct values from memory.
+
+- Any legacy C#/PowerShell/C++ source that still exists in this repository (e.g. `DeXShareTarget/`)
+  is **in active use**: it IS the authority for the behavior it implements. Read it before
+  touching anything it governs — and never delete or "modernize" it (see HARD RULES below).
+- For surfaces already migrated out of legacy, the authority is, in order: the golden-fixture
+  tests in `core/protocol`, `docs/PROTOCOL.md`, `docs/ARCHITECTURE.md`, and the shared core
+  implementation itself.
+- If a value cannot be traced to one of those sources, say so explicitly instead of inventing it.
 
 # ⚠️ NON-NEGOTIABLE MIGRATION RULES — READ BEFORE ANY WORK ⚠️
 

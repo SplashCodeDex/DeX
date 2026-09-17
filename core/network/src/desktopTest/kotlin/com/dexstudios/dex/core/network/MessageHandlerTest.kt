@@ -201,11 +201,11 @@ class MessageHandlerTest {
     // === Mirror + wallpaper ===
 
     @Test
-    fun `mirror-start and mirror-stop route to the engine`() = runBlocking {
+    fun `mirror traffic is ignored while the feature is paused`() = runBlocking {
         handler.handleMessage(frame("mirror-start", "{}"), "10.0.0.1", 1)
         handler.handleMessage(frame("mirror-stop", "{}"), "10.0.0.1", 1)
-        assertEquals(1, engine.mirrorStarts)
-        assertEquals(1, engine.mirrorStops)
+        assertEquals(0, engine.mirrorStarts)
+        assertEquals(0, engine.mirrorStops)
     }
 
     @Test
@@ -458,20 +458,22 @@ class MessageHandlerTest {
         assertTrue(AuthState.pairedFingerprints.value.contains("pc-fp-1"))
     }
 
-    // === Screen Mirroring ===
+    // === Screen Mirroring (PAUSED — see PausedFeatures.SCREEN_MIRROR) ===
 
     @Test
-    fun `mirror-start dispatches handleMirrorStart to platform engine`() = runBlocking {
+    fun `mirror-start never reaches the platform engine while the feature is paused`() = runBlocking {
+        assertTrue(PausedFeatures.isPaused(PausedFeatures.SCREEN_MIRROR), "this test encodes the paused contract")
+
         handler.handleMessage(frame("mirror-start", "{}"), "10.0.0.1", 1)
-        awaitUntil { engine.mirrorStarts == 1 }
-        assertEquals(1, engine.mirrorStarts)
+
+        assertEquals(0, engine.mirrorStarts, "a paused feature must never start capture, whatever the peer sends")
     }
 
     @Test
-    fun `mirror-stop dispatches handleMirrorStop to platform engine`() = runBlocking {
+    fun `mirror-stop never reaches the platform engine while the feature is paused`() = runBlocking {
         handler.handleMessage(frame("mirror-stop", "{}"), "10.0.0.1", 1)
-        awaitUntil { engine.mirrorStops == 1 }
-        assertEquals(1, engine.mirrorStops)
+
+        assertEquals(0, engine.mirrorStops, "a paused feature must not be driven remotely")
     }
 
     // === Cloud Relay E2EE streaming offer ===

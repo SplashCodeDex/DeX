@@ -110,7 +110,8 @@ Idle ──initiatePairing()──────────────> QrPhase(
 Idle ──handleInboundPairingRequest()──> PinPhase(pin, expiresAt = now+60s)
 PinPhase ──acceptInboundPairing(isOneTime)──> Success   (persists + mints token unless one-time)
 PinPhase ──rejectInboundPairing()───────────> Idle
-Qr/Pin ──handlePairResponse(true)───────────> Success  (ignored if already resolved)
+Qr/Pin ──handlePairResponse(fp, true)────────> Success  (ignored if already resolved, or if the
+                                                        responder does not own the pending offer)
 any Qr/PinPhase ──TTL elapsed───────────────> Error("Pairing timed out")
 ```
 
@@ -125,6 +126,19 @@ Security invariants (do not weaken):
   therefore requires explicit desktop-side Accept.
 - Punch rendezvous registration (`GET /punch/endpoint`) is accepted only from the registered
   fingerprint's own TRUSTED session; `resolve-endpoint` is answered only to trusted callers.
+- EVERY inbound pairing transition is bound to the pending offer's fingerprint
+  (`PairingEngine.isPendingPeer`): a rejection or digit-count frame from any other peer is
+  ignored, so a superseded pairing cannot abort the one in progress.
+
+## Paused features
+
+Screen mirroring is frozen by explicit decision, not by an unfinished port.
+`com.dexstudios.dex.core.network.PausedFeatures` is the single record of WHAT is paused, WHY,
+and the resume checklist that must be executed before the flag is flipped back on (inbound
+trust gate for the mirror messages and frames, capture-side trust re-check, frame rate/size
+bounds, UI entry point). While the pause holds, `/ws` drops mirror messages and binary frames
+before they reach the engine, the Android capture entry point is a documented no-op, and the
+mirror window renders the pause notice instead of a stream.
 
 Full wire contract: see [PROTOCOL.md](PROTOCOL.md).
 

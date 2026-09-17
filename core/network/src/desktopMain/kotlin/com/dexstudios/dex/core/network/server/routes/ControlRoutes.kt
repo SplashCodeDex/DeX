@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.CancellationException
 import java.security.MessageDigest
 
 fun Route.controlRoutes() {
@@ -35,6 +36,11 @@ fun Route.controlRoutes() {
                 }
             }
 
+            // Cancel the LIVE handler FIRST. Removing only the bookkeeping left the in-flight
+            // write running to completion, so a cancelled transfer could still commit its file
+            // and republish itself as successful. The handler also re-checks cancellation
+            // before committing, which closes the race where the cancel lands mid-stream.
+            activeUploadJobs.remove(sessionId)?.cancel(CancellationException("Incoming transfer cancelled by sender"))
             activeUploadSessions.remove(sessionId)
             activeUploadSessionsProgress.remove(sessionId)
             com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)

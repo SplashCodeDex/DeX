@@ -1,5 +1,6 @@
 package com.dexstudios.dex.core.network.server.routes
 
+import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.PrepareUploadResponseDto
@@ -9,6 +10,7 @@ import com.dexstudios.dex.core.network.TransferHistory
 import com.dexstudios.dex.core.network.TransferSpeedCalculator
 import com.dexstudios.dex.core.network.server.ReceiveStorage
 import com.dexstudios.dex.core.network.server.guardLoopback
+import com.dexstudios.dex.core.network.services.RelayReceivedFile
 import com.dexstudios.dex.core.network.services.RelayService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
@@ -19,6 +21,7 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -90,6 +93,17 @@ data class SessionEntry(
 
 val activeUploadSessions = ConcurrentHashMap<String, SessionEntry>()
 val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
+
+/**
+ * Live upload handler per session id, so `/cancel` can actually STOP the write.
+ *
+ * Cancelling used to delete only the bookkeeping maps: an in-flight handler kept its captured
+ * session reference, wrote to the end, committed the file, and republished completion, so a
+ * cancelled transfer could still reappear as successful (and its bytes still landed). The
+ * cancel route now cancels this job, which aborts the read loop, and the handler re-checks
+ * cancellation before committing and before publishing completion.
+ */
+val activeUploadJobs = ConcurrentHashMap<String, Job>()
 
 /** Constant-time string equality for bearer/pull-token checks (length pre-checked). */
 private fun tokenEquals(presented: String?, expected: String?): Boolean {
@@ -207,12 +221,23 @@ fun Route.shareRoutes() {
                 val sessionId = UUID.randomUUID().toString()
                 val issuedTokens = mutableMapOf<String, String>()
                 val resFiles = mutableMapOf<String, String>()
+                // Files already present here: their paths must still ride the onward relay
+                // manifest, or the A -> PC -> B hop silently loses them (see
+                // RelayService.trackRelayDeduped).
+                val dedupedFiles = mutableListOf<RelayReceivedFile>()
                 req.files.forEach { (key, meta) ->
                     // Content-addressed dedupe: tell the sender "[SKIP]" when this exact
                     // content already arrived, instead of duplicating "name (1)" copies.
                     val existing = ReceivedFileIndex.findLive(meta.size, meta.partialHash)
                     if (existing != null) {
                         resFiles[key] = "[SKIP]"
+                        dedupedFiles.add(
+                            RelayReceivedFile(
+                                fileName = meta.fileName.ifEmpty { "unnamed_file" },
+                                absolutePath = existing,
+                                relativePath = meta.relativePath,
+                            ),
+                        )
                     } else {
                         val fresh = UUID.randomUUID().toString()
                         resFiles[key] = fresh
@@ -230,6 +255,9 @@ fun Route.shareRoutes() {
                 // record dies: finishIncomingSession removes it the moment the last file
                 // lands, while the sender's relay-transfer request arrives only afterwards.
                 RelayService.trackRelayExpected(sessionId, issuedTokens.size)
+                // Deduplicated files are never uploaded, so they are tracked separately from
+                // the arrival count and merged into the onward manifest at relay time.
+                RelayService.trackRelayDeduped(sessionId, dedupedFiles)
 
                 com.dexstudios.dex.core.network.TransferStateMonitor.updateIncomingProgress(
                     sessionId,
@@ -326,10 +354,28 @@ fun Route.shareRoutes() {
             }
 
             val resumeOffset = call.request.queryParameters["offset"]?.toLongOrNull() ?: 0L
+            if (resumeOffset < 0L || resumeOffset > fileMeta.size) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@post
+            }
+
+            // Resume contract: only an EXACT match against the staged bytes may continue a
+            // partial upload. The old behaviour silently downgraded a mismatched resume to a
+            // from-zero write, which committed a file missing its first bytes and reported it
+            // as complete. Nothing has been written yet at this point, so refusing is free.
+            val stagedLength = TransferCheckpointRegistry.getExistingOffset(sessionId, fileId)
+            if (resumeOffset > 0L && stagedLength != resumeOffset) {
+                call.respond(HttpStatusCode.Conflict)
+                return@post
+            }
+
             val parentDir = destFile.parentFile ?: File(System.getProperty("user.home"), "Downloads/DeX")
             val partFile = TransferCheckpointRegistry.getOrCreatePartFile(parentDir, sessionId, fileId, safeFileName, fileMeta.size)
-            val appendMode = resumeOffset > 0L && partFile.exists() && partFile.length() == resumeOffset
+            val appendMode = resumeOffset > 0L
             val speedCalc = TransferSpeedCalculator()
+            // Registered BEFORE the first byte so /cancel can abort this handler mid-write.
+            val uploadJob = currentCoroutineContext().job
+            activeUploadJobs[sessionId] = uploadJob
 
             try {
                 val channel: ByteReadChannel = call.receiveChannel()
@@ -374,23 +420,51 @@ fun Route.shareRoutes() {
                     }
                 }
 
-                // Commit the .part staging file to its final destination file
-                TransferCheckpointRegistry.commitPartFile(sessionId, fileId, destFile)
+                // A cancel or shutdown that landed between the last byte and the commit must
+                // not publish completion.
+                currentCoroutineContext().ensureActive()
+
+                // A body that ended cleanly but SHORT must never become a "completed" file:
+                // the staged length is the last line of defence behind Content-Length. Staging
+                // and checkpoint survive, so the sender can resume the remainder instead of
+                // having a truncated file indexed, relayed and reported as delivered.
+                val stagedBytes = partFile.length()
+                if (fileMeta.size > 0L && stagedBytes != fileMeta.size) {
+                    Logger.w("ShareRoutes: refusing truncated upload of $safeFileName: staged $stagedBytes of ${fileMeta.size} bytes")
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                // Commit LAST: the staging file is promoted to a destination this PC owns
+                // (never an existing file) and EVERY success side effect below is gated on the
+                // result. Reporting a failed commit as a successful upload was a false success.
+                val committedFile = TransferCheckpointRegistry.commitPartFile(sessionId, fileId, destFile)
+                if (committedFile == null) {
+                    Logger.e("ShareRoutes: commit failed for $safeFileName; staging preserved for resume")
+                    com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
+                        name = safeFileName,
+                        size = fileMeta.size,
+                        direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
+                        peerDevice = sessionReq.info.alias.ifEmpty { "Device" },
+                    )
+                    call.respond(HttpStatusCode.InternalServerError)
+                    return@post
+                }
 
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
                 RelayService.trackRelayFile(
                     sessionId = sessionId,
-                    fileName = safeFileName,
-                    absolutePath = destFile.absolutePath,
+                    fileName = committedFile.name,
+                    absolutePath = committedFile.absolutePath,
                     senderAlias = senderAlias,
                     relativePath = fileMeta.relativePath,
                 )
-                ReceivedFileIndex.record(destFile, fileMeta.size, fileMeta.partialHash)
+                ReceivedFileIndex.record(committedFile, fileMeta.size, fileMeta.partialHash)
                 com.dexstudios.dex.core.network.TransferHistoryRecorder.recordCompleted(
-                    name = destFile.name,
-                    size = destFile.length(),
+                    name = committedFile.name,
+                    size = committedFile.length(),
                     direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
-                    uri = destFile.absolutePath,
+                    uri = committedFile.absolutePath,
                     peerDevice = senderAlias,
                 )
 
@@ -409,6 +483,13 @@ fun Route.shareRoutes() {
                 }
 
                 call.respond(HttpStatusCode.OK)
+            } catch (e: CancellationException) {
+                // The sender cancelled the transfer (or the server is shutting down). A
+                // cancelled upload must never be republished as completion: drop the dashboard
+                // entry, leave the staging file resumable, and let the cancellation propagate
+                // so the read really stops.
+                failIncomingSession(sessionId)
+                throw e
             } catch (_: Exception) {
                 // A failed upload must not leave a phantom transfer on the dashboard forever
                 failIncomingSession(sessionId)
@@ -420,6 +501,10 @@ fun Route.shareRoutes() {
                     peerDevice = senderAlias,
                 )
                 call.respond(HttpStatusCode.InternalServerError)
+            } finally {
+                // Ownership-checked: a newer handler for the same session id (resume retry)
+                // keeps its own registration.
+                activeUploadJobs.remove(sessionId, uploadJob)
             }
         }
     }

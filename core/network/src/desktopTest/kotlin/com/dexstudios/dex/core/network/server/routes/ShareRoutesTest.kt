@@ -6,6 +6,8 @@ import com.dexstudios.dex.core.network.FileDto
 import com.dexstudios.dex.core.network.PrepareUploadRequestDto
 import com.dexstudios.dex.core.network.PrepareUploadResponseDto
 import com.dexstudios.dex.core.network.RegisterDto
+import com.dexstudios.dex.core.network.TransferCheckpointRegistry
+import com.dexstudios.dex.core.network.server.ReceiveStorage
 import com.dexstudios.dex.core.network.services.RelayService
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -17,16 +19,26 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.writeFully
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.After
@@ -35,17 +47,24 @@ import org.junit.Test
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import java.io.File
 import java.nio.file.Files
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Route-level baseline for [shareRoutes] — the LocalSend v2 hot zone.
  *
  * Covers the prepare-upload auth matrix (auto-trust vs pairing tokens seeded into the
- * REAL [AuthState] store), the pull-download token gates, and the upload rejection
- * paths including Zip-slip. The upload happy path is intentionally NOT exercised here:
- * it writes to the real user Downloads folder and fires a SystemTray notification,
- * which would leak test side effects onto the host machine.
+ * REAL [AuthState] store), the pull-download token gates, and the upload rejection paths
+ * including Zip-slip and the receiver-integrity gates (an unhonorable resume offset, a body
+ * shorter than the declared size, and cancel stopping the live writer).
+ *
+ * The upload HAPPY path is intentionally NOT exercised here: it writes to the real user
+ * Downloads folder and fires a SystemTray notification, which would leak test side effects
+ * onto the host machine. The integrity tests stop short of a commit; the one that has to
+ * stage bytes creates a single small `.part` file in that folder and removes it again.
  */
 class ShareRoutesTest {
 
@@ -86,6 +105,22 @@ class ShareRoutesTest {
             )
         }
         routing { shareRoutes() }
+    }
+
+    /** Share + control routes: the cancel test needs `/cancel` mounted beside `/upload`. */
+    private fun Application.installShareAndControlRoutes() {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    encodeDefaults = true
+                },
+            )
+        }
+        routing {
+            shareRoutes()
+            controlRoutes()
+        }
     }
 
     private fun prepareRequest(fingerprint: String, vararg files: FileDto): String = Json.encodeToString(
@@ -315,6 +350,127 @@ class ShareRoutesTest {
             setBody("")
         }
         assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    // =========================================================================
+    // receiver-integrity gates (resume offsets, truncated bodies, cancellation)
+    // =========================================================================
+
+    @Test
+    fun `upload refuses an unhonorable resume offset instead of restarting from zero`() = testApplication {
+        application { installShareRoutes() }
+        val file = sampleFile("f1").copy(fileName = "resume_probe.bin", size = 2048)
+        activeUploadSessions["sess-resume"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+
+        // Nothing is staged for this session, so the claimed offset cannot be honoured. The
+        // old code silently wrote the body as if it were a fresh upload and answered 200.
+        val response = client.post("/api/localsend/v2/upload") {
+            parameter("sessionId", "sess-resume")
+            parameter("fileId", "f1")
+            parameter("offset", "1024")
+            setBody(ByteArray(1024))
+        }
+        assertEquals(HttpStatusCode.Conflict, response.status)
+    }
+
+    @Test
+    fun `upload refuses a resume offset beyond the declared size`() = testApplication {
+        application { installShareRoutes() }
+        val file = sampleFile("f1").copy(fileName = "resume_overflow.bin", size = 1024)
+        activeUploadSessions["sess-overflow"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+
+        val response = client.post("/api/localsend/v2/upload") {
+            parameter("sessionId", "sess-overflow")
+            parameter("fileId", "f1")
+            parameter("offset", "4096")
+            setBody(ByteArray(0))
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `upload refuses a body shorter than the declared size and leaves staging resumable`() = testApplication {
+        application { installShareRoutes() }
+        val fileName = "truncation_probe_${System.currentTimeMillis()}.bin"
+        val file = sampleFile("f1").copy(fileName = fileName, size = 4096)
+        activeUploadSessions["sess-truncated"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+        val staging = File(ReceiveStorage.downloadsDir(), "$fileName.part.sess-truncated.f1")
+        val destination = File(ReceiveStorage.downloadsDir(), fileName)
+
+        try {
+            val response = client.post("/api/localsend/v2/upload") {
+                parameter("sessionId", "sess-truncated")
+                parameter("fileId", "f1")
+                setBody(ByteArray(100)) // ends cleanly, 3996 bytes short of the declared size
+            }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(staging.exists(), "A short body must leave staging on disk for a resume")
+            assertFalse(destination.exists(), "A truncated body must never be committed as the file")
+        } finally {
+            TransferCheckpointRegistry.discardPartFile("sess-truncated", "f1")
+            staging.delete()
+            destination.delete()
+        }
+    }
+
+    @Test
+    fun `cancel aborts the live upload so it can neither commit nor report success`() = testApplication {
+        application { installShareAndControlRoutes() }
+        val fileName = "cancel_probe_${System.currentTimeMillis()}.bin"
+        val declaredSize = 100_000L
+        val file = sampleFile("f1").copy(fileName = fileName, size = declaredSize)
+        activeUploadSessions["sess-cancel"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+        // A second client: the uploading client is busy streaming its body.
+        val controller = createClient { }
+        val uploadScope = CoroutineScope(Dispatchers.IO)
+        val committed = File(ReceiveStorage.downloadsDir(), fileName)
+        val staging = File(ReceiveStorage.downloadsDir(), "$fileName.part.sess-cancel.f1")
+
+        val upload = uploadScope.async {
+            runCatching {
+                client.post("/api/localsend/v2/upload") {
+                    parameter("sessionId", "sess-cancel")
+                    parameter("fileId", "f1")
+                    setBody(object : OutgoingContent.WriteChannelContent() {
+                        override val contentType = ContentType.Application.OctetStream
+
+                        override suspend fun writeTo(channel: ByteWriteChannel) {
+                            // Exactly the declared size, written slowly: an uncancelled run
+                            // would commit successfully, so a failure is attributable to the
+                            // cancel alone. Bounded so a regression cannot hang the suite.
+                            repeat(50) {
+                                val chunk = ByteArray(2000)
+                                channel.writeFully(chunk, 0, chunk.size)
+                                delay(20)
+                            }
+                        }
+                    })
+                }
+            }
+        }
+
+        try {
+            withTimeout(10_000) {
+                while (!activeUploadJobs.containsKey("sess-cancel")) delay(10)
+            }
+
+            val cancel = controller.post("/api/localsend/v2/cancel") { parameter("sessionId", "sess-cancel") }
+            assertEquals(HttpStatusCode.OK, cancel.status)
+
+            val uploadResult = withTimeout(15_000) { upload.await() }
+            assertTrue(
+                uploadResult.isFailure || !uploadResult.getOrThrow().status.isSuccess(),
+                "A cancelled upload must never report success",
+            )
+            assertFalse(activeUploadSessions.containsKey("sess-cancel"), "Cancel must drop the session record")
+            assertFalse(committed.exists(), "A cancelled upload must not commit a file")
+        } finally {
+            uploadScope.cancel()
+            TransferCheckpointRegistry.discardPartFile("sess-cancel", "f1")
+            staging.delete()
+            committed.delete()
+        }
     }
 
     private fun prepareRequestParsed(fingerprint: String, vararg files: FileDto): PrepareUploadRequestDto = Json.decodeFromString<PrepareUploadRequestDto>(prepareRequest(fingerprint, *files))

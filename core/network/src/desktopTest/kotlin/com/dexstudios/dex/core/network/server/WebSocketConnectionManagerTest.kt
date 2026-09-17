@@ -27,7 +27,25 @@ class WebSocketConnectionManagerTest {
         assertTrue(manager.register("fp-a", first, trusted = false))
         assertFalse(manager.register("fp-a", second, trusted = true), "hijack must be refused")
         assertEquals(first, manager.holderOf("fp-a")?.session)
-        manager.unregister("fp-a")
+        manager.unregister("fp-a", first)
+    }
+
+    @Test
+    fun `unregister from a connection that no longer owns the slot cannot evict the replacement`() {
+        val manager = freshManager()
+        val stale = mockk<io.ktor.websocket.WebSocketSession>(relaxed = true)
+        val replacement = mockk<io.ktor.websocket.WebSocketSession>(relaxed = true)
+
+        assertTrue(manager.register("fp-ownership", stale, trusted = true))
+
+        // A newer connection may legitimately take the slot once the old one is inactive, and
+        // the old reader's delayed cleanup runs afterwards. Its unregister must be a no-op.
+        manager.unregister("fp-ownership", replacement)
+        assertTrue(manager.isConnected("fp-ownership"), "a foreign unregister must not remove the session")
+        assertEquals(stale, manager.holderOf("fp-ownership")?.session)
+
+        manager.unregister("fp-ownership", stale)
+        assertFalse(manager.isConnected("fp-ownership"), "the owner's unregister must remove the session")
     }
 
     @Test
@@ -40,7 +58,7 @@ class WebSocketConnectionManagerTest {
         manager.markTrusted("fp-b", "sub-123")
         assertTrue(manager.isTrusted("fp-b"))
         assertEquals("sub-123", manager.holderOf("fp-b")?.identityToken)
-        manager.unregister("fp-b")
+        manager.unregister("fp-b", session)
     }
 
     @Test
@@ -54,7 +72,7 @@ class WebSocketConnectionManagerTest {
         assertNull(manager.holderOf("fp-c")?.identityToken, "identity proof must die with the downgrade")
         assertFalse(manager.sendToTrusted("fp-c", "{}"), "sendToTrusted must refuse downgraded sessions")
         assertTrue(manager.sendRequest("fp-c", "{}"), "pairing channel stays open after downgrade")
-        manager.unregister("fp-c")
+        manager.unregister("fp-c", session)
     }
 
     @Test

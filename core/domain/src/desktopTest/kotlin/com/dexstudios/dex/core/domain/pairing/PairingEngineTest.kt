@@ -150,12 +150,12 @@ class PairingEngineTest {
     fun `handlePinDigitEntered updates digit count`() = runTest {
         pairingEngine.handleInboundPairingRequest("192.168.1.200", "fingerprint")
 
-        pairingEngine.handlePinDigitEntered(1)
+        pairingEngine.handlePinDigitEntered("fingerprint", 1)
         var state = pairingEngine.state.value
         assertIs<PairingState.PinPhase>(state)
         assertEquals(1, state.digitCount)
 
-        pairingEngine.handlePinDigitEntered(PairingEngine.PIN_LENGTH)
+        pairingEngine.handlePinDigitEntered("fingerprint", PairingEngine.PIN_LENGTH)
         state = pairingEngine.state.value
         assertIs<PairingState.PinPhase>(state)
         assertEquals(PairingEngine.PIN_LENGTH, state.digitCount)
@@ -164,7 +164,7 @@ class PairingEngineTest {
     @Test
     fun `handlePinDigitEntered in QrPhase or Idle is safely ignored`() = runTest {
         assertEquals(PairingState.Idle, pairingEngine.state.value)
-        pairingEngine.handlePinDigitEntered(3)
+        pairingEngine.handlePinDigitEntered("fingerprint", 3)
         assertEquals(PairingState.Idle, pairingEngine.state.value)
     }
 
@@ -187,7 +187,7 @@ class PairingEngineTest {
     @Test
     fun `verifyInboundPin fails once pairing already resolved`() = runTest {
         val pin = pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
-        pairingEngine.handlePairResponse(true)
+        pairingEngine.handlePairResponse("inbound-fp", true)
         assertIs<PairingState.Success>(pairingEngine.state.value)
 
         assertTrue(!pairingEngine.verifyInboundPin("inbound-fp", pin), "PIN must not verify after pairing resolved")
@@ -196,11 +196,11 @@ class PairingEngineTest {
     @Test
     fun `handlePairResponse ignores stray responses after resolution`() = runTest {
         pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
-        pairingEngine.handlePairResponse(true)
+        pairingEngine.handlePairResponse("inbound-fp", true)
         assertIs<PairingState.Success>(pairingEngine.state.value)
 
         // A late duplicate rejection must never flip Success back to Error.
-        pairingEngine.handlePairResponse(false)
+        pairingEngine.handlePairResponse("inbound-fp", false)
         assertIs<PairingState.Success>(pairingEngine.state.value)
     }
 
@@ -208,8 +208,37 @@ class PairingEngineTest {
     fun `handlePairResponse rejects while awaiting resolution`() = runTest {
         pairingEngine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
 
-        pairingEngine.handlePairResponse(false)
+        pairingEngine.handlePairResponse("inbound-fp", false)
         assertIs<PairingState.Error>(pairingEngine.state.value)
+    }
+
+    @Test
+    fun `a rejection from a peer that does not own the offer cannot abort it`() = runTest {
+        pairingEngine.handleInboundPairingRequest("192.168.1.200", "pending-fp")
+        assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+        val pin = pairingEngine.state.value.let { assertIs<PairingState.PinPhase>(it).pinCode }
+
+        // A superseded pairing's delayed rejection, or any LAN peer asserting accepted=false,
+        // arrives with someone ELSE's fingerprint: the pending offer must survive it.
+        pairingEngine.handlePairResponse("superseded-fp", false)
+        pairingEngine.handlePairResponse(null, false)
+        assertIs<PairingState.PinPhase>(pairingEngine.state.value)
+
+        // The owner can still reject (and still prove its PIN).
+        assertTrue(pairingEngine.verifyInboundPin("pending-fp", pin), "PIN proof must survive a foreign rejection")
+        pairingEngine.handlePairResponse("pending-fp", false)
+        assertIs<PairingState.Error>(pairingEngine.state.value)
+    }
+
+    @Test
+    fun `pin digit telemetry is bound to the peer that owns the offer`() = runTest {
+        pairingEngine.handleInboundPairingRequest("192.168.1.200", "pending-fp")
+
+        pairingEngine.handlePinDigitEntered("other-fp", 3)
+        assertEquals(0, assertIs<PairingState.PinPhase>(pairingEngine.state.value).digitCount)
+
+        pairingEngine.handlePinDigitEntered("pending-fp", 3)
+        assertEquals(3, assertIs<PairingState.PinPhase>(pairingEngine.state.value).digitCount)
     }
 
     @Test
@@ -245,7 +274,7 @@ class PairingEngineTest {
         var now = 1_000_000L
         val engine = PairingEngine(scope = backgroundScope, nowMillis = { now })
         engine.handleInboundPairingRequest("192.168.1.200", "inbound-fp")
-        engine.handlePairResponse(true)
+        engine.handlePairResponse("inbound-fp", true)
         assertIs<PairingState.Success>(engine.state.value)
 
         advanceTimeBy(120_000L)

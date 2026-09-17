@@ -165,6 +165,17 @@ class WanDownloadWorker(
                 return@withContext Result.failure()
             }
 
+            // Completion is only real when the received byte count matches what the sender
+            // advertised. A stream that ends cleanly BETWEEN frames (relay restart, proxy
+            // truncation, session teardown) is indistinguishable from success at the framing
+            // layer, so the size check is the only thing standing between a truncated file and
+            // a "delivered" record. The desktop receiver already enforces this
+            // (DesktopPlatformEngine.downloadWanRelay), and the two platforms must not disagree
+            // about what "delivered" means.
+            if (totalBytes > 0L && received != totalBytes) {
+                throw IllegalStateException("Relay stream truncated: received $received of $totalBytes bytes for $fileName")
+            }
+
             // Transfer succeeded: log history and present completion notification
             TransferHistory.log(
                 context = applicationContext,

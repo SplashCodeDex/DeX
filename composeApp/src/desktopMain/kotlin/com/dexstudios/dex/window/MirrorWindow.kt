@@ -48,6 +48,35 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
 
     var isLandscape by remember { mutableStateOf(false) }
 
+    // Screen mirroring is PAUSED (PausedFeatures.SCREEN_MIRROR): this window never subscribes
+    // to frames and never broadcasts mirror-start, so no capture is triggered on the phone and
+    // nothing is decoded here. The dock entry is gated in MainMenuColumn; this branch is the
+    // safety net that keeps a forced open from streaming anything.
+    if (com.dexstudios.dex.core.network.PausedFeatures.isPaused(com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR)) {
+        Window(
+            onCloseRequest = onClose,
+            state = windowState,
+            title = "DeX Mirror — paused",
+            alwaysOnTop = false,
+        ) {
+            DeXTheme {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = com.dexstudios.dex.core.network.PausedFeatures.pauseNotice(com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+        }
+        return
+    }
+
     val frameBytes by mirrorEngine.latestFrame.collectAsState()
 
     // Decode off the UI thread: Image.makeFromEncoded on every incoming frame during

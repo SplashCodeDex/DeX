@@ -5,6 +5,7 @@ import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.network.DeviceManager
 import com.dexstudios.dex.core.network.EndpointInfoDto
 import com.dexstudios.dex.core.network.IMirrorEngine
+import com.dexstudios.dex.core.network.PausedFeatures
 import com.dexstudios.dex.core.network.RosterDeviceDto
 import com.dexstudios.dex.core.network.RosterDto
 import com.dexstudios.dex.core.network.server.DexRequestStore
@@ -72,6 +73,33 @@ private suspend fun grantPairing(fingerprint: String): String {
     return pairToken
 }
 
+/**
+ * Inbound `/ws` control-plane gate.
+ *
+ * Handshakes are accepted BEFORE trust is proven (that is what makes pairing possible), so
+ * every inbound message that causes a LOCAL side effect must be checked against the session's
+ * LIVE trust state — not the boolean captured at handshake time, which is false for a session
+ * that proved trust later through the PIN or the same-account identity proof.
+ *
+ * Classification (keep this list honest when adding a message type):
+ * - Allowed for untrusted sessions — the pairing/identity handshake itself: `pair-request`,
+ *   `pair-response` and `pin-digit-entered` (both bound to the pending offer inside
+ *   [com.dexstudios.dex.core.domain.pairing.PairingEngine]), `identity-proof`, `trust-check`
+ *   (the peer only learns its own trust state) and `unpair` (a peer may only revoke ITSELF).
+ * - Trusted sessions only — anything that mutates desktop state, settles requests we opened,
+ *   or moves data toward a third device: `set-clipboard`, `pull-progress`, `telemetry`, the
+ *   `*-reply` family, `device-roster`, `peer-endpoint`, `relay-transfer`
+ *   (`resolve-endpoint` gates inside its own handler).
+ * - Paused — screen mirroring messages and binary frames are dropped at the boundary; see
+ *   [PausedFeatures.SCREEN_MIRROR].
+ */
+private fun isTrustedSession(fingerprint: String?): Boolean = fingerprint != null && WebSocketConnectionManager.isTrusted(fingerprint)
+
+/** Single, greppable log line for a gated message so drops stay diagnosable, never silent. */
+private fun logIgnored(type: String, fingerprint: String?) {
+    Logger.i("Ignored $type from untrusted/unknown session FP: $fingerprint")
+}
+
 fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.PairingEngine, mirrorEngine: IMirrorEngine, publicAddressService: PublicAddressService? = null) {
     webSocket("/ws") {
         val fingerprint = call.request.queryParameters["fingerprint"]
@@ -85,6 +113,8 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
         // Per-connection nonce for the same-account proof-of-possession exchange. Handler
         // scoped: no shared map, nothing for another peer to read or replay.
         var identityNonce: ByteArray? = null
+        // One-time latch so paused mirror traffic cannot flood the log while it is dropped.
+        var pausedTrafficLogged = false
         if (!fingerprint.isNullOrBlank()) {
             val (trusted, identityToken) = resolveHandshakeTrust(fingerprint, token)
             // Hijack guard: an active session for this fingerprint is never silently replaced
@@ -174,9 +204,17 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                             MessageTypes.PULL_REPLY,
                             MessageTypes.REPLY,
                             -> {
-                                val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
-                                if (reqId != null) {
-                                    DexRequestStore.completeRequest(reqId, dataObj)
+                                // Replies settle requests WE opened against a peer we already
+                                // trust; an untrusted session must never be able to resolve them
+                                // (that would let any LAN peer answer another device's request,
+                                // e.g. forge a browse-reply or a pull-reply).
+                                if (!isTrustedSession(fingerprint)) {
+                                    logIgnored(type, fingerprint)
+                                } else {
+                                    val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
+                                    if (reqId != null) {
+                                        DexRequestStore.completeRequest(reqId, dataObj)
+                                    }
                                 }
                             }
 
@@ -225,17 +263,17 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                                                 )
                                             },
                                         )
-                                        pairingEngine.handlePairResponse(true)
+                                        pairingEngine.handlePairResponse(fingerprint, true)
                                     }
 
                                     // Trust assertion without PIN proof is never persisted; the desktop
                                     // user can still grant access manually via the pairing panel.
                                     accepted -> {
                                         Logger.i("Rejected pair-response from $fingerprint: PIN not proven")
-                                        pairingEngine.handlePairResponse(false)
+                                        pairingEngine.handlePairResponse(fingerprint, false)
                                     }
 
-                                    else -> pairingEngine.handlePairResponse(false)
+                                    else -> pairingEngine.handlePairResponse(fingerprint, false)
                                 }
                             }
 
@@ -280,11 +318,20 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                             }
 
                             MessageTypes.PIN_DIGIT_ENTERED -> {
+                                // The binding is enforced INSIDE the engine: only the peer that
+                                // owns the pending offer may drive the PIN panel, so an
+                                // unrelated session cannot spoof or blank the digit counter.
                                 val count = dataObj?.get(FieldNames.DIGIT_COUNT)?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                                pairingEngine.handlePinDigitEntered(count)
+                                pairingEngine.handlePinDigitEntered(fingerprint, count)
                             }
 
                             MessageTypes.PULL_PROGRESS -> {
+                                // Pull progress is dashboard state for the peer we are pulling
+                                // from; an untrusted session must not be able to rewrite it.
+                                if (!isTrustedSession(fingerprint)) {
+                                    logIgnored(type, fingerprint)
+                                    return@consumeEach
+                                }
                                 val reqId = dataObj?.get(FieldNames.REQUEST_ID)?.jsonPrimitive?.content
                                 if (reqId != null) {
                                     val state = dataObj[FieldNames.STATE]?.jsonPrimitive?.contentOrNull ?: FieldNames.STATE_RUNNING
@@ -322,13 +369,23 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                              * direct NAT-punched transfers. Membership is derived from the identity
                              * each connected session PROVED at handshake — never from client claims.
                              */
-                            MessageTypes.DEVICE_ROSTER -> handleDeviceRosterRequest(fingerprint)
+                            MessageTypes.DEVICE_ROSTER -> if (isTrustedSession(fingerprint)) {
+                                handleDeviceRosterRequest(fingerprint)
+                            } else {
+                                logIgnored(type, fingerprint)
+                            }
 
                             /* Punch rendezvous: answer with the target's last registered endpoint. */
                             MessageTypes.RESOLVE_ENDPOINT -> handleResolveEndpoint(fingerprint, dataObj)
 
                             /* Announce the sender's endpoint to the punch target. */
-                            MessageTypes.PEER_ENDPOINT -> handlePeerEndpointAnnounce(fingerprint, dataObj)
+                            MessageTypes.PEER_ENDPOINT -> if (isTrustedSession(fingerprint)) {
+                                handlePeerEndpointAnnounce(fingerprint, dataObj)
+                            } else {
+                                // An untrusted peer must not be able to inject a bogus punch
+                                // endpoint into a trusted target's rendezvous.
+                                logIgnored(type, fingerprint)
+                            }
 
                             /*
                              * Trust desync check: the phone asserts what it believes; we answer with
@@ -340,22 +397,47 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                              * A->PC->B fallback: files already uploaded here under sessionId;
                              * verify arrival, host them, push a prompt to the target.
                              */
-                            MessageTypes.RELAY_TRANSFER -> handleRelayTransfer(fingerprint, dataObj)
-
-                            MessageTypes.MIRROR_CONFIG -> {
-                                val width = dataObj?.get(FieldNames.WIDTH)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 720
-                                val height = dataObj?.get(FieldNames.HEIGHT)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1280
-                                val fps = dataObj?.get(FieldNames.FPS)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 15
-                                mirrorEngine.updateConfig(width, height, fps)
-                                Logger.i("Mirror stream config updated: ${width}x$height @ ${fps}fps")
+                            MessageTypes.RELAY_TRANSFER -> if (isTrustedSession(fingerprint)) {
+                                handleRelayTransfer(fingerprint, dataObj)
+                            } else {
+                                // Relay orchestration moves files toward a THIRD device, so the
+                                // requester must be a proven session — otherwise any LAN peer
+                                // could have the PC push staged files at a trusted target.
+                                logIgnored(type, fingerprint)
                             }
 
-                            MessageTypes.MIRROR_STOP -> {
-                                mirrorEngine.stop()
-                                Logger.i("Mirror stream stopped by peer $fingerprint")
+                            // Screen mirroring is PAUSED (see [PausedFeatures.SCREEN_MIRROR]):
+                            // paused traffic is dropped at the boundary instead of being parsed
+                            // into engine calls, so nothing can drive or stop the stream while
+                            // the pause holds. The trust gate below is what the pause checklist
+                            // requires before the feature is ever re-enabled.
+                            MessageTypes.MIRROR_CONFIG, MessageTypes.MIRROR_STOP -> {
+                                if (PausedFeatures.isPaused(PausedFeatures.SCREEN_MIRROR)) {
+                                    if (!pausedTrafficLogged) {
+                                        pausedTrafficLogged = true
+                                        Logger.i("Dropping mirror traffic — ${PausedFeatures.pauseNotice(PausedFeatures.SCREEN_MIRROR)}")
+                                    }
+                                } else if (!isTrustedSession(fingerprint)) {
+                                    logIgnored(type, fingerprint)
+                                } else if (type == MessageTypes.MIRROR_CONFIG) {
+                                    val width = dataObj?.get(FieldNames.WIDTH)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 720
+                                    val height = dataObj?.get(FieldNames.HEIGHT)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1280
+                                    val fps = dataObj?.get(FieldNames.FPS)?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 15
+                                    mirrorEngine.updateConfig(width, height, fps)
+                                    Logger.i("Mirror stream config updated: ${width}x$height @ ${fps}fps")
+                                } else {
+                                    mirrorEngine.stop()
+                                    Logger.i("Mirror stream stopped by peer $fingerprint")
+                                }
                             }
 
                             MessageTypes.TELEMETRY -> {
+                                // Battery/Wi-Fi telemetry is discovery state attributed to a
+                                // fingerprint, so it is only accepted from a proven session.
+                                if (!isTrustedSession(fingerprint)) {
+                                    logIgnored(type, fingerprint)
+                                    return@consumeEach
+                                }
                                 val battery = dataObj?.get(FieldNames.BATTERY)?.jsonPrimitive?.contentOrNull?.toIntOrNull()
                                 val isCharging = dataObj?.get(FieldNames.IS_CHARGING)?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
                                 val wifiSsid = dataObj?.get(FieldNames.WIFI_SSID)?.jsonPrimitive?.contentOrNull
@@ -366,6 +448,15 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                             }
 
                             MessageTypes.SET_CLIPBOARD -> {
+                                // The desktop system clipboard is a LOCAL side effect, so only a
+                                // session that proved trust (paired token, same-account proof or
+                                // PIN) may write to it. Untrusted sockets exist solely to run the
+                                // pairing handshake — without this gate any LAN peer could
+                                // replace the user's clipboard at will.
+                                if (!isTrustedSession(fingerprint)) {
+                                    logIgnored(type, fingerprint)
+                                    return@consumeEach
+                                }
                                 val text = dataObj?.get(FieldNames.TEXT)?.jsonPrimitive?.contentOrNull
                                 if (!text.isNullOrBlank()) {
                                     try {
@@ -389,15 +480,30 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                         Logger.i("WebSocket handler error (${e::class.simpleName}): ${e.message}")
                     }
                 } else if (frame is Frame.Binary) {
-                    val bytes = frame.readBytes()
-                    mirrorEngine.receiveFrame(bytes)
+                    // Binary frames are the mirror stream's data plane, so they are paused with
+                    // the rest of the feature: dropped BEFORE decoding (a paused feature must
+                    // not cost CPU per frame, and the engine must never see unauthenticated
+                    // input).
+                    if (PausedFeatures.isPaused(PausedFeatures.SCREEN_MIRROR)) {
+                        if (!pausedTrafficLogged) {
+                            pausedTrafficLogged = true
+                            Logger.i("Dropping mirror frames — ${PausedFeatures.pauseNotice(PausedFeatures.SCREEN_MIRROR)}")
+                        }
+                    } else if (!isTrustedSession(fingerprint)) {
+                        logIgnored("binary-frame", fingerprint)
+                    } else {
+                        val bytes = frame.readBytes()
+                        mirrorEngine.receiveFrame(bytes)
+                    }
                 }
             }
         } catch (e: Exception) {
             Logger.i("WebSocket error: ${e.message}")
         } finally {
             if (fingerprint != null && registered) {
-                WebSocketConnectionManager.unregister(fingerprint)
+                // Ownership-checked: a delayed cleanup from a superseded connection must not
+                // evict the newer connection that took this fingerprint's slot.
+                WebSocketConnectionManager.unregister(fingerprint, this)
             }
             Logger.i("WebSocket connection closed: ${call.request.local.remoteHost} (FP: $fingerprint)")
         }

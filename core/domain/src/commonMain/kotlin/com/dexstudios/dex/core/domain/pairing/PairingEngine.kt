@@ -148,7 +148,14 @@ class PairingEngine(
         }
     }
 
-    fun handlePinDigitEntered(digitCount: Int) {
+    /**
+     * Live keystroke telemetry from the peer typing the PIN. BOUND to the pending offer's
+     * fingerprint for the same reason [handlePairResponse] is: the panel is a user-facing
+     * surface, so an unrelated session must never be able to drive it (or blank it) while
+     * the real peer is typing.
+     */
+    fun handlePinDigitEntered(fingerprint: String?, digitCount: Int) {
+        if (!isPendingPeer(fingerprint)) return
         val current = _state.value
         if (current is PairingState.PinPhase) {
             _state.value = current.copy(digitCount = digitCount.coerceIn(0, PIN_LENGTH))
@@ -229,21 +236,40 @@ class PairingEngine(
             nowMillis() <= current.expiresAtMillis
     }
 
-    fun handlePairResponse(accepted: Boolean) {
-        // Only a pairing still awaiting resolution may transition. Stray or duplicate
-        // responses (e.g. arriving after the user already accepted locally) are ignored so
-        // they can never flip Success back to Error.
-        when (_state.value) {
-            is PairingState.QrPhase, is PairingState.PinPhase -> {
-                expiryJob?.cancel()
-                _state.value = if (accepted) {
-                    PairingState.Success
-                } else {
-                    PairingState.Error("Pairing rejected or timed out")
-                }
-            }
+    /**
+     * True when [fingerprint] owns the pairing offer currently awaiting resolution
+     * (QrPhase or PinPhase). Every inbound pairing transition is bound through here so a
+     * superseded or unrelated peer can never resolve the pending offer.
+     */
+    fun isPendingPeer(fingerprint: String?): Boolean {
+        if (fingerprint == null) return false
+        return when (val current = _state.value) {
+            is PairingState.QrPhase -> current.fingerprint == fingerprint
+            is PairingState.PinPhase -> current.fingerprint == fingerprint
+            else -> false
+        }
+    }
 
-            else -> Unit
+    /**
+     * Applies a peer's answer to the pending offer.
+     *
+     * Two bindings are mandatory and both are enforced here (not at the call site):
+     * 1. Only a pairing still awaiting resolution may transition — stray or duplicate
+     *    responses (e.g. arriving after the user already accepted locally) are ignored so
+     *    they can never flip Success back to Error.
+     * 2. The response must come from the peer that OWNS the pending offer. Without this, a
+     *    delayed rejection from a superseded pairing — or any unrelated LAN peer sending
+     *    `pair-response {accepted:false}` — would abort the currently pending pairing.
+     *    PIN verification binds acceptance to the exact fingerprint; rejection must be
+     *    bound just as tightly, or the asymmetry is itself the attack.
+     */
+    fun handlePairResponse(fingerprint: String?, accepted: Boolean) {
+        if (!isPendingPeer(fingerprint)) return
+        expiryJob?.cancel()
+        _state.value = if (accepted) {
+            PairingState.Success
+        } else {
+            PairingState.Error("Pairing rejected or timed out")
         }
     }
 

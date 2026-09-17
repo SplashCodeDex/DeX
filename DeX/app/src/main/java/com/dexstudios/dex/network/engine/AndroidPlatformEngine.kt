@@ -111,11 +111,15 @@ class AndroidPlatformEngine(
         fileShareManager?.handleRequest(type, data)
     }
 
+    // PAUSED (core/network PausedFeatures.SCREEN_MIRROR): screen mirroring is not a shipping
+    // feature, so this capture-side entry point stays a documented no-op — no MediaProjection
+    // consent prompt, no encoder, no frames — until the pause is lifted with its resume
+    // checklist. Re-enabling the flag also re-arms the Android-side dispatch (MessageHandler).
     override fun handleMirrorStart() {
-        Timber.i("Mirror start requested on Android")
+        Timber.i("Mirror start ignored: screen mirroring is paused in this release (PausedFeatures.SCREEN_MIRROR)")
     }
 
     override fun handleMirrorStop() {
-        Timber.i("Mirror stop requested on Android")
+        Timber.i("Mirror stop ignored: screen mirroring is paused in this release (PausedFeatures.SCREEN_MIRROR)")
     }
 }

@@ -92,8 +92,30 @@ object WebSocketConnectionManager {
         syncFlows()
     }
 
-    fun unregister(fingerprint: String) {
-        if (sessions.remove(fingerprint) != null) {
+    /**
+     * Removes [fingerprint]'s slot ONLY when [session] is the connection that owns it.
+     *
+     * Registration evicts an inactive holder so a reconnecting peer is not locked out, which
+     * means the slot can legitimately belong to a NEWER connection by the time the older
+     * connection's cleanup runs (its reader loop ends after the eviction, and the `finally`
+     * can land arbitrarily later). An unconditional removal would therefore delete the
+     * replacement session and silently break its prompts, roster and connection status.
+     */
+    fun unregister(fingerprint: String, session: WebSocketSession) {
+        var owned = false
+        sessions.compute(fingerprint) { _, holder ->
+            when {
+                holder == null -> null
+
+                holder.session === session -> {
+                    owned = true
+                    null
+                }
+
+                else -> holder
+            }
+        }
+        if (owned) {
             syncFlows()
             _events.tryEmit(ConnectionEvent.Disconnected(fingerprint))
         }

@@ -71,6 +71,24 @@ object RelayService {
         ensureMaintenanceLoop()
     }
 
+    /**
+     * Files of a relay session that were ALREADY on this PC at prepare time (the `[SKIP]`
+     * answers, i.e. files the sender never uploads).
+     *
+     * The onward manifest must describe the WHOLE batch, not just the freshly uploaded part:
+     * building it from staging alone silently dropped deduplicated files from the A -> PC -> B
+     * hop, and a fully deduplicated batch forwarded an empty list, so the PC answered
+     * relay-error even though every file was sitting right there on disk.
+     */
+    val relaySessionDeduped = ConcurrentHashMap<String, List<RelayReceivedFile>>()
+
+    /** Records the `[SKIP]`-deduplicated files of a relay session so they ride the onward push. */
+    fun trackRelayDeduped(sessionId: String, files: List<RelayReceivedFile>) {
+        if (files.isEmpty()) return
+        relaySessionDeduped[sessionId] = files
+        ensureMaintenanceLoop()
+    }
+
     // Push bookkeeping for delivery confirmation callbacks (H1: never fake "sent")
     private val pushes = ConcurrentHashMap<String, HostedPush>()
 
@@ -116,13 +134,19 @@ object RelayService {
                         relaySessionAliases.remove(id)
                         relaySessionTime.remove(id)
                         relaySessionExpected.remove(id)
+                        relaySessionDeduped.remove(id)
                     }
 
                     // Expected counts with no staging yet (all-deduped sessions) still expire
                     val staleExpected = relaySessionExpected.entries
                         .filter { now - it.value.createdAt > RELAY_TTL_MS }
                         .map { it.key }
-                    for (id in staleExpected) relaySessionExpected.remove(id)
+                    for (id in staleExpected) {
+                        relaySessionExpected.remove(id)
+                        // An all-deduped session never stages anything, so its manifest is
+                        // bounded only by this sweep (relaySessionTime is never set for it).
+                        relaySessionDeduped.remove(id)
+                    }
 
                     if (hostedFileLastAccess.isEmpty() && relaySessionTime.isEmpty() && relaySessionExpected.isEmpty() && pushes.isEmpty()) {
                         maintenanceStarted.set(0)
@@ -244,9 +268,13 @@ object RelayService {
             delay(500L)
         }
 
+        // Complete manifest: the deduplicated files first (their paths already exist here),
+        // then the files that just arrived. Order is irrelevant to the target; membership is
+        // not — forwarding the staged subset is what dropped files from the A -> PC -> B hop.
+        val manifest = relaySessionDeduped[sessionId].orEmpty() + staged
         return hostAndPushAsync(
             targetFingerprint = targetFingerprint,
-            files = staged.map { it.absolutePath to it.relativePath },
+            files = manifest.map { it.absolutePath to it.relativePath },
             senderAlias = alias,
         )
     }
