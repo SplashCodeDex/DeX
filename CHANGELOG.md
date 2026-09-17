@@ -1,6 +1,9 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Android punch crypto stream chunk buffering & zero-read tolerance (`PunchCryptoChannel.kt`, `PunchCryptoTest.kt`)**:
+  - **NAT Hole-Punch Stream Chunk Buffering**: `PunchCryptoChannel.streamFile` loops to fill `toRead` up to the full 64KB frame chunk size (`CHUNK_SIZE`) instead of emitting a partial frame per `fileStream.read(buffer)` call. Streams backed by Android ContentResolver pipes or buffered streams returning 1KB–8KB fragments are buffered into full 64KB AES-GCM frames, eliminating excessive TCP frame overhead.
+  - **Zero-Byte Read Tolerance**: Tolerates temporary 0-byte stream yields without prematurely failing transfers (`n == 0`), terminating only on authentic EOF (`n == -1`) or cancellation, preventing spurious transfer failures on non-blocking and delayed input streams.
 - **[fix] WAN relay chunk stream buffering, direct channel reads & platform staging sanitization (`WanRelayClient.kt`, `DesktopPlatformEngine.kt`, `PunchSession.kt`, `WanRelayClientTest.kt`)**:
   - **WAN Chunk Stream Buffering & Zero-Tolerance**: `WanRelayClient.upload` loops to fill the 256KB buffer (`CHUNK_SIZE`) instead of sending a raw slice per `input.read(buffer)` call, preventing streams returning 1KB–8KB fragments from inflating HTTP POST requests to the relay server by up to 32x–256x. Replaced `read <= 0` with proper EOF `-1` checking, tolerating non-blocking or delayed 0-byte stream pauses without premature transfer truncation.
   - **Zero-Allocation Relay Channel Reads**: `WanRelayClient.download` and `readExactOrNull` use direct `channel.readAvailable(out, filled, count - filled)` directly into destination buffers, eliminating `ByteReadPacket` and intermediate byte array allocations on every incoming frame.

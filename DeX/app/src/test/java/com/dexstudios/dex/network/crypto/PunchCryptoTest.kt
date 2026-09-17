@@ -230,4 +230,53 @@ class PunchCryptoTest {
         assertArrayEquals(frame2, read2)
         assertArrayEquals(frame3, read3)
     }
+
+    @Test
+    fun streamFileBuffersFragmentedStreamAndToleratesZeroReads() = runBlocking {
+        val key = ByteArray(PunchCrypto.KEY_LENGTH_BYTES) { 9.toByte() }
+        val wirePipe = ByteArrayOutputStream()
+
+        val writerChannel = PunchCryptoChannel(
+            input = ByteArrayInputStream(ByteArray(0)),
+            output = wirePipe,
+            sessionKey = key,
+        )
+
+        val totalSize = 300 * 1024
+        val data = ByteArray(totalSize) { (it % 251).toByte() }
+        val fragmented = object : java.io.InputStream() {
+            private var pos = 0
+            private var zeroYielded = false
+            override fun read(): Int = if (pos < data.size) (data[pos++].toInt() and 0xFF) else -1
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                if (pos >= data.size) return -1
+                if (!zeroYielded) {
+                    zeroYielded = true
+                    return 0
+                }
+                val count = minOf(len, 1024, data.size - pos)
+                System.arraycopy(data, pos, b, off, count)
+                pos += count
+                return count
+            }
+        }
+
+        var frameCount = 0
+        val ok = writerChannel.streamFile(fragmented, totalSize.toLong()) {
+            frameCount++
+        }
+        assertTrue(ok)
+
+        val readerChannel = PunchCryptoChannel(
+            input = ByteArrayInputStream(wirePipe.toByteArray()),
+            output = ByteArrayOutputStream(),
+            sessionKey = key,
+        )
+
+        val received = ByteArrayOutputStream()
+        val receivedBytes = readerChannel.receiveFile(received, totalSize.toLong())
+        assertEquals(totalSize.toLong(), receivedBytes)
+        assertArrayEquals(data, received.toByteArray())
+        assertEquals(5, frameCount)
+    }
 }

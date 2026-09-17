@@ -267,12 +267,20 @@ class PunchCryptoChannel(
         while (sent < length) {
             if (isCancelled()) return@withContext false
             val toRead = minOf(buffer.size.toLong(), length - sent).toInt()
-            val n = fileStream.read(buffer, 0, toRead)
-            if (n <= 0) return@withContext false
-            val chunk = if (n == buffer.size) buffer else buffer.copyOf(n)
+            var read = 0
+            while (read < toRead) {
+                if (isCancelled()) return@withContext false
+                val n = fileStream.read(buffer, read, toRead - read)
+                if (n == -1) break
+                if (n > 0) {
+                    read += n
+                }
+            }
+            if (read == 0) return@withContext false
+            val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
             writeFrame(chunk)
-            sent += n
-            onDelta(n.toLong())
+            sent += read
+            onDelta(read.toLong())
         }
         true
     }
