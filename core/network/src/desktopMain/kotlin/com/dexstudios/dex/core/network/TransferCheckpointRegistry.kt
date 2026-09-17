@@ -1,6 +1,7 @@
 package com.dexstudios.dex.core.network
 
 import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.network.server.ReceiveStorage
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -44,7 +45,7 @@ object TransferCheckpointRegistry {
         }
 
         // Clean sanitize filename and attach session + file unique .part staging suffix
-        val safeName = fileName.replace(Regex("[/\\\\?%*:|\"<>]"), "_")
+        val safeName = ReceiveStorage.sanitizeFileName(fileName)
         val partFile = File(parentDir, "$safeName.part.$sessionId.$fileId")
         checkpoints[k] = CheckpointEntry(
             partFile = partFile,
@@ -128,17 +129,7 @@ object TransferCheckpointRegistry {
     }
 
     /** [destFile] when free, else its first free "name (n)" sibling in the same directory. */
-    private fun firstFreeDestination(destFile: File): File {
-        if (!destFile.exists()) return destFile
-        val parent = destFile.parentFile ?: return destFile
-        val baseName = destFile.nameWithoutExtension
-        val suffix = destFile.extension.let { if (it.isEmpty()) "" else ".$it" }
-        for (counter in 1 until MAX_DESTINATION_ATTEMPTS) {
-            val candidate = File(parent, "$baseName ($counter)$suffix")
-            if (!candidate.exists()) return candidate
-        }
-        return destFile
-    }
+    private fun firstFreeDestination(destFile: File): File = ReceiveStorage.firstFreeDestination(destFile)
 
     /**
      * Atomically CREATES a free destination placeholder and returns it (null when none could
@@ -146,10 +137,12 @@ object TransferCheckpointRegistry {
      * path is taken, which is exactly the guarantee the copy fallback needs.
      */
     private fun createUniquePlaceholder(destFile: File): File? {
-        if (runCatching { destFile.createNewFile() }.getOrDefault(false)) return destFile
         val parent = destFile.parentFile ?: return null
-        val baseName = destFile.nameWithoutExtension
-        val suffix = destFile.extension.let { if (it.isEmpty()) "" else ".$it" }
+        val sanitizedName = ReceiveStorage.sanitizeFileName(destFile.name)
+        val target = if (sanitizedName != destFile.name) File(parent, sanitizedName) else destFile
+        if (runCatching { target.createNewFile() }.getOrDefault(false)) return target
+        val baseName = target.nameWithoutExtension
+        val suffix = target.extension.let { if (it.isEmpty()) "" else ".$it" }
         for (counter in 1 until MAX_DESTINATION_ATTEMPTS) {
             val candidate = File(parent, "$baseName ($counter)$suffix")
             if (runCatching { candidate.createNewFile() }.getOrDefault(false)) return candidate

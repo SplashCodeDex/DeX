@@ -1,6 +1,11 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Windows reserved device names collision & path segment sanitization (`ReceiveStorage.kt`, `TransferCheckpointRegistry.kt`, `ShareRoutes.kt`, `ReceiveStorageTest.kt`)**:
+  - **MS-DOS Reserved Device Protection**: Inbound file transfers and relative path segments are strictly guarded against Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, case-insensitively, including stems with multiple extensions like `con.tar.gz`). Reserved device stems are prepended with `_` (e.g. `_con.txt`), preventing Win32 IO character device collision crashes. Legitimate names beginning with reserved prefixes (such as `contact.txt`, `auxiliary.bin`) are preserved intact.
+  - **Staging Part File Safety**: Staging filenames in `TransferCheckpointRegistry` sanitize the target filename with `ReceiveStorage.sanitizeFileName` before appending `.part.$sessionId.$fileId`, eliminating character device driver collisions during active write staging.
+  - **Trailing Dots & Spaces Pruning**: Prunes trailing spaces and periods from file stems and extensions to prevent Win32 filesystem truncation and `ERROR_INVALID_NAME` exceptions.
+  - **Relative Path Hierarchy Sanitization**: Sanitizes each path segment in relative folder transfers individually while enforcing strict non-escaping path bounds, preventing nested reserved directories (`aux/`) and illegal character failures.
 - **[fix] Android SAF directory reuse, recursive tree traversal & MediaStore pending lifecycle (`SafStorage.kt`, `BatchDownloadWorker.kt`, `WanDownloadWorker.kt`, `SafStorageTest.kt`, `MainScreenViewModelTest.kt`)**:
   - **SAF Subfolder Reuse**: `SafStorage.createDocumentWithPath` now queries intermediate directories via `findChildDirectory` and reuses existing directory handles instead of blindly calling `createDirectory`, preventing SAF from scattering files in the same folder across fragmented duplicate directories (`folder (1)`, `folder (2)`).
   - **Recursive Tree Traversal**: Fixed `SafStorage.listTreeFiles` to pass the subdirectory's own `docId` rather than re-extracting the root tree ID, eliminating infinite recursion / stack overflow when indexing nested folders.

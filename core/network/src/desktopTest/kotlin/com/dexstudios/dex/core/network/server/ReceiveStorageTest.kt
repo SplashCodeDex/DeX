@@ -93,4 +93,91 @@ class ReceiveStorageTest {
         assertEquals("new content", committed.readText())
         assertFalse(part.exists())
     }
+
+    @Test
+    fun `uniqueDest sanitizes Windows reserved device names`() {
+        val reservedNames = listOf(
+            "con.txt", "CON.TXT", "aux.json", "AUX", "nul", "NUL.log",
+            "prn.dat", "PRN", "com1.txt", "COM5.bin", "lpt1.pdf", "LPT9",
+            "con.tar.gz", "nul.part.1",
+        )
+        for (name in reservedNames) {
+            val dest = ReceiveStorage.uniqueDest(tempDir, name)
+            assertFalse(
+                dest.name.startsWith("con.", ignoreCase = true) ||
+                    dest.name.equals("con", ignoreCase = true) ||
+                    dest.name.startsWith("aux.", ignoreCase = true) ||
+                    dest.name.equals("aux", ignoreCase = true) ||
+                    dest.name.startsWith("nul.", ignoreCase = true) ||
+                    dest.name.equals("nul", ignoreCase = true) ||
+                    dest.name.startsWith("prn.", ignoreCase = true) ||
+                    dest.name.equals("prn", ignoreCase = true) ||
+                    dest.name.matches(Regex("^(?i)(com[1-9]|lpt[1-9])(\\..*)?$")),
+                "Destination name '${dest.name}' must not be a Windows reserved device name for input '$name'",
+            )
+            // It must be safe to create on Windows filesystem without exception
+            dest.writeText("safe content")
+            assertTrue(dest.exists())
+            dest.delete()
+        }
+    }
+
+    @Test
+    fun `uniqueDest preserves legitimate names that start with reserved letters`() {
+        val safeNames = listOf(
+            "contact.txt",
+            "auxiliary.bin",
+            "null.txt",
+            "comedy.mp4",
+            "prno.dat",
+            "lpt10.log",
+            "com10.zip",
+        )
+        for (name in safeNames) {
+            val dest = ReceiveStorage.uniqueDest(tempDir, name)
+            assertEquals(name, dest.name, "Legitimate name '$name' must not be altered")
+        }
+    }
+
+    @Test
+    fun `uniqueDest trims trailing spaces and dots to prevent Win32 path failure`() {
+        val dest1 = ReceiveStorage.uniqueDest(tempDir, "document.pdf. ")
+        assertEquals("document.pdf", dest1.name)
+
+        val dest2 = ReceiveStorage.uniqueDest(tempDir, "archive.tar.gz...")
+        assertEquals("archive.tar.gz", dest2.name)
+
+        val dest3 = ReceiveStorage.uniqueDest(tempDir, "   ")
+        assertEquals("unnamed_file", dest3.name)
+
+        val dest4 = ReceiveStorage.uniqueDest(tempDir, "....")
+        assertEquals("unnamed_file", dest4.name)
+    }
+
+    @Test
+    fun `uniqueDest sanitizes relativePath segments and avoids reserved directory names`() {
+        val dest = ReceiveStorage.uniqueDest(tempDir, "data.json", "nested/aux/con.txt")
+        assertFalse(dest.absolutePath.contains("${File.separator}aux${File.separator}", ignoreCase = true))
+        assertFalse(dest.name.equals("con.txt", ignoreCase = true))
+        assertTrue(dest.name.equals("_con.txt", ignoreCase = true))
+
+        dest.parentFile?.mkdirs()
+        dest.writeText("nested safe")
+        assertTrue(dest.exists())
+        dest.delete()
+    }
+
+    @Test
+    fun `safeCommit succeeds on Windows with reserved device name`() {
+        val dest = ReceiveStorage.uniqueDest(tempDir, "con.txt")
+        val part = File(tempDir, "con.txt.part.test.1").apply { writeText("device content") }
+
+        val committed = ReceiveStorage.safeCommit(part, dest)
+        assertNotNull(committed)
+        assertTrue(committed.exists())
+        assertEquals("_con.txt", committed.name)
+        assertEquals("device content", committed.readText())
+        assertFalse(part.exists())
+        committed.delete()
+    }
 }

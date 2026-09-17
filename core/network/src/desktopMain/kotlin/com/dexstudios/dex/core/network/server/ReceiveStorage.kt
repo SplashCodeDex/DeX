@@ -22,17 +22,61 @@ object ReceiveStorage {
         return (custom ?: File(System.getProperty("user.home"), DOWNLOAD_DIR_NAME)).apply { mkdirs() }
     }
 
+    private val RESERVED_NAMES_REGEX = Regex("^(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$")
+    private val ILLEGAL_CHARS_REGEX = Regex("[\\\\/:*?\"<>|\\x00-\\x1F]")
+
+    /**
+     * Sanitizes a single filename or directory name for cross-platform and Windows filesystem safety:
+     * - Replaces illegal Windows characters (\\, /, :, *, ?, ", <, >, | and ASCII 0-31) with '_'
+     * - Trims leading/trailing whitespace and trailing dots (e.g. 'file. ' or 'file.')
+     * - Guards against Windows reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9) by prepending '_'
+     * - Falls back to 'unnamed_file' if the result is empty or blank
+     */
+    fun sanitizeFileName(fileName: String): String {
+        val trimmed = fileName.trim()
+        if (trimmed.isEmpty()) return "unnamed_file"
+
+        // Replace illegal filesystem characters
+        val scrubbed = trimmed.replace(ILLEGAL_CHARS_REGEX, "_")
+        val clean = scrubbed.trimEnd(' ', '.')
+        if (clean.isEmpty()) return "unnamed_file"
+
+        // Split into base name and extension
+        val dotIndex = clean.lastIndexOf('.')
+        val (base, ext) = if (dotIndex > 0) {
+            val b = clean.substring(0, dotIndex).trimEnd(' ', '.')
+            val e = clean.substring(dotIndex + 1).trimEnd(' ', '.')
+            Pair(b, e)
+        } else {
+            Pair(clean, "")
+        }
+
+        val safeBase = base.ifEmpty { "unnamed_file" }
+        val primaryStem = safeBase.substringBefore('.').trimEnd(' ', '.')
+        val isReserved = RESERVED_NAMES_REGEX.matches(safeBase) || RESERVED_NAMES_REGEX.matches(primaryStem)
+        val prefixedBase = if (isReserved) "_$safeBase" else safeBase
+
+        return if (ext.isNotEmpty()) "$prefixedBase.$ext" else prefixedBase
+    }
+
     fun uniqueDest(downloadsFolder: File, fileName: String, relativePath: String? = null): File {
-        val safeName = fileName.ifEmpty { "unnamed_file" }.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val safeName = sanitizeFileName(fileName)
         var base: File = if (relativePath.isNullOrBlank()) {
             File(downloadsFolder, safeName)
         } else {
-            val rel = relativePath.replace("\\", "/").removePrefix("/")
-            if (rel.contains("..")) {
+            val normalizedRel = relativePath.replace("\\", "/").removePrefix("/").removeSuffix("/")
+            if (normalizedRel.contains("..")) {
                 File(downloadsFolder, safeName)
             } else {
-                val resolved = downloadsFolder.toPath().resolve(rel).normalize()
-                if (resolved.startsWith(downloadsFolder.toPath())) resolved.toFile() else File(downloadsFolder, safeName)
+                val segments = normalizedRel.split("/").filter { it.isNotBlank() }
+                if (segments.isEmpty()) {
+                    File(downloadsFolder, safeName)
+                } else {
+                    val safeSegments = segments.map { sanitizeFileName(it) }
+                    val relPath = safeSegments.joinToString(File.separator)
+                    val resolved = downloadsFolder.toPath().resolve(relPath).normalize()
+                    if (resolved.startsWith(downloadsFolder.toPath())) resolved.toFile() else File(downloadsFolder, safeName)
+                }
             }
         }
 
@@ -47,16 +91,18 @@ object ReceiveStorage {
      * successive collisions never produce nested parentheses like "name (1) (2).ext".
      */
     fun firstFreeDestination(destFile: File): File {
-        if (!destFile.exists()) return destFile
         val parent = destFile.parentFile ?: return destFile
-        val baseName = destFile.nameWithoutExtension
-        val ext = destFile.extension
+        val sanitizedName = sanitizeFileName(destFile.name)
+        val target = if (sanitizedName != destFile.name) File(parent, sanitizedName) else destFile
+        if (!target.exists()) return target
+        val baseName = target.nameWithoutExtension
+        val ext = target.extension
         val suffix = if (ext.isNotEmpty()) ".$ext" else ""
         for (counter in 1 until 1000) {
             val candidate = File(parent, "$baseName ($counter)$suffix")
             if (!candidate.exists()) return candidate
         }
-        return destFile
+        return target
     }
 
     /**

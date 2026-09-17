@@ -304,7 +304,7 @@ fun Route.shareRoutes() {
             }
 
             val rawFileName = fileMeta.fileName.ifEmpty { "unnamed_file" }
-            val safeFileName = rawFileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val safeFileName = ReceiveStorage.sanitizeFileName(rawFileName)
 
             val downloadsFolder = ReceiveStorage.downloadsDir()
 
@@ -317,12 +317,15 @@ fun Route.shareRoutes() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                val resolvedPath = downloadsFolder.toPath().resolve(relativePath).normalize()
-                if (!resolvedPath.startsWith(downloadsFolder.toPath())) {
+                val rawResolved = downloadsFolder.toPath().resolve(relativePath).normalize()
+                if (!rawResolved.startsWith(downloadsFolder.toPath())) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                val file = resolvedPath.toFile()
+                val segments = relativePath.removePrefix("/").removeSuffix("/").split("/").filter { it.isNotBlank() }
+                val safeRelPath = segments.map { ReceiveStorage.sanitizeFileName(it) }.joinToString(File.separator)
+                val safeResolvedPath = downloadsFolder.toPath().resolve(safeRelPath).normalize()
+                val file = safeResolvedPath.toFile()
                 file.parentFile?.mkdirs()
                 file
             }
@@ -341,16 +344,7 @@ fun Route.shareRoutes() {
             }
 
             synchronized(shareRoutesFileLock) {
-                var counter = 1
-                val originalName = destFile.nameWithoutExtension
-                val ext = destFile.extension
-                val extStr = if (ext.isNotEmpty()) ".$ext" else ""
-                val parent = destFile.parentFile
-
-                while (destFile.exists()) {
-                    destFile = File(parent, "$originalName ($counter)$extStr")
-                    counter++
-                }
+                destFile = ReceiveStorage.firstFreeDestination(destFile)
             }
 
             val resumeOffset = call.request.queryParameters["offset"]?.toLongOrNull() ?: 0L
