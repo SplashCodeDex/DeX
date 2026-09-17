@@ -1,6 +1,11 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Android SAF directory reuse, recursive tree traversal & MediaStore pending lifecycle (`SafStorage.kt`, `BatchDownloadWorker.kt`, `WanDownloadWorker.kt`, `SafStorageTest.kt`, `MainScreenViewModelTest.kt`)**:
+  - **SAF Subfolder Reuse**: `SafStorage.createDocumentWithPath` now queries intermediate directories via `findChildDirectory` and reuses existing directory handles instead of blindly calling `createDirectory`, preventing SAF from scattering files in the same folder across fragmented duplicate directories (`folder (1)`, `folder (2)`).
+  - **Recursive Tree Traversal**: Fixed `SafStorage.listTreeFiles` to pass the subdirectory's own `docId` rather than re-extracting the root tree ID, eliminating infinite recursion / stack overflow when indexing nested folders.
+  - **MediaStore Pending State**: `createMediaStoreUri` marks new downloads with `IS_PENDING = 1` on Android Q+ to prevent premature indexing or corruption exposure to third-party file managers; `finishMediaStoreUri` clears the pending flag upon successful completion in `BatchDownloadWorker` and `WanDownloadWorker`.
+  - **Warning Cleanups**: Removed unnecessary `!!` assertion in `BatchDownloadWorker.kt` and redundant instance check in `MainScreenViewModelTest.kt`.
 - **[fix] Transfer destination integrity, atomic commit & stream resumption (`ReceiveStorage.kt`, `DesktopPullService.kt`, `DesktopPlatformEngine.kt`, `ClientEngine.kt`, `DesktopFileSendService.kt`, `TransferHistory.kt`)**:
   - **Collision Renaming**: `ReceiveStorage.uniqueDest` and `firstFreeDestination` extract base name and extension once, preventing recursive nested collision filenames (`file (1) (2).txt`). Successive collisions advance sequentially (`file (1).txt`, `file (2).txt`).
   - **Non-Destructive Staging & Commit**: Eliminated destructive destination deletion in `DesktopPullService` and `DesktopPlatformEngine`. Staging files are disambiguated by session and file ID (`${dest.name}.part.$sessionId.$fileId`), eliminating race collisions between concurrent streams. Partial files are safely promoted via `ReceiveStorage.safeCommit` without overwriting existing files, and aborted/cancelled downloads clean up only `.part` staging without touching pre-existing user data.

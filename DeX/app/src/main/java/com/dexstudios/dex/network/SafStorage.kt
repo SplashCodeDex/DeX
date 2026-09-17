@@ -17,8 +17,11 @@ object SafStorage {
 
     // --- Downloads/DeX folder grant (incoming transfers) ---
 
+    @androidx.annotation.VisibleForTesting
+    var sdkInt: Int = android.os.Build.VERSION.SDK_INT
+
     fun createMediaStoreUri(context: Context, fileName: String, relativePath: String? = null): Uri? {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return null
+        if (sdkInt < android.os.Build.VERSION_CODES.Q) return null
 
         val resolver = context.contentResolver
         val contentValues = android.content.ContentValues().apply {
@@ -34,12 +37,29 @@ object SafStorage {
             } else ""
 
             put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, base + subPath)
+            put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
         return try {
             resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * Clears the `IS_PENDING` flag on [uri] once bytes have finished streaming,
+     * publishing the completed file to media scanners and external applications.
+     */
+    fun finishMediaStoreUri(context: Context, uri: Uri?) {
+        if (uri == null || sdkInt < android.os.Build.VERSION_CODES.Q) return
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+        }
+        try {
+            context.contentResolver.update(uri, contentValues, null, null)
+        } catch (e: Exception) {
+            Timber.w(e, "SafStorage: Failed to clear IS_PENDING on $uri")
         }
     }
 
@@ -187,18 +207,66 @@ object SafStorage {
     // --- Folder bundles: relative paths with intermediate directory creation ---
 
     /**
-     * Creates a document at [relativePath] inside [treeUri], creating any intermediate
-     * directories. Path traversal ("..") is stripped. Returns null on failure.
+     * Creates a document at [relativePath] inside [treeUri], creating intermediate
+     * directories only when they do not already exist. Reuses existing directories so
+     * multiple files in the same subfolder do not produce duplicate "folder (1)" names.
+     * Path traversal ("..") is stripped. Returns null on failure.
      */
     fun createDocumentWithPath(context: Context, treeUri: Uri, relativePath: String): Uri? {
         val parts = relativePath.trim('/').split('/')
             .filter { it.isNotBlank() && it != ".." }
         if (parts.isEmpty()) return null
-        var current = treeUri
+
+        var currentParentUri = treeUri
+        var currentDocId = DocumentsContract.getTreeDocumentId(treeUri)
+
         for (segment in parts.dropLast(1)) {
-            current = createDirectory(context, current, segment) ?: return null
+            val existing = findChildDirectory(context, treeUri, currentDocId, segment)
+            if (existing != null) {
+                currentParentUri = existing.first
+                currentDocId = existing.second
+            } else {
+                val newDir = createDirectory(context, currentParentUri, segment) ?: return null
+                currentParentUri = newDir
+                currentDocId = try {
+                    DocumentsContract.getDocumentId(newDir)
+                } catch (_: Exception) {
+                    DocumentsContract.getTreeDocumentId(newDir)
+                }
+            }
         }
-        return createDocumentUri(context, current, parts.last())
+        return createDocumentUri(context, currentParentUri, parts.last())
+    }
+
+    private fun findChildDirectory(context: Context, treeUri: Uri, parentDocId: String, name: String): Pair<Uri, String>? {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
+        val projection = arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+        )
+        return try {
+            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                if (idIdx < 0 || nameIdx < 0 || mimeIdx < 0) return@use null
+
+                while (cursor.moveToNext()) {
+                    val displayName = cursor.getString(nameIdx)
+                    val mime = cursor.getString(mimeIdx)
+                    if (displayName == name && mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        val docId = cursor.getString(idIdx)
+                        val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+                        return@use Pair(docUri, docId)
+                    }
+                }
+                null
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "SafStorage: cannot query child directory $name under $parentDocId")
+            null
+        }
     }
 
     private fun createDirectory(context: Context, parent: Uri, name: String): Uri? {
@@ -214,24 +282,39 @@ object SafStorage {
     /** Recursively lists every file under [treeUri] as (documentUri, relativePath, size). */
     fun listTreeFiles(context: Context, treeUri: Uri): List<Triple<Uri, String, Long>> {
         val result = mutableListOf<Triple<Uri, String, Long>>()
-        fun walk(dirUri: Uri, prefix: String) {
-            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                dirUri, DocumentsContract.getTreeDocumentId(dirUri)
+        val rootDocId = DocumentsContract.getTreeDocumentId(treeUri)
+
+        fun walk(parentDocId: String, prefix: String) {
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE,
             )
-            context.contentResolver.query(childrenUri, null, null, null, null)?.use { cursor ->
+            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                val sizeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                if (idIdx < 0 || nameIdx < 0 || mimeIdx < 0) return@use
+
                 while (cursor.moveToNext()) {
-                    val docId = cursor.getString(cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
-                    val name = cursor.getString(cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
-                    val mime = cursor.getString(cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE))
-                    val size = cursor.getLong(cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE))
-                    val docUri = DocumentsContract.buildDocumentUriUsingTree(dirUri, docId)
+                    val docId = cursor.getString(idIdx) ?: continue
+                    val name = cursor.getString(nameIdx) ?: continue
+                    val mime = cursor.getString(mimeIdx) ?: ""
+                    val size = if (sizeIdx >= 0) cursor.getLong(sizeIdx) else 0L
+                    val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
                     val rel = if (prefix.isEmpty()) name else "$prefix/$name"
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) walk(docUri, rel)
-                    else result.add(Triple(docUri, rel, size))
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        walk(docId, rel)
+                    } else {
+                        result.add(Triple(docUri, rel, size))
+                    }
                 }
             }
         }
-        walk(treeUri, "")
+        walk(rootDocId, "")
         return result
     }
 

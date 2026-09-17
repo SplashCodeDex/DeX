@@ -176,6 +176,8 @@ class WanDownloadWorker(
                 throw IllegalStateException("Relay stream truncated: received $received of $totalBytes bytes for $fileName")
             }
 
+            SafStorage.finishMediaStoreUri(context, targetDocUri)
+
             // Transfer succeeded: log history and present completion notification
             TransferHistory.log(
                 context = applicationContext,

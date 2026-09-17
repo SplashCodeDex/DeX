@@ -137,6 +137,7 @@ class BatchDownloadWorker(
 
         if (outcomes.all { it.ok }) {
             outcomes.forEach { outcome ->
+                outcome.docUri?.let { SafStorage.finishMediaStoreUri(context, it) }
                 TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", outcome.docUri.toString(), peerDevice = sourceAlias)
             }
             TcpDownloadService.updateState(
@@ -149,8 +150,9 @@ class BatchDownloadWorker(
                 )
             )
             val single = outcomes.firstOrNull()
-            if (outcomes.size == 1 && single?.docUri != null) {
-                notificationHelper.showTransferCompleteNotification(single.fileName, single.docUri!!)
+            val singleDocUri = single?.docUri
+            if (outcomes.size == 1 && singleDocUri != null) {
+                notificationHelper.showTransferCompleteNotification(single.fileName, singleDocUri)
             } else {
                 showCompletionNotification(files.size)
             }
@@ -172,6 +174,7 @@ class BatchDownloadWorker(
                 deleteDocs(failed.mapNotNull { it.docUri })
                 val succeeded = outcomes.filter { it.ok }
                 succeeded.forEach { outcome ->
+                    outcome.docUri?.let { SafStorage.finishMediaStoreUri(context, it) }
                     TransferHistory.log(applicationContext, outcome.fileName, outcome.bytes, "received", outcome.docUri.toString(), peerDevice = sourceAlias)
                 }
                 failed.forEach { outcome ->

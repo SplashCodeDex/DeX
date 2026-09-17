@@ -144,7 +144,7 @@ class MainScreenViewModelTest {
     @Test
     fun `mutableStateSetOf pairedFingerprints triggers state changes on add and remove`() {
         val pairedSet = AuthState.pairedFingerprints
-        assertTrue("AuthState.pairedFingerprints must be a Compose SnapshotStateSet", pairedSet is androidx.compose.runtime.snapshots.SnapshotStateSet<*>)
+        assertEquals(androidx.compose.runtime.snapshots.SnapshotStateSet::class, pairedSet::class)
         assertFalse(pairedSet.contains(testDevice.info.fingerprint))
 
         pairedSet.add(testDevice.info.fingerprint)
