@@ -139,4 +139,38 @@ class TransferUseCaseTest {
         assertEquals("failed", TransferUseCase.STATUS_FAILED)
         assertEquals(6_000L, TransferUseCase.SESSION_LINGER_MS)
     }
+
+    @Test
+    fun `registerSession on existing session preserves in-flight progress and completion`() = runTest {
+        val useCase = TransferUseCase(backgroundScope)
+        useCase.registerSession("s-1", "Pixel", 3, 300L)
+        useCase.reportProgress(
+            "s-1",
+            TransferProgress(
+                filesDone = 2,
+                totalFiles = 3,
+                bytesTransferred = 200L,
+                totalBytes = 300L,
+                speedBps = 1000L,
+                etaSeconds = 10L,
+                currentFileName = "test.dat",
+            ),
+        )
+
+        // Re-registering existing session (e.g. from updateIncomingProgress) must not reset progress
+        useCase.registerSession("s-1", "Pixel", 3, 300L)
+
+        val session = useCase.session("s-1")!!
+        assertEquals(2, session.filesReceived)
+        assertEquals(200L, session.bytesReceived)
+        assertEquals("test.dat", session.currentFileName)
+        assertEquals(1000L, session.speedBps)
+        assertEquals(10L, session.etaSeconds)
+        assertFalse(session.isComplete)
+
+        // If completed, re-registering also preserves completion
+        useCase.markComplete("s-1", 3, 3)
+        useCase.registerSession("s-1", "Pixel", 3, 300L)
+        assertTrue(useCase.session("s-1")!!.isComplete)
+    }
 }

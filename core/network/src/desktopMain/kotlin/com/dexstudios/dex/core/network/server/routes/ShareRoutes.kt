@@ -113,6 +113,7 @@ val activeUploadSessionsProgress = ConcurrentHashMap<String, Int>()
  * cancellation before committing and before publishing completion.
  */
 val activeUploadJobs = ConcurrentHashMap<String, Job>()
+private val activeUploadCounts = ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
 
 /** Constant-time string equality for bearer/pull-token checks (length pre-checked). */
 private fun tokenEquals(presented: String?, expected: String?): Boolean {
@@ -125,6 +126,7 @@ private val shareRoutesFileLock = Any()
 
 /** Removes every trace of an incoming session: session store, progress counters, dashboard entry. */
 fun failIncomingSession(sessionId: String) {
+    activeUploadCounts.remove(sessionId)
     activeUploadSessions.remove(sessionId)
     activeUploadSessionsProgress.remove(sessionId)
     com.dexstudios.dex.core.network.TransferStateMonitor.removeSession(sessionId)
@@ -150,7 +152,10 @@ internal fun ensureSessionJanitor() {
                     .filter { now - it.value.createdAt > 10 * 60_000 }
                     .map { it.key }
                 // TTL sweeper must also clear progress + dashboard state, not just the session map
-                for (id in expired) failIncomingSession(id)
+                for (id in expired) {
+                    activeUploadJobs.remove(id)?.cancel(CancellationException("Upload session expired"))
+                    failIncomingSession(id)
+                }
                 if (activeUploadSessions.isEmpty()) break
             }
             janitorRunning.set(false)
@@ -376,9 +381,19 @@ fun Route.shareRoutes() {
             val partFile = TransferCheckpointRegistry.getOrCreatePartFile(parentDir, sessionId, fileId, safeFileName, fileMeta.size)
             val appendMode = resumeOffset > 0L
             val speedCalc = TransferSpeedCalculator()
-            // Registered BEFORE the first byte so /cancel can abort this handler mid-write.
+            // Registered BEFORE the first byte so /cancel can abort all handlers in this session mid-write.
             val uploadJob = currentCoroutineContext().job
-            activeUploadJobs[sessionId] = uploadJob
+            val sessionRootJob = activeUploadJobs.computeIfAbsent(sessionId) { SupervisorJob() }
+            if (!sessionRootJob.isActive) {
+                throw CancellationException("Incoming transfer cancelled by sender")
+            }
+            activeUploadCounts.computeIfAbsent(sessionId) { java.util.concurrent.atomic.AtomicInteger(0) }.incrementAndGet()
+            val cancelBinding = sessionRootJob.invokeOnCompletion { cause ->
+                if (cause != null) {
+                    val ex = if (cause is CancellationException) cause else CancellationException("Incoming transfer cancelled", cause)
+                    uploadJob.cancel(ex)
+                }
+            }
 
             try {
                 val channel: ByteReadChannel = call.receiveChannel()
@@ -530,9 +545,14 @@ fun Route.shareRoutes() {
                 )
                 call.respond(HttpStatusCode.InternalServerError)
             } finally {
-                // Ownership-checked: a newer handler for the same session id (resume retry)
-                // keeps its own registration.
-                activeUploadJobs.remove(sessionId, uploadJob)
+                cancelBinding.dispose()
+                val remaining = activeUploadCounts[sessionId]?.decrementAndGet() ?: 0
+                if (remaining <= 0) {
+                    activeUploadCounts.remove(sessionId)
+                    if (!activeUploadSessions.containsKey(sessionId)) {
+                        activeUploadJobs.remove(sessionId)
+                    }
+                }
             }
         }
     }
@@ -545,6 +565,8 @@ fun Route.shareRoutes() {
 private fun finishIncomingSession(sessionId: String, senderAlias: String, count: Int) {
     activeUploadSessions.remove(sessionId)
     activeUploadSessionsProgress.remove(sessionId)
+    activeUploadCounts.remove(sessionId)
+    activeUploadJobs.remove(sessionId)
 
     shareRouteScope.launch {
         delay(6000) // Keep in UI for 6s

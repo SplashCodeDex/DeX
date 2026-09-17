@@ -48,14 +48,27 @@ class TransferUseCase(
     /** Registers a session at offer/prepare time with zero progress. */
     fun registerSession(sessionId: String, senderAlias: String, totalFiles: Int, totalBytes: Long = 0L) {
         if (sessionId.isBlank()) return
-        _sessions.value = _sessions.value + (
-            sessionId to TransferSession(
-                sessionId = sessionId,
-                senderAlias = senderAlias,
-                totalFiles = totalFiles,
-                totalBytes = totalBytes,
-            )
-            )
+        synchronized(lock) {
+            val existing = _sessions.value[sessionId]
+            if (existing != null) {
+                _sessions.value = _sessions.value + (
+                    sessionId to existing.copy(
+                        senderAlias = senderAlias.ifEmpty { existing.senderAlias },
+                        totalFiles = if (totalFiles > 0) totalFiles else existing.totalFiles,
+                        totalBytes = if (totalBytes > 0L) totalBytes else existing.totalBytes,
+                    )
+                    )
+            } else {
+                _sessions.value = _sessions.value + (
+                    sessionId to TransferSession(
+                        sessionId = sessionId,
+                        senderAlias = senderAlias,
+                        totalFiles = totalFiles,
+                        totalBytes = totalBytes,
+                    )
+                    )
+            }
+        }
     }
 
     /** Live progress report — replaces the entry's progress fields verbatim. */

@@ -522,6 +522,96 @@ class ShareRoutesTest {
         }
     }
 
+    @Test
+    fun `cancel aborts ALL concurrent uploads in a multi-file session so none can commit`() = testApplication {
+        application { installShareAndControlRoutes() }
+        val fileName1 = "cancel_multi_1_${System.currentTimeMillis()}.bin"
+        val fileName2 = "cancel_multi_2_${System.currentTimeMillis()}.bin"
+        val declaredSize = 100_000L
+        val file1 = sampleFile("f1").copy(fileName = fileName1, size = declaredSize)
+        val file2 = sampleFile("f2").copy(fileName = fileName2, size = declaredSize)
+        val req = prepareRequestParsed("phone-fp", file1, file2)
+        activeUploadSessions["sess-cancel-multi"] = SessionEntry(req)
+
+        val controller = createClient { }
+        val uploadScope = CoroutineScope(Dispatchers.IO)
+        val committed1 = File(ReceiveStorage.downloadsDir(), fileName1)
+        val committed2 = File(ReceiveStorage.downloadsDir(), fileName2)
+        val staging1 = File(ReceiveStorage.downloadsDir(), "$fileName1.part.sess-cancel-multi.f1")
+        val staging2 = File(ReceiveStorage.downloadsDir(), "$fileName2.part.sess-cancel-multi.f2")
+
+        val upload1Started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val upload2Started = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        val upload1 = uploadScope.async {
+            runCatching {
+                client.post("/api/localsend/v2/upload") {
+                    parameter("sessionId", "sess-cancel-multi")
+                    parameter("fileId", "f1")
+                    setBody(object : OutgoingContent.WriteChannelContent() {
+                        override val contentType = ContentType.Application.OctetStream
+
+                        override suspend fun writeTo(channel: ByteWriteChannel) {
+                            upload1Started.set(true)
+                            repeat(50) {
+                                val chunk = ByteArray(2000)
+                                channel.writeFully(chunk, 0, chunk.size)
+                                delay(20)
+                            }
+                        }
+                    })
+                }
+            }
+        }
+
+        val upload2 = uploadScope.async {
+            runCatching {
+                client.post("/api/localsend/v2/upload") {
+                    parameter("sessionId", "sess-cancel-multi")
+                    parameter("fileId", "f2")
+                    setBody(object : OutgoingContent.WriteChannelContent() {
+                        override val contentType = ContentType.Application.OctetStream
+
+                        override suspend fun writeTo(channel: ByteWriteChannel) {
+                            upload2Started.set(true)
+                            repeat(50) {
+                                val chunk = ByteArray(2000)
+                                channel.writeFully(chunk, 0, chunk.size)
+                                delay(20)
+                            }
+                        }
+                    })
+                }
+            }
+        }
+
+        try {
+            withTimeout(10_000) {
+                while (!upload1Started.get() || !upload2Started.get()) delay(10)
+            }
+
+            val cancel = controller.post("/api/localsend/v2/cancel") { parameter("sessionId", "sess-cancel-multi") }
+            assertEquals(HttpStatusCode.OK, cancel.status)
+
+            val res1 = withTimeout(15_000) { upload1.await() }
+            val res2 = withTimeout(15_000) { upload2.await() }
+
+            assertTrue(res1.isFailure || !res1.getOrThrow().status.isSuccess(), "Upload 1 must be aborted")
+            assertTrue(res2.isFailure || !res2.getOrThrow().status.isSuccess(), "Upload 2 must be aborted")
+            assertFalse(activeUploadSessions.containsKey("sess-cancel-multi"), "Session record must be dropped")
+            assertFalse(committed1.exists(), "Cancelled upload 1 must not commit")
+            assertFalse(committed2.exists(), "Cancelled upload 2 must not commit")
+        } finally {
+            uploadScope.cancel()
+            TransferCheckpointRegistry.discardPartFile("sess-cancel-multi", "f1")
+            TransferCheckpointRegistry.discardPartFile("sess-cancel-multi", "f2")
+            staging1.delete()
+            staging2.delete()
+            committed1.delete()
+            committed2.delete()
+        }
+    }
+
     private fun prepareRequestParsed(fingerprint: String, vararg files: FileDto): PrepareUploadRequestDto = Json.decodeFromString<PrepareUploadRequestDto>(prepareRequest(fingerprint, *files))
 
     private fun assertValidPrepareResponse(dto: PrepareUploadResponseDto) {
