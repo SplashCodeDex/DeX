@@ -209,7 +209,7 @@ class TransferOverlayBridge(
                             autoDismissTimeoutMs = null,
                             onActionClick = {
                                 scope.launch {
-                                    fileExplorerService.cancelPull("", state.requestId)
+                                    fileExplorerService.cancelPull(state.fingerprint, state.requestId)
                                 }
                             },
                         )
@@ -228,7 +228,7 @@ class TransferOverlayBridge(
                         activePullBannerId = null
                     }
 
-                    if (state.isDone && (state.totalFiles > 0 || state.activeFileName.isNotBlank())) {
+                    if (state.isDone && !state.isCancelled && !state.isFailed && (state.totalFiles > 0 || state.activeFileName.isNotBlank())) {
                         val downloadDir = getDeXDownloadDirectory()
                         val fileName = state.activeFileName.ifBlank { "file" }.truncateMiddle(30)
                         val targetFile = File(downloadDir, state.activeFileName.ifBlank { "file" })

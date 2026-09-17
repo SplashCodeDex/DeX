@@ -35,6 +35,9 @@ data class PullProgressState(
     val etaSeconds: Long? = null,
     val isPulling: Boolean = false,
     val isDone: Boolean = false,
+    val isCancelled: Boolean = false,
+    val isFailed: Boolean = false,
+    val fingerprint: String = "",
 )
 
 class FileExplorerService {
@@ -187,6 +190,7 @@ class FileExplorerService {
             totalFiles = files.size,
             totalBytes = files.sumOf { it.size },
             isPulling = true,
+            fingerprint = fingerprint,
         )
 
         requestId
@@ -195,16 +199,31 @@ class FileExplorerService {
     /**
      * Cancels an in-flight pull operation.
      */
-    suspend fun cancelPull(fingerprint: String, requestId: String) = withContext(Dispatchers.IO) {
-        if (fingerprint.isBlank() || requestId.isBlank()) return@withContext
+    suspend fun cancelPull(fingerprint: String = "", requestId: String = "") = withContext(Dispatchers.IO) {
+        val current = _pullProgress.value
+        val resolvedReqId = requestId.ifBlank { current.requestId }
+        val targetFp = fingerprint.ifBlank { current.fingerprint }
 
-        val cancelPayload = ProtocolEnvelope.envelopeOf(MessageTypes.PULL_CANCEL) {
-            put(FieldNames.REQUEST_ID, requestId)
+        if (resolvedReqId.isNotBlank()) {
+            val cancelPayload = ProtocolEnvelope.envelopeOf(MessageTypes.PULL_CANCEL) {
+                put(FieldNames.REQUEST_ID, resolvedReqId)
+            }
+
+            if (targetFp.isNotBlank()) {
+                WebSocketConnectionManager.sendRequest(targetFp, cancelPayload)
+            } else {
+                WebSocketConnectionManager.connectedFingerprints().forEach { fp ->
+                    WebSocketConnectionManager.sendRequest(fp, cancelPayload)
+                }
+            }
+            DexRequestStore.cancelRequest(resolvedReqId)
         }
 
-        WebSocketConnectionManager.sendRequest(fingerprint, cancelPayload)
-        DexRequestStore.cancelRequest(requestId)
-        _pullProgress.value = _pullProgress.value.copy(isPulling = false, isDone = true)
+        _pullProgress.value = current.copy(
+            isPulling = false,
+            isDone = false,
+            isCancelled = true,
+        )
     }
 
     fun updatePullProgress(progress: PullProgressState) {

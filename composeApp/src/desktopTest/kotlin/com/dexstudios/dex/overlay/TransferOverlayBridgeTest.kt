@@ -147,6 +147,81 @@ class TransferOverlayBridgeTest {
     }
 
     @Test
+    fun testPullCancellationDismissesBannerWithoutSpawningReceivedAlert() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val testScope = TestScope(testDispatcher)
+
+        val overlayManager = OverlayManager(scope = testScope, soundService = null)
+        val uploadFlow = MutableStateFlow(UploadState())
+        val pullFlow = MutableStateFlow(PullProgressState())
+
+        var cancelledFingerprint: String? = null
+        var cancelledRequestId: String? = null
+        val fileExplorerService = mockk<FileExplorerService>(relaxed = true) {
+            io.mockk.every { pullProgress } returns pullFlow
+            io.mockk.coEvery { cancelPull(any(), any()) } coAnswers {
+                cancelledFingerprint = firstArg()
+                cancelledRequestId = secondArg()
+            }
+        }
+        val clientEngine = mockk<ClientEngine>(relaxed = true) {
+            io.mockk.every { uploadState } returns uploadFlow
+        }
+
+        val bridge = TransferOverlayBridge(
+            overlayManager = overlayManager,
+            clientEngine = clientEngine,
+            fileExplorerService = fileExplorerService,
+            scope = testScope,
+        )
+        bridge.start()
+
+        // 1. Pull active with real fingerprint
+        pullFlow.value = PullProgressState(
+            requestId = "pull-req-42",
+            isPulling = true,
+            activeFileName = "classified_doc.pdf",
+            totalFiles = 1,
+            completedFiles = 0,
+            progress = 0.3f,
+            fingerprint = "phone-fp-99",
+        )
+        testScope.advanceUntilIdle()
+
+        assertEquals(1, overlayManager.actionAlerts.value.size)
+        val banner = overlayManager.actionAlerts.value.first() as BannerNotification
+        assertEquals("classified_doc.pdf", banner.title)
+
+        // 2. User clicks cancel action on banner
+        banner.onActionClick?.invoke()
+        testScope.advanceUntilIdle()
+
+        // Cancellation must pass the real fingerprint (NOT empty string)
+        assertEquals("phone-fp-99", cancelledFingerprint, "cancelPull must receive real fingerprint from state")
+        assertEquals("pull-req-42", cancelledRequestId)
+
+        // 3. State transitions to cancelled (not done)
+        pullFlow.value = PullProgressState(
+            requestId = "pull-req-42",
+            isPulling = false,
+            isDone = false,
+            isCancelled = true,
+            activeFileName = "classified_doc.pdf",
+            totalFiles = 1,
+            completedFiles = 0,
+            progress = 0.3f,
+            fingerprint = "phone-fp-99",
+        )
+        testScope.advanceUntilIdle()
+
+        // Active banner should be dismissed AND NO completion alert card should appear!
+        assertEquals(0, overlayManager.actionAlerts.value.size, "No AirDrop completion card should be spawned for cancelled pull")
+        assertEquals(0, overlayManager.statusToasts.value.size)
+
+        bridge.stop()
+    }
+
+    @Test
     fun testBatchPullSuccessSpawnsBatchCompletionCard() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val testScope = TestScope(testDispatcher)

@@ -348,21 +348,33 @@ fun Route.webSocketRoutes(pairingEngine: com.dexstudios.dex.core.domain.pairing.
                                     val explorer = org.koin.core.context.GlobalContext.get()
                                         .get<com.dexstudios.dex.core.network.services.FileExplorerService>()
                                     val current = explorer.pullProgress.value
-                                    explorer.updatePullProgress(
-                                        current.copy(
-                                            requestId = reqId,
-                                            activeFileName = currentFile.ifEmpty { current.activeFileName },
-                                            completedFiles = doneFiles,
-                                            totalFiles = totalFiles,
-                                            bytesTransferred = sentBytes,
-                                            totalBytes = totalBytes,
-                                            progress = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else current.progress,
-                                            speedBps = speedSample.speedBps,
-                                            etaSeconds = speedSample.etaSeconds,
-                                            isPulling = state == FieldNames.STATE_RUNNING,
-                                            isDone = state == FieldNames.STATE_DONE,
-                                        ),
-                                    )
+
+                                    // Guard against out-of-order or stale progress reports from superseded requests
+                                    if (current.isPulling && current.requestId.isNotBlank() && current.requestId != reqId) {
+                                        Logger.w("Ignoring stale pull-progress frame for request $reqId (active: ${current.requestId})")
+                                    } else {
+                                        val isDone = state == FieldNames.STATE_DONE
+                                        val isCancelled = state == FieldNames.STATE_CANCELLED
+                                        val isFailed = state == FieldNames.STATE_FAILED
+                                        explorer.updatePullProgress(
+                                            current.copy(
+                                                requestId = reqId,
+                                                activeFileName = currentFile.ifEmpty { current.activeFileName },
+                                                completedFiles = doneFiles,
+                                                totalFiles = totalFiles,
+                                                bytesTransferred = sentBytes,
+                                                totalBytes = totalBytes,
+                                                progress = if (totalBytes > 0) sentBytes.toFloat() / totalBytes else current.progress,
+                                                speedBps = speedSample.speedBps,
+                                                etaSeconds = speedSample.etaSeconds,
+                                                isPulling = state == FieldNames.STATE_RUNNING,
+                                                isDone = isDone,
+                                                isCancelled = isCancelled,
+                                                isFailed = isFailed,
+                                                fingerprint = fingerprint ?: current.fingerprint,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
 
