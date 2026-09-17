@@ -2,6 +2,9 @@
 ## [Unreleased]
 ### Fixed
 - **[fix] Audit follow-up: validation, deployment and Android preview responsiveness**: Unix workflow calls now use explicit shell interpreters; Windows release uses `gradlew.bat`. Validation targets the existing core modules and runs Android unit tests. Server deployment selects a prebuilt Docker target for the CI-tested JAR while retaining the default full-source build; missing inputs fail before container replacement. Android selection thumbnails and preview cards resolve provider metadata on `Dispatchers.IO`, with URI-keyed loading state and a dispatcher regression test. Runtime/build verification remains pending; GitLab CI migration is not included.
+- **[fix] Background manifest enqueue**: Picker, share-target and pending-share paths now use background manifest publication and durable WorkManager enqueue. Navigation retains selections on enqueue failure; share-target activities wait for enqueue before finishing. Both direct upload and punch picker paths avoid inline URI payloads.
+- **[fix] Selection-size concurrency**: Size calculation uses immutable selection/cache snapshots, checks cancellation after provider calls, and publishes results only on the UI thread for the matching selection. Added collection-mutation and late-cancellation tests; execution is pending.
+- **[fix] Android upload manifests**: Work requests now reference app-private, work-ID-keyed URI manifests instead of embedding unbounded URI JSON in WorkManager Data. Upload and punch workers retain compatibility with old inline jobs. Manifests survive retries and are cleaned only after WorkManager confirms terminal state. Added large-selection, recreation, compatibility and cleanup tests; execution is pending.
 
 ### Added
 - **[minor] Multi-Tier Dynamic Island Selection Counter with Interactive Inspection Carousel (`SelectedItemsCounterPill.kt`, `IslandComponents.kt`, `Formatters.kt`, `Navigation.kt`)**:
