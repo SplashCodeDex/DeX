@@ -61,6 +61,7 @@ class PunchSendWorker(
         val treeEntries = folderTreeUri?.let { tree -> SafStorage.listTreeFiles(applicationContext, tree) }
         if (treeEntries != null && treeEntries.isEmpty()) {
             client.updateUploadState(UploadState(fileName = "Folder", error = "The folder is empty", isUploading = false))
+            if (client.activeWorkId == id) client.activeWorkId = null
             return@withContext Result.failure()
         }
         val relativePaths: List<String>? = treeEntries?.map { it.second }
@@ -69,25 +70,71 @@ class PunchSendWorker(
         setForeground(createForegroundInfo(0, "Connecting directly..."))
         client.updateUploadState(UploadState(fileName = "Connecting directly...", isUploading = true, totalFiles = sendUris.size))
 
-        // 1. Try the direct NAT-punched path first
-        val error = punchSession.sendTo(
-            targetFingerprint = targetFingerprint,
-            uris = sendUris,
-            relativePaths = relativePaths,
-            isCancelled = { isStopped },
-            onProgress = { progress, fileName -> reportProgress(progress, fileName, "direct", sendUris.size) }
-        )
+        try {
+            // 1. Try the direct NAT-punched path first
+            val error = punchSession.sendTo(
+                targetFingerprint = targetFingerprint,
+                uris = sendUris,
+                relativePaths = relativePaths,
+                isCancelled = { isStopped },
+                onProgress = { progress, fileName -> reportProgress(progress, fileName, "direct", sendUris.size) }
+            )
 
-        // 2. Punch failed (symmetric NAT / CGNAT): stream through the PC instead
-        val fallbackError = if (error == null) null else relayViaPc(targetFingerprint, sendUris, relativePaths)
+            // 2. Punch failed (symmetric NAT / CGNAT): stream through the PC instead
+            val fallbackError = if (error == null) null else relayViaPc(targetFingerprint, sendUris, relativePaths)
 
-        if (fallbackError == null) {
-            client.updateUploadState(UploadState(fileName = if (sendUris.size == 1) "1 file" else "${sendUris.size} files", isSuccess = true))
-            Result.success()
-        } else {
-            Timber.w("Direct transfer failed: $error; relay fallback failed: $fallbackError")
-            client.updateUploadState(UploadState(fileName = "Direct transfer", error = fallbackError, isUploading = false))
-            Result.failure()
+            if (isStopped) {
+                val displayName = if (sendUris.size == 1) "1 file" else "${sendUris.size} files"
+                client.updateUploadState(
+                    UploadState(
+                        fileName = displayName,
+                        error = "Transfer cancelled",
+                        isUploading = false,
+                        totalFiles = sendUris.size
+                    )
+                )
+                if (client.activeWorkId == id) client.activeWorkId = null
+                return@withContext Result.failure()
+            }
+
+            if (client.activeWorkId == id) {
+                client.activeWorkId = null
+            }
+
+            if (fallbackError == null) {
+                client.updateUploadState(UploadState(fileName = if (sendUris.size == 1) "1 file" else "${sendUris.size} files", isSuccess = true))
+                Result.success()
+            } else {
+                Timber.w("Direct transfer failed: $error; relay fallback failed: $fallbackError")
+                client.updateUploadState(UploadState(fileName = "Direct transfer", error = fallbackError, isUploading = false))
+                Result.failure()
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Timber.i("PunchSendWorker: Direct transfer cancelled by user")
+            val displayName = if (sendUris.size == 1) "1 file" else "${sendUris.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = "Transfer cancelled",
+                    isUploading = false,
+                    totalFiles = sendUris.size
+                )
+            )
+            if (client.activeWorkId == id) client.activeWorkId = null
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "PunchSendWorker: Direct transfer failed unexpectedly")
+            val displayName = if (sendUris.size == 1) "1 file" else "${sendUris.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = e.message ?: "Transfer failed",
+                    isUploading = false,
+                    totalFiles = sendUris.size
+                )
+            )
+            if (client.activeWorkId == id) client.activeWorkId = null
+            return@withContext Result.failure()
         }
     }
 

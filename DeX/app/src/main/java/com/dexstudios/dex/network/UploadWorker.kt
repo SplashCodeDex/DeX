@@ -149,7 +149,24 @@ class UploadWorker(
         if (response == null) {
             // Transport failure (-1) is retryable; auth/HTTP failures are not
             val retrying = prepared.httpStatus == -1 && !isStopped && runAttemptCount < maxRetryAttempts
-            return@withContext if (retrying) Result.retry() else Result.failure()
+            if (retrying) {
+                return@withContext Result.retry()
+            }
+            val errorMsg = determineTerminalError(prepared.httpStatus)
+            val displayName = if (fileData.size == 1) fileData.values.first().second else "${fileData.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = errorMsg,
+                    isUploading = false,
+                    totalFiles = fileData.size
+                )
+            )
+            fileData.values.forEach { (_, name, size) ->
+                TransferHistory.log(applicationContext, name, size, "sent", null, peerDevice = targetAlias, status = "failed")
+            }
+            if (client.activeWorkId == id) client.activeWorkId = null
+            return@withContext Result.failure()
         }
 
         val totalSent = AtomicLong(0L)
@@ -219,7 +236,48 @@ class UploadWorker(
                 }
             }
         } catch (e: CancellationException) {
+            Timber.i("UploadWorker: Transfer cancelled by user")
+            val displayName = if (fileData.size == 1) fileData.values.first().second else "${fileData.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = "Upload cancelled",
+                    isUploading = false,
+                    totalFiles = fileData.size
+                )
+            )
+            if (client.activeWorkId == id) client.activeWorkId = null
             throw e
+        } catch (e: Exception) {
+            Timber.e(e, "UploadWorker: Transfer failed unexpectedly")
+            val displayName = if (fileData.size == 1) fileData.values.first().second else "${fileData.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = e.message ?: "Upload failed",
+                    isUploading = false,
+                    totalFiles = fileData.size
+                )
+            )
+            fileData.values.forEach { (_, name, size) ->
+                TransferHistory.log(applicationContext, name, size, "sent", null, peerDevice = targetAlias, status = "failed")
+            }
+            if (client.activeWorkId == id) client.activeWorkId = null
+            return@withContext Result.failure()
+        }
+
+        if (isStopped) {
+            val displayName = if (fileData.size == 1) fileData.values.first().second else "${fileData.size} files"
+            client.updateUploadState(
+                UploadState(
+                    fileName = displayName,
+                    error = "Upload cancelled",
+                    isUploading = false,
+                    totalFiles = fileData.size
+                )
+            )
+            if (client.activeWorkId == id) client.activeWorkId = null
+            return@withContext Result.failure()
         }
 
         val failed = outcomes.filter { !it.second.ok }
@@ -252,6 +310,10 @@ class UploadWorker(
             client.updateUploadState(
                 client.uploadState.value.copy(error = "Cannot read one or more files", isUploading = false)
             )
+        }
+
+        if (client.activeWorkId == id) {
+            client.activeWorkId = null
         }
 
         when {
@@ -322,4 +384,14 @@ class UploadWorker(
             // UI updates must never kill the transfer
         }
     }
+
+    companion object {
+        internal fun determineTerminalError(httpStatus: Int): String = when (httpStatus) {
+            401, 403 -> "Transfer rejected: device not authorized"
+            507 -> "Target device has insufficient storage"
+            -1 -> "Could not connect to target device"
+            else -> "Transfer rejected (HTTP $httpStatus)"
+        }
+    }
 }
+
