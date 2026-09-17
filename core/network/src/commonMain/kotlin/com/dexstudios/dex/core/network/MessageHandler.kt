@@ -101,7 +101,7 @@ class MessageHandler(
                     }
                 }
 
-                MessageTypes.LIST_SHARED_FOLDERS, MessageTypes.BROWSE_FOLDER, MessageTypes.PULL_FILES, MessageTypes.GRANT_SHARED_FOLDER ->
+                MessageTypes.LIST_SHARED_FOLDERS, MessageTypes.BROWSE_FOLDER, MessageTypes.PULL_FILES, MessageTypes.PULL_CANCEL, MessageTypes.GRANT_SHARED_FOLDER ->
                     engine.handleFileExplorerRequest(type, dataElement)
 
                 else -> {

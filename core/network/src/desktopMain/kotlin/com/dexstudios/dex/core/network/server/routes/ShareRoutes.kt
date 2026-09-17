@@ -389,13 +389,15 @@ fun Route.shareRoutes() {
                         var lastReportMs = 0L
 
                         while (!channel.isClosedForRead) {
-                            channel.awaitContent()
-                            val packet = channel.readRemaining(buffer.size.toLong())
-                            if (packet.exhausted()) break
-                            while (!packet.exhausted()) {
-                                val n = packet.readAtMostTo(buffer, 0, buffer.size)
+                            currentCoroutineContext().ensureActive()
+                            val n = channel.readAvailable(buffer, 0, buffer.size)
+                            if (n == -1) break
+                            if (n > 0) {
                                 output.write(buffer, 0, n)
                                 received += n
+                                if (received > fileMeta.size) {
+                                    throw IllegalArgumentException("Upload exceeded declared file size of ${fileMeta.size} bytes (received $received bytes)")
+                                }
                             }
 
                             val now = System.currentTimeMillis()
@@ -427,13 +429,20 @@ fun Route.shareRoutes() {
                 // not publish completion.
                 currentCoroutineContext().ensureActive()
 
-                // A body that ended cleanly but SHORT must never become a "completed" file:
-                // the staged length is the last line of defence behind Content-Length. Staging
-                // and checkpoint survive, so the sender can resume the remainder instead of
-                // having a truncated file indexed, relayed and reported as delivered.
+                // A body that ended with a size mismatch against the declared manifest size
+                // must never become a "completed" file.
+                // - Truncated (stagedBytes < fileMeta.size): staging and checkpoint survive so
+                //   the sender can resume the remainder.
+                // - Oversized (stagedBytes > fileMeta.size): unresumable and corrupted, staging
+                //   is discarded so disk space is reclaimed immediately.
                 val stagedBytes = partFile.length()
-                if (fileMeta.size > 0L && stagedBytes != fileMeta.size) {
-                    Logger.w("ShareRoutes: refusing truncated upload of $safeFileName: staged $stagedBytes of ${fileMeta.size} bytes")
+                if (stagedBytes != fileMeta.size) {
+                    if (stagedBytes > fileMeta.size) {
+                        Logger.w("ShareRoutes: refusing oversized upload of $safeFileName: staged $stagedBytes of ${fileMeta.size} bytes")
+                        TransferCheckpointRegistry.discardPartFile(sessionId, fileId)
+                    } else {
+                        Logger.w("ShareRoutes: refusing truncated upload of $safeFileName: staged $stagedBytes of ${fileMeta.size} bytes")
+                    }
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -493,9 +502,25 @@ fun Route.shareRoutes() {
                 // so the read really stops.
                 failIncomingSession(sessionId)
                 throw e
+            } catch (e: IllegalArgumentException) {
+                failIncomingSession(sessionId)
+                if (partFile.exists() && partFile.length() > fileMeta.size) {
+                    TransferCheckpointRegistry.discardPartFile(sessionId, fileId)
+                }
+                val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
+                com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
+                    name = safeFileName,
+                    size = fileMeta.size,
+                    direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
+                    peerDevice = senderAlias,
+                )
+                call.respond(HttpStatusCode.BadRequest)
             } catch (_: Exception) {
                 // A failed upload must not leave a phantom transfer on the dashboard forever
                 failIncomingSession(sessionId)
+                if (partFile.exists() && partFile.length() > fileMeta.size) {
+                    TransferCheckpointRegistry.discardPartFile(sessionId, fileId)
+                }
                 val senderAlias = sessionReq.info.alias.ifEmpty { "Device" }
                 com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
                     name = safeFileName,

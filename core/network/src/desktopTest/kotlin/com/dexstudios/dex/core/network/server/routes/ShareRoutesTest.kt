@@ -415,6 +415,55 @@ class ShareRoutesTest {
     }
 
     @Test
+    fun `upload refuses bytes for a declared zero-byte file`() = testApplication {
+        application { installShareRoutes() }
+        val fileName = "zero_byte_probe_${System.currentTimeMillis()}.bin"
+        val file = sampleFile("f1").copy(fileName = fileName, size = 0L)
+        activeUploadSessions["sess-zero"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+        val staging = File(ReceiveStorage.downloadsDir(), "$fileName.part.sess-zero.f1")
+        val destination = File(ReceiveStorage.downloadsDir(), fileName)
+
+        try {
+            val response = client.post("/api/localsend/v2/upload") {
+                parameter("sessionId", "sess-zero")
+                parameter("fileId", "f1")
+                setBody(ByteArray(100))
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertFalse(destination.exists(), "A non-empty body for a 0-byte file must never be committed")
+        } finally {
+            TransferCheckpointRegistry.discardPartFile("sess-zero", "f1")
+            staging.delete()
+            destination.delete()
+        }
+    }
+
+    @Test
+    fun `upload refuses a body longer than the declared size and discards corrupted staging`() = testApplication {
+        application { installShareRoutes() }
+        val fileName = "oversized_probe_${System.currentTimeMillis()}.bin"
+        val file = sampleFile("f1").copy(fileName = fileName, size = 100L)
+        activeUploadSessions["sess-oversized"] = SessionEntry(prepareRequestParsed("phone-fp", file))
+        val staging = File(ReceiveStorage.downloadsDir(), "$fileName.part.sess-oversized.f1")
+        val destination = File(ReceiveStorage.downloadsDir(), fileName)
+
+        try {
+            val response = client.post("/api/localsend/v2/upload") {
+                parameter("sessionId", "sess-oversized")
+                parameter("fileId", "f1")
+                setBody(ByteArray(500))
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertFalse(destination.exists(), "An oversized body must never be committed")
+            assertFalse(staging.exists(), "An unresumable oversized staging file must be discarded")
+        } finally {
+            TransferCheckpointRegistry.discardPartFile("sess-oversized", "f1")
+            staging.delete()
+            destination.delete()
+        }
+    }
+
+    @Test
     fun `cancel aborts the live upload so it can neither commit nor report success`() = testApplication {
         application { installShareAndControlRoutes() }
         val fileName = "cancel_probe_${System.currentTimeMillis()}.bin"

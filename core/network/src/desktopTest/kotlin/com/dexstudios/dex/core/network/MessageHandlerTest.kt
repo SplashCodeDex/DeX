@@ -503,4 +503,16 @@ class MessageHandlerTest {
         assertEquals("phone-fp-wan", call.fingerprint)
         assertEquals("Phone Device", call.sourceAlias)
     }
+
+    // === File Explorer ===
+
+    @Test
+    fun `pull-cancel routes to engine file explorer handler`() = runBlocking {
+        val cancelJson = """{"requestId":"req-123"}"""
+        handler.handleMessage(frame("pull-cancel", cancelJson), "10.0.0.1", 1)
+        assertEquals(1, engine.fileExplorerRequests.size)
+        val (type, data) = engine.fileExplorerRequests.single()
+        assertEquals("pull-cancel", type)
+        assertEquals("req-123", data["requestId"]?.jsonPrimitive?.content)
+    }
 }
