@@ -208,4 +208,48 @@ class WanRelayClientTest {
             runBlocking { transport.closeSession(session) }
         }
     }
+
+    @Test
+    fun `zero-byte transfer round-trips cleanly through the relay`() = testApplication {
+        application { installRelay() }
+        val transport = WanRelayClient(
+            client = createClient {},
+            baseUrlProvider = { "http://localhost" },
+            tokenProvider = { "token-live" },
+        )
+        val session = transport.openSession("fp-phone")
+        try {
+            runBlocking {
+                transport.upload(session, "pair-secret", ByteArrayInputStream(ByteArray(0)))
+            }
+            val received = ByteArrayOutputStream()
+            runBlocking { transport.download(session, "pair-secret", received, maxBytes = 0L) }
+            assertEquals(0, received.size())
+        } finally {
+            runBlocking { transport.closeSession(session) }
+        }
+    }
+
+    @Test
+    fun `download respects maxBytes limit and aborts oversized stream early`() = testApplication {
+        application { installRelay() }
+        val transport = WanRelayClient(
+            client = createClient {},
+            baseUrlProvider = { "http://localhost" },
+            tokenProvider = { "token-live" },
+        )
+        val session = transport.openSession("fp-phone")
+        try {
+            val payload = ByteArray(1024) { 0x42.toByte() }
+            runBlocking {
+                transport.upload(session, "pair-secret", ByteArrayInputStream(payload))
+            }
+            val received = ByteArrayOutputStream()
+            assertFailsWith<IllegalStateException> {
+                runBlocking { transport.download(session, "pair-secret", received, maxBytes = 500L) }
+            }
+        } finally {
+            runBlocking { transport.closeSession(session) }
+        }
+    }
 }

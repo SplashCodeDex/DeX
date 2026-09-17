@@ -155,6 +155,10 @@ class WanDownloadWorker(
                         output.write(plaintext)
                         received += plaintext.size
 
+                        if (totalBytes >= 0L && received > totalBytes) {
+                            throw IllegalStateException("Relay stream exceeded advertised size: received $received of $totalBytes bytes for $fileName")
+                        }
+
                         reportProgress(received, totalBytes, fileName, sourceAlias, sourceFingerprint)
                     }
                 } ?: throw IllegalStateException("Cannot open output stream for $targetDocUri")
@@ -172,7 +176,7 @@ class WanDownloadWorker(
             // a "delivered" record. The desktop receiver already enforces this
             // (DesktopPlatformEngine.downloadWanRelay), and the two platforms must not disagree
             // about what "delivered" means.
-            if (totalBytes > 0L && received != totalBytes) {
+            if (totalBytes >= 0L && received != totalBytes) {
                 throw IllegalStateException("Relay stream truncated: received $received of $totalBytes bytes for $fileName")
             }
 

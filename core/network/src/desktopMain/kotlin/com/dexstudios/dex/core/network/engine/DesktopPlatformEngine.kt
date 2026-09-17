@@ -109,9 +109,10 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
                 )
                 val session = WanRelayClient.RelaySession(sessionId, streamToken, fingerprint)
                 part.outputStream().use { output ->
-                    relayClient.download(session, pairedToken, output)
+                    val maxAllowed = if (totalBytes >= 0L) totalBytes else -1L
+                    relayClient.download(session, pairedToken, output, maxBytes = maxAllowed)
                 }
-                if (totalBytes > 0 && part.length() != totalBytes) {
+                if (totalBytes >= 0L && part.length() != totalBytes) {
                     throw IllegalStateException("Size mismatch: expected $totalBytes, got ${part.length()}")
                 }
                 val committed = com.dexstudios.dex.core.network.server.ReceiveStorage.safeCommit(part, dest)

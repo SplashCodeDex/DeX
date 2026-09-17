@@ -165,7 +165,7 @@ class WanRelayClient(private val client: HttpClient, private val baseUrlProvider
      * A [com.dexstudios.dex.core.network.RelayCryptoException] (tamper / wrong key /
      * truncation / hostile framing) aborts; the partial output is the caller's to discard.
      */
-    suspend fun download(session: RelaySession, pairedToken: String, output: OutputStream, onProgress: (bytesReceived: Long) -> Unit = {}) {
+    suspend fun download(session: RelaySession, pairedToken: String, output: OutputStream, maxBytes: Long = -1L, onProgress: (bytesReceived: Long) -> Unit = {}) {
         require(pairedToken.isNotBlank()) { "paired token required — unpaired devices cannot relay" }
         val key = RelayCrypto.deriveSessionKey(pairedToken, session.sessionId)
         val base = baseUrlProvider().trim().trimEnd('/')
@@ -198,6 +198,9 @@ class WanRelayClient(private val client: HttpClient, private val baseUrlProvider
             output.write(plaintext)
             expectedSeq++
             received += plaintext.size
+            if (maxBytes >= 0L && received > maxBytes) {
+                throw IllegalStateException("relay stream exceeded expected size: $received > $maxBytes")
+            }
             onProgress(received)
         }
     }
