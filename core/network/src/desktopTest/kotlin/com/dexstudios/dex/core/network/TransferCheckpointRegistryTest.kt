@@ -120,4 +120,22 @@ class TransferCheckpointRegistryTest {
         assertTrue(part.exists(), "Staging must survive a failed commit so the upload can resume")
         assertEquals(8L, TransferCheckpointRegistry.getExistingOffset("session-blocked", "file-blocked"))
     }
+
+    @Test
+    fun `commitPartFile creates nested parent directories when destFile parent does not exist`() {
+        val nestedDest = File(tempDir, "subfolder/nested/reports/quarterly.pdf")
+        assertFalse(nestedDest.parentFile!!.exists(), "Parent directories must not exist initially")
+
+        val part = TransferCheckpointRegistry.getOrCreatePartFile(tempDir, "session-nested", "file-nested", "quarterly.pdf", 12L)
+        part.writeBytes("confidential".toByteArray())
+
+        val committed = TransferCheckpointRegistry.commitPartFile("session-nested", "file-nested", nestedDest)
+
+        assertNotNull(committed, "Commit to nested non-existent directory must succeed")
+        assertTrue(nestedDest.parentFile!!.exists(), "Parent directories must be created by commit")
+        assertTrue(committed.exists(), "Committed file must exist")
+        assertEquals("confidential", committed.readText())
+        assertFalse(part.exists(), "Staging part file must be cleaned up on successful commit")
+        assertEquals(0L, TransferCheckpointRegistry.getExistingOffset("session-nested", "file-nested"))
+    }
 }

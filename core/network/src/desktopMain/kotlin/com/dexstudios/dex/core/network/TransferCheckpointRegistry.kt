@@ -45,6 +45,7 @@ object TransferCheckpointRegistry {
         }
 
         // Clean sanitize filename and attach session + file unique .part staging suffix
+        parentDir.mkdirs()
         val safeName = ReceiveStorage.sanitizeFileName(fileName)
         val partFile = File(parentDir, "$safeName.part.$sessionId.$fileId")
         checkpoints[k] = CheckpointEntry(
@@ -98,12 +99,14 @@ object TransferCheckpointRegistry {
 
         synchronized(destinationLock) {
             val free = firstFreeDestination(destFile)
+            free.parentFile?.mkdirs()
             if (part.renameTo(free)) {
                 checkpoints.remove(k)
                 return free
             }
 
             // Rename refused: cross-volume, or a racing writer occupied the name after the scan.
+            destFile.parentFile?.mkdirs()
             val reserved = createUniquePlaceholder(destFile)
             if (reserved == null) {
                 Logger.e("TransferCheckpointRegistry: Could not place part file at ${destFile.absolutePath}")
@@ -138,6 +141,7 @@ object TransferCheckpointRegistry {
      */
     private fun createUniquePlaceholder(destFile: File): File? {
         val parent = destFile.parentFile ?: return null
+        parent.mkdirs()
         val sanitizedName = ReceiveStorage.sanitizeFileName(destFile.name)
         val target = if (sanitizedName != destFile.name) File(parent, sanitizedName) else destFile
         if (runCatching { target.createNewFile() }.getOrDefault(false)) return target
