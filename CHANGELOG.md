@@ -1,6 +1,10 @@
 # Changelog
 ## [Unreleased]
 ### Fixed
+- **[fix] Received file index size verification & bounded deduplication cache (`ShareRoutes.kt`, `ReceivedFileIndexTest.kt`)**:
+  - **Live Content Integrity**: `ReceivedFileIndex.findLive` now verifies that the cached file on disk not only exists, but is a regular file whose current length exactly matches the indexed payload size. Stale entries whose disk files have been truncated, modified, or replaced with directories are automatically invalidated and evicted from the deduplication index, preventing false `[SKIP]` responses that would cause peers to withhold transfers and lead to corrupt/missing data in onward relays.
+  - **Invalid Size & Hash Guard**: `ReceivedFileIndex.record` and key generation reject non-positive sizes (`size <= 0`) and missing/empty partial hashes, preventing malformed dedupe entries.
+  - **Bounded Memory Footprint**: Capped `ReceivedFileIndex` cache to 4,096 entries with automatic FIFO pruning when capacity is reached, preventing unbounded memory growth in long-running desktop sessions.
 - **[fix] Windows reserved device names collision & path segment sanitization (`ReceiveStorage.kt`, `TransferCheckpointRegistry.kt`, `ShareRoutes.kt`, `ReceiveStorageTest.kt`)**:
   - **MS-DOS Reserved Device Protection**: Inbound file transfers and relative path segments are strictly guarded against Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, case-insensitively, including stems with multiple extensions like `con.tar.gz`). Reserved device stems are prepended with `_` (e.g. `_con.txt`), preventing Win32 IO character device collision crashes. Legitimate names beginning with reserved prefixes (such as `contact.txt`, `auxiliary.bin`) are preserved intact.
   - **Staging Part File Safety**: Staging filenames in `TransferCheckpointRegistry` sanitize the target filename with `ReceiveStorage.sanitizeFileName` before appending `.part.$sessionId.$fileId`, eliminating character device driver collisions during active write staging.

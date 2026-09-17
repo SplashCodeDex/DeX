@@ -45,10 +45,11 @@ data class ShareTargetPayload(val files: List<String>, val targetFingerprint: St
  * partialHash are never indexed, so empty/unknown-content payloads always get fresh names.
  */
 object ReceivedFileIndex {
+    private const val MAX_INDEX_ENTRIES = 4096
     private val byKey = ConcurrentHashMap<String, String>()
 
     private fun key(size: Long, partialHash: String?): String? {
-        if (partialHash.isNullOrEmpty()) return null
+        if (size <= 0L || partialHash.isNullOrEmpty()) return null
         return "$size:$partialHash"
     }
 
@@ -57,16 +58,24 @@ object ReceivedFileIndex {
 
     fun record(file: File, size: Long, partialHash: String?) {
         val k = key(size, partialHash) ?: return
+        if (!file.exists() || !file.isFile || file.length() != size) return
+        if (byKey.size >= MAX_INDEX_ENTRIES) {
+            byKey.keys().nextElement()?.let { byKey.remove(it) }
+        }
         byKey[k] = file.absolutePath
     }
 
-    /** A previously-indexed file may have been deleted by the user; drop dead entries lazily. */
-    private fun live(path: String): Boolean = File(path).exists()
+    /** A previously-indexed file must still exist, be a regular file, and match the declared length. */
+    private fun live(path: String, expectedSize: Long): Boolean {
+        val file = File(path)
+        return file.exists() && file.isFile && file.length() == expectedSize
+    }
 
     fun findLive(size: Long, partialHash: String?): String? {
-        val path = find(size, partialHash) ?: return null
-        if (!live(path)) {
-            byKey.remove(key(size, partialHash)!!)
+        val k = key(size, partialHash) ?: return null
+        val path = byKey[k] ?: return null
+        if (!live(path, size)) {
+            byKey.remove(k)
             return null
         }
         return path
