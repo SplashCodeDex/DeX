@@ -20,6 +20,17 @@ object SafStorage {
     @androidx.annotation.VisibleForTesting
     var sdkInt: Int = android.os.Build.VERSION.SDK_INT
 
+    internal fun buildRelativePath(relativePath: String? = null): String {
+        val base = "Download/DeX"
+        val subPath = if (!relativePath.isNullOrBlank()) {
+            val parts = relativePath.trim('/').split('/').filter { it.isNotBlank() && it != ".." }
+            if (parts.size > 1) {
+                "/" + parts.dropLast(1).joinToString("/")
+            } else ""
+        } else ""
+        return (base + subPath).trimEnd('/') + "/"
+    }
+
     fun createMediaStoreUri(context: Context, fileName: String, relativePath: String? = null): Uri? {
         if (sdkInt < android.os.Build.VERSION_CODES.Q) return null
 
@@ -27,16 +38,7 @@ object SafStorage {
         val contentValues = android.content.ContentValues().apply {
             put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-
-            val base = "Download/DeX"
-            val subPath = if (!relativePath.isNullOrBlank()) {
-                val parts = relativePath.trim('/').split('/').filter { it.isNotBlank() && it != ".." }
-                if (parts.size > 1) {
-                    "/" + parts.dropLast(1).joinToString("/")
-                } else ""
-            } else ""
-
-            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, base + subPath)
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, buildRelativePath(relativePath))
             put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
         }
 

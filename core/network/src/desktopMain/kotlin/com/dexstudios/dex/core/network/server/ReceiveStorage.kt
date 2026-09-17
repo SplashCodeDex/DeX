@@ -114,6 +114,7 @@ object ReceiveStorage {
         if (!partFile.exists()) return null
         synchronized(this) {
             val free = firstFreeDestination(destFile)
+            free.parentFile?.mkdirs()
             if (partFile.renameTo(free)) {
                 return free
             }

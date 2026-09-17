@@ -203,4 +203,31 @@ class SafStorageTest {
 
         verify { mockContentResolver.update(mockUri, any(), null, null) }
     }
+
+    @Test
+    fun `buildRelativePath formats root and nested paths with trailing slash`() {
+        assertEquals("Download/DeX/", SafStorage.buildRelativePath(null))
+        assertEquals("Download/DeX/", SafStorage.buildRelativePath(""))
+        assertEquals("Download/DeX/", SafStorage.buildRelativePath("single_file.pdf"))
+        assertEquals("Download/DeX/subfolder/", SafStorage.buildRelativePath("subfolder/file.pdf"))
+        assertEquals("Download/DeX/a/b/c/", SafStorage.buildRelativePath("/a/b/c/nested.txt/"))
+    }
+
+    @Test
+    fun `createMediaStoreUri returns null on Android below Q`() {
+        SafStorage.sdkInt = 28
+        val uri = SafStorage.createMediaStoreUri(mockContext, "photo.jpg", null)
+        org.junit.Assert.assertNull(uri)
+    }
+
+    @Test
+    fun `createMediaStoreUri delegates to contentResolver on Android Q and above`() {
+        SafStorage.sdkInt = 29
+        val mockUri = mockk<Uri>()
+        every { mockContentResolver.insert(any(), any()) } returns mockUri
+
+        val uri = SafStorage.createMediaStoreUri(mockContext, "photo.jpg", null)
+        assertEquals(mockUri, uri)
+        verify { mockContentResolver.insert(any(), any()) }
+    }
 }

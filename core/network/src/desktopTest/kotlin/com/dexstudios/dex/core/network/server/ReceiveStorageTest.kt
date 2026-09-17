@@ -180,4 +180,18 @@ class ReceiveStorageTest {
         assertFalse(part.exists())
         committed.delete()
     }
+
+    @Test
+    fun `safeCommit creates parent directory when dest is in nested subfolder`() {
+        val subDir = File(tempDir, "nested/folder/structure")
+        assertFalse(subDir.exists())
+        val dest = File(subDir, "report.pdf")
+        val part = File(tempDir, "report.pdf.part").apply { writeText("report data") }
+
+        val committed = ReceiveStorage.safeCommit(part, dest)
+        assertNotNull(committed, "safeCommit must not return null when parent directory does not exist")
+        assertTrue(committed.exists())
+        assertEquals("report data", committed.readText())
+        assertFalse(part.exists())
+    }
 }

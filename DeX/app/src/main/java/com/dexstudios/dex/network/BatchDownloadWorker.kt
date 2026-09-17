@@ -123,6 +123,11 @@ class BatchDownloadWorker(
                                 totalReceived, doneCount, files.size, totalBytes, createdDocs
                             )
                             outcomes.add(outcome)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "BatchDownloadWorker: Failed to download ${file.fileName}")
+                            outcomes.add(FileOutcome(file.fileName, null, ok = false, retryable = true, error = e.message))
                         } finally {
                             semaphore.release()
                         }
@@ -130,9 +135,37 @@ class BatchDownloadWorker(
                 }
             }
         } catch (e: CancellationException) {
-            // User cancelled the session: remove every partial document
+            Timber.i("BatchDownloadWorker: Transfer cancelled by user")
             deleteDocs(createdDocs)
+            TcpDownloadService.updateState(
+                DownloadState(
+                    fileName = if (files.size == 1) files.first().fileName else "${files.size} files",
+                    error = "Transfer cancelled",
+                    isDownloading = false,
+                    doneFiles = doneCount.get(),
+                    totalFiles = files.size
+                )
+            )
             throw e
+        } catch (e: Exception) {
+            Timber.e(e, "BatchDownloadWorker: Transfer failed unexpectedly")
+            deleteDocs(createdDocs)
+            TcpDownloadService.updateState(
+                DownloadState(
+                    fileName = if (files.size == 1) files.first().fileName else "${files.size} files",
+                    error = e.message ?: "Transfer failed",
+                    isDownloading = false,
+                    doneFiles = doneCount.get(),
+                    totalFiles = files.size
+                )
+            )
+            files.forEach { file ->
+                TransferHistory.log(
+                    applicationContext, file.fileName, file.size, "received", null,
+                    peerDevice = sourceAlias, status = "failed"
+                )
+            }
+            return@withContext Result.failure()
         }
 
         if (outcomes.all { it.ok }) {
@@ -228,44 +261,45 @@ class BatchDownloadWorker(
         val pfd = context.contentResolver.openFileDescriptor(docUri, "w")
         if (pfd != null) {
             pfd.use { descriptor ->
-                val fos = java.io.FileOutputStream(descriptor.fileDescriptor)
-                val channel = fos.channel
-                val perFileReceived = AtomicLong(0L)
-                val onBytes: (Long) -> Unit = { bytes ->
-                    val delta = bytes - perFileReceived.getAndSet(bytes)
-                    reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
-                }
-
-                // Transport alternation: QUIC first when available, then the plain-HTTP pull
-                // port. A truncated or failed stream falls through to the next transport.
-                val transports: List<suspend (java.nio.channels.WritableByteChannel) -> DownloadResult> = buildList {
-                    if (client.quicAvailable()) add { channel2 -> quicDownload(ip, httpsPort, file, channel2, onBytes) }
-                    add { channel2 -> httpDownload(ip, tcpPort, file, channel2, onBytes) }
-                }
-
-                var result: DownloadResult = DownloadResult(ok = false, error = "no transport available")
-                for ((index, transport) in transports.withIndex()) {
-                    channel.truncate(0)
-                    perFileReceived.set(0L)
-
-                    val attemptResult = transport(channel)
-                    result = if (attemptResult.ok && !sizeMatches(perFileReceived.get(), file.size)) {
-                        // Truncated stream: never present a partial file as success
-                        DownloadResult(ok = false, error = "Incomplete download", retryable = true)
-                    } else {
-                        attemptResult
+                java.io.FileOutputStream(descriptor.fileDescriptor).use { fos ->
+                    val channel = fos.channel
+                    val perFileReceived = AtomicLong(0L)
+                    val onBytes: (Long) -> Unit = { bytes ->
+                        val delta = bytes - perFileReceived.getAndSet(bytes)
+                        reportProgress(doneCount.get(), totalFiles, totalReceived.addAndGet(delta), totalBytes, file.fileName)
                     }
 
-                    if (result.ok || isStopped || !result.retryable) break
-                    Timber.w("Download attempt ${index + 1} failed (${result.error}); trying next transport")
-                }
+                    // Transport alternation: QUIC first when available, then the plain-HTTP pull
+                    // port. A truncated or failed stream falls through to the next transport.
+                    val transports: List<suspend (java.nio.channels.WritableByteChannel) -> DownloadResult> = buildList {
+                        if (client.quicAvailable()) add { channel2 -> quicDownload(ip, httpsPort, file, channel2, onBytes) }
+                        add { channel2 -> httpDownload(ip, tcpPort, file, channel2, onBytes) }
+                    }
 
-                if (result.ok) {
-                    doneCount.incrementAndGet()
-                    reportProgress(doneCount.get(), totalFiles, totalReceived.get(), totalBytes, file.fileName)
-                    return FileOutcome(file.fileName, docUri, ok = true, bytes = perFileReceived.get())
+                    var result: DownloadResult = DownloadResult(ok = false, error = "no transport available")
+                    for ((index, transport) in transports.withIndex()) {
+                        channel.truncate(0)
+                        perFileReceived.set(0L)
+
+                        val attemptResult = transport(channel)
+                        result = if (attemptResult.ok && !sizeMatches(perFileReceived.get(), file.size)) {
+                            // Truncated stream: never present a partial file as success
+                            DownloadResult(ok = false, error = "Incomplete download", retryable = true)
+                        } else {
+                            attemptResult
+                        }
+
+                        if (result.ok || isStopped || !result.retryable) break
+                        Timber.w("Download attempt ${index + 1} failed (${result.error}); trying next transport")
+                    }
+
+                    if (result.ok) {
+                        doneCount.incrementAndGet()
+                        reportProgress(doneCount.get(), totalFiles, totalReceived.get(), totalBytes, file.fileName)
+                        return FileOutcome(file.fileName, docUri, ok = true, bytes = perFileReceived.get())
+                    }
+                    return FileOutcome(file.fileName, docUri, ok = false, retryable = result.retryable, error = result.error)
                 }
-                return FileOutcome(file.fileName, docUri, ok = false, retryable = result.retryable, error = result.error)
             }
         } else {
             deleteDocs(listOf(docUri))
