@@ -163,4 +163,49 @@ class WanRelayClientTest {
             runBlocking { transport.closeSession(session) }
         }
     }
+
+    @Test
+    fun `upload buffers fragmented input stream and tolerates zero-byte reads without frame inflation`() = testApplication {
+        application { installRelay() }
+        val transport = WanRelayClient(
+            client = createClient {},
+            baseUrlProvider = { "http://localhost" },
+            tokenProvider = { "token-live" },
+        )
+        val session = transport.openSession("fp-phone")
+        try {
+            val totalSize = 300 * 1024 // 300 KB -> exactly 2 frames: 256 KB + 44 KB
+            val data = ByteArray(totalSize) { (it % 251).toByte() }
+            val fragmented = object : java.io.InputStream() {
+                private var pos = 0
+                private var zeroYielded = false
+                override fun read(): Int = if (pos < data.size) (data[pos++].toInt() and 0xFF) else -1
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    if (pos >= data.size) return -1
+                    if (!zeroYielded) {
+                        zeroYielded = true
+                        return 0
+                    }
+                    val count = minOf(len, 1024, data.size - pos)
+                    System.arraycopy(data, pos, b, off, count)
+                    pos += count
+                    return count
+                }
+            }
+
+            var frameCount = 0
+            runBlocking {
+                transport.upload(session, "pair-secret", fragmented) {
+                    frameCount++
+                }
+            }
+
+            val received = ByteArrayOutputStream()
+            runBlocking { transport.download(session, "pair-secret", received) }
+            assertContentEquals(data, received.toByteArray())
+            assertEquals(2, frameCount, "300KB stream must be packed into exactly 2 frames (256KB + 44KB)")
+        } finally {
+            runBlocking { transport.closeSession(session) }
+        }
+    }
 }

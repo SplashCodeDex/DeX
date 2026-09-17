@@ -95,8 +95,12 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
             val monitor = com.dexstudios.dex.core.network.TransferStateMonitor
             val transferId = java.util.UUID.randomUUID().toString()
             monitor.updateIncomingProgress(transferId, alias, 1, 0)
-            val dest = com.dexstudios.dex.core.network.server.ReceiveStorage.uniqueDest(downloadsFolder, fileName)
-            val part = java.io.File(dest.parentFile, "${dest.name}.part.$sessionId.$transferId")
+            val safeName = com.dexstudios.dex.core.network.server.ReceiveStorage.sanitizeFileName(fileName)
+            val dest = com.dexstudios.dex.core.network.server.ReceiveStorage.uniqueDest(downloadsFolder, safeName)
+            val safeSessionId = com.dexstudios.dex.core.network.server.ReceiveStorage.sanitizeFileName(sessionId)
+            val safeTransferId = com.dexstudios.dex.core.network.server.ReceiveStorage.sanitizeFileName(transferId)
+            val part = java.io.File(dest.parentFile ?: downloadsFolder, "${dest.name}.part.$safeSessionId.$safeTransferId")
+            part.parentFile?.mkdirs()
             try {
                 val relayClient = com.dexstudios.dex.core.network.sync.WanRelayClient(
                     client = httpClient,
@@ -124,7 +128,7 @@ class DesktopPlatformEngine(private val deviceConfig: DeviceConfig? = null) : IP
             } catch (e: Exception) {
                 runCatching { if (part.exists()) part.delete() }
                 com.dexstudios.dex.core.network.TransferHistoryRecorder.recordFailed(
-                    name = fileName,
+                    name = safeName,
                     size = totalBytes,
                     direction = com.dexstudios.dex.core.domain.transfer.TransferUseCase.DIRECTION_RECEIVED,
                     peerDevice = alias,

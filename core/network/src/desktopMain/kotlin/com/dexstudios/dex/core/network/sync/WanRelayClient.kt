@@ -15,8 +15,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readAvailable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -107,8 +106,15 @@ class WanRelayClient(private val client: HttpClient, private val baseUrlProvider
         var seq = 0L
         try {
             while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
+                var read = 0
+                while (read < buffer.size) {
+                    val n = input.read(buffer, read, buffer.size - read)
+                    if (n == -1) break
+                    if (n > 0) {
+                        read += n
+                    }
+                }
+                if (read == 0) break
                 val plaintext = if (read == buffer.size) buffer else buffer.copyOf(read)
                 // Frame-sequenced AEAD: a replayed/reordered frame fails on the receiver.
                 val sealed = RelayCrypto.sealFrame(key, seq, plaintext)
@@ -201,14 +207,12 @@ class WanRelayClient(private val client: HttpClient, private val baseUrlProvider
         val out = ByteArray(count)
         var filled = 0
         while (filled < count) {
-            val packet = readRemaining((count - filled).toLong())
-            if (packet.exhausted()) {
+            val n = readAvailable(out, filled, count - filled)
+            if (n == -1) {
                 if (filled == 0) return null
                 throw com.dexstudios.dex.core.network.RelayCryptoException("relay stream ended mid-frame")
             }
-            val chunk = packet.readBytes()
-            chunk.copyInto(out, filled)
-            filled += chunk.size
+            filled += n
         }
         return out
     }

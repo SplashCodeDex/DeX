@@ -217,6 +217,7 @@ class PunchSession(
                     }
                     if (received < header.size) break // dropped mid-file — the sender will resume
                     doneFiles++
+                    SafStorage.finishMediaStoreUri(context, docUri)
                     val senderAlias = manifest.alias.ifBlank { "Device" }
                     TransferHistory.log(context, file.fileName, received, "received", docUri.toString(), peerDevice = senderAlias)
                     TcpDownloadService.updateState(
