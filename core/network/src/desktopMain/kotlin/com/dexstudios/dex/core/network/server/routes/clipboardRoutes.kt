@@ -11,6 +11,8 @@ import io.ktor.server.routing.*
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
+const val MAX_CLIPBOARD_TEXT_BYTES = 1024 * 1024 // 1MB upper bound
+
 fun Route.clipboardRoutes() {
     route("/api/dex") {
         post("/clipboard") {
@@ -22,11 +24,30 @@ fun Route.clipboardRoutes() {
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
             }
+            val contentLength = call.request.contentLength()
+            if (contentLength != null && contentLength > MAX_CLIPBOARD_TEXT_BYTES) {
+                call.respond(HttpStatusCode.PayloadTooLarge)
+                return@post
+            }
             try {
                 val text = call.receiveText()
+                if (text.length > MAX_CLIPBOARD_TEXT_BYTES) {
+                    call.respond(HttpStatusCode.PayloadTooLarge)
+                    return@post
+                }
                 if (text.isNotBlank()) {
-                    val selection = StringSelection(text)
-                    Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+                    // Route through the shared domain use case (plan 029): the
+                    // write AND the echo-guard marking must both happen there,
+                    // or the AWT change listener bounces this text right back.
+                    if (ClipboardSyncState.useCase != null) {
+                        ClipboardSyncState.applyRemoteText(text)
+                    } else {
+                        // Fallback when useCase is not initialized (e.g. headless or tests)
+                        try {
+                            val selection = StringSelection(text)
+                            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+                        } catch (_: Exception) {}
+                    }
                     ClipboardSyncState.emitReceived(text)
                     call.respond(HttpStatusCode.OK)
                 } else {

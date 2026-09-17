@@ -9,6 +9,9 @@ import com.dexstudios.dex.core.protocol.ProtocolEnvelope
 import kotlinx.serialization.json.put
 import java.util.Base64
 
+/** Maximum text bytes permitted over ADB broadcast shell command argument to avoid Win32 command line overflow. */
+const val MAX_ADB_CLIPBOARD_BYTES = 16 * 1024
+
 /**
  * ComposeApp clipboard sender (plan 029): the WS sender from core/network wrapped with
  * the ADB fallback — broadcast first; when no peer session is live, fall back to the
@@ -23,7 +26,12 @@ object DesktopClipboardSender : ClipboardSender {
 
         // ADB Fallback — TEXT lane only (the phone renders image payloads itself).
         val text = (payload as? ClipboardPayload.Text)?.value ?: return false
-        val b64 = Base64.getEncoder().encodeToString(text.toByteArray(Charsets.UTF_8))
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        if (bytes.size > MAX_ADB_CLIPBOARD_BYTES) {
+            co.touchlab.kermit.Logger.w("DesktopClipboardSender: text too large for ADB broadcast fallback (${bytes.size} bytes)")
+            return false
+        }
+        val b64 = Base64.getEncoder().encodeToString(bytes)
         val delivered = com.dexstudios.dex.desktop.AdbManager.broadcast(
             action = "com.dexstudios.dex.SET_CLIPBOARD",
             extras = mapOf("text_b64" to b64),

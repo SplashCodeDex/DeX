@@ -11,9 +11,15 @@ class ClipboardReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == "com.dexstudios.dex.SET_CLIPBOARD") {
             val b64 = intent.getStringExtra("text_b64") ?: return
-            val text = String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8)
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val text = try {
+                String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8)
+            } catch (_: Exception) {
+                return
+            }
+            if (text.isBlank()) return
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
             val clip = ClipData.newPlainText("DeX", text)
+            ClipboardSyncState.lastIncoming = text
             clipboard.setPrimaryClip(clip)
         }
     }
