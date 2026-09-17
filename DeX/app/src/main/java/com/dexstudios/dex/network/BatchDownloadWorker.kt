@@ -279,6 +279,7 @@ class BatchDownloadWorker(
                     var result: DownloadResult = DownloadResult(ok = false, error = "no transport available")
                     for ((index, transport) in transports.withIndex()) {
                         channel.truncate(0)
+                        channel.position(0)
                         perFileReceived.set(0L)
 
                         val attemptResult = transport(channel)
@@ -294,6 +295,7 @@ class BatchDownloadWorker(
                     }
 
                     if (result.ok) {
+                        channel.force(false)
                         doneCount.incrementAndGet()
                         reportProgress(doneCount.get(), totalFiles, totalReceived.get(), totalBytes, file.fileName)
                         return FileOutcome(file.fileName, docUri, ok = true, bytes = perFileReceived.get())
@@ -307,7 +309,10 @@ class BatchDownloadWorker(
         }
     }
 
-    private fun sizeMatches(received: Long, expected: Long): Boolean = expected <= 0L || received == expected
+    companion object {
+        internal fun sizeMatches(received: Long, expected: Long): Boolean =
+            if (expected < 0L) true else received == expected
+    }
 
     private suspend fun quicDownload(
         ip: String,
@@ -372,19 +377,26 @@ class BatchDownloadWorker(
                 val body = response.body
                 val input = body.byteStream()
                 val inChannel = java.nio.channels.Channels.newChannel(input)
-                val directBuffer = java.nio.ByteBuffer.allocateDirect(65536)
+                val buffer = java.nio.ByteBuffer.allocate(65536)
 
                 while (true) {
                     if (isStopped) {
                         return@withContext DownloadResult(ok = false, error = "Download cancelled", retryable = false)
                     }
-                    directBuffer.clear()
-                    val read = inChannel.read(directBuffer)
+                    if (file.size >= 0L && downloaded > file.size) {
+                        return@withContext DownloadResult(
+                            ok = false,
+                            error = "Stream exceeded declared file size",
+                            retryable = false
+                        )
+                    }
+                    buffer.clear()
+                    val read = inChannel.read(buffer)
                     if (read == -1) break
-                    directBuffer.flip()
+                    buffer.flip()
                     downloaded += read
-                    while (directBuffer.hasRemaining()) {
-                        out.write(directBuffer)
+                    while (buffer.hasRemaining()) {
+                        out.write(buffer)
                     }
                     onBytes(downloaded)
                 }
