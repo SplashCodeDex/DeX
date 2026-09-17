@@ -68,7 +68,7 @@ object SafStorage {
     fun getDownloadsDexUri(context: Context): Uri? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val s = prefs.getString(KEY_DOWNLOADS_DEX_URI, null) ?: return null
-        return s.toUri()
+        return try { s.toUri() } catch (_: Exception) { null }
     }
 
     fun setDownloadsDexUri(context: Context, uri: Uri) {
@@ -180,18 +180,44 @@ object SafStorage {
         }
     }
 
-    fun writeFile(context: Context, dirUri: Uri, fileName: String, input: InputStream): Boolean {
-        return try {
-            val doc = DocumentsContract.createDocument(
-                context.contentResolver, dirUri, "application/octet-stream", fileName
-            )
-            if (doc != null) {
-                context.contentResolver.openOutputStream(doc)?.use { out -> input.copyTo(out) }
-                true
+    fun deleteUri(context: Context, uri: Uri?) {
+        if (uri == null) return
+        try {
+            if (DocumentsContract.isDocumentUri(context, uri)) {
+                DocumentsContract.deleteDocument(context.contentResolver, uri)
             } else {
-                false
+                context.contentResolver.delete(uri, null, null)
             }
         } catch (_: Exception) {
+            try {
+                context.contentResolver.delete(uri, null, null)
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun writeFile(context: Context, dirUri: Uri, fileName: String, input: InputStream): Boolean {
+        val safeName = sanitizeFileName(fileName)
+        val doc = try {
+            DocumentsContract.createDocument(
+                context.contentResolver, dirUri, "application/octet-stream", safeName
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "SafStorage: Cannot create document in $dirUri for $safeName")
+            null
+        } ?: return false
+
+        return try {
+            val out = context.contentResolver.openOutputStream(doc)
+            if (out != null) {
+                out.use { input.copyTo(it) }
+                true
+            } else {
+                deleteUri(context, doc)
+                false
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "SafStorage: Failed writing to document $doc")
+            deleteUri(context, doc)
             false
         }
     }
@@ -322,17 +348,32 @@ object SafStorage {
 
     // --- Share-target sandbox fallback ---
 
+    internal fun sanitizeFileName(name: String?): String {
+        if (name.isNullOrBlank()) return "SharedFile_${System.currentTimeMillis()}"
+        val withoutTraversal = name.replace("..", "").replace(Regex("[/\\\\:;*?\"<>|]"), "_").trim()
+        val clean = withoutTraversal.trimStart('.', '_', ' ').trimEnd('.', ' ')
+        return if (clean.isBlank()) {
+            "SharedFile_${System.currentTimeMillis()}"
+        } else {
+            clean
+        }
+    }
+
     /** Resolves a display name for [uri], falling back to a generated name. */
     fun queryFileName(context: Context, uri: Uri): String {
         var result: String? = null
         if (uri.scheme == "content") {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (index >= 0) {
-                        result = cursor.getString(index)
+            try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (index >= 0) {
+                            result = cursor.getString(index)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Timber.w(e, "SafStorage: cannot query display name for $uri")
             }
         }
         if (result == null) {
@@ -342,7 +383,7 @@ object SafStorage {
                 result = result?.substring(cut + 1)
             }
         }
-        return result ?: "SharedFile_${System.currentTimeMillis()}"
+        return sanitizeFileName(result)
     }
 
     /**
@@ -353,23 +394,73 @@ object SafStorage {
     fun saveUrisToSandbox(context: Context, uris: List<Uri>): Int {
         val dirUri = getDownloadsDexUri(context)
         var successCount = 0
-        try {
-            uris.forEach { uri ->
+        for (uri in uris) {
+            try {
                 val fileName = queryFileName(context, uri)
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    val ok = if (dirUri != null) {
-                        writeFile(context, dirUri, fileName, input)
-                    } else {
+                var written = false
+
+                // 1. Attempt SAF directory write when granted
+                if (dirUri != null) {
+                    val safOk = try {
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            writeFile(context, dirUri, fileName, input)
+                        } ?: false
+                    } catch (e: Exception) {
+                        Timber.w(e, "SafStorage: Failed writing to SAF directory for $fileName")
+                        false
+                    }
+                    if (safOk) {
+                        written = true
+                    }
+                }
+
+                // 2. Fallback to MediaStore if SAF is unconfigured, revoked, or failed
+                if (!written) {
+                    val mediaOk = try {
                         val mediaUri = createMediaStoreUri(context, fileName)
                         if (mediaUri != null) {
-                            context.contentResolver.openOutputStream(mediaUri)?.use { out -> input.copyTo(out) }
-                            true
-                        } else false
+                            try {
+                                val out = context.contentResolver.openOutputStream(mediaUri)
+                                if (out != null) {
+                                    val copied = context.contentResolver.openInputStream(uri)?.use { input ->
+                                        out.use { outStream -> input.copyTo(outStream) }
+                                        true
+                                    } ?: false
+                                    if (copied) {
+                                        finishMediaStoreUri(context, mediaUri)
+                                        true
+                                    } else {
+                                        deleteUri(context, mediaUri)
+                                        false
+                                    }
+                                } else {
+                                    deleteUri(context, mediaUri)
+                                    false
+                                }
+                            } catch (e: Exception) {
+                                Timber.w(e, "SafStorage: Failed writing to MediaStore for $fileName")
+                                deleteUri(context, mediaUri)
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } catch (e: Exception) {
+                        Timber.w(e, "SafStorage: MediaStore fallback failed for $fileName")
+                        false
                     }
-                    if (ok) successCount++
+                    if (mediaOk) {
+                        written = true
+                    }
                 }
+
+                if (written) {
+                    successCount++
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "SafStorage: Error processing URI $uri for sandbox")
             }
-        } catch (_: Exception) {}
+        }
         return successCount
     }
 }

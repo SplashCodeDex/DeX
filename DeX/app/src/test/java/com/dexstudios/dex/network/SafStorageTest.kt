@@ -230,4 +230,115 @@ class SafStorageTest {
         assertEquals(mockUri, uri)
         verify { mockContentResolver.insert(any(), any()) }
     }
+
+    @Test
+    fun `saveUrisToSandbox calls finishMediaStoreUri to clear IS_PENDING on success`() {
+        SafStorage.sdkInt = 29
+        every { mockPrefs.getString("downloads_dex_uri", null) } returns null
+        val sourceUri = mockk<Uri>()
+        every { sourceUri.scheme } returns "content"
+        every { sourceUri.path } returns "/file.png"
+
+        val mediaStoreUri = mockk<Uri>()
+        every { mockContentResolver.insert(any(), any()) } returns mediaStoreUri
+        every { mockContentResolver.openInputStream(sourceUri) } answers { java.io.ByteArrayInputStream("payload".toByteArray()) }
+        every { mockContentResolver.openOutputStream(mediaStoreUri) } answers { java.io.ByteArrayOutputStream() }
+        every { mockContentResolver.update(mediaStoreUri, any(), null, null) } returns 1
+
+        val result = SafStorage.saveUrisToSandbox(mockContext, listOf(sourceUri))
+        assertEquals(1, result)
+        // Must clear IS_PENDING = 0 via finishMediaStoreUri
+        verify(exactly = 1) { mockContentResolver.update(mediaStoreUri, any(), null, null) }
+    }
+
+    @Test
+    fun `saveUrisToSandbox does not count success when openOutputStream returns null`() {
+        SafStorage.sdkInt = 29
+        every { mockPrefs.getString("downloads_dex_uri", null) } returns null
+        val sourceUri = mockk<Uri>()
+        every { sourceUri.scheme } returns "content"
+        every { sourceUri.path } returns "/file.png"
+
+        val mediaStoreUri = mockk<Uri>()
+        every { mockContentResolver.insert(any(), any()) } returns mediaStoreUri
+        every { mockContentResolver.openInputStream(sourceUri) } answers { java.io.ByteArrayInputStream("payload".toByteArray()) }
+        every { mockContentResolver.openOutputStream(mediaStoreUri) } returns null
+
+        val result = SafStorage.saveUrisToSandbox(mockContext, listOf(sourceUri))
+        assertEquals(0, result)
+    }
+
+    @Test
+    fun `saveUrisToSandbox continues processing subsequent URIs when one throws exception`() {
+        SafStorage.sdkInt = 29
+        every { mockPrefs.getString("downloads_dex_uri", null) } returns null
+
+        val failingUri = mockk<Uri>()
+        every { failingUri.scheme } returns "content"
+        every { failingUri.path } returns "/fail.png"
+        every { mockContentResolver.openInputStream(failingUri) } throws SecurityException("Permission revoked")
+
+        val validUri = mockk<Uri>()
+        every { validUri.scheme } returns "content"
+        every { validUri.path } returns "/success.png"
+
+        val mediaStoreUri = mockk<Uri>()
+        every { mockContentResolver.insert(any(), any()) } returns mediaStoreUri
+        every { mockContentResolver.openInputStream(validUri) } answers { java.io.ByteArrayInputStream("valid".toByteArray()) }
+        every { mockContentResolver.openOutputStream(mediaStoreUri) } answers { java.io.ByteArrayOutputStream() }
+        every { mockContentResolver.update(mediaStoreUri, any(), null, null) } returns 1
+
+        val result = SafStorage.saveUrisToSandbox(mockContext, listOf(failingUri, validUri))
+        assertEquals(1, result)
+    }
+
+    @Test
+    fun `saveUrisToSandbox falls back to MediaStore when SAF writeFile fails`() {
+        SafStorage.sdkInt = 29
+        every { mockPrefs.getString("downloads_dex_uri", null) } returns "content://mock/tree"
+
+        io.mockk.mockkStatic(Uri::class)
+        io.mockk.mockkStatic(android.provider.DocumentsContract::class)
+        try {
+            val mockTreeUri = mockk<Uri>()
+            every { Uri.parse("content://mock/tree") } returns mockTreeUri
+            every { android.provider.DocumentsContract.createDocument(any(), any(), any(), any()) } returns null
+
+            val sourceUri = mockk<Uri>()
+            every { sourceUri.scheme } returns "content"
+            every { sourceUri.path } returns "/file.png"
+
+            val mediaStoreUri = mockk<Uri>()
+            every { mockContentResolver.insert(any(), any()) } returns mediaStoreUri
+            every { mockContentResolver.openInputStream(sourceUri) } answers { java.io.ByteArrayInputStream("payload".toByteArray()) }
+            every { mockContentResolver.openOutputStream(mediaStoreUri) } answers { java.io.ByteArrayOutputStream() }
+            every { mockContentResolver.update(mediaStoreUri, any(), null, null) } returns 1
+
+            val result = SafStorage.saveUrisToSandbox(mockContext, listOf(sourceUri))
+            assertEquals(1, result)
+            verify(exactly = 1) { mockContentResolver.insert(any(), any()) }
+        } finally {
+            io.mockk.unmockkStatic(android.provider.DocumentsContract::class)
+            io.mockk.unmockkStatic(Uri::class)
+        }
+    }
+
+    @Test
+    fun `queryFileName sanitizes path traversal and special characters`() {
+        val traversalUri = mockk<Uri>()
+        every { traversalUri.scheme } returns "file"
+        every { traversalUri.path } returns "/storage/emulated/0/Download/../../secret.txt"
+
+        val name = SafStorage.queryFileName(mockContext, traversalUri)
+        assertEquals("secret.txt", name)
+    }
+
+    @Test
+    fun `sanitizeFileName strips path separators and illegal characters`() {
+        assertEquals("test_file.txt", SafStorage.sanitizeFileName("test/file.txt"))
+        assertEquals("my_doc.pdf", SafStorage.sanitizeFileName("..\\my:doc.pdf"))
+        assertEquals("normal.jpg", SafStorage.sanitizeFileName("normal.jpg"))
+        org.junit.Assert.assertTrue(SafStorage.sanitizeFileName("..").startsWith("SharedFile_"))
+        org.junit.Assert.assertTrue(SafStorage.sanitizeFileName("   ").startsWith("SharedFile_"))
+    }
 }
