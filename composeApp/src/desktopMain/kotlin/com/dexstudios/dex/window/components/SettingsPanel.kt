@@ -928,7 +928,7 @@ fun SettingsPanel(
  * Empty state explains why the list is empty instead of showing a dead dialog.
  */
 @Composable
-private fun AdbDevicePickerDialog(devices: List<com.dexstudios.dex.core.network.DiscoveredDevice>, onDismiss: () -> Unit, onPick: (com.dexstudios.dex.core.network.DiscoveredDevice) -> Unit) {
+internal fun AdbDevicePickerDialog(devices: List<com.dexstudios.dex.core.network.DiscoveredDevice>, onDismiss: () -> Unit, onPick: (com.dexstudios.dex.core.network.DiscoveredDevice) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Connect over ADB") },
