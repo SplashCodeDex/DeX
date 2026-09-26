@@ -60,7 +60,6 @@ import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
-import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery2
@@ -70,17 +69,12 @@ import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_batter
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_computer
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_smartphone
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_wifi
-import com.dexstudios.dex.core.designsystem.generated.resources.joe_avatar
-import com.dexstudios.dex.core.designsystem.generated.resources.user1_avatar
-import com.dexstudios.dex.core.designsystem.generated.resources.user2_avatar
-import com.dexstudios.dex.core.designsystem.generated.resources.user3_avatar
 import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.withLock
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -100,16 +94,13 @@ data class DeviceItemUiModel(
     val isCharging: Boolean = false,
     val wifiBand: String? = null,
     val wifiRssi: Int? = null,
-    val isWanPlaceholder: Boolean = false,
-    val wanEmail: String? = null,
-    val avatarDrawable: DrawableResource? = null,
     val rawDevice: DiscoveredDevice? = null,
 )
 
 /**
  * DeviceListPanel:
  * - Section 1: Discovered Devices (UDP discovered, untrusted -> click initiates PIN pairing)
- * - Section 2: Your Devices (Paired trusted devices with live telemetry, battery %, wifi band, and WAN scaffolding)
+ * - Section 2: Your Devices (Paired trusted devices with live telemetry, battery %, and wifi band)
  * - Right-click context menus with 1:1 action routing
  */
 @Composable
@@ -125,7 +116,6 @@ fun DeviceListPanel(
     onConnectAdb: (DeviceItemUiModel) -> Unit = {},
     onDisconnectAdb: (DeviceItemUiModel) -> Unit = {},
     onCopyIp: (String) -> Unit = {},
-    onRenameDevice: (DeviceItemUiModel) -> Unit = {},
     onForgetDevice: (DeviceItemUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -134,7 +124,6 @@ fun DeviceListPanel(
             item(key = "empty_state") {
                 DeviceEmptyState(
                     isVisible = isPanelVisible,
-                    onViewDeviceStatus = { onViewDeviceStatus(null) },
                 )
             }
         }
@@ -198,7 +187,6 @@ fun DeviceListPanel(
                         } else {
                             add(ContextMenuItem("Connect ADB") { onConnectAdb(device) })
                         }
-                        add(ContextMenuItem("Rename / Alias") { onRenameDevice(device) })
                         add(ContextMenuItem("Forget Device") { onForgetDevice(device) })
                     }
                 },
@@ -294,9 +282,7 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
                         .size(38.dp)
                         .clip(CircleShape)
                         .then(
-                            if (device.avatarDrawable != null) {
-                                Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
-                            } else if (device.isOnline) {
+                            if (device.isOnline) {
                                 Modifier.background(MaterialTheme.colorScheme.primary)
                             } else {
                                 Modifier
@@ -306,21 +292,12 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (device.avatarDrawable != null) {
-                        Image(
-                            painter = painterResource(device.avatarDrawable),
-                            contentDescription = device.alias,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                        )
-                    } else {
-                        Icon(
-                            painter = if (device.isWanPlaceholder) painterResource(Res.drawable.ic_fluent_account_circle) else painterResource(Res.drawable.ic_fluent_smartphone),
-                            contentDescription = device.alias,
-                            tint = if (device.isOnline) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_fluent_smartphone),
+                        contentDescription = device.alias,
+                        tint = if (device.isOnline) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
 
                 // 12x12dp Online Indicator (Bottom Right)
@@ -353,14 +330,14 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                val topSpacing = if (device.isPaired && !device.isWanPlaceholder) 2.dp else 0.dp
+                val topSpacing = if (device.isPaired) 2.dp else 0.dp
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = topSpacing),
                 ) {
                     val subFontSize = if (device.isPaired) 12.sp else 13.sp
                     Text(
-                        text = device.wanEmail ?: device.modelText.ifBlank { device.ip },
+                        text = device.modelText.ifBlank { device.ip },
                         fontSize = subFontSize,
                         lineHeight = subFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -453,7 +430,7 @@ private object LottieAssets {
 }
 
 @Composable
-private fun DeviceEmptyState(isVisible: Boolean, onViewDeviceStatus: () -> Unit = {}) {
+private fun DeviceEmptyState(isVisible: Boolean) {
     // Asset load is deferred until the dock card is actually visible; while hidden the
     // empty state stays composed behind contentAlpha = 0f and must not do work. The
     // process-wide LottieAssets cache makes repeat appearances free after the first.
@@ -550,62 +527,6 @@ private fun DeviceEmptyState(isVisible: Boolean, onViewDeviceStatus: () -> Unit 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
             )
-
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
-
-            val demoInteraction = remember { MutableInteractionSource() }
-            val isDemoHovered by demoInteraction.collectIsHoveredAsState()
-            val isDemoPressedRaw by demoInteraction.collectIsPressedAsState()
-            var isDemoFluidityPressed by remember { mutableStateOf(false) }
-            val isDemoPressed = isDemoPressedRaw || isDemoFluidityPressed
-
-            val demoPressProgress by animateFloatAsState(
-                targetValue = if (isDemoPressed) 1f else 0f,
-                animationSpec = DynamicMotionConfig.Default.springSpec(isDemoPressed),
-                label = "demoPressProgress",
-            )
-            val demoElevation by animateDpAsState(
-                targetValue = (2.dp * (1f - 0.20f * demoPressProgress)).coerceAtLeast(0.dp),
-                animationSpec = DynamicMotionConfig.Default.springSpec(isDemoPressed),
-                label = "demoElevation",
-            )
-
-            // Demo Action Pill
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isDemoFluidityPressed = it },
-                    )
-                    .shadow(
-                        elevation = demoElevation,
-                        shape = RoundedCornerShape(20.dp),
-                        spotColor = Color.Black.copy(alpha = 0.15f),
-                        ambientColor = Color.Black.copy(alpha = 0.08f),
-                    )
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f))
-                    .shinyGlare(
-                        shape = RoundedCornerShape(20.dp),
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * demoPressProgress),
-                    )
-                    .hoverable(interactionSource = demoInteraction)
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable(
-                        interactionSource = demoInteraction,
-                        indication = null,
-                        onClick = { onViewDeviceStatus() },
-                    )
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Demo Device Connected Screen",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
         }
     }
 }

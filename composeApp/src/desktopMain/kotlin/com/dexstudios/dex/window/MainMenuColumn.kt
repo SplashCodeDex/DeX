@@ -168,12 +168,6 @@ fun MainMenuColumn(
 
     val devices = remember(devicesMap) { devicesMap.values.toList() }
 
-    // Mock DeXStudios fallback removed for Phase 4.2 Parity
-
-    val serverIp = devices.firstOrNull()?.ip ?: "127.0.0.1"
-    val serverPort = devices.firstOrNull()?.info?.port ?: DeXPorts.HTTPS
-    val serverIpPortText = "$serverIp:$serverPort"
-
     // Dedicated Live Screen Mirroring Window — PAUSED (PausedFeatures.SCREEN_MIRROR).
     // Mirroring is not an immediate feature: the window is unreachable while the pause holds
     // and the toggle below stays inert. Re-enable together with the transport gate (see the
@@ -228,17 +222,6 @@ fun MainMenuColumn(
                     deviceConfig.clipboardSyncEnabled = !deviceConfig.clipboardSyncEnabled
                 },
                 clipboardBadgeCount = 0,
-                statusTelemetryText = when {
-                    isUploading -> "Transferring"
-
-                    else ->
-                        preferredTargetFp
-                            ?.let { fp -> (discoveredList + pairedList).firstOrNull { it.fingerprint == fp }?.alias }
-                            ?.let { "Ready - $it" }
-                            ?: "Ready"
-                },
-                serverIpPort = serverIpPortText,
-                showTelemetry = false, // WPF pnlAdbStatus is hidden by default (Height=0) until connected
             )
         }
 
@@ -417,7 +400,6 @@ fun MainMenuColumn(
                         )
                     } catch (_: Exception) {}
                 },
-                onRenameDevice = {},
                 onForgetDevice = { item ->
                     // Real revocation: drop the persisted pairing (fingerprint AND token),
                     // downgrade any live session, and tell the peer so it downgrades too.

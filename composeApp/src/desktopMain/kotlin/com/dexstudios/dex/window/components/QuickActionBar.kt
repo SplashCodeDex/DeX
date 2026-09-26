@@ -99,12 +99,19 @@ fun QuickActionBar(
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
 
-        // 2. Screen Mirror Pill
+        val isMirrorPaused = com.dexstudios.dex.core.network.PausedFeatures.isPaused(
+            com.dexstudios.dex.core.network.PausedFeatures.SCREEN_MIRROR,
+        )
+
+        // 2. Screen Mirror Pill (Muted while feature is paused)
         DeXQuickActionButton(
             icon = painterResource(Res.drawable.ic_fluent_smartphone),
-            tooltip = "Mirror Phone",
-            isChecked = isMirroringActive,
-            onClick = onToggleMirror,
+            tooltip = if (isMirrorPaused) "Screen Mirroring (Paused)" else "Mirror Phone",
+            isChecked = isMirroringActive && !isMirrorPaused,
+            enabled = !isMirrorPaused,
+            onClick = {
+                if (!isMirrorPaused) onToggleMirror()
+            },
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
@@ -138,14 +145,14 @@ fun QuickActionBar(
 }
 
 @Composable
-fun DeXQuickActionButton(icon: Painter, tooltip: String, isChecked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, isDanger: Boolean = false, badgeCount: Int = 0) {
+fun DeXQuickActionButton(icon: Painter, tooltip: String, isChecked: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, badgeCount: Int = 0, enabled: Boolean = true) {
     DeXQuickActionButton(
         tooltip = tooltip,
         isChecked = isChecked,
         onClick = onClick,
         modifier = modifier,
-        isDanger = isDanger,
         badgeCount = badgeCount,
+        enabled = enabled,
         iconContent = { tint ->
             Icon(
                 painter = icon,
@@ -157,21 +164,23 @@ fun DeXQuickActionButton(icon: Painter, tooltip: String, isChecked: Boolean, onC
     )
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun DeXQuickActionButton(
     tooltip: String,
     isChecked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isDanger: Boolean = false,
     badgeCount: Int = 0,
+    enabled: Boolean = true,
     iconContent: @Composable (tint: Color) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isHoveredRaw by interactionSource.collectIsHoveredAsState()
     val isPressedRaw by interactionSource.collectIsPressedAsState()
     var isFluidityPressed by remember { mutableStateOf(false) }
-    val isPressed = isPressedRaw || isFluidityPressed
+    val isHovered = isHoveredRaw && enabled
+    val isPressed = (isPressedRaw || isFluidityPressed) && enabled
     val motionConfig = DynamicMotionConfig.Default
     val pressProgress by animateFloatAsState(
         targetValue = if (isPressed) 1f else 0f,
@@ -198,7 +207,7 @@ fun DeXQuickActionButton(
     // the ambient smoke haze bleeds through, creating a frosted look without blur.
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            isDanger && (isHovered || isPressed) -> androidx.compose.material3.MaterialTheme.colorScheme.error
+            !enabled -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f)
             isChecked -> androidx.compose.material3.MaterialTheme.colorScheme.primary
             else -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
         },
@@ -207,7 +216,7 @@ fun DeXQuickActionButton(
     )
 
     val hoverOverlayColor by animateColorAsState(
-        targetValue = if (isHovered && !isChecked && !isDanger) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
+        targetValue = if (isHovered && !isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
         animationSpec = tween(200),
         label = "btnHoverOverlay",
     )
@@ -215,85 +224,119 @@ fun DeXQuickActionButton(
     // Icon Color Morphing
     val iconColor by animateColorAsState(
         targetValue = when {
+            !enabled -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
             isChecked -> androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
-            isDanger && (isHovered || isPressed) -> androidx.compose.material3.MaterialTheme.colorScheme.onError
             else -> androidx.compose.material3.MaterialTheme.colorScheme.onSurface
         },
         animationSpec = tween(200),
         label = "btnIconColor",
     )
 
-    Box(
-        modifier = modifier
-            .zIndex(if (isHovered || isPressed) 1f else 0f)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.translationY = translateY.toPx()
-            }
-            .size(width = 62.dp, height = 48.dp)
-            .bubbleFluidity(
-                config = DynamicFluidityConfig.Default,
-                onPressedChanged = { isFluidityPressed = it },
-            )
-            .shadow(
-                elevation = shadowElevation,
-                shape = CircleShape,
-                spotColor = Color.Black.copy(alpha = 0.2f),
-                ambientColor = Color.Black.copy(alpha = 0.1f),
-            )
-            .clip(CircleShape)
-            .background(backgroundColor, CircleShape)
-            .background(hoverOverlayColor, CircleShape)
-            .shinyGlare(
-                shape = CircleShape,
-                intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
-            )
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier.transientContentBlur(
-                trigger = isChecked,
-                config = DynamicContentBlurConfig.Default,
-                motion = DynamicMotionConfig.Default,
-            ),
-            contentAlignment = Alignment.Center,
-        ) {
-            iconContent(iconColor)
-        }
-
-        if (badgeCount > 0) {
-            // Contrast Inversion for Badge Counter
-            val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
-            val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
-            val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
-
+    androidx.compose.foundation.TooltipArea(
+        tooltip = {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 2.dp, end = 4.dp)
-                    .then(
-                        if (badgeBorder != null) {
-                            Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .background(badgeBgColor, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .shadow(4.dp, RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = badgeCount.toString(),
-                    color = badgeTextColor,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = tooltip,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        },
+        delayMillis = 400,
+    ) {
+        Box(
+            modifier = modifier
+                .zIndex(if (isHovered || isPressed) 1f else 0f)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    this.translationY = translateY.toPx()
+                }
+                .size(width = 62.dp, height = 48.dp)
+                .then(
+                    if (enabled) {
+                        Modifier.bubbleFluidity(
+                            config = DynamicFluidityConfig.Default,
+                            onPressedChanged = { isFluidityPressed = it },
+                        )
+                    } else {
+                        Modifier.alpha(0.6f)
+                    },
+                )
+                .shadow(
+                    elevation = if (enabled) shadowElevation else 0.dp,
+                    shape = CircleShape,
+                    spotColor = Color.Black.copy(alpha = 0.2f),
+                    ambientColor = Color.Black.copy(alpha = 0.1f),
+                )
+                .clip(CircleShape)
+                .background(backgroundColor, CircleShape)
+                .background(hoverOverlayColor, CircleShape)
+                .then(
+                    if (enabled) {
+                        Modifier.shinyGlare(
+                            shape = CircleShape,
+                            intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
+                        )
+                    } else {
+                        Modifier
+                    },
+                )
+                .pointerHoverIcon(if (enabled) PointerIcon.Hand else PointerIcon.Default)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier.transientContentBlur(
+                    trigger = isChecked,
+                    config = DynamicContentBlurConfig.Default,
+                    motion = DynamicMotionConfig.Default,
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                iconContent(iconColor)
+            }
+
+            if (badgeCount > 0) {
+                // Contrast Inversion for Badge Counter
+                val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
+                val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+                val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp, end = 4.dp)
+                        .then(
+                            if (badgeBorder != null) {
+                                Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .background(badgeBgColor, RoundedCornerShape(10.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = badgeCount.toString(),
+                        color = badgeTextColor,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }

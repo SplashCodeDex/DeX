@@ -61,61 +61,6 @@ import org.jetbrains.compose.resources.painterResource
 /**
  * Temporary Testing & Review Playground for the DeX Fluid Overlay & Notification System.
  */
-@Composable
-fun OverlayTestingButton(modifier: Modifier = Modifier, overlayManager: OverlayManager, controller: DockedWindowStateController? = null) {
-    val coroutineScope = rememberCoroutineScope()
-    var isExpanded by remember { mutableStateOf(false) }
-
-    Box(modifier = modifier) {
-        // Floating action pill in top bar / dock area
-        Row(
-            modifier = Modifier
-                .bubbleFluidity()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { isExpanded = !isExpanded },
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_fluent_notifications),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Text(
-                text = "Overlays",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-
-        // Overlay Playground Panel Dropdown
-        if (isExpanded) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 36.dp)
-                    .width(360.dp)
-                    .height(440.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f))
-                    .padding(16.dp),
-            ) {
-                OverlayTestingPlayground(
-                    overlayManager = overlayManager,
-                    controller = controller,
-                    onClose = { isExpanded = false },
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun OverlayTestingPlayground(overlayManager: OverlayManager, controller: DockedWindowStateController? = null, onClose: () -> Unit, modifier: Modifier = Modifier) {

@@ -145,20 +145,14 @@ fun DeviceStatusPanel(
             ?: devicesMap.values.firstOrNull()
     }
 
-    var activeCategory by remember(overrideCategory, activeDevice) {
-        mutableStateOf(overrideCategory ?: resolveDeviceCategory(activeDevice))
-    }
-
-    val defaultDemoName = when (activeCategory) {
-        ConnectedDeviceType.Phone -> "Galaxy S24 Ultra"
-        ConnectedDeviceType.Tablet -> "Galaxy Tab S9 Ultra"
-        ConnectedDeviceType.Laptop -> "Galaxy Book 4 Pro"
-        ConnectedDeviceType.Watch -> "Galaxy Watch 6"
+    val activeCategory = remember(overrideCategory, activeDevice) {
+        overrideCategory ?: resolveDeviceCategory(activeDevice)
     }
 
     val deviceName = activeDevice?.info?.alias?.ifBlank { null }
+        ?: activeDevice?.info?.deviceModel?.ifBlank { null }
         ?: activeDevice?.info?.fingerprint?.take(8)
-        ?: defaultDemoName
+        ?: "DeX Device"
 
     val panelInteraction = remember { MutableInteractionSource() }
     val isPanelHovered by panelInteraction.collectIsHoveredAsState()
@@ -182,13 +176,8 @@ fun DeviceStatusPanel(
         }
     }
 
-    val batteryPercent = activeDevice?.info?.battery ?: when (activeCategory) {
-        ConnectedDeviceType.Phone -> 85
-        ConnectedDeviceType.Tablet -> 90
-        ConnectedDeviceType.Laptop -> 92
-        ConnectedDeviceType.Watch -> 78
-    }
-    val wifiSsid = activeDevice?.info?.wifiSsid ?: "HomeNetwork_5G"
+    val batteryPercent = activeDevice?.info?.battery
+    val wifiSsid = activeDevice?.info?.wifiSsid?.ifBlank { null } ?: activeDevice?.info?.wifiBand ?: "Connected"
     val isCharging = activeDevice?.info?.isCharging == true
 
     // Lottie connection animation dynamically loaded per device category
@@ -238,23 +227,11 @@ fun DeviceStatusPanel(
             )
         }
 
-        // === 2. Big Centered Device Animation (Click to cycle demo devices) ===
+        // === 2. Big Centered Device Animation ===
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        activeCategory = when (activeCategory) {
-                            ConnectedDeviceType.Phone -> ConnectedDeviceType.Tablet
-                            ConnectedDeviceType.Tablet -> ConnectedDeviceType.Laptop
-                            ConnectedDeviceType.Laptop -> ConnectedDeviceType.Watch
-                            ConnectedDeviceType.Watch -> ConnectedDeviceType.Phone
-                        }
-                    },
-                ),
+                .fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
             val shadowWidth = when (activeCategory) {
@@ -353,10 +330,11 @@ fun DeviceStatusPanel(
             ) {
                 val batteryIcon = when {
                     isCharging -> DeXIcons.BatteryCharging
-                    batteryPercent >= 80 -> DeXIcons.BatteryFull
-                    batteryPercent >= 50 -> DeXIcons.Battery4
-                    batteryPercent >= 25 -> DeXIcons.Battery2
-                    else -> DeXIcons.Battery1
+                    batteryPercent != null && batteryPercent >= 80 -> DeXIcons.BatteryFull
+                    batteryPercent != null && batteryPercent >= 50 -> DeXIcons.Battery4
+                    batteryPercent != null && batteryPercent >= 25 -> DeXIcons.Battery2
+                    batteryPercent != null -> DeXIcons.Battery1
+                    else -> DeXIcons.BatteryFull
                 }
                 Icon(
                     painter = painterResource(batteryIcon),
@@ -365,7 +343,7 @@ fun DeviceStatusPanel(
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "$batteryPercent%",
+                    text = batteryPercent?.let { "$it%" } ?: "--%",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
