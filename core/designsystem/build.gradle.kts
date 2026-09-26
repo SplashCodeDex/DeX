@@ -24,6 +24,19 @@ kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
+
+        // AGP 9's `com.android.kotlin.multiplatform.library` does NOT process Android
+        // resources unless asked (unlike the legacy `com.android.library`, where it was
+        // implicit). Without this switch no assets output directory is ever published to
+        // the variant, so Compose Multiplatform's `copyAndroidMainComposeResourcesToAndroidAssets`
+        // bridge task is created but left unconfigured — it silently contributes nothing,
+        // the APK ships without `src/commonMain/composeResources`, and every `Res.readBytes`
+        // call (Lottie JSONs, Fluent icon SVGs, the shared logo) fails at RUNTIME while
+        // still compiling cleanly. `core:protocol`/`core:network` never exposed this because
+        // they carry no resources; the design system is the first module that does.
+        androidResources {
+            enable = true
+        }
     }
 
     sourceSets {
