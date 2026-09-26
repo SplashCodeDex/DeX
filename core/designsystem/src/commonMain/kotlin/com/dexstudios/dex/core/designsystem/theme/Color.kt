@@ -3,8 +3,15 @@ package com.dexstudios.dex.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================================================
-// DeX Identity Seeds — 1:1 with the Android app's palette (DeX/app ui/theme/Color.kt).
-// Every theme role in Theme.kt derives directly from these core seed tokens.
+// DeX Identity Seeds — the single source for every theme role in Theme.kt.
+//
+// NOT yet 1:1 with the Android palette (DeX/app ui/theme/Color.kt), and this file no
+// longer claims to be. Known drift, deliberately left alone until the pending palette
+// revision lands — do NOT "fix" either side in isolation:
+//   - LightSurfaceVariant  here 0xFFF1F4FF  |  Android 0xFFE0E2EC
+//   - LightError/DarkError exist here only; Android's Theme.kt never uses them
+// Every other seed (background, surface, primary, onPrimary, text, secondary text and
+// all dark-mode counterparts) is value-identical in both files.
 // ============================================================================
 
 // ---- Light Mode Seeds ----

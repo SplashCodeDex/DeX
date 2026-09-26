@@ -5,8 +5,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
-import com.dexstudios.dex.ui.theme.PopInEase
-import com.dexstudios.dex.ui.theme.SpatialPhysics
+import com.dexstudios.dex.core.designsystem.theme.PopInEase
+import com.dexstudios.dex.core.designsystem.theme.SpatialPhysics
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

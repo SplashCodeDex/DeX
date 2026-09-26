@@ -21,12 +21,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.R
+import com.dexstudios.dex.core.designsystem.theme.spatialMenuEnter
+import com.dexstudios.dex.core.designsystem.theme.spatialMenuExit
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
 import com.dexstudios.dex.ui.icons.MaterialSymbols
-import com.dexstudios.dex.ui.theme.spatialMenuEnter
-import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
 
 @Composable

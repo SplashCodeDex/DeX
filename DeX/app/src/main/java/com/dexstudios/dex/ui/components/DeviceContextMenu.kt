@@ -20,10 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.R
+import com.dexstudios.dex.core.designsystem.theme.spatialMenuEnter
+import com.dexstudios.dex.core.designsystem.theme.spatialMenuExit
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.ui.icons.MaterialSymbols
-import com.dexstudios.dex.ui.theme.spatialMenuEnter
-import com.dexstudios.dex.ui.theme.spatialMenuExit
 import com.kyant.backdrop.Backdrop
 
 /**
