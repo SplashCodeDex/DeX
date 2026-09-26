@@ -55,6 +55,7 @@ import com.dexstudios.dex.core.network.RegisterDto
 import com.dexstudios.dex.core.network.TransferStateMonitor
 import com.dexstudios.dex.overlay.OverlayManager
 import com.dexstudios.dex.window.DockedWindowStateController
+import com.dexstudios.dex.window.ExpandedPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -370,6 +371,59 @@ fun OverlayTestingPlayground(overlayManager: OverlayManager, controller: DockedW
                     )
                     isTransferDashboardActive = true
                 }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Connected & Discovered Device Screens:",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            // 12a. Phone Connected Screen
+            TestActionButton(
+                title = "Phone Connected Screen (Galaxy S24)",
+                subtitle = "Surfaces floating card with live Phone 3D animation & telemetry",
+                iconColor = primaryColor,
+            ) {
+                onClose()
+                controller?.show()
+                controller?.expandPanel(ExpandedPanel.DeviceStatus)
+            }
+
+            // 12b. Tablet Connected Screen
+            TestActionButton(
+                title = "Tablet Connected Screen (Galaxy Tab S9)",
+                subtitle = "Surfaces floating card with live 3D Tablet animation",
+                iconColor = primaryColor,
+            ) {
+                onClose()
+                controller?.show()
+                controller?.expandPanel(ExpandedPanel.DeviceStatusTablet)
+            }
+
+            // 12c. Laptop Connected Screen
+            TestActionButton(
+                title = "Laptop Connected Screen (Galaxy Book 4)",
+                subtitle = "Surfaces floating card with live 3D Laptop opening animation",
+                iconColor = primaryColor,
+            ) {
+                onClose()
+                controller?.show()
+                controller?.expandPanel(ExpandedPanel.DeviceStatusLaptop)
+            }
+
+            // 12d. Smartwatch Connected Screen
+            TestActionButton(
+                title = "Smartwatch Connected Screen (Galaxy Watch 6)",
+                subtitle = "Surfaces floating card with live 3D Watch rotating animation",
+                iconColor = primaryColor,
+            ) {
+                onClose()
+                controller?.show()
+                controller?.expandPanel(ExpandedPanel.DeviceStatusWatch)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
