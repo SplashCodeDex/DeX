@@ -63,6 +63,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.DpOffset
+import com.dexstudios.dex.ui.components.DynamicDismissButton
+import com.dexstudios.dex.ui.components.DynamicDismissButtonDefaults
+import com.dexstudios.dex.ui.components.DynamicDismissButtonSize
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.dexstudios.dex.ui.components.glass.LiquidGlassShadowProperties
 import com.dexstudios.dex.ui.icons.MaterialSymbols
@@ -484,25 +487,16 @@ fun DynamicIslandPlayground(
                                     }
                                 }
 
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(pillCloseBg)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = collapse
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Close,
-                                        contentDescription = "Close",
-                                        tint = pillCloseTint,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                DynamicDismissButton(
+                                    onClick = collapse,
+                                    buttonSize = 32.dp,
+                                    iconSize = 16.dp,
+                                    colors = DynamicDismissButtonDefaults.colors(
+                                        containerColor = pillCloseBg,
+                                        contentColor = pillCloseTint,
+                                    ),
+                                    contentDescription = "Close",
+                                )
                             }
                         }
                     )
@@ -644,25 +638,16 @@ fun DynamicIslandPlayground(
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(pillCloseBg)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = collapse
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Close,
-                                        contentDescription = "Close",
-                                        tint = pillCloseTint,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                DynamicDismissButton(
+                                    onClick = collapse,
+                                    buttonSize = 32.dp,
+                                    iconSize = 16.dp,
+                                    colors = DynamicDismissButtonDefaults.colors(
+                                        containerColor = pillCloseBg,
+                                        contentColor = pillCloseTint,
+                                    ),
+                                    contentDescription = "Close",
+                                )
                             }
                         }
                     )

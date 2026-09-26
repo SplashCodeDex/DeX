@@ -67,6 +67,7 @@ class DockedWindowStateController(
     var hasBeenDragged by mutableStateOf(false)
     var isPairingActive by mutableStateOf(false)
     var isModalDialogOpen by mutableStateOf(false) // Guards focus loss during native OS file pickers
+    var hasGainedFocusOnce by mutableStateOf(false)
 
     var expandedPanel by mutableStateOf<ExpandedPanel?>(null)
     val isExpanded: Boolean get() = expandedPanel != null
@@ -264,6 +265,7 @@ class DockedWindowStateController(
         } else {
             validateAndSnapToBounds()
         }
+        hasGainedFocusOnce = false
         isVisible = true
     }
 

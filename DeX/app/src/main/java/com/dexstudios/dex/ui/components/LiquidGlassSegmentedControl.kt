@@ -38,12 +38,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -67,17 +72,42 @@ import com.dexstudios.dex.ui.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.ui.components.island.DynamicMotionConfig
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPanel
 import com.dexstudios.dex.ui.components.glass.LiquidGlassPresets
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import com.dexstudios.dex.ui.components.glass.LiquidGlassShadowProperties
 import com.dexstudios.dex.ui.components.glass.LiquidGlassTokens
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.dexstudios.dex.ui.theme.DeXTheme
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.shadow.InnerShadow
+import android.graphics.RuntimeShader
+import android.os.Build
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.toArgb
+import kotlin.math.sign
 import kotlin.math.abs
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+
+private const val SPOTLIGHT_SHADER_SRC = """
+    uniform float2 size;
+    layout(color) uniform half4 color;
+    uniform float radius;
+    uniform float2 position;
+
+    half4 main(float2 coord) {
+        float dist = distance(coord, position);
+        float intensity = smoothstep(radius, radius * 0.5, dist);
+        return color * intensity;
+    }
+"""
 
 /**
  * Data model for an individual tab in the segmented control.
@@ -131,38 +161,131 @@ fun LiquidGlassSegmentedControl(
     val selectedCenterDp = horizontalPadding + (itemWidth * selectedIndex) + (itemWidth / 2f)
     val isPeaking = pressedIndex != null && pressedIndex != selectedIndex
 
-    // Add a directional peak shift towards the pressed tab
+    // Subtle directional peak shift towards the pressed tab (within bounds)
     val peakShiftDp =
         if (isPeaking) {
             val pressedCenterDp =
                 horizontalPadding + (itemWidth * (pressedIndex ?: selectedIndex)) + (itemWidth / 2f)
             val diff = pressedCenterDp - selectedCenterDp
-            if (diff > 0.dp) 20.dp else -20.dp
+            if (diff > 0.dp) 8.dp else -8.dp
         } else 0.dp
 
-    // Stretch width to create a teardrop shape pointing towards the finger
-    val peakStretchDp = if (isPeaking) 24.dp else 0.dp
+    // Stretch width subtly during peak interaction
+    val peakStretchDp = if (isPeaking) 4.dp else 0.dp
 
-    // --- Highlighter position: drag follows finger, otherwise follows selected tab (with peak offset) ---
-    val targetCenterDp =
+    // --- Highlighter sizing: fixed slot dimensions matching GitHub app 1:1 (no bulging when scrolling) ---
+    val highlighterWidth = (itemWidth - 6.dp).coerceAtLeast(36.dp)
+    val highlighterHeight = (visibleHeight - 8.dp).coerceAtLeast(36.dp)
+
+    val coroutineScope = rememberCoroutineScope()
+    val velocityTracker = remember { VelocityTracker() }
+    val velocityAnimatable = remember { Animatable(0f) }
+    val velocitySpringSpec = remember { spring<Float>(dampingRatio = 0.5f, stiffness = 300f) }
+
+    // Kinematic Springs: CodeDeX tuned signature overshoot springs
+    val lensSlideSpring = remember { spring<Float>(dampingRatio = 0.5f, stiffness = 170f) }
+
+    val spotlightShader = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            RuntimeShader(SPOTLIGHT_SHADER_SRC)
+        } else null
+    }
+
+    // Boundary Overhang & Elastic Resistance (syncclipboard-xposed panelOffset):
+    val firstSlotCenterDp = horizontalPadding + (itemWidth / 2f)
+    val lastSlotCenterDp = horizontalPadding + (itemWidth * (items.size - 1)) + (itemWidth / 2f)
+
+    val rawTargetCenterDp =
         if (dragX != null) {
             with(density) { dragX!!.toDp() }
         } else {
             selectedCenterDp + peakShiftDp
         }
 
+    val targetCenterDp = rawTargetCenterDp.coerceIn(firstSlotCenterDp, lastSlotCenterDp)
+
+    val offsetAnimation = remember { Animatable(0f) }
+    val rubberBandPx = with(density) { 6.dp.toPx() }
+    val panelOffset by remember(rubberBandPx) {
+        derivedStateOf {
+            val totalWidthPx = with(density) { totalWidth.toPx() }
+            if (totalWidthPx == 0f) {
+                0f
+            } else {
+                val fraction = (offsetAnimation.value / totalWidthPx).coerceIn(-1f, 1f)
+                rubberBandPx * fraction.sign * FastOutSlowInEasing.transform(abs(fraction))
+            }
+        }
+    }
+
+    val pressProgressAnim = remember { Animatable(0f) }
+    val scaleXAnim = remember { Animatable(1f) }
+    val scaleYAnim = remember { Animatable(1f) }
+
+    val pressProgressSpringSpec = remember { spring<Float>(dampingRatio = 1f, stiffness = 1000f, visibilityThreshold = 0.001f) }
+    val scaleXSpringSpec = remember { spring<Float>(dampingRatio = 0.6f, stiffness = 250f, visibilityThreshold = 0.001f) }
+    val scaleYSpringSpec = remember { spring<Float>(dampingRatio = 0.7f, stiffness = 250f, visibilityThreshold = 0.001f) }
+    val pressedScale = 78f / 56f
+
     val centerX = remember { Animatable(targetCenterDp.value) }
 
-    // --- Kinematic Springs: CodeDeX tuned signature overshoot springs & direction-aware dual damping ---
-    val lensSlideSpring = remember { spring<Float>(dampingRatio = 0.5f, stiffness = 170f) }
-
-    val isMoving = centerX.isRunning
+    val isMoving = centerX.isRunning || velocityAnimatable.isRunning
     val isHighlighterActive = isInteracting || isMoving
+
+    // Interactive ambient spotlight on the track underneath the highlighter
+    val spotlightAlpha = remember { Animatable(0f) }
+    val spotlightSpringSpec = remember { spring<Float>(dampingRatio = 0.5f, stiffness = 300f) }
+
+    LaunchedEffect(isHighlighterActive) {
+        if (isHighlighterActive) {
+            spotlightAlpha.animateTo(1f, spotlightSpringSpec)
+        } else {
+            spotlightAlpha.animateTo(0f, spotlightSpringSpec)
+        }
+    }
+
+    LaunchedEffect(isInteracting) {
+        if (isInteracting) {
+            launch { pressProgressAnim.animateTo(1f, pressProgressSpringSpec) }
+            launch { scaleXAnim.animateTo(pressedScale, scaleXSpringSpec) }
+            launch { scaleYAnim.animateTo(pressedScale, scaleYSpringSpec) }
+        } else {
+            launch { pressProgressAnim.animateTo(0f, pressProgressSpringSpec) }
+            launch { scaleXAnim.animateTo(1f, scaleXSpringSpec) }
+            launch { scaleYAnim.animateTo(1f, scaleYSpringSpec) }
+        }
+    }
 
     LaunchedEffect(targetCenterDp.value, dragX != null) {
         if (dragX != null) {
             centerX.snapTo(targetCenterDp.value)
         } else {
+            val startX = centerX.value
+            val targetX = targetCenterDp.value
+            val distance = targetX - startX
+            if (abs(distance) > 1f) {
+                // Initialize velocity in travel direction for fluid squish during slide
+                val initialVelocity = (distance / totalWidth.value).coerceIn(-1f, 1f) * 12f
+                coroutineScope.launch {
+                    velocityAnimatable.snapTo(initialVelocity)
+                    velocityAnimatable.animateTo(0f, velocitySpringSpec)
+                }
+                if (!isInteracting) {
+                    coroutineScope.launch {
+                        launch { pressProgressAnim.animateTo(1f, pressProgressSpringSpec) }
+                        launch { scaleXAnim.animateTo(pressedScale, scaleXSpringSpec) }
+                        launch { scaleYAnim.animateTo(pressedScale, scaleYSpringSpec) }
+                        centerX.animateTo(
+                            targetValue = targetCenterDp.value,
+                            animationSpec = lensSlideSpring,
+                        )
+                        launch { pressProgressAnim.animateTo(0f, pressProgressSpringSpec) }
+                        launch { scaleXAnim.animateTo(1f, scaleXSpringSpec) }
+                        launch { scaleYAnim.animateTo(1f, scaleYSpringSpec) }
+                    }
+                    return@LaunchedEffect
+                }
+            }
             centerX.animateTo(
                 targetValue = targetCenterDp.value,
                 animationSpec = lensSlideSpring,
@@ -170,174 +293,33 @@ fun LiquidGlassSegmentedControl(
         }
     }
 
-    val bulgeSpringDp = remember(isInteracting) {
-        spring<Dp>(
-            dampingRatio = if (isInteracting) 0.5f else 0.56f,
-            stiffness = 170f
-        )
-    }
-    val bulgeSpringFloat = remember(isInteracting) {
-        spring<Float>(
-            dampingRatio = if (isInteracting) 0.5f else 0.56f,
-            stiffness = 170f
-        )
-    }
-    val activeSpringDp = remember(isHighlighterActive) {
-        spring<Dp>(
-            dampingRatio = if (isHighlighterActive) 0.5f else 0.56f,
-            stiffness = 170f
-        )
-    }
-    val activeSpringFloat = remember(isHighlighterActive) {
-        spring<Float>(
-            dampingRatio = if (isHighlighterActive) 0.5f else 0.56f,
-            stiffness = 170f
-        )
-    }
+    // --- Exact 1:1 GitHub app syncclipboard-xposed optical tokens ---
+    val hlProgress = pressProgressAnim.value
+    val hlLensHeight = 10.dp * hlProgress
+    val hlLensAmount = 14.dp * hlProgress
 
-    // --- Highlighter dynamic sizing & signature bulge on interact ---
-    // At rest: sits neatly aligned inside track slot (itemWidth - 6dp, visibleHeight - 8dp)
-    // On interact: BULGES OUT vertically (+16dp over track) and expands horizontally
-    val restWidth = (itemWidth - 6.dp).coerceAtLeast(40.dp)
-    val interactWidth = itemWidth * 1.35f
-
-    val highlighterWidth by
-        animateDpAsState(
-            targetValue = (if (isInteracting) interactWidth else restWidth) + peakStretchDp,
-            animationSpec = bulgeSpringDp,
-            label = "hlW",
-        )
-    val highlighterHeight by
-        animateDpAsState(
-            targetValue = if (isInteracting) visibleHeight + 16.dp else visibleHeight - 8.dp,
-            animationSpec = bulgeSpringDp,
-            label = "hlH",
-        )
-
-    // --- Dynamic lens & refraction warp on interact ---
-    val animatedLensHeight by
-        animateDpAsState(
-            targetValue = if (isInteracting) lensHeight else 0.dp,
-            animationSpec = bulgeSpringDp,
-            label = "lensH",
-        )
-    val animatedLensAmount by
-        animateDpAsState(
-            targetValue = if (isInteracting) lensAmount else 0.dp,
-            animationSpec = bulgeSpringDp,
-            label = "lensA",
-        )
-    val animatedRefraction by
-        animateFloatAsState(
-            targetValue = if (isInteracting) restRefraction else 0.20f,
-            animationSpec = bulgeSpringFloat,
-            label = "refr",
-        )
-
-    // --- Multi-Tier Liquid Glass Shadows (CodeDeX Tuned Preference) ---
-    val unexpandedShadow = LiquidGlassShadowProperties.Unexpanded
-    val expandedShadow = LiquidGlassShadowProperties.Expanded
-
-    val animatedShadowRadius by
-        animateDpAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.radius else unexpandedShadow.radius,
-            animationSpec = activeSpringDp,
-            label = "shadowRadius",
-        )
-    val animatedShadowAlpha by
-        animateFloatAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.alpha else unexpandedShadow.alpha,
-            animationSpec = activeSpringFloat,
-            label = "shadowAlpha",
-        )
-    val animatedShadowOffsetY by
-        animateDpAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.offsetY else unexpandedShadow.offsetY,
-            animationSpec = activeSpringDp,
-            label = "shadowOffsetY",
-        )
-    val animatedInnerShadowRadius by
-        animateDpAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.innerRadius else unexpandedShadow.innerRadius,
-            animationSpec = activeSpringDp,
-            label = "innerShadowR",
-        )
-    val animatedInnerShadowAlpha by
-        animateFloatAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.innerAlpha else unexpandedShadow.innerAlpha,
-            animationSpec = activeSpringFloat,
-            label = "innerShadowA",
-        )
-    val animatedInnerShadowOffsetY by
-        animateDpAsState(
-            targetValue = if (isHighlighterActive) expandedShadow.innerOffsetY else unexpandedShadow.innerOffsetY,
-            animationSpec = activeSpringDp,
-            label = "innerShadowOffsetY",
-        )
-
-    val currentShadowProperties = remember(
-        animatedShadowRadius,
-        animatedShadowAlpha,
-        animatedShadowOffsetY,
-        animatedInnerShadowRadius,
-        animatedInnerShadowAlpha,
-        animatedInnerShadowOffsetY
-    ) {
+    val currentHighlighterShadow = remember(hlProgress) {
         LiquidGlassShadowProperties(
-            radius = animatedShadowRadius,
+            radius = 4.dp * hlProgress,
             color = Color.Black,
-            alpha = animatedShadowAlpha,
-            offset = DpOffset(0.dp, animatedShadowOffsetY),
-            innerRadius = animatedInnerShadowRadius,
+            alpha = 0.15f * hlProgress,
+            offset = DpOffset(0.dp, 2.dp * hlProgress),
+            innerRadius = 8.dp * hlProgress,
             innerColor = Color.Black,
-            innerAlpha = animatedInnerShadowAlpha,
-            innerOffset = DpOffset(0.dp, animatedInnerShadowOffsetY)
+            innerAlpha = 0.15f * hlProgress,
+            innerOffset = DpOffset.Zero,
         )
     }
 
-    // --- Dynamic blur on interact / slide ---
-    val animatedBlur by
-        animateDpAsState(
-            targetValue = if (isHighlighterActive) 1.5.dp else 0.dp,
-            animationSpec = activeSpringDp,
-            label = "blur",
-        )
-
-    // --- Dynamic specular glare boost on interact ---
-    val animatedGlareAlpha by
-        animateFloatAsState(
-            targetValue = if (isInteracting) 0.85f else LiquidGlassTokens.GlareRestAlpha,
-            animationSpec = bulgeSpringFloat,
-            label = "glareA",
-        )
-
-    // --- Dynamic Highlighter Tint (Exact 1:1 match to Apple reference) ---
-    val hlRestTint = if (isDark) Color.White else Color.Black
-    val hlActiveTint = if (isDark) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f) else Color.White
-
-    val animatedTint by
-        animateColorAsState(
-            targetValue = if (isHighlighterActive) hlActiveTint else hlRestTint,
-            animationSpec = tween(300),
-            label = "tint",
-        )
-
-    val hlRestAlpha = if (isDark) 1f else 0.68f
-    val hlActiveAlpha = if (isDark) 0.1f else 0.78f
-
-    val animatedTintAlpha by
-        animateFloatAsState(
-            targetValue = if (isHighlighterActive) hlActiveAlpha else hlRestAlpha,
-            animationSpec = tween(300),
-            label = "tintA",
-        )
+    val hlRestTint = if (!isDark) Color.Black else Color.White
+    val hlRestAlpha = 0.10f * (1f - hlProgress)
+    val hlActiveTint = Color.Black
+    val hlActiveAlpha = 0.03f * hlProgress
+    val hlCurrentTint = lerpColor(hlRestTint, hlActiveTint, hlProgress)
+    val hlCurrentAlpha = hlRestAlpha + hlActiveAlpha
 
     val localControlBackdrop = rememberLayerBackdrop()
-    val pillShape = RoundedCornerShape(28.dp)
-
-    var currentScale by remember { mutableFloatStateOf(1f) }
-    var currentTx by remember { mutableFloatStateOf(0f) }
-    var currentTy by remember { mutableFloatStateOf(0f) }
+    val pillShape = RoundedCornerShape(percent = 50)
 
     Box(
         modifier =
@@ -347,16 +329,12 @@ fun LiquidGlassSegmentedControl(
                 .bubbleFluidity(
                     targetScale = 0.96f,
                     pullFactor = 0.04f,
-                    onPhysicsUpdated = { s, tx, ty ->
-                        currentScale = s
-                        currentTx = tx
-                        currentTy = ty
-                    },
                 )
                 .pointerInput(items.size) {
                     val touchSlopPx = viewConfiguration.touchSlop
                     awaitPointerEventScope {
                         var startX = 0f
+                        var touchOffsetPx = 0f
                         var wasTouching = false
                         var dragActivated = false
                         var startedOnHighlighter = false
@@ -366,12 +344,14 @@ fun LiquidGlassSegmentedControl(
                             val change = event.changes.firstOrNull() ?: continue
 
                             if (change.pressed) {
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
                                 if (!wasTouching) {
                                     startX = change.position.x
+                                    val currentCenterPx = centerX.value.dp.toPx()
+                                    touchOffsetPx = startX - currentCenterPx
                                     dragActivated = false
 
                                     // Check if touch started on the highlighter
-                                    val currentCenterPx = centerX.value.dp.toPx()
                                     val widthPx = highlighterWidth.toPx()
                                     val touchPadding = 16.dp.toPx()
                                     val leftBound = currentCenterPx - (widthPx / 2f) - touchPadding
@@ -389,9 +369,27 @@ fun LiquidGlassSegmentedControl(
                                 }
 
                                 if (dragActivated) {
-                                    dragX = change.position.x
+                                    val currentX = change.position.x - touchOffsetPx
+                                    val firstSlotPx = with(density) { firstSlotCenterDp.toPx() }
+                                    val lastSlotPx = with(density) { lastSlotCenterDp.toPx() }
+                                    val overdrag = when {
+                                        currentX < firstSlotPx -> currentX - firstSlotPx
+                                        currentX > lastSlotPx -> currentX - lastSlotPx
+                                        else -> 0f
+                                    }
+                                    coroutineScope.launch {
+                                        offsetAnimation.snapTo(overdrag)
+                                    }
+                                    dragX = currentX
+                                    val currentV = (velocityTracker.calculateVelocity().x / density.density / 100f).coerceIn(-4f, 4f)
+                                    coroutineScope.launch {
+                                        velocityAnimatable.snapTo(currentV)
+                                    }
                                 }
                             } else {
+                                coroutineScope.launch {
+                                    offsetAnimation.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = 300f))
+                                }
                                 val currentDragX = dragX
                                 if (dragActivated && currentDragX != null) {
                                     val itemWidthPx = itemWidth.toPx()
@@ -401,7 +399,14 @@ fun LiquidGlassSegmentedControl(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         items[dropIndex].onClick()
                                     }
+                                    val velocityX = velocityTracker.calculateVelocity().x
+                                    val normalizedVelocity = (velocityX / density.density / 100f).coerceIn(-6f, 6f)
+                                    coroutineScope.launch {
+                                        velocityAnimatable.snapTo(normalizedVelocity)
+                                        velocityAnimatable.animateTo(0f, velocitySpringSpec)
+                                    }
                                 }
+                                velocityTracker.resetTracking()
                                 wasTouching = false
                                 dragX = null
                                 dragActivated = false
@@ -412,7 +417,7 @@ fun LiquidGlassSegmentedControl(
                 },
         contentAlignment = Alignment.Center,
     ) {
-        // 1. CAPTURED LAYER (Base Layer + Board + Labels/Icons)
+        // 1. CAPTURED LAYER (Board + Interactive Spotlight + Labels/Icons)
         Box(
             modifier =
                 Modifier.requiredSize(totalWidth, samplingHeight)
@@ -420,30 +425,6 @@ fun LiquidGlassSegmentedControl(
                     .layerBackdrop(localControlBackdrop),
             contentAlignment = Alignment.Center,
         ) {
-            // STATIC Base Layer: Inverse-scaled to cancel out bubbleFluidity
-            if (backdrop != null) {
-                Box(
-                    modifier =
-                        Modifier.fillMaxSize()
-                            .graphicsLayer {
-                                val invScale = if (currentScale > 0f) 1f / currentScale else 1f
-                                scaleX = invScale
-                                scaleY = invScale
-                                translationX = -currentTx
-                                translationY = -currentTy
-                            }
-                            .drawBackdrop(
-                                backdrop = backdrop,
-                                shape = { RectangleShape },
-                                effects = {},
-                                highlight = { null },
-                                shadow = { null },
-                                innerShadow = { null },
-                                onDrawSurface = {},
-                            )
-                )
-            }
-
             val morphProgress = (expansionFraction / 0.45f).coerceIn(0f, 1f)
             val easeProgress = FastOutSlowInEasing.transform(morphProgress)
 
@@ -463,31 +444,101 @@ fun LiquidGlassSegmentedControl(
                 alpha = LiquidGlassTokens.ExpandedSearchShadowColor.alpha * easeProgress
             )
 
-            // Board: Authentic Liquid Glass Panel (Active refractions across all states)
-            if (backdrop != null) {
-                LiquidGlassPanel(
-                    backdrop = backdrop,
-                    modifier = Modifier.size(totalWidth, visibleHeight),
-                    shape = pillShape,
-                    config =
-                        LiquidGlassPresets.NavBar.copy(
-                            shape = pillShape,
-                            surfaceTint = currentSurfaceTint,
-                            surfaceTintAlpha = currentSurfaceTintAlpha,
-                            shadowRadius = currentShadowRadius,
-                            shadowOffset = currentShadowOffset,
-                            shadowColor = currentShadowColor,
-                        ),
-                    content = {},
-                )
-            } else {
-                Surface(
-                    modifier = Modifier.size(totalWidth, visibleHeight),
-                    shape = pillShape,
-                    color = currentSurfaceTint.copy(alpha = currentSurfaceTintAlpha),
-                    shadowElevation = 12.dp * easeProgress,
-                    content = {},
-                )
+            // Board: Authentic Liquid Glass Panel with Interactive Ambient Spotlight & Specular Rim Highlight
+            Box(
+                modifier = Modifier
+                    .graphicsLayer { translationX = panelOffset }
+                    .size(totalWidth, visibleHeight)
+                    .drawWithContent {
+                        drawContent()
+                        if (spotlightAlpha.value > 0.001f) {
+                            val alpha = spotlightAlpha.value
+                            val centerPx = with(density) { centerX.value.dp.toPx() } + panelOffset
+                            val centerOffset = Offset(centerPx.coerceIn(0f, size.width), size.height / 2f)
+                            val spotlightRadius = size.height * 1.4f
+
+                            val outline = pillShape.createOutline(size, layoutDirection, this)
+                            val path = when (outline) {
+                                is Outline.Rectangle -> Path().apply { addRect(outline.rect) }
+                                is Outline.Rounded -> Path().apply { addRoundRect(outline.roundRect) }
+                                is Outline.Generic -> outline.path
+                            }
+
+                            // 1. Soft surface wash & focused radial spotlight on the board surface (AGSL RuntimeShader if API 33+)
+                            clipPath(path) {
+                                drawRect(
+                                    color = Color.White.copy(alpha = (if (isDark) 0.035f else 0.06f) * alpha),
+                                    blendMode = BlendMode.Plus,
+                                )
+                                if (spotlightShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    spotlightShader.setFloatUniform("size", size.width, size.height)
+                                    spotlightShader.setColorUniform(
+                                        "color",
+                                        Color.White.copy(alpha = (if (isDark) 0.14f else 0.20f) * alpha).toArgb()
+                                    )
+                                    spotlightShader.setFloatUniform("radius", spotlightRadius)
+                                    spotlightShader.setFloatUniform("position", centerOffset.x, centerOffset.y)
+                                    drawRect(
+                                        ShaderBrush(spotlightShader),
+                                        blendMode = BlendMode.Plus
+                                    )
+                                } else {
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            0.0f to Color.White.copy(alpha = (if (isDark) 0.18f else 0.25f) * alpha),
+                                            0.45f to Color.White.copy(alpha = (if (isDark) 0.07f else 0.10f) * alpha),
+                                            1.0f to Color.Transparent,
+                                            center = centerOffset,
+                                            radius = spotlightRadius,
+                                        ),
+                                        radius = spotlightRadius,
+                                        center = centerOffset,
+                                        blendMode = BlendMode.Plus,
+                                    )
+                                }
+                            }
+
+                            // 2. Specular rim highlight: illuminates the specular glass edge of the navboard around the highlighter
+                            drawOutline(
+                                outline = outline,
+                                brush = Brush.radialGradient(
+                                    0.0f to Color.White.copy(alpha = (if (isDark) 0.45f else 0.60f) * alpha),
+                                    0.50f to Color.White.copy(alpha = (if (isDark) 0.15f else 0.22f) * alpha),
+                                    1.0f to Color.Transparent,
+                                    center = centerOffset,
+                                    radius = spotlightRadius * 0.9f,
+                                ),
+                                style = Stroke(width = 1.25.dp.toPx()),
+                                blendMode = BlendMode.Plus,
+                            )
+                        }
+                    }
+            ) {
+                if (backdrop != null) {
+                    LiquidGlassPanel(
+                        backdrop = backdrop,
+                        modifier = Modifier.fillMaxSize(),
+                        shape = pillShape,
+                        config =
+                            LiquidGlassPresets.NavBar.copy(
+                                shape = pillShape,
+                                surfaceTint = currentSurfaceTint,
+                                surfaceTintAlpha = currentSurfaceTintAlpha,
+                                shadowRadius = currentShadowRadius,
+                                shadowOffset = currentShadowOffset,
+                                shadowColor = currentShadowColor,
+                            ),
+                        content = {},
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = pillShape,
+                        color = currentSurfaceTint.copy(alpha = currentSurfaceTintAlpha),
+                        shadowElevation = 12.dp * easeProgress,
+                        content = {},
+                    )
+                }
             }
 
             // Action Text inside the board (shows "Pair Device" / "Send File" at rest)
@@ -525,6 +576,7 @@ fun LiquidGlassSegmentedControl(
                 Row(
                     modifier =
                         Modifier.size(totalWidth, visibleHeight)
+                            .graphicsLayer { translationX = panelOffset }
                             .padding(horizontal = horizontalPadding),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -566,38 +618,44 @@ fun LiquidGlassSegmentedControl(
                         clip = false
                     }
             ) {
+                val activeHighlighterBackdrop =
+                    if (backdrop != null) rememberCombinedBackdrop(backdrop, localControlBackdrop)
+                    else localControlBackdrop
+
                 LiquidGlassPanel(
-                    backdrop = localControlBackdrop,
+                    backdrop = activeHighlighterBackdrop,
                     modifier =
                         Modifier.align(Alignment.CenterStart)
                             .size(highlighterWidth, highlighterHeight)
                             .graphicsLayer {
-                                val centerPx = with(density) { centerX.value.dp.toPx() }
+                                val centerPx = with(density) { centerX.value.dp.toPx() } + panelOffset
                                 val widthPx = highlighterWidth.toPx()
                                 translationX = centerPx - (widthPx / 2f)
                                 translationY = hlYOffset.toPx()
                                 alpha = highlighterEase
+
+                                // Exact fluid squish and scaling from syncclipboard-xposed:
+                                val v = (velocityAnimatable.value / 10f)
+                                scaleX = scaleXAnim.value / (1f - (v * 0.75f).coerceIn(-0.20f, 0.20f))
+                                scaleY = scaleYAnim.value * (1f - (v * 0.25f).coerceIn(-0.20f, 0.20f))
                                 clip = false
                             }
-                            .background(
-                                color = animatedTint.copy(alpha = animatedTintAlpha),
-                                shape = pillShape,
-                            )
                             .zIndex(10f),
                     shape = pillShape,
                     config =
                         LiquidGlassPresets.IconButton
-                            .withShadowProperties(currentShadowProperties)
+                            .withShadowProperties(currentHighlighterShadow)
                             .copy(
                                 shape = pillShape,
-                                blurRadius = animatedBlur,
-                                lensHeight = animatedLensHeight,
-                                lensAmount = animatedLensAmount,
-                                surfaceTint = animatedTint,
-                                surfaceTintAlpha = animatedTintAlpha,
-                                restRefraction = animatedRefraction,
+                                blurRadius = 0.dp,
+                                lensHeight = hlLensHeight,
+                                lensAmount = hlLensAmount,
+                                surfaceTint = hlCurrentTint,
+                                surfaceTintAlpha = hlCurrentAlpha,
+                                restRefraction = 1f,
                                 depthEffect = true,
-                                glareFactor = animatedGlareAlpha * 100f,
+                                chromaticAberration = true,
+                                glareFactor = 100f * hlProgress,
                             ),
                     content = {},
                 )

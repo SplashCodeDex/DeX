@@ -44,7 +44,7 @@ spotless = "8.10.0"
 kermit = "2.1.0"
 ktlint = "1.8.0"
 googleApiClient = "2.9.0"
-shadow = "8.3.6"
+shadow = "9.0.0"
 [libraries]
 compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
 compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-multiplatform" }

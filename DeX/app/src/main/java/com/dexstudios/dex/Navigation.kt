@@ -669,6 +669,7 @@ fun MainNavigation(
                                     .zIndex(if (isTabsExpanded) 22f else 5f)
                                     .graphicsLayer {
                                         alpha = navPillAlpha
+                                        clip = false
                                     }
                             ) {
                                 MorphingSheetNavPill(
@@ -1348,7 +1349,12 @@ private fun MorphingSheetNavPill(
         modifier = modifier
             .size(animatedWidth, height)
             .expandingAnticipation(navPillAnticipationState)
-            .clip(pillShape),
+            .then(
+                if (stage != NavPillExpansionStage.FullTabs) Modifier.clip(pillShape) else Modifier
+            )
+            .graphicsLayer {
+                clip = false
+            },
         contentAlignment = Alignment.Center
     ) {
         if (!isMediaActive) {

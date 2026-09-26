@@ -244,29 +244,21 @@ fun PairingRequestDialog(
                         .fillMaxWidth(0.9f)
                 ) {
                     // Close Button
-                    Box(
+                    DynamicDismissButton(
+                        onClick = {
+                            visible = false
+                            onReject()
+                        },
+                        size = DynamicDismissButtonSize.Large,
+                        colors = DynamicDismissButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        contentDescription = "Close",
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(16.dp)
-                            .size(36.dp)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                visible = false
-                                onReject()
-                            }
-                        ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = DeXIcons.Close,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                            .padding(16.dp),
+                    )
 
                     Column(
                         modifier = Modifier.padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),

@@ -196,7 +196,7 @@ fun main() {
 
         // Gates actual AWT visibility until the UTILITY window type is applied
         // (AWT setType() must run before the native peer is created).
-        var windowReady by remember { mutableStateOf(false) }
+        var windowReady by remember { mutableStateOf(true) }
 
         // Anti-Flash Cache: Delay hiding the OS window by 150ms to allow the Compose exit animation to finish.
         // This ensures the OS caches a 100% transparent bitmap when hidden, preventing the "double opening" flash.
@@ -295,14 +295,21 @@ fun main() {
                     // Only now show the window — the UTILITY type is applied while the
                     // peer is still non-displayable, which removes the taskbar icon.
                     windowReady = true
+
+                    // Steal focus from the launching terminal/IDE so the dock card
+                    // appears and the focus-loss auto-hide doesn't fire immediately.
+                    window.toFront()
+                    window.requestFocus()
                 }
 
                 // 5-Point Safety Guard Focus Loss Listener
                 DisposableEffect(window) {
                     val listener = object : java.awt.event.WindowFocusListener {
-                        override fun windowGainedFocus(e: java.awt.event.WindowEvent?) {}
+                        override fun windowGainedFocus(e: java.awt.event.WindowEvent?) {
+                            controller.hasGainedFocusOnce = true
+                        }
                         override fun windowLostFocus(e: java.awt.event.WindowEvent?) {
-                            if (controller.shouldDismissOnFocusLoss()) {
+                            if (controller.hasGainedFocusOnce && controller.shouldDismissOnFocusLoss()) {
                                 controller.hide()
                             }
                         }
