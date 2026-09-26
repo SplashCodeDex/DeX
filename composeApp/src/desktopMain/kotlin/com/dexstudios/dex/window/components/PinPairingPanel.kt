@@ -94,7 +94,7 @@ sealed interface PinPairingUiState {
     data class PinView(
         val title: String = "Pairing Request",
         val subtitle: String = "",
-        val pinCode: String = "48291",
+        val pinCode: String,
         val enteredDigitCount: Int = 0,
         val remainingSeconds: Int = 60,
         val isError: Boolean = false,
@@ -703,6 +703,7 @@ fun PinPairingPanel(pairingEngine: PairingEngine, onClose: () -> Unit, modifier:
 
         is PairingState.Error -> PinPairingUiState.PinView(
             subtitle = s.message.ifBlank { "Pairing failed" },
+            pinCode = "-".repeat(PairingEngine.PIN_LENGTH),
             isError = true,
             remainingSeconds = remainingSeconds,
         )

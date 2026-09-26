@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.network.TransferStateMonitor
-import com.dexstudios.dex.window.kinematics.DockCardAnimations
 
 @Composable
 fun ActiveTransferDashboard(modifier: Modifier = Modifier) {
