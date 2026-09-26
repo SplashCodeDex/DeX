@@ -83,7 +83,7 @@ fun InboundPairingDialogOverlay() {
 }
 
 @Composable
-internal fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEntered: (String) -> Unit, onCancel: () -> Unit) {
+private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEntered: (String) -> Unit, onCancel: () -> Unit) {
     var pinText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 

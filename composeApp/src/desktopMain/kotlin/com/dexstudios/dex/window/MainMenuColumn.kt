@@ -225,10 +225,6 @@ fun MainMenuColumn(
             )
         }
 
-        com.dexstudios.dex.window.components.ActiveTransferDashboard(
-            modifier = Modifier.fillMaxWidth(),
-        )
-
         val externalDragState = LocalExternalDragState.current
 
         val deviceDropTarget = remember(pairedList, discoveredList) {

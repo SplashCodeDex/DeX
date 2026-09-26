@@ -55,9 +55,6 @@ object OverlayPhysics {
     val TOAST_MAX_WIDTH = 380.dp
     val TOAST_HEIGHT = 48.dp
 
-    val STACKED_SCREEN_MAX_WIDTH = 480.dp
-    val STACKED_SCREEN_MAX_HEIGHT = 560.dp
-
     // === Easing Curves ===
     val OverlayBackEaseOut: Easing = createBackEaseOut(2.80f)
     val OverlayGentleBackEaseOut: Easing = createBackEaseOut(1.40f)

@@ -82,24 +82,6 @@ data class AlertNotification(
 ) : NotificationPayload
 
 /**
- * Full-content StackedScreen overlay payload.
- */
-data class StackedScreenNotification(
-    override val id: NotificationId,
-    val title: String,
-    val subtitle: String? = null,
-    val width: Dp? = null,
-    val height: Dp? = null,
-    val showBackButton: Boolean = true,
-    val trailingHeaderAction: (@Composable () -> Unit)? = null,
-    val onBack: () -> Unit = {},
-    val content: @Composable () -> Unit,
-    override val priority: NotificationPriority = NotificationPriority.High,
-    override val autoDismissTimeoutMs: Long? = null, // Persistent
-    override val createdAtEpochMs: Long = System.currentTimeMillis(),
-) : NotificationPayload
-
-/**
  * Corner Message Toast payload.
  */
 data class ToastNotification(

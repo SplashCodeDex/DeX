@@ -26,12 +26,10 @@ import com.dexstudios.dex.core.designsystem.components.overlay.FluidNotification
 import com.dexstudios.dex.core.designsystem.components.overlay.MessageToast
 import com.dexstudios.dex.core.designsystem.components.overlay.NotificationBanner
 import com.dexstudios.dex.core.designsystem.components.overlay.StackItem
-import com.dexstudios.dex.core.designsystem.components.overlay.StackedScreen
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import com.dexstudios.dex.overlay.AlertNotification
 import com.dexstudios.dex.overlay.BannerNotification
 import com.dexstudios.dex.overlay.OverlayManager
-import com.dexstudios.dex.overlay.StackedScreenNotification
 import com.dexstudios.dex.overlay.ToastNotification
 import com.dexstudios.dex.platform.DesktopEnvironment
 import com.dexstudios.dex.platform.TaskbarWorkAreaProvider
@@ -172,23 +170,6 @@ fun CornerOverlayHost(overlayManager: OverlayManager) {
                                         onHoverChanged = { hovered ->
                                             overlayManager.setAlertsHovered(hovered)
                                         },
-                                    )
-                                }
-
-                                is StackedScreenNotification -> {
-                                    StackedScreen(
-                                        title = data.title,
-                                        subtitle = data.subtitle,
-                                        width = data.width ?: OverlayPhysics.STACKED_SCREEN_MAX_WIDTH,
-                                        height = data.height ?: OverlayPhysics.STACKED_SCREEN_MAX_HEIGHT,
-                                        showBackButton = data.showBackButton,
-                                        trailingHeaderAction = data.trailingHeaderAction,
-                                        onBack = data.onBack,
-                                        onDismiss = onDismiss,
-                                        onHoverChanged = { hovered ->
-                                            overlayManager.setAlertsHovered(hovered)
-                                        },
-                                        content = data.content,
                                     )
                                 }
 

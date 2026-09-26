@@ -210,40 +210,6 @@ class OverlayManager(private val scope: CoroutineScope, private val soundService
     }
 
     /**
-     * Dispatch a full-content StackedScreen overlay.
-     */
-    fun pushStackedScreen(
-        title: String,
-        subtitle: String? = null,
-        width: Dp? = null,
-        height: Dp? = null,
-        showBackButton: Boolean = true,
-        trailingHeaderAction: (@Composable () -> Unit)? = null,
-        onBack: () -> Unit = {},
-        content: @Composable () -> Unit,
-    ): NotificationId {
-        val id = UUID.randomUUID().toString()
-        val payload = StackedScreenNotification(
-            id = id,
-            title = title,
-            subtitle = subtitle,
-            width = width,
-            height = height,
-            showBackButton = showBackButton,
-            trailingHeaderAction = trailingHeaderAction,
-            onBack = {
-                onBack()
-                dismiss(id, wasUserAction = true)
-            },
-            content = content,
-        )
-
-        enqueueBottomCenter(payload)
-        recordHistory(id, "StackedScreen", title, subtitle ?: "")
-        return id
-    }
-
-    /**
      * Dispatch a compact corner Message Toast.
      */
     fun showToast(

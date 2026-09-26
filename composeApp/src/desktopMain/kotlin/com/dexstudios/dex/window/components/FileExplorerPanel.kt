@@ -90,6 +90,7 @@ import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityCon
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.components.overlay.ConfirmationPopup
+import com.dexstudios.dex.core.designsystem.components.spotlight.spotlight
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
@@ -122,9 +123,7 @@ import androidx.compose.ui.input.key.isMetaPressed as isKeyMetaPressed
  * - Row 0: Top Navigation (36dp UpDir button, 40dp debounced search pill, SAF vs History mode
  *   toggle)
  * - Row 1: LazyVerticalGrid of 100x105dp cards (48x48dp thumbnails, hover lift, press sink, 400ms
- *   double-click guard)
- * - Row 2: Action Dock ("Send Files", "Send Folders", floating PullProgressDock toast with 4dp
- *   emerald progress bar)
+ * - Row 2: Action Dock ("Send Files", "Send Folders")
  *
  * State and business logic live in [FileExplorerViewModel]; this container only renders.
  */
@@ -176,7 +175,6 @@ fun FileExplorerPanel(
     val safBreadcrumb by viewModel.safBreadcrumb.collectAsState()
     val activePhone by viewModel.activePhone.collectAsState()
     val activeFingerprint by viewModel.activeFingerprint.collectAsState()
-    val isTransferring by viewModel.isTransferring.collectAsState()
     val explorerError by viewModel.explorerError.collectAsState()
     val quickLookItem by viewModel.quickLookItem.collectAsState()
 
@@ -896,47 +894,6 @@ fun FileExplorerPanel(
                         }
                     }
                 }
-
-                // Floating PullProgressDock Toast
-                Column(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
-                    AnimatedVisibility(
-                        visible = isTransferring,
-                        enter =
-                        slideInVertically(
-                            initialOffsetY = { 40 },
-                            animationSpec = spring(
-                                dampingRatio = 0.58f,
-                                stiffness = 320f,
-                            ),
-                        ) + scaleIn(
-                            initialScale = 0.90f,
-                            animationSpec = spring(
-                                dampingRatio = 0.58f,
-                                stiffness = 320f,
-                            ),
-                        ) + fadeIn(tween(180)),
-                        exit =
-                        slideOutVertically(
-                            targetOffsetY = { 40 },
-                            animationSpec = spring(
-                                dampingRatio = 0.70f,
-                                stiffness = 380f,
-                            ),
-                        ) + scaleOut(
-                            targetScale = 0.92f,
-                            animationSpec = spring(
-                                dampingRatio = 0.70f,
-                                stiffness = 380f,
-                            ),
-                        ) + fadeOut(tween(160)),
-                    ) {
-                        PullProgressDock(
-                            clientEngine = clientEngine,
-                            fileExplorerService = fileExplorerService,
-                            onCancel = viewModel::cancelPull,
-                        )
-                    }
-                }
             }
 
             // === Row 2: Bottom Actions Dock ===
@@ -997,6 +954,10 @@ fun FileExplorerPanel(
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
                                 glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFilesPressProgress),
+                            )
+                            .spotlight(
+                                shape = CircleShape,
+                                pressProgress = sendFilesPressProgress,
                             )
                             .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(
@@ -1082,6 +1043,10 @@ fun FileExplorerPanel(
                                 backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                 opacity = 1.0f,
                                 glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFoldersPressProgress),
+                            )
+                            .spotlight(
+                                shape = CircleShape,
+                                pressProgress = sendFoldersPressProgress,
                             )
                             .pointerHoverIcon(PointerIcon.Hand)
                             .clickable(

@@ -61,6 +61,8 @@ import com.dexstudios.dex.core.designsystem.components.FluidSegmentedPicker
 import com.dexstudios.dex.core.designsystem.components.FluidSwitch
 import com.dexstudios.dex.core.designsystem.components.SegmentOption
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
+import com.dexstudios.dex.core.designsystem.components.spotlight.SpotlightConfig
+import com.dexstudios.dex.core.designsystem.components.spotlight.spotlight
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
@@ -128,7 +130,6 @@ fun SettingsPanel(
     val downloadDirPref by deviceConfig.downloadDirFlow.collectAsState()
     val deviceAlias by deviceConfig.aliasFlow.collectAsState()
     var showResetConfirm by remember { mutableStateOf(false) }
-    var showAdbPicker by remember { mutableStateOf(false) }
     var showOverlayLab by remember { mutableStateOf(false) }
 
     // Real Google avatar when signed in; fetched and decoded off the UI thread via the
@@ -335,12 +336,6 @@ fun SettingsPanel(
             // Developer Tools
             SettingsSectionHeader("Developer Tools")
             SettingsCard {
-                SettingsItem(
-                    icon = painterResource(Res.drawable.ic_fluent_tune),
-                    title = "Connect ADB",
-                    subtitle = "Pick a discovered phone to connect over ADB",
-                    onClick = { showAdbPicker = true },
-                )
                 if (com.dexstudios.dex.AppBuildConfig.DEBUG) {
                     SettingsItem(
                         icon = painterResource(Res.drawable.ic_fluent_notifications),
@@ -493,6 +488,10 @@ fun SettingsPanel(
                                     .height(34.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(MaterialTheme.colorScheme.primary)
+                                    .spotlight(
+                                        shape = RoundedCornerShape(8.dp),
+                                        config = SpotlightConfig.Focused,
+                                    )
                                     .shinyGlare(shape = RoundedCornerShape(8.dp))
                                     .pointerHoverIcon(PointerIcon.Hand)
                                     .clickable {
@@ -520,6 +519,10 @@ fun SettingsPanel(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                                         RoundedCornerShape(8.dp),
+                                    )
+                                    .spotlight(
+                                        shape = RoundedCornerShape(8.dp),
+                                        config = SpotlightConfig.Focused,
                                     )
                                     .shinyGlare(shape = RoundedCornerShape(8.dp))
                                     .pointerHoverIcon(PointerIcon.Hand)
@@ -878,22 +881,6 @@ fun SettingsPanel(
         }
     }
 
-    if (showAdbPicker) {
-        val discoveredDevices = discoveryEngine.devices.collectAsState().value.values.toList()
-        AdbDevicePickerDialog(
-            devices = discoveredDevices,
-            onDismiss = { showAdbPicker = false },
-            onPick = { device ->
-                showAdbPicker = false
-                // Self-gating: AdbManager probes port 5555 with a bounded TCP ping before
-                // invoking the adb binary, so an unreachable pick costs ~400ms, never a hang.
-                coroutineScope.launch(Dispatchers.IO) {
-                    com.dexstudios.dex.desktop.AdbManager.connect(device.ip)
-                }
-            },
-        )
-    }
-
     if (showResetConfirm) {
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
@@ -921,54 +908,6 @@ fun SettingsPanel(
             },
         )
     }
-}
-
-/**
- * Power-user ADB connect: pick ONE discovered phone and run `adb connect` against it.
- * Empty state explains why the list is empty instead of showing a dead dialog.
- */
-@Composable
-internal fun AdbDevicePickerDialog(devices: List<com.dexstudios.dex.core.network.DiscoveredDevice>, onDismiss: () -> Unit, onPick: (com.dexstudios.dex.core.network.DiscoveredDevice) -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Connect over ADB") },
-        text = {
-            if (devices.isEmpty()) {
-                Text("No phones discovered yet. Make sure your phone is on the same network and DeX is running.")
-            } else {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    devices.forEach { device ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onPick(device) }
-                                .padding(horizontal = 4.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(
-                                    text = device.info.alias.ifBlank { "Unknown phone" },
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Text(
-                                    text = device.ip,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
 
 @Composable
