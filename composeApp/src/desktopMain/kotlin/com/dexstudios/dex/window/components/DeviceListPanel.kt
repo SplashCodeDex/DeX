@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.touchlab.kermit.Logger
+import com.dexstudios.dex.core.designsystem.assets.LottiePaths
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
@@ -421,7 +422,7 @@ private object LottieAssets {
         cache.get()?.let { return it }
         return loadMutex.withLock {
             cache.get() ?: runCatching {
-                com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes("files/DevicesMorph.json").decodeToString()
+                com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes(LottiePaths.DEVICES_MORPH).decodeToString()
             }.onSuccess { loaded -> cache.set(loaded) }
                 .onFailure { e -> Logger.i("Failed to load DevicesMorph.json: ${e.message}") }
                 .getOrNull()

@@ -29,26 +29,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.assets.LottieAssetCache
+import com.dexstudios.dex.core.designsystem.assets.LottiePaths
 import io.github.alexzhirkevich.compottie.Compottie
 import io.github.alexzhirkevich.compottie.LottieCompositionSpec
 import io.github.alexzhirkevich.compottie.animateLottieCompositionAsState
 import io.github.alexzhirkevich.compottie.rememberLottieComposition
 import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import org.jetbrains.compose.resources.painterResource
-
-/**
- * In-memory cache for Lottie JSON strings to avoid repeated disk/resource reads on toggle.
- */
-internal object LottieAssetCache {
-    private val cache = mutableMapOf<String, String>()
-
-    suspend fun loadJson(path: String): String = cache[path] ?: run {
-        val loaded = Res.readBytes(path).decodeToString()
-        cache[path] = loaded
-        loaded
-    }
-}
 
 /**
  * Animated Do Not Disturb (DnD) Bell Icon.
@@ -71,8 +59,8 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
     // Preload both assets asynchronously
     LaunchedEffect(Unit) {
         try {
-            dndOnJson = LottieAssetCache.loadJson("files/bell_dnd_on.json")
-            dndOffJson = LottieAssetCache.loadJson("files/bell_dnd_off.json")
+            dndOnJson = LottieAssetCache.loadJson(LottiePaths.BELL_DND_ON)
+            dndOffJson = LottieAssetCache.loadJson(LottiePaths.BELL_DND_OFF)
         } catch (e: Exception) {
             Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load DND bell Lottie assets" }
         }
@@ -202,7 +190,7 @@ fun AnimatedSearchToXIcon(
 
     LaunchedEffect(Unit) {
         try {
-            searchJson = LottieAssetCache.loadJson("files/search_to_x.json")
+            searchJson = LottieAssetCache.loadJson(LottiePaths.SEARCH_TO_X)
         } catch (e: Exception) {
             Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load search_to_x Lottie asset" }
         }

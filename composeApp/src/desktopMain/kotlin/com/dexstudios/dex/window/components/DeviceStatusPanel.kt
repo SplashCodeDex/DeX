@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
+import com.dexstudios.dex.core.designsystem.assets.LottiePaths
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
@@ -184,10 +185,10 @@ fun DeviceStatusPanel(
     var lottieJson by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(activeCategory) {
         val jsonPath = when (activeCategory) {
-            ConnectedDeviceType.Phone -> "files/device_connected.json"
-            ConnectedDeviceType.Tablet -> "files/tablet_connected.json"
-            ConnectedDeviceType.Laptop -> "files/laptop_connected.json"
-            ConnectedDeviceType.Watch -> "files/watch_connected.json"
+            ConnectedDeviceType.Phone -> LottiePaths.DEVICE_CONNECTED
+            ConnectedDeviceType.Tablet -> LottiePaths.TABLET_CONNECTED
+            ConnectedDeviceType.Laptop -> LottiePaths.LAPTOP_CONNECTED
+            ConnectedDeviceType.Watch -> LottiePaths.WATCH_CONNECTED
         }
         runCatching {
             lottieJson = Res.readBytes(jsonPath).decodeToString()

@@ -27,6 +27,8 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dexstudios.dex.R
+import com.dexstudios.dex.core.designsystem.assets.LottiePaths
+import com.dexstudios.dex.core.designsystem.assets.rememberLottieJson
 import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.PermissionManager
@@ -249,7 +251,13 @@ private fun OnboardingWelcomePreview() {
 
 @Composable
 internal fun OnboardingWelcome(onNext: () -> Unit) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lottie/DevicesMorph.json"))
+    // Bytes come from composeResources, single-sourced with desktop. Lottie derives the
+    // composition cache key from the JSON itself, so this parse is shared with the carousel
+    // empty state rather than read again from a second copy of the same file.
+    val devicesMorphJson by rememberLottieJson(LottiePaths.DEVICES_MORPH)
+    val composition = devicesMorphJson?.let { json ->
+        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
+    }
 
     // Scrollable so the full welcome content (incl. the CTA) is reachable at the 50% tier on any screen
     Column(
@@ -495,7 +503,11 @@ internal fun OnboardingIdentity(
 
 @Composable
 internal fun OnboardingCompletion(onFinish: () -> Unit) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lottie/device_connected.json"))
+    // Single-shot connected animation, from the same composeResources bytes desktop reads.
+    val deviceConnectedJson by rememberLottieJson(LottiePaths.DEVICE_CONNECTED)
+    val composition = deviceConnectedJson?.let { json ->
+        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
+    }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         // One-shot connected animation instead of the static check-circle icon

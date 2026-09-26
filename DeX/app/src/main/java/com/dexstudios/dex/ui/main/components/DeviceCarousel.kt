@@ -65,6 +65,8 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.dexstudios.dex.core.designsystem.assets.LottiePaths
+import com.dexstudios.dex.core.designsystem.assets.rememberLottieJson
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.DownloadState
@@ -132,7 +134,10 @@ private fun EmptyDiscoveryCarousel(
     backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lottie/DevicesMorph.json"))
+    val devicesMorphJson by rememberLottieJson(LottiePaths.DEVICES_MORPH)
+    val composition = devicesMorphJson?.let { json ->
+        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
+    }
 
     // Programmatic frame-accurate progress and alpha state for 1:1 desktop loop playback
     val lottieProgress = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -522,14 +527,21 @@ private fun DeviceCarouselCard(
     modifier: Modifier = Modifier,
 ) {
     val deviceTypeLower = device.info.deviceType.lowercase()
-    val lottieAsset = when {
-        deviceTypeLower.contains("laptop") || deviceTypeLower.contains("desktop") || deviceTypeLower.contains("pc") || deviceTypeLower.contains("mac") -> "lottie/laptop_connected.json"
-        deviceTypeLower.contains("tablet") || deviceTypeLower.contains("ipad") -> "lottie/tablet_connected.json"
-        deviceTypeLower.contains("watch") -> "lottie/watch_connected.json"
-        else -> "lottie/device_connected.json"
+    val lottiePath = when {
+        deviceTypeLower.contains("laptop") || deviceTypeLower.contains("desktop") || deviceTypeLower.contains("pc") || deviceTypeLower.contains("mac") -> LottiePaths.LAPTOP_CONNECTED
+        deviceTypeLower.contains("tablet") || deviceTypeLower.contains("ipad") -> LottiePaths.TABLET_CONNECTED
+        deviceTypeLower.contains("watch") -> LottiePaths.WATCH_CONNECTED
+        else -> LottiePaths.DEVICE_CONNECTED
     }
 
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset(lottieAsset))
+    // composeResources bytes, single-sourced with desktop. Lottie derives the composition cache
+    // key from the JSON content, so the four connection animations are parsed once each, however
+    // many cards on screen reference them.
+    val lottieJson by rememberLottieJson(lottiePath)
+    val composition = lottieJson?.let { json ->
+        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
+    }
+
     val lottieAnimatable = rememberLottieAnimatable()
     var tapReplayCount by remember { mutableIntStateOf(0) }
 
