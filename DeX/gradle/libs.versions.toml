@@ -43,6 +43,7 @@ playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
 lottie = "6.6.2"
 kermit = "2.1.0"
+compottie = "2.2.4"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -60,12 +61,17 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview"}
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4"}
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest"}
-jb-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
-jb-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
-jb-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
-jb-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
-jb-compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
-jb-compose-components-uiToolingPreview = { module = "org.jetbrains.compose.components:components-ui-tooling-preview", version.ref = "compose-multiplatform" }
+# JetBrains Compose Multiplatform artifacts. Alias names deliberately mirror the root
+# (desktop) catalog: `core:*` Compose modules are compiled by BOTH Gradle builds, and a
+# shared module's build file resolves `libs.<alias>` against whichever build is asking, so
+# the two catalogs must agree on alias names — not just versions.
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
+compose-components-uiToolingPreview = { module = "org.jetbrains.compose.components:components-ui-tooling-preview", version.ref = "compose-multiplatform" }
+compottie = { module = "io.github.alexzhirkevich:compottie", version.ref = "compottie" }
 jmdns = { module = "org.jmdns:jmdns", version.ref = "jmdns" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.multiplatform.library)
 
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
@@ -8,6 +9,22 @@ plugins {
 kotlin {
 
     jvm("desktop")
+
+    // ONE design system, TWO platforms — the same dual-target law `core:protocol` and
+    // `core:network` already follow. Until this block existed the module could only emit a
+    // desktop JVM jar, which the Android app cannot consume, so `DeX/app/ui` carried a
+    // hand-copied fork of these components. The forks drifted (DynamicPillButton alone was
+    // +398/-192 apart) and every physics tweak had to be hand-carried across. Anything the
+    // two apps share visually belongs HERE: polish it once, both platforms wear it.
+    android {
+        namespace = "com.dexstudios.dex.core.designsystem"
+        compileSdk = 36
+        minSdk = 26
+        withHostTest {}
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {

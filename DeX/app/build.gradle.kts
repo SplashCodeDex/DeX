@@ -142,6 +142,10 @@ dependencies {
   implementation(project(":core:data"))
   implementation(project(":core:domain"))
   implementation(project(":core:network"))
+  // Shared Design System — the same component library the desktop app renders. Until this line
+  // existed `app/src/main/java/.../ui` carried a hand-copied fork of these composables and the
+  // two copies drifted; the fork is now being deleted in favour of this dependency.
+  implementation(project(":core:designsystem"))
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.ktor.serialization.kotlinx.json)
 
