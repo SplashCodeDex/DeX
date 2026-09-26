@@ -51,3 +51,24 @@ include(":core:network")
 project(":core:network").projectDir = file("../core/network")
 include(":core:designsystem")
 project(":core:designsystem").projectDir = file("../core/designsystem")
+
+// ── One output tree per build ─────────────────────────────────────────────────────────────
+// Every `:core:*` module above resolves to the SAME ../core/<name> source directory that the
+// desktop build at the repo root compiles, and Gradle's default build directory is
+// <projectDir>/build — so this build and the desktop build were writing their intermediates
+// into one shared folder. They are not interchangeable: commonMain/composeResources is
+// assembled per target, so the desktop build produces an `assembledResources/desktopMain`
+// payload while this one needs `androidMain`, and each task happily read the other's output.
+//
+// That is not theoretical. After the design system's desktop-only artwork (avatars, device
+// animations, wallpapers) was moved out of commonMain, :app:packageDebug kept packing the
+// previous desktop-assembled set and reported ~27 MB of resources that no longer existed in
+// any source set. `--rerun-tasks` did NOT clear it — the inputs had not changed, only the
+// OTHER build's copy had — and only deleting the shared folder revealed the truth. That is
+// the kind of signal that sends a fix in the wrong direction, so each build now gets its own
+// namespace: shared modules land under this build's own `build/shared/<name>`.
+gradle.beforeProject {
+    if (path == ":core" || path.startsWith(":core:")) {
+        layout.buildDirectory.set(settingsDir.resolve("build/shared/${name}"))
+    }
+}
