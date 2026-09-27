@@ -41,13 +41,17 @@ cronetApi = "119.6045.31"
 coil = "3.5.0"
 playServicesAuth = "21.6.0"
 profileinstaller = "1.4.1"
-lottie = "6.6.2"
 kermit = "2.1.0"
 compottie = "2.2.4"
 
+# Formatting/linting. Mirrors the root (desktop) catalog on purpose: `core:*` sources are
+# compiled by both builds, so the two catalogs must agree on version and alias names — a rule
+# the [libraries] section below already documents for shared modules.
+spotless = "8.10.0"
+ktlint = "1.8.0"
+
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
-lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
 compose-native-tray = { module = "dev.nucleusframework:composenativetray", version.ref = "composeNativeTray" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version = "16.1.0" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
@@ -134,6 +138,7 @@ androidx-lifecycle-viewmodel-compose-multiplatform = { module = "org.jetbrains.a
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

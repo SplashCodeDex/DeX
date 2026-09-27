@@ -1,15 +1,12 @@
 package com.dexstudios.dex.ui.main.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +18,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,26 +43,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieAnimatable
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dexstudios.dex.core.designsystem.assets.LottiePaths
-import com.dexstudios.dex.core.designsystem.assets.rememberLottieJson
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottie
+import com.dexstudios.dex.core.designsystem.components.lottie.DevicesMorphAnimation
+import com.dexstudios.dex.core.designsystem.components.lottie.rememberDeXLottieComposition
+import com.dexstudios.dex.core.designsystem.components.lottie.rememberDeXLottiePlayback
 import com.dexstudios.dex.network.AuthState
 import com.dexstudios.dex.network.DiscoveredDevice
 import com.dexstudios.dex.network.DownloadState
@@ -74,23 +66,9 @@ import com.dexstudios.dex.network.UploadState
 import com.dexstudios.dex.ui.components.bubbleFluidity
 import com.dexstudios.dex.ui.icons.MaterialSymbols
 import com.kyant.backdrop.Backdrop
-import kotlin.math.abs
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-
-// ============================================================================
-// Desktop DevicesMorph exact playback constants
-// ============================================================================
-private const val TOTAL_FRAMES = 456f // animation "op"
-private const val SETTLE_FRAME = 455f // last frame with the fully settled DeX
-private const val SETTLE_PROGRESS = SETTLE_FRAME / TOTAL_FRAMES
-private const val RAMP_START_FRAME = 415f // frame where the slow-down begins
-private const val MIN_SPEED = 0.12f // final playback speed (gentle drift to a stop)
-private const val ANIMATION_FPS = 60f
-private const val HOLD_ON_DEX_MS = 4_000L // hold on DeX before the transition
-private const val FADE_OUT_MS = 600 // DeX fades out completely (to blank)
-private const val FADE_IN_MS = 600 // monitor (start frame) fades in
+import kotlin.math.abs
 
 @Composable
 fun DeviceCarousel(
@@ -126,88 +104,11 @@ fun DeviceCarousel(
 }
 
 /**
- * Animated Empty State: Displays DevicesMorph.json Lottie with exact desktop playback tuning,
- * bigger scale, and centered in the sheet.
+ * Animated Empty State: the same DevicesMorph loop the desktop dock draws, shared through
+ * [DevicesMorphAnimation] and scaled up in the sheet.
  */
 @Composable
-private fun EmptyDiscoveryCarousel(
-    backdrop: Backdrop?,
-    modifier: Modifier = Modifier,
-) {
-    val devicesMorphJson by rememberLottieJson(LottiePaths.DEVICES_MORPH)
-    val composition = devicesMorphJson?.let { json ->
-        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
-    }
-
-    // Programmatic frame-accurate progress and alpha state for 1:1 desktop loop playback
-    val lottieProgress = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    val lottieAlpha = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
-
-    LaunchedEffect(composition) {
-        val comp = composition ?: return@LaunchedEffect
-
-        val baseFrameIncrement = 1f / ANIMATION_FPS
-        val rampLengthFrames = SETTLE_FRAME - RAMP_START_FRAME
-
-        while (true) {
-            // 1. Initial State: Monitor start frame
-            lottieProgress.floatValue = 0f
-            lottieAlpha.floatValue = 1f
-
-            var currentFrame = 0f
-            var lastNanoTime = System.nanoTime()
-
-            // 2. Play forward from frame 0 up to SETTLE_FRAME (455)
-            while (currentFrame < SETTLE_FRAME) {
-                withFrameNanos { now ->
-                    val deltaSeconds = (now - lastNanoTime) / 1_000_000_000f
-                    lastNanoTime = now
-
-                    // Ritardando: decelerate starting at RAMP_START_FRAME down to MIN_SPEED
-                    val speed = if (currentFrame < RAMP_START_FRAME) {
-                        1.0f
-                    } else {
-                        val progressIntoRamp = ((currentFrame - RAMP_START_FRAME) / rampLengthFrames).coerceIn(0f, 1f)
-                        1.0f - progressIntoRamp * (1.0f - MIN_SPEED)
-                    }
-
-                    currentFrame += deltaSeconds * ANIMATION_FPS * speed
-                    if (currentFrame > SETTLE_FRAME) {
-                        currentFrame = SETTLE_FRAME
-                    }
-                    lottieProgress.floatValue = (currentFrame / TOTAL_FRAMES).coerceIn(0f, 1f)
-                }
-            }
-
-            // 3. Settle on DeX: hold still on frame 455 for HOLD_ON_DEX_MS (4s)
-            lottieProgress.floatValue = SETTLE_PROGRESS
-            delay(HOLD_ON_DEX_MS)
-
-            // 4. Fade out settled DeX to blank (600ms)
-            val fadeOutStart = System.currentTimeMillis()
-            while (true) {
-                val elapsed = System.currentTimeMillis() - fadeOutStart
-                val t = (elapsed.toFloat() / FADE_OUT_MS).coerceIn(0f, 1f)
-                lottieAlpha.floatValue = 1f - t
-                if (t >= 1f) break
-                withFrameNanos { }
-            }
-
-            // 5. Snap to frame 0 while completely invisible
-            lottieProgress.floatValue = 0f
-
-            // 6. Fade in monitor start frame (600ms)
-            val fadeInStart = System.currentTimeMillis()
-            while (true) {
-                val elapsed = System.currentTimeMillis() - fadeInStart
-                val t = (elapsed.toFloat() / FADE_IN_MS).coerceIn(0f, 1f)
-                lottieAlpha.floatValue = t
-                if (t >= 1f) break
-                withFrameNanos { }
-            }
-        }
-    }
-
+private fun EmptyDiscoveryCarousel(backdrop: Backdrop?, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulseRing")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
@@ -216,7 +117,7 @@ private fun EmptyDiscoveryCarousel(
             animation = tween(2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "pulseScale"
+        label = "pulseScale",
     )
 
     Column(
@@ -224,7 +125,7 @@ private fun EmptyDiscoveryCarousel(
             .fillMaxWidth()
             .padding(top = 10.dp, bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         // Centered & Scaled Morph Animation Box
         Box(
@@ -233,15 +134,10 @@ private fun EmptyDiscoveryCarousel(
                 .graphicsLayer {
                     scaleX = pulseScale
                     scaleY = pulseScale
-                    alpha = lottieAlpha.floatValue
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
-            LottieAnimation(
-                composition = composition,
-                progress = { lottieProgress.floatValue },
-                modifier = Modifier.fillMaxSize(),
-            )
+            DevicesMorphAnimation(modifier = Modifier.fillMaxSize())
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -252,13 +148,13 @@ private fun EmptyDiscoveryCarousel(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Text(
             text = "Make sure DeX is open on your other devices",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -324,7 +220,7 @@ private fun ConnectedDevicesCarousel(
         modifier = modifier
             .fillMaxWidth()
             .height(225.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         // Center padding so first and last device cards snap dead center
         val sidePadding = ((maxWidth - itemCardWidth) / 2).coerceAtLeast(16.dp)
@@ -427,7 +323,7 @@ private fun ConnectedDevicesCarousel(
                             }
                         }
                         onAddDeviceClick()
-                    }
+                    },
                 )
             }
         }
@@ -438,16 +334,16 @@ private fun ConnectedDevicesCarousel(
  * Modern QR Code "Add Device" Card at the end of the carousel.
  */
 @Composable
-private fun AddDeviceCarouselCard(
-    isFocused: Boolean,
-    proximityScale: Float,
-    proximityAlpha: Float,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun AddDeviceCarouselCard(isFocused: Boolean, proximityScale: Float, proximityAlpha: Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val isDark = isSystemInDarkTheme()
     val circleBg = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f)
-    val iconTint = if (isFocused) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
+    val iconTint = if (isFocused) {
+        MaterialTheme.colorScheme.primary
+    } else if (isDark) {
+        Color.White
+    } else {
+        Color.Black
+    }
 
     Column(
         modifier = modifier
@@ -475,13 +371,13 @@ private fun AddDeviceCarouselCard(
                     .size(110.dp)
                     .clip(CircleShape)
                     .background(circleBg),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = MaterialSymbols.QrCodeScanner,
                     contentDescription = "Add Device",
                     tint = iconTint,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(52.dp),
                 )
             }
         }
@@ -534,37 +430,22 @@ private fun DeviceCarouselCard(
         else -> LottiePaths.DEVICE_CONNECTED
     }
 
-    // composeResources bytes, single-sourced with desktop. Lottie derives the composition cache
-    // key from the JSON content, so the four connection animations are parsed once each, however
-    // many cards on screen reference them.
-    val lottieJson by rememberLottieJson(lottiePath)
-    val composition = lottieJson?.let { json ->
-        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
-    }
-
-    val lottieAnimatable = rememberLottieAnimatable()
+    // composeResources bytes, single-sourced with desktop. The shared loader keys on the path and
+    // parses through the engine's content-hash cache, so the four connection animations are
+    // parsed once each however many cards on screen reference them.
+    val composition by rememberDeXLottieComposition(lottiePath)
+    val playback = rememberDeXLottiePlayback()
     var tapReplayCount by remember { mutableIntStateOf(0) }
 
     // Smooth animation lifecycle: Entry play (1 iteration) on focus/tap, smoothly finish to completion if swiped away mid-play, paused on idle
     LaunchedEffect(composition, isFocused, tapReplayCount) {
-        val comp = composition ?: return@LaunchedEffect
         if (isFocused) {
-            lottieAnimatable.animate(
-                composition = comp,
-                iterations = 1,
-                initialProgress = 0f,
-            )
+            playback.play(composition, iterations = 1, fromProgress = 0f)
+        } else if (playback.progress > 0f && !playback.isSettled) {
+            // Swiped away mid-animation: play the remainder instead of snapping to the end frame
+            playback.play(composition, iterations = 1, fromProgress = playback.progress)
         } else {
-            // If swiped away while mid-animation, smoothly finish playing to 1f instead of abruptly snapping
-            if (lottieAnimatable.progress > 0f && lottieAnimatable.progress < 0.99f) {
-                lottieAnimatable.animate(
-                    composition = comp,
-                    iterations = 1,
-                    initialProgress = lottieAnimatable.progress,
-                )
-            } else {
-                lottieAnimatable.snapTo(composition = comp, progress = 1f)
-            }
+            playback.snapToEnd(composition)
         }
     }
 
@@ -582,7 +463,7 @@ private fun DeviceCarouselCard(
             .combinedClickable(
                 onClick = {
                     // Only trigger replay if the animation has completely finished playing (ignore taps while animating)
-                    if (isFocused && !lottieAnimatable.isPlaying && lottieAnimatable.progress >= 0.99f) {
+                    if (isFocused && playback.isSettled) {
                         tapReplayCount++
                     }
                     onClick()
@@ -608,10 +489,10 @@ private fun DeviceCarouselCard(
                 )
             }
 
-            LottieAnimation(
+            DeXLottie(
                 composition = composition,
-                progress = { lottieAnimatable.progress },
                 modifier = Modifier.size(135.dp),
+                progress = { playback.progress },
             )
         }
 
@@ -638,8 +519,11 @@ private fun DeviceCarouselCard(
                     val mbps = transferSpeedBps / (1024f * 1024f)
                     if (mbps >= 0.1f) String.format(java.util.Locale.US, "%.1f MB/s", mbps) else "Transferring..."
                 }
+
                 device.info.battery != null -> "${device.info.battery}% Battery"
+
                 isPaired -> "Paired"
+
                 else -> null
             }
 
@@ -651,7 +535,7 @@ private fun DeviceCarouselCard(
                     color = if (isTransferring || isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     maxLines = 1,
                     textAlign = TextAlign.Center,
-                    fontWeight = if (isTransferring || isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    fontWeight = if (isTransferring || isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 )
             }
         }

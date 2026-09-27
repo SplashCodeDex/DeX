@@ -1,13 +1,13 @@
 package com.dexstudios.dex.ui.components
 
-import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
-import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,13 +22,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dexstudios.dex.R
 import com.dexstudios.dex.core.designsystem.assets.LottiePaths
-import com.dexstudios.dex.core.designsystem.assets.rememberLottieJson
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottie
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottieForever
 import com.dexstudios.dex.network.DeviceConfig
 import com.dexstudios.dex.network.GoogleSignInManager
 import com.dexstudios.dex.network.PermissionManager
@@ -37,8 +34,8 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import kotlin.time.Duration.Companion.milliseconds
+import com.dexstudios.dex.ui.icons.MaterialSymbols as DeXIcons
 
 /**
  * Sheet-based onboarding flow hosted inside the 3-tier [NavBottomSheet] engine.
@@ -46,10 +43,7 @@ import androidx.compose.foundation.verticalScroll
  * final completion button finishes the flow.
  */
 @Composable
-fun OnboardingSheet(
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun OnboardingSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val onboardingBackdrop = rememberLayerBackdrop()
 
     NavBottomSheet(
@@ -87,13 +81,17 @@ fun OnboardingSheet(
                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.NEARBY_WIFI_DEVICES) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                } else true
+                } else {
+                    true
+                }
             }
 
             val notificationsGranted = remember(refreshTrigger) {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                } else true
+                } else {
+                    true
+                }
             }
 
             LaunchedEffect(nearbyGranted) {
@@ -139,7 +137,7 @@ fun OnboardingSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Intrinsic-height scrolling area so the CTA is never clipped when content exceeds the tier height
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -152,28 +150,38 @@ fun OnboardingSheet(
                                 (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(slideOutHorizontally { width -> width } + fadeOut())
                             }.using(SizeTransform(clip = false))
                         },
-                        label = "onboarding_steps"
+                        label = "onboarding_steps",
                     ) { step ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             when (step) {
                                 0 -> OnboardingWelcome { currentStepIdx++ }
+
                                 1 -> OnboardingEssentials(
                                     nearbyGranted = nearbyGranted,
                                     notificationsGranted = notificationsGranted,
                                     nearbyPermanentlyDenied = nearbyPermanentlyDenied,
-                                    notificationsPermanentlyDenied = notificationsPermanentlyDenied
+                                    notificationsPermanentlyDenied = notificationsPermanentlyDenied,
                                 ) {
-                                    if (nearbyGranted && notificationsGranted) currentStepIdx++
-                                    else PermissionManager.triggerEssentials()
+                                    if (nearbyGranted && notificationsGranted) {
+                                        currentStepIdx++
+                                    } else {
+                                        PermissionManager.triggerEssentials()
+                                    }
                                 }
+
                                 2 -> OnboardingMedia(
                                     isGranted = mediaGranted,
-                                    isPermanentlyDenied = mediaPermanentlyDenied
+                                    isPermanentlyDenied = mediaPermanentlyDenied,
                                 ) {
-                                    if (mediaGranted) currentStepIdx++
-                                    else PermissionManager.triggerMedia()
+                                    if (mediaGranted) {
+                                        currentStepIdx++
+                                    } else {
+                                        PermissionManager.triggerMedia()
+                                    }
                                 }
+
                                 3 -> OnboardingIdentity(googleProfile.email) { currentStepIdx++ }
+
                                 4 -> OnboardingCompletion {
                                     // Persist completion and dismiss (sheet is locked, only this button finishes)
                                     context.getSharedPreferences("dex_onboarding", android.content.Context.MODE_PRIVATE)
@@ -191,7 +199,7 @@ fun OnboardingSheet(
                     Spacer(Modifier.height(24.dp))
                     OnboardingProgressDots(
                         count = steps.size,
-                        selectedIndex = currentStepIdx
+                        selectedIndex = currentStepIdx,
                     )
                     Spacer(Modifier.height(24.dp))
                 }
@@ -203,9 +211,9 @@ fun OnboardingSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .layerBackdrop(onboardingBackdrop)
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f)),
             )
-        }
+        },
     )
 }
 
@@ -213,19 +221,22 @@ fun OnboardingSheet(
 internal fun OnboardingProgressDots(count: Int, selectedIndex: Int) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(count) { index ->
             val isSelected = index == selectedIndex
             val width by animateDpAsState(
                 targetValue = if (isSelected) 16.dp else 6.dp,
                 animationSpec = spring(Spring.DampingRatioMediumBouncy),
-                label = "dotWidth"
+                label = "dotWidth",
             )
             val color by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary
-                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                label = "dotColor"
+                targetValue = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                },
+                label = "dotColor",
             )
 
             Box(
@@ -233,7 +244,7 @@ internal fun OnboardingProgressDots(count: Int, selectedIndex: Int) {
                     .width(width)
                     .height(6.dp)
                     .clip(CircleShape)
-                    .background(color)
+                    .background(color),
             )
         }
     }
@@ -251,26 +262,18 @@ private fun OnboardingWelcomePreview() {
 
 @Composable
 internal fun OnboardingWelcome(onNext: () -> Unit) {
-    // Bytes come from composeResources, single-sourced with desktop. Lottie derives the
-    // composition cache key from the JSON itself, so this parse is shared with the carousel
-    // empty state rather than read again from a second copy of the same file.
-    val devicesMorphJson by rememberLottieJson(LottiePaths.DEVICES_MORPH)
-    val composition = devicesMorphJson?.let { json ->
-        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
-    }
-
     // Scrollable so the full welcome content (incl. the CTA) is reachable at the 50% tier on any screen
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
-        // Full-duration looping devices morph (DevicesMorph is 456 frames @ 30fps = ~15.2s; Lottie's
-        // default speed assumes 60fps and would truncate it, so halve speed to play the whole clip)
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
+        // The whole 456-frame clip at half speed: DevicesMorph is authored at 30fps while the
+        // player assumes 60fps, so full speed would truncate it to half the animation.
+        DeXLottie(
+            path = LottiePaths.DEVICES_MORPH,
+            modifier = Modifier.size(140.dp),
+            iterations = DeXLottieForever,
             speed = 0.5f,
-            modifier = Modifier.size(140.dp)
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -278,20 +281,20 @@ internal fun OnboardingWelcome(onNext: () -> Unit) {
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(16.dp))
         Image(
             painter = painterResource(R.drawable.dex_logo),
             contentDescription = null,
-            modifier = Modifier.size(72.dp) // Slightly bigger logo as it's the centerpiece
+            modifier = Modifier.size(72.dp), // Slightly bigger logo as it's the centerpiece
         )
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(R.string.onboarding_step_welcome_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
         DeXButton(onClick = onNext, modifier = Modifier.fillMaxWidth().height(56.dp)) {
@@ -302,13 +305,7 @@ internal fun OnboardingWelcome(onNext: () -> Unit) {
 }
 
 @Composable
-internal fun OnboardingEssentials(
-    nearbyGranted: Boolean,
-    notificationsGranted: Boolean,
-    nearbyPermanentlyDenied: Boolean,
-    notificationsPermanentlyDenied: Boolean,
-    onAction: () -> Unit
-) {
+internal fun OnboardingEssentials(nearbyGranted: Boolean, notificationsGranted: Boolean, nearbyPermanentlyDenied: Boolean, notificationsPermanentlyDenied: Boolean, onAction: () -> Unit) {
     val isGranted = nearbyGranted && notificationsGranted
     val isPermanentlyDenied = (nearbyPermanentlyDenied && !nearbyGranted) ||
         (notificationsPermanentlyDenied && !notificationsGranted)
@@ -324,7 +321,7 @@ internal fun OnboardingEssentials(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
             icon = DeXIcons.Wifi,
-            isGranted = isGranted
+            isGranted = isGranted,
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -332,15 +329,18 @@ internal fun OnboardingEssentials(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_essentials_rationale)
-            else stringResource(R.string.onboarding_step_essentials_desc),
+            if (isPermanentlyDenied && !isGranted) {
+                stringResource(R.string.onboarding_step_essentials_rationale)
+            } else {
+                stringResource(R.string.onboarding_step_essentials_desc)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
         DeXButton(
@@ -354,7 +354,7 @@ internal fun OnboardingEssentials(
                     onAction()
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier.fillMaxWidth().height(56.dp),
         ) {
             Text(
                 when {
@@ -362,18 +362,14 @@ internal fun OnboardingEssentials(
                     isPermanentlyDenied -> stringResource(R.string.onboarding_open_settings)
                     else -> stringResource(R.string.onboarding_grant)
                 },
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
         }
     }
 }
 
 @Composable
-internal fun OnboardingMedia(
-    isGranted: Boolean,
-    isPermanentlyDenied: Boolean,
-    onAction: () -> Unit
-) {
+internal fun OnboardingMedia(isGranted: Boolean, isPermanentlyDenied: Boolean, onAction: () -> Unit) {
     LaunchedEffect(isGranted) {
         if (isGranted) {
             delay(600.milliseconds)
@@ -385,7 +381,7 @@ internal fun OnboardingMedia(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
             icon = DeXIcons.Photo,
-            isGranted = isGranted
+            isGranted = isGranted,
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -393,15 +389,18 @@ internal fun OnboardingMedia(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            if (isPermanentlyDenied && !isGranted) stringResource(R.string.onboarding_step_media_rationale)
-            else stringResource(R.string.onboarding_step_media_desc),
+            if (isPermanentlyDenied && !isGranted) {
+                stringResource(R.string.onboarding_step_media_rationale)
+            } else {
+                stringResource(R.string.onboarding_step_media_desc)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
         DeXButton(
@@ -415,7 +414,7 @@ internal fun OnboardingMedia(
                     onAction()
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier.fillMaxWidth().height(56.dp),
         ) {
             Text(
                 when {
@@ -423,17 +422,14 @@ internal fun OnboardingMedia(
                     isPermanentlyDenied -> stringResource(R.string.onboarding_open_settings)
                     else -> stringResource(R.string.onboarding_grant)
                 },
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
         }
     }
 }
 
 @Composable
-internal fun OnboardingIdentity(
-    email: String,
-    onNext: () -> Unit
-) {
+internal fun OnboardingIdentity(email: String, onNext: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val deviceConfig: DeviceConfig = koinInject()
@@ -442,7 +438,7 @@ internal fun OnboardingIdentity(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         OnboardingStepIcon(
             icon = DeXIcons.AccountCircle,
-            isGranted = email.isNotBlank()
+            isGranted = email.isNotBlank(),
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -450,14 +446,14 @@ internal fun OnboardingIdentity(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(12.dp))
         Text(
             stringResource(R.string.onboarding_step_identity_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
         if (email.isBlank()) {
@@ -477,14 +473,14 @@ internal fun OnboardingIdentity(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(
                         imageVector = DeXIcons.Google,
                         contentDescription = null,
                         tint = Color.Unspecified,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
                     )
                     Text(stringResource(R.string.google_sign_in), fontWeight = FontWeight.Bold)
                 }
@@ -503,18 +499,12 @@ internal fun OnboardingIdentity(
 
 @Composable
 internal fun OnboardingCompletion(onFinish: () -> Unit) {
-    // Single-shot connected animation, from the same composeResources bytes desktop reads.
-    val deviceConnectedJson by rememberLottieJson(LottiePaths.DEVICE_CONNECTED)
-    val composition = deviceConnectedJson?.let { json ->
-        rememberLottieComposition(LottieCompositionSpec.JsonString(json)).value
-    }
-
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // One-shot connected animation instead of the static check-circle icon
-        LottieAnimation(
-            composition = composition,
-            iterations = 1,
-            modifier = Modifier.size(140.dp)
+        // One-shot connected animation instead of the static check-circle icon, from the same
+        // composeResources bytes every other surface draws.
+        DeXLottie(
+            path = LottiePaths.DEVICE_CONNECTED,
+            modifier = Modifier.size(140.dp),
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -522,14 +512,14 @@ internal fun OnboardingCompletion(onFinish: () -> Unit) {
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(12.dp))
         Text(
             "You are ready to use DeX. Enjoy seamless file sharing!",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
         DeXButton(onClick = onFinish, modifier = Modifier.fillMaxWidth().height(56.dp)) {
@@ -544,26 +534,26 @@ internal fun OnboardingStepIcon(icon: ImageVector, isGranted: Boolean) {
         Surface(
             shape = CircleShape,
             color = if (isGranted) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-            modifier = Modifier.size(96.dp)
+            modifier = Modifier.size(96.dp),
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.padding(24.dp),
-                tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
         }
         if (isGranted) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp)
+                        modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-8).dp),
                     ) {
                         Icon(
                             imageVector = DeXIcons.Check,
                             contentDescription = null,
                             modifier = Modifier.padding(6.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.onPrimary,
                         )
             }
         }

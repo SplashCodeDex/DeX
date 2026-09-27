@@ -4,7 +4,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -15,9 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,17 +22,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.dexstudios.dex.core.designsystem.assets.LottieAssetCache
 import com.dexstudios.dex.core.designsystem.assets.LottiePaths
-import io.github.alexzhirkevich.compottie.Compottie
-import io.github.alexzhirkevich.compottie.LottieCompositionSpec
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottie
+import com.dexstudios.dex.core.designsystem.components.lottie.rememberDeXLottieComposition
 import io.github.alexzhirkevich.compottie.animateLottieCompositionAsState
-import io.github.alexzhirkevich.compottie.rememberLottieComposition
-import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -53,30 +46,24 @@ import org.jetbrains.compose.resources.painterResource
  */
 @Composable
 fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp, tint: Color = MaterialTheme.colorScheme.onSurface, contentDescription: String? = "Do Not Disturb") {
-    var dndOnJson by remember { mutableStateOf<String?>(null) }
-    var dndOffJson by remember { mutableStateOf<String?>(null) }
-
-    // Preload both assets asynchronously
+    // Both clips are preloaded: the bell swaps between them the instant Do Not Disturb flips,
+    // and without this the first swap would pay for reading the clip it is switching to.
     LaunchedEffect(Unit) {
-        try {
-            dndOnJson = LottieAssetCache.loadJson(LottiePaths.BELL_DND_ON)
-            dndOffJson = LottieAssetCache.loadJson(LottiePaths.BELL_DND_OFF)
-        } catch (e: Exception) {
-            Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load DND bell Lottie assets" }
-        }
+        LottieAssetCache.loadJsonOrNull(LottiePaths.BELL_DND_ON)
+        LottieAssetCache.loadJsonOrNull(LottiePaths.BELL_DND_OFF)
     }
 
-    val activeJson = if (isDndActive) dndOnJson else dndOffJson
+    // Keyed on the path, not on the boolean: the loader treats a changed path as a changed
+    // animation, so the two clips cannot get crossed when the state flips.
+    val composition by rememberDeXLottieComposition(
+        if (isDndActive) LottiePaths.BELL_DND_ON else LottiePaths.BELL_DND_OFF,
+    )
 
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
-        if (activeJson != null) {
-            val composition by rememberLottieComposition(isDndActive) {
-                LottieCompositionSpec.JsonString(activeJson)
-            }
-
+        if (composition != null) {
             val progress by animateLottieCompositionAsState(
                 composition = composition,
                 iterations = 1,
@@ -100,17 +87,12 @@ fun AnimatedDndBell(isDndActive: Boolean, modifier: Modifier = Modifier, size: D
                         modifier = Modifier.size(size),
                     )
                 } else {
-                    val colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null
-
-                    Image(
-                        painter = rememberLottiePainter(
-                            composition = composition,
-                            progress = { progress },
-                        ),
-                        contentDescription = contentDescription,
+                    DeXLottie(
+                        composition = composition,
                         modifier = Modifier.size(size),
-                        contentScale = ContentScale.Fit,
-                        colorFilter = colorFilter,
+                        progress = { progress },
+                        contentDescription = contentDescription,
+                        colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null,
                     )
                 }
             }
@@ -186,15 +168,7 @@ fun AnimatedSearchToXIcon(
     onClick: (() -> Unit)? = null,
     contentDescription: String? = if (isSearching) "Clear search" else "Search",
 ) {
-    var searchJson by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        try {
-            searchJson = LottieAssetCache.loadJson(LottiePaths.SEARCH_TO_X)
-        } catch (e: Exception) {
-            Logger.e(tag = "DeXAnimatedIcons", throwable = e) { "Failed to load search_to_x Lottie asset" }
-        }
-    }
+    val composition by rememberDeXLottieComposition(LottiePaths.SEARCH_TO_X)
 
     val progress by animateFloatAsState(
         targetValue = if (isSearching) 1f else 0f,
@@ -220,23 +194,13 @@ fun AnimatedSearchToXIcon(
             .then(clickModifier),
         contentAlignment = Alignment.Center,
     ) {
-        val json = searchJson
-        if (json != null) {
-            val composition by rememberLottieComposition(Unit) {
-                LottieCompositionSpec.JsonString(json)
-            }
-
-            val colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null
-
-            Image(
-                painter = rememberLottiePainter(
-                    composition = composition,
-                    progress = { progress },
-                ),
-                contentDescription = contentDescription,
+        if (composition != null) {
+            DeXLottie(
+                composition = composition,
                 modifier = Modifier.requiredSize(size * 2.13f),
-                contentScale = ContentScale.Fit,
-                colorFilter = colorFilter,
+                progress = { progress },
+                contentDescription = contentDescription,
+                colorFilter = if (tint.isSpecified) ColorFilter.tint(tint) else null,
             )
         } else {
             Icon(

@@ -108,9 +108,6 @@ dependencies {
   // Liquid Glass Backdrop
   implementation(libs.backdrop)
 
-  // Lottie Animation Engine
-  implementation(libs.lottie.compose)
-
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests

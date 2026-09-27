@@ -58,12 +58,19 @@ object LottieAssetCache {
 /**
  * The JSON at [path] as state: `null` until the bytes are in memory, then the string itself.
  *
- * Feed the result to `LottieCompositionSpec.JsonString(json)` — airbnb's on Android, Compottie's
- * on desktop. Neither needs an explicit cache key: both derive one from the JSON content, so
- * every call site rendering the same animation shares a single parsed composition, and the
- * animation starts as soon as the bytes land instead of one frame later on a cold cache.
+ * Most call sites want [com.dexstudios.dex.core.designsystem.components.lottie.rememberDeXLottieComposition]
+ * instead, which continues this pipeline through to a parsed composition. Read the raw string
+ * directly only when a site needs the bytes rather than a composition.
+ *
+ * Compottie derives a composition's cache key from the JSON content hash, so every call site
+ * rendering the same animation shares one parse, and the animation starts as soon as the bytes
+ * land instead of one frame later on a cold cache.
+ *
+ * @param enabled when `false` the bytes are not read at all and the value stays `null` — the
+ * deferral used by surfaces that are composed but not visible, where a multi-megabyte read would
+ * cost IO and a stalled frame for an animation nobody is looking at.
  */
 @Composable
-fun rememberLottieJson(path: String): State<String?> = produceState<String?>(initialValue = null, key1 = path) {
-    value = LottieAssetCache.loadJsonOrNull(path)
+fun rememberLottieJson(path: String, enabled: Boolean = true): State<String?> = produceState<String?>(initialValue = null, key1 = path, key2 = enabled) {
+    if (enabled) value = LottieAssetCache.loadJsonOrNull(path)
 }
