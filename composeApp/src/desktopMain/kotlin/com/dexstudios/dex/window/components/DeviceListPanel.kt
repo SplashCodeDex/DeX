@@ -1,11 +1,8 @@
 package com.dexstudios.dex.window.components
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,33 +30,30 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import co.touchlab.kermit.Logger
-import com.dexstudios.dex.core.designsystem.assets.LottiePaths
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.lottie.DevicesMorphAnimation
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_battery1
@@ -74,8 +68,6 @@ import com.dexstudios.dex.core.designsystem.theme.DeXTheme
 import com.dexstudios.dex.core.network.DiscoveredDevice
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
 import com.dexstudios.dex.window.kinematics.DockCardPhysics
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -398,47 +390,17 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
     }
 }
 
-// DevicesMorph playback tuning (mirrors the reference browser player)
-private const val TOTAL_FRAMES = 456f // animation "op"
-private const val SETTLE_FRAME = 455f // last frame with the fully settled DeX
-private const val SETTLE_PROGRESS = SETTLE_FRAME / TOTAL_FRAMES
-private const val RAMP_START_FRAME = 415f // frame where the slow-down begins
-private const val MIN_SPEED = 0.12f // final playback speed (gentle drift to a stop)
-private const val ANIMATION_FPS = 60f
-private const val HOLD_ON_DEX_MS = 4_000L // hold on DeX before the transition
-private const val FADE_OUT_MS = 600 // DeX fades out completely (to blank)
-private const val FADE_IN_MS = 600 // monitor (start frame) fades in
-
 /**
- * Process-wide cache for the DevicesMorph Lottie source. Res.readBytes is suspend IO;
- * re-reading it on every empty-state appearance stalled the placeholder on each list
- * drain. First caller performs the load (mutex-guarded), everyone after reuses.
+ * Empty state for the dock's device list: the shared DevicesMorph loop, plus the label under it.
+ *
+ * The animation's ritardando choreography, its 8 MB of keyframes and the "do not load while the
+ * card is collapsed" rule all live in [DevicesMorphAnimation] now ΓÇö this dock and Android's
+ * carousel draw the same loop from the same source, which is how the two stopped drifting.
+ *
+ * @param isVisible the dock card's expanded state; drives the animation's own [enabled] gate.
  */
-private object LottieAssets {
-    private val cache = java.util.concurrent.atomic.AtomicReference<String?>(null)
-    private val loadMutex = kotlinx.coroutines.sync.Mutex()
-
-    suspend fun devicesMorphJson(): String? {
-        cache.get()?.let { return it }
-        return loadMutex.withLock {
-            cache.get() ?: runCatching {
-                com.dexstudios.dex.core.designsystem.generated.resources.Res.readBytes(LottiePaths.DEVICES_MORPH).decodeToString()
-            }.onSuccess { loaded -> cache.set(loaded) }
-                .onFailure { e -> Logger.i("Failed to load DevicesMorph.json: ${e.message}") }
-                .getOrNull()
-        }
-    }
-}
-
 @Composable
 private fun DeviceEmptyState(isVisible: Boolean) {
-    // Asset load is deferred until the dock card is actually visible; while hidden the
-    // empty state stays composed behind contentAlpha = 0f and must not do work. The
-    // process-wide LottieAssets cache makes repeat appearances free after the first.
-    val jsonString by androidx.compose.runtime.produceState<String?>(initialValue = null, key1 = isVisible) {
-        if (isVisible) value = LottieAssets.devicesMorphJson()
-    }
-
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -449,76 +411,13 @@ private fun DeviceEmptyState(isVisible: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
         ) {
-            if (jsonString != null) {
-                val composition by io.github.alexzhirkevich.compottie.rememberLottieComposition {
-                    io.github.alexzhirkevich.compottie.LottieCompositionSpec.JsonString(jsonString!!)
-                }
-
-                // Playback logic ported from the reference browser player:
-                // ritardando settle -> hold on DeX -> fade to blank -> monitor fades in -> repeat
-                val lottieProgress = remember { Animatable(0f) }
-                val lottieAlpha = remember { Animatable(1f) }
-
-                // Keyed on visibility: while the dock card is hidden this coroutine is
-                // cancelled, so the withFrameNanos loop cannot force frame production at
-                // refresh rate behind contentAlpha = 0f. The composed Lottie view itself
-                // stays in place (same footprint) so hiding never triggers a layout jump;
-                // only the per-frame work stops.
-                LaunchedEffect(composition, isVisible) {
-                    if (composition == null || !isVisible) return@LaunchedEffect
-                    lottieProgress.snapTo(0f)
-                    lottieAlpha.snapTo(1f)
-                    while (true) {
-                        // 1. Play frames 0..455, decelerating while the DeX pops in
-                        var lastNanos = withFrameNanos { it }
-                        var speed = 1f
-                        while (lottieProgress.value < SETTLE_PROGRESS) {
-                            val nanos = withFrameNanos { it }
-                            val dt = (nanos - lastNanos) / 1_000_000_000f
-                            lastNanos = nanos
-                            val currentFrame = lottieProgress.value * TOTAL_FRAMES
-                            speed = if (currentFrame > RAMP_START_FRAME && currentFrame < SETTLE_FRAME) {
-                                val t = (currentFrame - RAMP_START_FRAME) / (SETTLE_FRAME - RAMP_START_FRAME)
-                                1f - (1f - MIN_SPEED) * t * t
-                            } else {
-                                1f
-                            }
-                            lottieProgress.snapTo(
-                                (lottieProgress.value + speed * ANIMATION_FPS * dt / TOTAL_FRAMES)
-                                    .coerceAtMost(SETTLE_PROGRESS),
-                            )
-                        }
-
-                        // 2. Hold on the fully settled DeX
-                        delay(HOLD_ON_DEX_MS)
-
-                        // 3. DeX fades out completely, leaving a blank screen
-                        lottieAlpha.animateTo(0f, tween(FADE_OUT_MS))
-
-                        // 4. Jump back to frame 0 (the monitor) while invisible
-                        lottieProgress.snapTo(0f)
-
-                        // 5. The monitor fades in
-                        lottieAlpha.animateTo(1f, tween(FADE_IN_MS))
-                    }
-                }
-
-                Image(
-                    painter = io.github.alexzhirkevich.compottie.rememberLottiePainter(
-                        composition = composition,
-                        progress = { lottieProgress.value },
-                    ),
-                    contentDescription = "Scanning",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(190.dp)
-                        .graphicsLayer { this.alpha = lottieAlpha.value },
-                    contentScale = ContentScale.Fit,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                )
-            } else {
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(140.dp))
-            }
+            DevicesMorphAnimation(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(190.dp),
+                enabled = isVisible,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+            )
 
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
 

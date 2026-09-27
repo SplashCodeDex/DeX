@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -63,7 +62,8 @@ import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensi
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
-import com.dexstudios.dex.core.designsystem.generated.resources.Res
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottie
+import com.dexstudios.dex.core.designsystem.components.lottie.DeXLottieForever
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.network.DeviceConfig
 import com.dexstudios.dex.core.network.DiscoveredDevice
@@ -72,11 +72,6 @@ import com.dexstudios.dex.core.network.server.WebSocketConnectionManager
 import com.dexstudios.dex.desktop.transfer.DesktopFileSendService
 import com.dexstudios.dex.window.DockedWindowStateController
 import com.dexstudios.dex.window.kinematics.DockCardAnimations
-import io.github.alexzhirkevich.compottie.Compottie
-import io.github.alexzhirkevich.compottie.LottieCompositionSpec
-import io.github.alexzhirkevich.compottie.animateLottieCompositionAsState
-import io.github.alexzhirkevich.compottie.rememberLottieComposition
-import io.github.alexzhirkevich.compottie.rememberLottiePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -181,18 +176,24 @@ fun DeviceStatusPanel(
     val wifiSsid = activeDevice?.info?.wifiSsid?.ifBlank { null } ?: activeDevice?.info?.wifiBand ?: "Connected"
     val isCharging = activeDevice?.info?.isCharging == true
 
-    // Lottie connection animation dynamically loaded per device category
-    var lottieJson by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(activeCategory) {
-        val jsonPath = when (activeCategory) {
-            ConnectedDeviceType.Phone -> LottiePaths.DEVICE_CONNECTED
-            ConnectedDeviceType.Tablet -> LottiePaths.TABLET_CONNECTED
-            ConnectedDeviceType.Laptop -> LottiePaths.LAPTOP_CONNECTED
-            ConnectedDeviceType.Watch -> LottiePaths.WATCH_CONNECTED
-        }
-        runCatching {
-            lottieJson = Res.readBytes(jsonPath).decodeToString()
-        }
+    // The connection animation is chosen by device category. The loader keys on the resource
+    // path, so a category switch swaps the clip and a category already seen reuses the parse it
+    // has cached, instead of re-reading that clip's ~1.7 MB on every switch.
+    val lottiePath = when (activeCategory) {
+        ConnectedDeviceType.Phone -> LottiePaths.DEVICE_CONNECTED
+        ConnectedDeviceType.Tablet -> LottiePaths.TABLET_CONNECTED
+        ConnectedDeviceType.Laptop -> LottiePaths.LAPTOP_CONNECTED
+        ConnectedDeviceType.Watch -> LottiePaths.WATCH_CONNECTED
+    }
+    val lottieSpeed = when (activeCategory) {
+        ConnectedDeviceType.Laptop -> 0.55f
+        else -> 0.70f
+    }
+    val lottieScale = when (activeCategory) {
+        ConnectedDeviceType.Watch -> 1.15f
+        ConnectedDeviceType.Tablet -> 1.05f
+        ConnectedDeviceType.Laptop -> 1.05f
+        ConnectedDeviceType.Phone -> 1.0f
     }
 
     Column(
@@ -271,48 +272,26 @@ fun DeviceStatusPanel(
                 )
             }
 
-            val json = lottieJson
-            if (json != null) {
-                val composition by rememberLottieComposition {
-                    LottieCompositionSpec.JsonString(json)
-                }
-                val animSpeed = when (activeCategory) {
-                    ConnectedDeviceType.Laptop -> 0.55f
-                    else -> 0.70f
-                }
-                val progress by animateLottieCompositionAsState(
-                    composition = composition,
-                    iterations = Compottie.IterateForever,
-                    speed = animSpeed,
-                )
-                val painter = rememberLottiePainter(
-                    composition = composition,
-                    progress = { progress },
-                )
-                val animScale = when (activeCategory) {
-                    ConnectedDeviceType.Watch -> 1.15f
-                    ConnectedDeviceType.Tablet -> 1.05f
-                    ConnectedDeviceType.Laptop -> 1.05f
-                    ConnectedDeviceType.Phone -> 1.0f
-                }
-                Image(
-                    painter = painter,
-                    contentDescription = "Connected Device",
-                    modifier = Modifier
-                        .size(185.dp)
-                        .graphicsLayer {
-                            scaleX = animScale
-                            scaleY = animScale
-                        },
-                )
-            } else {
-                Icon(
-                    painter = painterResource(DeXIcons.Smartphone),
-                    contentDescription = "Device",
-                    modifier = Modifier.size(110.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
+            DeXLottie(
+                path = lottiePath,
+                modifier = Modifier
+                    .size(185.dp)
+                    .graphicsLayer {
+                        scaleX = lottieScale
+                        scaleY = lottieScale
+                    },
+                iterations = DeXLottieForever,
+                speed = lottieSpeed,
+                contentDescription = "Connected Device",
+                placeholder = {
+                    Icon(
+                        painter = painterResource(DeXIcons.Smartphone),
+                        contentDescription = "Device",
+                        modifier = Modifier.size(110.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+            )
         }
 
         // === 3. Battery & Wi-Fi Telemetry (Container-less, Stacked Icon + Value) ===
