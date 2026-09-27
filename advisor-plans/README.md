@@ -32,7 +32,7 @@ honor its STOP conditions, and update your row when done.
 | 022  | settings-audit-followups | P2 | S-M | 021 | DONE |
 | 023  | dnd-mute-semantics-and-surface-pruning | P1 | M | 022 | DONE |
 | 024  | android-refactor-centralization | P1 | L | — | DONE (Phases 1-3 complete; Phase 4 items split into plans 042-045) |
-| 025  | ecosystem-foundation (wire contract) | P1 | L | — | IN PROGRESS (wire contract DONE) |
+| 025  | ecosystem-foundation (wire contract) | P1 | L | — | DONE (wire contract shipped; all dependent plans 026–031, 046 are DONE. Row previously read IN PROGRESS after 026–031 had already closed against it) |
 | 026  | domain-extraction-pairing | P1 | M | 025 | DONE |
 | 027  | domain-extraction-transfer | P1 | M | 025, 026 | DONE |
 | 028  | domain-extraction-discovery | P1 | M | 026 | DONE (registry + ports; adapter bridged sync; PcMemory/PunchState wiring deferred to 030/033) |
