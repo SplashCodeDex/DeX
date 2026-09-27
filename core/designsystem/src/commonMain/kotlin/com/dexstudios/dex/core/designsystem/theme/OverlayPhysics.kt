@@ -23,7 +23,10 @@ import androidx.compose.ui.unit.dp
 object OverlayPhysics {
 
     // === Visual Identity & Surface Geometry ===
-    val CORNER_RADIUS = 48.dp
+    val CORNER_RADIUS = 28.dp
+    val CORNER_RADIUS_PILL = 24.dp
+    val CORNER_RADIUS_CARD = 28.dp
+    val CORNER_RADIUS_DIALOG = 32.dp
     const val SURFACE_ALPHA = 0.96f
     val BORDER_WIDTH = 1.dp
     val SCREEN_EDGE_MARGIN = 16.dp
@@ -50,9 +53,9 @@ object OverlayPhysics {
     val ALERT_DIALOG_WIDTH = 340.dp
     val CONFIRMATION_POPUP_WIDTH = 300.dp
 
-    val TOAST_WIDTH = 320.dp
+    val TOAST_WIDTH = 340.dp
     val TOAST_MIN_WIDTH = 200.dp
-    val TOAST_MAX_WIDTH = 380.dp
+    val TOAST_MAX_WIDTH = 340.dp
     val TOAST_HEIGHT = 48.dp
 
     // === Easing Curves ===

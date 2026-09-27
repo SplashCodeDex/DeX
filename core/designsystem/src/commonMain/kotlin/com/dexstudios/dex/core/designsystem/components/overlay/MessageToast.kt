@@ -1,5 +1,8 @@
 package com.dexstudios.dex.core.designsystem.components.overlay
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,6 +34,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import org.jetbrains.compose.resources.DrawableResource
@@ -83,10 +90,23 @@ fun MessageToast(
         ToastVariant.Progress -> MaterialTheme.colorScheme.primary
     }
 
+    val animatedBadgeBgColor by animateColorAsState(
+        targetValue = badgeBgColor,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "toastBadgeBgMorph",
+    )
+
+    val animatedIconTintColor by animateColorAsState(
+        targetValue = iconTintColor,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "toastIconTintMorph",
+    )
+
     FluidOverlaySurface(
         modifier = modifier,
         targetWidth = OverlayPhysics.TOAST_WIDTH,
         targetHeight = OverlayPhysics.TOAST_HEIGHT,
+        targetCornerRadius = OverlayPhysics.CORNER_RADIUS_PILL,
         showHoverCloseButton = showCloseButton,
         onDismiss = onDismiss,
         onHoverChanged = onHoverChanged,
@@ -96,6 +116,7 @@ fun MessageToast(
             modifier = Modifier
                 .height(OverlayPhysics.TOAST_HEIGHT)
                 .fillMaxWidth()
+                .transientContentBlur(trigger = variant)
                 .padding(
                     start = 12.dp,
                     end = if (showCloseButton && onDismiss != null) {
@@ -114,7 +135,7 @@ fun MessageToast(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(badgeBgColor),
+                    .background(animatedBadgeBgColor),
                 contentAlignment = Alignment.Center,
             ) {
                 if (variant == ToastVariant.Progress && progress == null) {
@@ -163,7 +184,7 @@ fun MessageToast(
                         painter = effectivePainter,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = iconTintColor,
+                        tint = animatedIconTintColor,
                     )
                 }
             }
@@ -181,19 +202,18 @@ fun MessageToast(
 
             // Optional trailing action button
             if (actionText != null && onActionClick != null) {
-                Box(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .bubbleFluidity(targetScale = 0.94f, pullFactor = 0.05f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onActionClick,
+                DeXButton(
+                    onClick = onActionClick,
+                    style = remember {
+                        DeXButtonDefaults.dense.copy(
+                            shape = RoundedCornerShape(14.dp),
+                            minHeight = 28.dp,
+                            horizontalPadding = 10.dp,
+                            verticalPadding = 0.dp,
+                            fluidity = DynamicFluidityConfig(enabled = true, pressScale = 0.94f, pullFactor = 0.05f),
                         )
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center,
+                    },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
                 ) {
                     Text(
                         text = actionText,

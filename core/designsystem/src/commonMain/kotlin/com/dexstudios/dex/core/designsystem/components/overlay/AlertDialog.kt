@@ -34,6 +34,7 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -71,6 +72,7 @@ fun AlertDialog(
     FluidOverlaySurface(
         modifier = modifier,
         targetWidth = OverlayPhysics.ALERT_DIALOG_WIDTH,
+        targetCornerRadius = OverlayPhysics.CORNER_RADIUS_DIALOG,
         showHoverCloseButton = false,
         onDismiss = onDismiss,
         onHoverChanged = onHoverChanged,
@@ -78,6 +80,7 @@ fun AlertDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .transientContentBlur(trigger = (isPositiveActionLoading to isNegativeActionLoading) to (title to message))
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

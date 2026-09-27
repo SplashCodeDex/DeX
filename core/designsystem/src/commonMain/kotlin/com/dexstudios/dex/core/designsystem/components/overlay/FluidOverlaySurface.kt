@@ -1,9 +1,12 @@
 package com.dexstudios.dex.core.designsystem.components.overlay
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -103,6 +106,18 @@ fun FluidOverlaySurface(
         label = "surfaceCornerRadius",
     )
     val effectiveShape = if (targetCornerRadius != null) RoundedCornerShape(animatedCornerRadius) else shape
+
+    val animatedSurfaceColor by animateColorAsState(
+        targetValue = surfaceColor,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "surfaceColorMorph",
+    )
+
+    val animatedBorderColor by animateColorAsState(
+        targetValue = borderColor,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "borderColorMorph",
+    )
 
     // Dynamic Spring Entrance with authentic Apple overshoot & smooth alpha fade
     val entryProgress = remember { Animatable(0f) }
@@ -242,8 +257,8 @@ fun FluidOverlaySurface(
                 },
             )
             .clip(effectiveShape)
-            .background(color = surfaceColor, shape = effectiveShape)
-            .border(width = OverlayPhysics.BORDER_WIDTH, color = borderColor, shape = effectiveShape)
+            .background(color = animatedSurfaceColor, shape = effectiveShape)
+            .border(width = OverlayPhysics.BORDER_WIDTH, color = animatedBorderColor, shape = effectiveShape)
             .then(
                 if (enableGlare) {
                     Modifier.shinyGlare(shape = effectiveShape, width = OverlayPhysics.BORDER_WIDTH)

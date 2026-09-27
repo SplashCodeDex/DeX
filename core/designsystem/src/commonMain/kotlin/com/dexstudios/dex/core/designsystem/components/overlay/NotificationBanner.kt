@@ -131,8 +131,8 @@ fun NotificationBanner(
     }
 
     val targetCornerRadius: Dp = when (morphState) {
-        BannerMorphState.Compact -> 24.dp
-        BannerMorphState.Expanded -> 28.dp
+        BannerMorphState.Compact -> OverlayPhysics.CORNER_RADIUS_PILL
+        BannerMorphState.Expanded -> OverlayPhysics.CORNER_RADIUS_CARD
     }
 
     FluidOverlaySurface(
