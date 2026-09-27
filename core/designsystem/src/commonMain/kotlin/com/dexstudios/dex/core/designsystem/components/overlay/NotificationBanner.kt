@@ -1,8 +1,12 @@
 package com.dexstudios.dex.core.designsystem.components.overlay
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,6 +46,7 @@ import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
+import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
@@ -125,10 +130,16 @@ fun NotificationBanner(
         BannerMorphState.Expanded -> OverlayPhysics.BANNER_EXPANDED_HEIGHT
     }
 
+    val targetCornerRadius: Dp = when (morphState) {
+        BannerMorphState.Compact -> 24.dp
+        BannerMorphState.Expanded -> 28.dp
+    }
+
     FluidOverlaySurface(
         modifier = modifier,
         targetWidth = targetWidth,
         targetHeight = targetHeight,
+        targetCornerRadius = targetCornerRadius,
         showHoverCloseButton = false, // Tap to morph or swipe to dismiss
         onDismiss = onDismiss,
         onHoverChanged = onHoverChanged,
@@ -143,11 +154,16 @@ fun NotificationBanner(
             onClick?.invoke()
         },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .transientContentBlur(trigger = morphState),
+        ) {
             AnimatedContent(
                 targetState = morphState,
                 transitionSpec = {
-                    fadeIn(OverlayPhysics.EnterFloatSpring) togetherWith fadeOut(OverlayPhysics.ExitTween)
+                    (fadeIn(tween(140, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 0.96f, animationSpec = tween(140))) togetherWith
+                        (fadeOut(tween(90, easing = FastOutSlowInEasing)) + scaleOut(targetScale = 0.96f, animationSpec = tween(90)))
                 },
                 label = "bannerMorphContent",
             ) { state ->

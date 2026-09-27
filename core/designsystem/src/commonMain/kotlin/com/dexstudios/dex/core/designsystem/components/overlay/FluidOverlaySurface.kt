@@ -68,6 +68,7 @@ fun FluidOverlaySurface(
     modifier: Modifier = Modifier,
     targetWidth: Dp? = null,
     targetHeight: Dp? = null,
+    targetCornerRadius: Dp? = null,
     shape: Shape = RoundedCornerShape(OverlayPhysics.CORNER_RADIUS),
     surfaceColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = OverlayPhysics.SURFACE_ALPHA),
     borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
@@ -95,6 +96,13 @@ fun FluidOverlaySurface(
         animationSpec = OverlayPhysics.SizeMorphDpSpring,
         label = "surfaceHeight",
     )
+
+    val animatedCornerRadius by animateDpAsState(
+        targetValue = targetCornerRadius ?: OverlayPhysics.CORNER_RADIUS,
+        animationSpec = OverlayPhysics.SizeMorphDpSpring,
+        label = "surfaceCornerRadius",
+    )
+    val effectiveShape = if (targetCornerRadius != null) RoundedCornerShape(animatedCornerRadius) else shape
 
     // Dynamic Spring Entrance with authentic Apple overshoot & smooth alpha fade
     val entryProgress = remember { Animatable(0f) }
@@ -233,12 +241,12 @@ fun FluidOverlaySurface(
                     Modifier
                 },
             )
-            .clip(shape)
-            .background(color = surfaceColor, shape = shape)
-            .border(width = OverlayPhysics.BORDER_WIDTH, color = borderColor, shape = shape)
+            .clip(effectiveShape)
+            .background(color = surfaceColor, shape = effectiveShape)
+            .border(width = OverlayPhysics.BORDER_WIDTH, color = borderColor, shape = effectiveShape)
             .then(
                 if (enableGlare) {
-                    Modifier.shinyGlare(shape = shape, width = OverlayPhysics.BORDER_WIDTH)
+                    Modifier.shinyGlare(shape = effectiveShape, width = OverlayPhysics.BORDER_WIDTH)
                 } else {
                     Modifier
                 },
