@@ -31,6 +31,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -75,18 +78,18 @@ fun AlertDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header: Icon + optional badge + Title / Message
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Leading Icon Badge with secondary overlapping avatar badge
                 Box(
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(38.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     val painter = when {
@@ -98,7 +101,7 @@ fun AlertDialog(
                         Icon(
                             painter = painter,
                             contentDescription = null,
-                            modifier = Modifier.size(34.dp),
+                            modifier = Modifier.size(28.dp),
                             tint = iconTint,
                         )
                     }
@@ -113,7 +116,7 @@ fun AlertDialog(
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .size(18.dp)
+                                .size(16.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surface),
                             contentAlignment = Alignment.Center,
@@ -121,7 +124,7 @@ fun AlertDialog(
                             Icon(
                                 painter = effectiveBadgePainter,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp).clip(CircleShape),
+                                modifier = Modifier.size(14.dp).clip(CircleShape),
                                 tint = Color.Unspecified,
                             )
                         }
@@ -134,30 +137,30 @@ fun AlertDialog(
                 ) {
                     Text(
                         text = title,
-                        fontSize = 17.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = message,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 17.sp,
+                        lineHeight = 16.sp,
                     )
                 }
             }
 
             // Preview Thumbnail Slot (if supplied)
             if (previewContent != null) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .height(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -165,7 +168,7 @@ fun AlertDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Action Buttons: Dual Pills (Decline = surfaceVariant, Accept = primary)
             Row(
@@ -198,19 +201,16 @@ fun AlertDialog(
 
 @Composable
 fun AlertActionButton(text: String, containerColor: Color, contentColor: Color, isLoading: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(44.dp)
-            .bubbleFluidity(targetScale = 0.95f, pullFactor = 0.05f)
-            .clip(RoundedCornerShape(22.dp))
-            .background(containerColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = !isLoading,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
+    DeXButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = !isLoading,
+        style = remember {
+            DeXButtonDefaults.stadium.copy(
+                fluidity = DynamicFluidityConfig(enabled = true, pressScale = 0.95f, pullFactor = 0.05f),
+            )
+        },
+        containerColor = containerColor,
     ) {
         if (isLoading) {
             CircularProgressIndicator(
@@ -221,7 +221,7 @@ fun AlertActionButton(text: String, containerColor: Color, contentColor: Color, 
         } else {
             Text(
                 text = text,
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = contentColor,
                 textAlign = TextAlign.Center,

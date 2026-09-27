@@ -44,10 +44,10 @@ object OverlayPhysics {
     val BANNER_COMPACT_WIDTH = 340.dp
     val BANNER_COMPACT_HEIGHT = 48.dp
 
-    val BANNER_EXPANDED_WIDTH = 420.dp
-    val BANNER_EXPANDED_HEIGHT = 164.dp
+    val BANNER_EXPANDED_WIDTH = 340.dp
+    val BANNER_EXPANDED_HEIGHT = 108.dp
 
-    val ALERT_DIALOG_WIDTH = 360.dp
+    val ALERT_DIALOG_WIDTH = 340.dp
     val CONFIRMATION_POPUP_WIDTH = 300.dp
 
     val TOAST_WIDTH = 320.dp

@@ -39,6 +39,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
@@ -49,14 +52,25 @@ import org.jetbrains.compose.resources.painterResource
  */
 enum class BannerMorphState {
     Compact, // 340x48dp compact pill
-    Expanded, // 420x164dp rich card with preview & side-by-side progress/cancel
+    Expanded, // 340x108dp rich card with preview & side-by-side progress/cancel
 }
+
+/**
+ * Cancel geometry for the banner action. Compact and Expanded are the same button in both
+ * morph states — only the horizontal inset widens with the card — so the two former
+ * copy-pasted chains now differ by a single value.
+ */
+private val compactBannerActionStyle = DeXButtonDefaults.dense.copy(
+    fluidity = DynamicFluidityConfig(enabled = true, pressScale = 0.93f, pullFactor = 0.04f),
+)
+private val expandedBannerActionStyle = compactBannerActionStyle.copy(horizontalPadding = 10.dp)
 
 /**
  * Apple Dynamic Island / Live Activity style notification banner.
  *
  * Morphs seamlessly between [BannerMorphState.Compact] and [BannerMorphState.Expanded] with spring kinematics.
  */
+
 @Composable
 fun NotificationBanner(
     title: String,
@@ -192,19 +206,10 @@ fun NotificationBanner(
                             )
 
                             if (onActionClick != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .bubbleFluidity(targetScale = 0.93f, pullFactor = 0.04f)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
-                                        .clickable(
-                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
-                                            onActionClick()
-                                        }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center,
+                                DeXButton(
+                                    onClick = { onActionClick() },
+                                    style = compactBannerActionStyle,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
                                 ) {
                                     Text(
                                         text = "Cancel",
@@ -225,14 +230,14 @@ fun NotificationBanner(
                     }
 
                     BannerMorphState.Expanded -> {
-                        // Expanded Rich Card (420x164dp): Compact preview, aligned metrics, progress bar side-by-side with Cancel button
+                        // Expanded Rich Card (340x108dp): Sleek preview, aligned metrics, progress bar side-by-side with Cancel button
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 20.dp, vertical = 16.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            // Top Section: Details on the left, reduced compact preview on the right
+                            // Top Section: Details on the left, compact 56dp preview on the right
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -240,31 +245,31 @@ fun NotificationBanner(
                             ) {
                                 // Left details column
                                 Column(
-                                    modifier = Modifier.weight(1f).padding(end = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.weight(1f).padding(end = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp),
                                 ) {
                                     // Top Row: Origin Badge + Status Pill
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
                                         BannerIconBadge(
                                             iconResource = iconResource,
                                             iconPainter = iconPainter,
                                             iconTint = iconTint,
                                             backgroundColor = iconBackgroundColor,
-                                            size = 28.dp,
+                                            size = 22.dp,
                                         )
                                         if (badgeText != null) {
                                             Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clip(RoundedCornerShape(6.dp))
                                                     .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f))
-                                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp),
                                             ) {
                                                 Text(
                                                     text = badgeText,
-                                                    fontSize = 11.sp,
+                                                    fontSize = 10.sp,
                                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                                     fontWeight = FontWeight.SemiBold,
                                                     maxLines = 1,
@@ -277,7 +282,7 @@ fun NotificationBanner(
                                     // Hero Title
                                     Text(
                                         text = title,
-                                        fontSize = 15.sp,
+                                        fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
@@ -288,7 +293,7 @@ fun NotificationBanner(
                                     if (subtitle != null) {
                                         Text(
                                             text = subtitle,
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
@@ -297,12 +302,12 @@ fun NotificationBanner(
                                     }
                                 }
 
-                                // Right visual preview (Reduced compact thumbnail)
+                                // Right visual preview (Compact 56x56 thumbnail)
                                 if (trailingPreview != null) {
                                     Box(
                                         modifier = Modifier
-                                            .size(width = 88.dp, height = 72.dp)
-                                            .clip(RoundedCornerShape(14.dp))
+                                            .size(56.dp)
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                                     ) {
                                         trailingPreview()
@@ -314,15 +319,15 @@ fun NotificationBanner(
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 if (progress != null) {
                                     LinearProgressIndicator(
                                         progress = { progress.coerceIn(0f, 1f) },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(8.dp)
-                                            .clip(RoundedCornerShape(4.dp)),
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
                                         color = MaterialTheme.colorScheme.primary,
                                         trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                                     )
@@ -333,23 +338,14 @@ fun NotificationBanner(
                                 if (expandedContent != null) {
                                     expandedContent()
                                 } else if (onActionClick != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .bubbleFluidity(targetScale = 0.93f, pullFactor = 0.04f)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
-                                            .clickable(
-                                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                                indication = null,
-                                            ) {
-                                                onActionClick()
-                                            }
-                                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                                        contentAlignment = Alignment.Center,
+                                    DeXButton(
+                                        onClick = { onActionClick() },
+                                        style = expandedBannerActionStyle,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
                                     ) {
                                         Text(
                                             text = "Cancel",
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.error,
                                         )
