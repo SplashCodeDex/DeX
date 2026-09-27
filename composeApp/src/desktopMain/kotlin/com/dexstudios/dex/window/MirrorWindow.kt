@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
@@ -225,7 +227,7 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(
+                        DeXButton(
                             onClick = {
                                 isLandscape = !isLandscape
                                 windowState.size = if (isLandscape) {
@@ -234,10 +236,11 @@ fun MirrorWindow(onClose: () -> Unit, peerName: String = "Connected Phone", mirr
                                     DpSize(420.dp, 840.dp)
                                 }
                             },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.65f)),
+                            style = DeXButtonDefaults.icon.copy(
+                                minWidth = 36.dp,
+                                minHeight = 36.dp,
+                            ),
+                            containerColor = Color.Black.copy(alpha = 0.65f),
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_fluent_rotate),

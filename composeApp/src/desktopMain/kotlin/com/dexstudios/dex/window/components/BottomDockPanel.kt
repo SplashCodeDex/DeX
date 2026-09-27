@@ -63,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
@@ -144,27 +147,24 @@ fun BottomDockPanel(
 
     val avatarInteraction = remember { MutableInteractionSource() }
     val avatarHovered by avatarInteraction.collectIsHoveredAsState()
-    var isAvatarFluidityPressed by remember { mutableStateOf(false) }
-    val isAvatarPressedRaw by avatarInteraction.collectIsPressedAsState()
-    val isAvatarPressed = isAvatarPressedRaw || isAvatarFluidityPressed
-    val avatarPressProgress by animateFloatAsState(
-        targetValue = if (isAvatarPressed) 1f else 0f,
-        animationSpec = motionConfig.springSpec(isAvatarPressed),
-        label = "avatarPressProgress",
-    )
-
-    val avatarHoverScale by animateFloatAsState(
-        targetValue = if (avatarHovered && !isConfirming) 1.08f else 1.0f,
-        animationSpec = DockCardAnimations.HoverSpec,
-        label = "avatarHoverScale",
-    )
 
     val avatarScale by animateFloatAsState(
         targetValue = if (isConfirming) 0.6f else 1.0f,
         animationSpec = motionConfig.springSpec(isConfirming),
         label = "avatarScale",
     )
-    val avatarShadowElevation = (4.dp * (1f - 0.20f * avatarPressProgress)).coerceAtLeast(0.dp)
+
+    // The avatar's content is an opaque photo or a filled initial disc, so there is no surface
+    // for an additive beam to land on; the escape hatch keeps the rest of the treatment
+    // (fluidity, shadow, glare, cursor, press coupling) instead of faking a lit surface.
+    val avatarStyle = remember(isConfirming) {
+        DeXButtonDefaults.icon.copy(
+            minWidth = 34.dp,
+            minHeight = 34.dp,
+            hoverScale = if (isConfirming) 1f else 1.08f,
+            spotlightEnabled = false,
+        )
+    }
 
     val exitExpandAmount by animateDpAsState(
         targetValue = if (isConfirming) 58.dp else 0.dp,
@@ -180,41 +180,33 @@ fun BottomDockPanel(
 
     val exitInteraction = remember { MutableInteractionSource() }
     val exitHovered by exitInteraction.collectIsHoveredAsState()
-    var isExitFluidityPressed by remember { mutableStateOf(false) }
-    val isExitPressedRaw by exitInteraction.collectIsPressedAsState()
-    val isExitPressed = isExitPressedRaw || isExitFluidityPressed
-    val exitPressProgress by animateFloatAsState(
-        targetValue = if (isExitPressed) 1f else 0f,
-        animationSpec = motionConfig.springSpec(isExitPressed),
-        label = "exitPressProgress",
-    )
 
-    val exitButtonBgColor by animateColorAsState(
-        targetValue = when {
-            isConfirming || exitHovered -> MaterialTheme.colorScheme.surfaceVariant
-            else -> Color.Transparent
-        },
-        animationSpec = motionConfig.springSpec(isConfirming),
-        label = "exitBtnBg",
-    )
     val exitCenterBias by animateFloatAsState(
         targetValue = if (isConfirming) 1f else 0f,
         animationSpec = motionConfig.springSpec(isConfirming),
         label = "exitCenterBias",
     )
 
-    val exitHoverScale by animateFloatAsState(
-        targetValue = if (exitHovered && !isConfirming) 1.08f else 1.0f,
-        animationSpec = DockCardAnimations.HoverSpec,
-        label = "exitHoverScale",
-    )
-
-    val exitShadowElevationBase by animateDpAsState(
-        targetValue = if (isConfirming) 8.dp else 4.dp,
-        animationSpec = motionConfig.springSpec(isConfirming),
-        label = "exitShadowElevation",
-    )
-    val exitShadowElevation = (exitShadowElevationBase * (1f - 0.20f * exitPressProgress)).coerceAtLeast(0.dp)
+    // Press state, hover scale, shadow elevation, fill and the beam are the primitive's job now.
+    // What stays local is the confirmation morph: the fill appears as soon as the confirmation
+    // stage arms, not only while the pointer happens to be over the button, and the hover lift
+    // is suppressed in that stage so the capsule does not fight the expansion.
+    val exitStyle = remember(isConfirming) {
+        DeXButtonDefaults.pill.copy(
+            minWidth = 0.dp,
+            minHeight = 0.dp,
+            horizontalPadding = 16.dp,
+            verticalPadding = 0.dp,
+            shadow = if (isConfirming) DeXButtonShadow.Raised else DeXButtonShadow.Base,
+            hoverScale = if (isConfirming) 1f else 1.08f,
+            raiseOnHover = false,
+            fillWidth = true,
+            // The expansion is measured on the caller modifier, so the surface has to adopt it
+            // or the capsule collapses to the height of its label.
+            fillSurface = true,
+            contentGap = 0.dp,
+        )
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -233,37 +225,19 @@ fun BottomDockPanel(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // 34x34dp Profile Avatar Button (Non-expanding circular button, opens Settings)
-            Box(
+            DeXButton(
+                onClick = onProfileClick,
                 modifier = Modifier
                     .zIndex(if (avatarHovered) 1f else 0f)
                     .padding(start = 16.dp, end = 8.dp)
                     .size(34.dp)
                     .graphicsLayer {
-                        scaleX = avatarScale * avatarHoverScale
-                        scaleY = avatarScale * avatarHoverScale
-                    }
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isAvatarFluidityPressed = it },
-                    )
-                    .shadow(
-                        elevation = avatarShadowElevation,
-                        shape = CircleShape,
-                        spotColor = Color.Black.copy(alpha = 0.20f),
-                        ambientColor = Color.Black.copy(alpha = 0.10f),
-                    )
-                    .clip(CircleShape)
-                    .shinyGlare(
-                        shape = CircleShape,
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * avatarPressProgress),
-                    )
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable(
-                        interactionSource = avatarInteraction,
-                        indication = null,
-                        onClick = onProfileClick,
-                    ),
-                contentAlignment = Alignment.Center,
+                        scaleX = avatarScale
+                        scaleY = avatarScale
+                    },
+                style = avatarStyle,
+                containerColor = Color.Transparent,
+                interactionSource = avatarInteraction,
             ) {
                 val avatar = avatarBitmap
                 when {
@@ -312,11 +286,51 @@ fun BottomDockPanel(
             }
 
             // 2-Stage Exit Button Container (Strict Stadium Capsule CircleShape)
-            Box(
+            DeXButton(
+                onClick = {
+                    // Check Shift modifier via both PointerEvent and AWT EventQueue
+                    val awtShift = try {
+                        val currentEvent = java.awt.EventQueue.getCurrentEvent()
+                        (currentEvent as? InputEvent)?.isShiftDown == true
+                    } catch (_: Exception) {
+                        false
+                    }
+
+                    if (isShiftHeld || awtShift) {
+                        // Instant Exit Bypass (matches WPF: Shift+Click falls through to Invoke-ExitEngine)
+                        onExitEngine()
+                    } else {
+                        when (confirmationStage) {
+                            ExitConfirmationStage.Idle ->
+                                // First click: enter confirmation stage ("Cancel / Shift+Click Exit")
+                                confirmationStage = ExitConfirmationStage.Confirming
+
+                            ExitConfirmationStage.Confirming -> {
+                                // Live re-check at click time: trusting the rendered
+                                // props alone could turn a cancel into an exit (transfer
+                                // settled since paint) or miss a just-started transfer.
+                                val transferLiveNow =
+                                    clientEngine.uploadState.value.isUploading || fileSender.isSessionActive()
+                                if (isMirroringActive || transferLiveNow) {
+                                    // The label promised "Click to Force Exit" - honor it.
+                                    // A plain click while a transfer/mirror is live force-exits;
+                                    // without active work a plain click only cancels (WPF parity).
+                                    onExitEngine()
+                                } else {
+                                    confirmationStage = ExitConfirmationStage.Idle
+                                }
+                            }
+                        }
+                    }
+                },
+                // The confirmation morph is this button's own behaviour, so it rides the caller
+                // modifier: the primitive owns the surface, the layout expansion stays local.
                 modifier = Modifier
-                    .zIndex(if (exitHovered || isConfirming) 2f else 0f)
                     .weight(1f)
-                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                    .zIndex(if (exitHovered || isConfirming) 2f else 0f)
+                    // No vertical padding here: the surface now inherits this box's height
+                    // directly, so any inset taken out of it would come straight off the capsule.
+                    .padding(horizontal = 6.dp)
                     .height(exitHeight)
                     .layout { measurable, constraints ->
                         val extra = exitExpandAmount.roundToPx()
@@ -330,27 +344,6 @@ fun BottomDockPanel(
                             placeable.place(-extra, 0)
                         }
                     }
-                    .graphicsLayer {
-                        scaleX = exitHoverScale
-                        scaleY = exitHoverScale
-                    }
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isExitFluidityPressed = it },
-                    )
-                    .shadow(
-                        elevation = exitShadowElevation,
-                        shape = CircleShape,
-                        spotColor = Color.Black.copy(alpha = if (isConfirming) 0.30f else 0.20f),
-                        ambientColor = Color.Black.copy(alpha = if (isConfirming) 0.15f else 0.10f),
-                    )
-                    .clip(CircleShape)
-                    .background(exitButtonBgColor)
-                    .shinyGlare(
-                        shape = CircleShape,
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * exitPressProgress),
-                    )
-                    .pointerHoverIcon(PointerIcon.Hand)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -360,115 +353,74 @@ fun BottomDockPanel(
                                 }
                             }
                         }
-                    }
-                    .clickable(
-                        interactionSource = exitInteraction,
-                        indication = null,
-                    ) {
-                        // Check Shift modifier via both PointerEvent and AWT EventQueue
-                        val awtShift = try {
-                            val currentEvent = java.awt.EventQueue.getCurrentEvent()
-                            (currentEvent as? InputEvent)?.isShiftDown == true
-                        } catch (_: Exception) {
-                            false
-                        }
-
-                        if (isShiftHeld || awtShift) {
-                            // Instant Exit Bypass (matches WPF: Shift+Click falls through to Invoke-ExitEngine)
-                            onExitEngine()
-                        } else {
-                            when (confirmationStage) {
-                                ExitConfirmationStage.Idle ->
-                                    // First click: enter confirmation stage ("Cancel / Shift+Click Exit")
-                                    confirmationStage = ExitConfirmationStage.Confirming
-
-                                ExitConfirmationStage.Confirming -> {
-                                    // Live re-check at click time: trusting the rendered
-                                    // props alone could turn a cancel into an exit (transfer
-                                    // settled since paint) or miss a just-started transfer.
-                                    val transferLiveNow =
-                                        clientEngine.uploadState.value.isUploading || fileSender.isSessionActive()
-                                    if (isMirroringActive || transferLiveNow) {
-                                        // The label promised "Click to Force Exit" - honor it.
-                                        // A plain click while a transfer/mirror is live force-exits;
-                                        // without active work a plain click only cancels (WPF parity).
-                                        onExitEngine()
-                                    } else {
-                                        confirmationStage = ExitConfirmationStage.Idle
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
+                    },
+                enabled = true,
+                style = exitStyle,
+                containerColor = if (isConfirming) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                hoverContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                interactionSource = exitInteraction,
             ) {
+                // Left spacer pushes text to center when expanded, relative to the available space
+                val bias = exitCenterBias.coerceIn(0f, 1f)
+                if (bias > 0.001f) {
+                    Spacer(modifier = Modifier.weight(bias))
+                }
+
+                // Main Content (Icon + Text)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    // Left spacer pushes text to center when expanded, relative to the available space
-                    val bias = exitCenterBias.coerceIn(0f, 1f)
-                    if (bias > 0.001f) {
-                        Spacer(modifier = Modifier.weight(bias))
-                    }
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_fluent_power_filled),
+                        contentDescription = "Exit Engine",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp),
+                    )
 
-                    // Main Content (Icon + Text)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_fluent_power_filled),
-                            contentDescription = "Exit Engine",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp),
-                        )
+                    AnimatedContent(
+                        targetState = confirmationStage,
+                        transitionSpec = {
+                            val enterSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
+                            val exitSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
+                            (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.88f, animationSpec = enterSpec))
+                                .togetherWith(fadeOut(animationSpec = tween(140)) + scaleOut(targetScale = 0.88f, animationSpec = exitSpec))
+                        },
+                        modifier = Modifier.transientContentBlur(
+                            trigger = confirmationStage,
+                            config = DynamicContentBlurConfig.Default,
+                            motion = motionConfig,
+                        ),
+                        label = "exitText",
+                    ) { state ->
+                        Text(
+                            text = when {
+                                state == ExitConfirmationStage.Confirming && (hasActiveTransfers || isMirroringActive) ->
+                                    "Transfer Active! Click to Force Exit"
 
-                        AnimatedContent(
-                            targetState = confirmationStage,
-                            transitionSpec = {
-                                val enterSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
-                                val exitSpec = spring<Float>(dampingRatio = 0.70f, stiffness = 500f)
-                                (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.88f, animationSpec = enterSpec))
-                                    .togetherWith(fadeOut(animationSpec = tween(140)) + scaleOut(targetScale = 0.88f, animationSpec = exitSpec))
+                                state == ExitConfirmationStage.Confirming ->
+                                    "Cancel / Shift+Click Exit"
+
+                                else -> "Exit Engine"
                             },
-                            modifier = Modifier.transientContentBlur(
-                                trigger = confirmationStage,
-                                config = DynamicContentBlurConfig.Default,
-                                motion = motionConfig,
-                            ),
-                            label = "exitText",
-                        ) { state ->
-                            Text(
-                                text = when {
-                                    state == ExitConfirmationStage.Confirming && (hasActiveTransfers || isMirroringActive) ->
-                                        "Transfer Active! Click to Force Exit"
-
-                                    state == ExitConfirmationStage.Confirming ->
-                                        "Cancel / Shift+Click Exit"
-
-                                    else -> "Exit Engine"
-                                },
-                                fontSize = 15.sp,
-                                lineHeight = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.error,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                            fontSize = 15.sp,
+                            lineHeight = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
+                }
 
-                    // Right spacer balances the left spacer when expanded
-                    Spacer(modifier = Modifier.weight(1f))
+                // Right spacer balances the left spacer when expanded
+                Spacer(modifier = Modifier.weight(1f))
 
-                    // Live Shift+Click affordance pinned to the far right. Hidden only in
-                    // the "Transfer Active! Click to Force Exit" stage, where a plain click
-                    // already exits and a Shift hint would contradict the label.
-                    if (confirmationStage == ExitConfirmationStage.Idle || !(hasActiveTransfers || isMirroringActive)) {
-                        ShiftClickCombo(modifier = Modifier.padding(start = 6.dp), isPanelVisible = isPanelVisible)
-                    }
+                // Live Shift+Click affordance pinned to the far right. Hidden only in
+                // the "Transfer Active! Click to Force Exit" stage, where a plain click
+                // already exits and a Shift hint would contradict the label.
+                if (confirmationStage == ExitConfirmationStage.Idle || !(hasActiveTransfers || isMirroringActive)) {
+                    ShiftClickCombo(modifier = Modifier.padding(start = 6.dp), isPanelVisible = isPanelVisible)
                 }
             }
         }

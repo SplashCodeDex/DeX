@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.assets.LottiePaths
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
@@ -360,111 +362,58 @@ fun DeviceStatusPanel(
         // === 4. Bottom Action: Exit Engine-Styled Send Files Pill ===
         val sendInteraction = remember { MutableInteractionSource() }
         val sendHovered by sendInteraction.collectIsHoveredAsState()
-        val isSendPressedRaw by sendInteraction.collectIsPressedAsState()
-        var isSendFluidityPressed by remember { mutableStateOf(false) }
-        val isSendPressed = isSendPressedRaw || isSendFluidityPressed
-        val motionConfig = DynamicMotionConfig.Default
-        val sendPressProgress by animateFloatAsState(
-            targetValue = if (isSendPressed) 1f else 0f,
-            animationSpec = motionConfig.springSpec(isSendPressed),
-            label = "sendPressProgress",
-        )
-        val sendHoverScale by animateFloatAsState(
-            targetValue = if (sendHovered) 1.05f else 1.0f,
-            animationSpec = DockCardAnimations.HoverSpec,
-            label = "sendHoverScale",
-        )
-        val sendShadowElevation = (4.dp * (1f - 0.20f * sendPressProgress)).coerceAtLeast(0.dp)
 
         val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-        val targetSendBg = if (isDark) {
-            if (sendHovered) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        } else {
-            Color.White
-        }
+        val sendRestBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f) else Color.White
+        val sendHoverBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
 
-        val sendBtnBgColor by animateColorAsState(
-            targetValue = targetSendBg,
-            animationSpec = DockCardAnimations.LinearColorSpec,
-            label = "sendBtnBg",
-        )
-
-        Box(
+        DeXButton(
+            onClick = {
+                val fp = activeDevice?.info?.fingerprint ?: return@DeXButton
+                coroutineScope.launch(Dispatchers.IO) {
+                    fileSender.setPreferredTarget(fp)
+                    val picked = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                        runCatching {
+                            controller.isModalDialogOpen = true
+                            try {
+                                val holder = arrayOfNulls<List<File>>(1)
+                                EventQueue.invokeAndWait {
+                                    val dialog = FileDialog(null as Frame?, "Send files to $deviceName", FileDialog.LOAD)
+                                    dialog.isMultipleMode = true
+                                    dialog.isVisible = true
+                                    holder[0] = dialog.files.toList()
+                                }
+                                holder[0].orEmpty()
+                            } finally {
+                                controller.isModalDialogOpen = false
+                            }
+                        }.getOrDefault(emptyList())
+                    }
+                    if (picked.isNotEmpty()) {
+                        fileSender.sendFiles(picked, fp)
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-                .height(40.dp)
-                .graphicsLayer {
-                    scaleX = sendHoverScale
-                    scaleY = sendHoverScale
-                }
-                .bubbleFluidity(
-                    config = DynamicFluidityConfig.Default,
-                    onPressedChanged = { isSendFluidityPressed = it },
-                )
-                .shadow(
-                    elevation = sendShadowElevation,
-                    shape = CircleShape,
-                    spotColor = Color.Black.copy(alpha = 0.2f),
-                    ambientColor = Color.Black.copy(alpha = 0.1f),
-                )
-                .clip(CircleShape)
-                .background(sendBtnBgColor)
-                .shinyGlare(
-                    shape = CircleShape,
-                    intensity = DefaultGlareIntensity * (1f + 0.60f * sendPressProgress),
-                )
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(
-                    interactionSource = sendInteraction,
-                    indication = null,
-                    onClick = {
-                        val fp = activeDevice?.info?.fingerprint ?: return@clickable
-                        coroutineScope.launch(Dispatchers.IO) {
-                            fileSender.setPreferredTarget(fp)
-                            val picked = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                                runCatching {
-                                    controller.isModalDialogOpen = true
-                                    try {
-                                        val holder = arrayOfNulls<List<File>>(1)
-                                        EventQueue.invokeAndWait {
-                                            val dialog = FileDialog(null as Frame?, "Send files to $deviceName", FileDialog.LOAD)
-                                            dialog.isMultipleMode = true
-                                            dialog.isVisible = true
-                                            holder[0] = dialog.files.toList()
-                                        }
-                                        holder[0].orEmpty()
-                                    } finally {
-                                        controller.isModalDialogOpen = false
-                                    }
-                                }.getOrDefault(emptyList())
-                            }
-                            if (picked.isNotEmpty()) {
-                                fileSender.sendFiles(picked, fp)
-                            }
-                        }
-                    },
-                )
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            style = DeXButtonDefaults.wide.copy(minHeight = 40.dp, fillSurface = true),
+            containerColor = sendRestBg,
+            hoverContainerColor = sendHoverBg,
+            interactionSource = sendInteraction,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    painter = painterResource(DeXIcons.Send),
-                    contentDescription = "Send Files",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = "Send Files",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
+            Icon(
+                painter = painterResource(DeXIcons.Send),
+                contentDescription = "Send Files",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = "Send Files",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }

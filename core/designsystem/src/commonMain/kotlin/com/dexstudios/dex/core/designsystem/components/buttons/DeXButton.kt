@@ -171,6 +171,7 @@ object DeXButtonDefaults {
         horizontalPadding = 18.dp,
         verticalPadding = 10.dp,
         shadow = DeXButtonShadow.Base,
+        spotlight = SpotlightConfig.Focused,
     )
 
     /** Full-width pill: the send-file bars in the device status and history panels. */

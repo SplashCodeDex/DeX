@@ -60,9 +60,11 @@ import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.FluidSegmentedPicker
 import com.dexstudios.dex.core.designsystem.components.FluidSwitch
 import com.dexstudios.dex.core.designsystem.components.SegmentOption
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.spotlight.SpotlightConfig
-import com.dexstudios.dex.core.designsystem.components.spotlight.spotlight
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_account_circle
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_bolt
@@ -95,6 +97,18 @@ import java.awt.Desktop
 import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
+
+/**
+ * Geometry for the download-location action trio. Open Folder, Change and Reset were three
+ * byte-for-byte chains differing only in label and action, and they now share this definition;
+ * the 1dp outline that used to be hand-painted on each is folded into the fill alpha instead,
+ * because a shadow plus a glare rim already describes the edge.
+ */
+private val downloadDirActionStyle = DeXButtonDefaults.compact.copy(
+    minHeight = 32.dp,
+    horizontalPadding = 12.dp,
+    verticalPadding = 0.dp,
+)
 
 /**
  * SettingsPanel:
@@ -182,32 +196,32 @@ fun SettingsPanel(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .shinyGlare(shape = RoundedCornerShape(18.dp))
-                    .clickable {
-                        try {
-                            Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
-                        } catch (_: Exception) {}
-                    }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            DeXButton(
+                onClick = {
+                    try {
+                        Desktop.getDesktop().browse(URI(com.dexstudios.dex.AppBuildConfig.REPO_URL))
+                    } catch (_: Exception) {}
+                },
+                style = DeXButtonDefaults.dense.copy(
+                    shape = RoundedCornerShape(18.dp),
+                    horizontalPadding = 14.dp,
+                    verticalPadding = 8.dp,
+                    shadow = DeXButtonShadow.None,
+                ),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_fluent_info),
-                        contentDescription = "About",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 6.dp).size(16.dp),
-                    )
-                    Text(
-                        text = "DeX v${com.dexstudios.dex.AppBuildConfig.VERSION_NAME}",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Icon(
+                    painter = painterResource(Res.drawable.ic_fluent_info),
+                    contentDescription = "About",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 6.dp).size(16.dp),
+                )
+                Text(
+                    text = "DeX v${com.dexstudios.dex.AppBuildConfig.VERSION_NAME}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
@@ -282,12 +296,13 @@ fun SettingsPanel(
                     }
 
                     if (googleProfile.email.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
-                                .clickable { deviceConfig.signOut() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        DeXButton(
+                            onClick = { deviceConfig.signOut() },
+                            style = DeXButtonDefaults.dense.copy(
+                                horizontalPadding = 10.dp,
+                                shadow = DeXButtonShadow.None,
+                            ),
+                            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
                         ) {
                             Text(
                                 text = "Sign Out",
@@ -483,23 +498,18 @@ fun SettingsPanel(
                             }
 
                             // Save Button
-                            Box(
-                                modifier = Modifier
-                                    .height(34.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .spotlight(
-                                        shape = RoundedCornerShape(8.dp),
-                                        config = SpotlightConfig.Focused,
-                                    )
-                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
-                                    .pointerHoverIcon(PointerIcon.Hand)
-                                    .clickable {
-                                        deviceConfig.alias = aliasDraft.trim()
-                                        isEditingAlias = false
-                                    }
-                                    .padding(horizontal = 12.dp),
-                                contentAlignment = Alignment.Center,
+                            DeXButton(
+                                onClick = {
+                                    deviceConfig.alias = aliasDraft.trim()
+                                    isEditingAlias = false
+                                },
+                                style = DeXButtonDefaults.compact.copy(
+                                    minHeight = 34.dp,
+                                    horizontalPadding = 12.dp,
+                                    verticalPadding = 0.dp,
+                                    spotlight = SpotlightConfig.Focused,
+                                ),
+                                containerColor = MaterialTheme.colorScheme.primary,
                             ) {
                                 Text(
                                     text = "Save",
@@ -510,27 +520,15 @@ fun SettingsPanel(
                             }
 
                             // Cancel Button
-                            Box(
-                                modifier = Modifier
-                                    .height(34.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                        RoundedCornerShape(8.dp),
-                                    )
-                                    .spotlight(
-                                        shape = RoundedCornerShape(8.dp),
-                                        config = SpotlightConfig.Focused,
-                                    )
-                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
-                                    .pointerHoverIcon(PointerIcon.Hand)
-                                    .clickable {
-                                        isEditingAlias = false
-                                    }
-                                    .padding(horizontal = 10.dp),
-                                contentAlignment = Alignment.Center,
+                            DeXButton(
+                                onClick = { isEditingAlias = false },
+                                style = DeXButtonDefaults.compact.copy(
+                                    minHeight = 34.dp,
+                                    horizontalPadding = 10.dp,
+                                    verticalPadding = 0.dp,
+                                    spotlight = SpotlightConfig.Focused,
+                                ),
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             ) {
                                 Text(
                                     text = "Cancel",
@@ -742,39 +740,30 @@ fun SettingsPanel(
                         }
                     }
 
-                    // Action Buttons: Open Folder & Change Location
+                    // Action Buttons: Open Folder & Change Location — the former twin chains,
+                    // now one style, differing only in the label and the action.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         // Open Folder Button
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                    RoundedCornerShape(8.dp),
-                                )
-                                .shinyGlare(shape = RoundedCornerShape(8.dp))
-                                .pointerHoverIcon(PointerIcon.Hand)
-                                .clickable {
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        try {
-                                            val dir = File(effectiveDownloadDir)
-                                            if (!dir.exists()) dir.mkdirs()
-                                            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                                                Desktop.getDesktop().open(dir)
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
+                        DeXButton(
+                            onClick = {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val dir = File(effectiveDownloadDir)
+                                        if (!dir.exists()) dir.mkdirs()
+                                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                                            Desktop.getDesktop().open(dir)
                                         }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
                                     }
-                                },
-                            contentAlignment = Alignment.Center,
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            style = downloadDirActionStyle,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                         ) {
                             Text(
                                 text = "Open Folder",
@@ -785,45 +774,35 @@ fun SettingsPanel(
                         }
 
                         // Change Button
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                    RoundedCornerShape(8.dp),
-                                )
-                                .shinyGlare(shape = RoundedCornerShape(8.dp))
-                                .pointerHoverIcon(PointerIcon.Hand)
-                                .clickable {
-                                    coroutineScope.launch {
-                                        controller?.isModalDialogOpen = true
-                                        try {
-                                            val selectedDir = withContext(Dispatchers.IO) {
-                                                val chooser = JFileChooser(effectiveDownloadDir).apply {
-                                                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                                                    dialogTitle = "Select DeX Download Location"
-                                                    isAcceptAllFileFilterUsed = false
-                                                }
-                                                val result = chooser.showOpenDialog(null)
-                                                if (result == JFileChooser.APPROVE_OPTION) {
-                                                    chooser.selectedFile?.absolutePath
-                                                } else {
-                                                    null
-                                                }
+                        DeXButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    controller?.isModalDialogOpen = true
+                                    try {
+                                        val selectedDir = withContext(Dispatchers.IO) {
+                                            val chooser = JFileChooser(effectiveDownloadDir).apply {
+                                                fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                                                dialogTitle = "Select DeX Download Location"
+                                                isAcceptAllFileFilterUsed = false
                                             }
-                                            if (selectedDir != null) {
-                                                deviceConfig.downloadDir = selectedDir
+                                            val result = chooser.showOpenDialog(null)
+                                            if (result == JFileChooser.APPROVE_OPTION) {
+                                                chooser.selectedFile?.absolutePath
+                                            } else {
+                                                null
                                             }
-                                        } finally {
-                                            controller?.isModalDialogOpen = false
                                         }
+                                        if (selectedDir != null) {
+                                            deviceConfig.downloadDir = selectedDir
+                                        }
+                                    } finally {
+                                        controller?.isModalDialogOpen = false
                                     }
-                                },
-                            contentAlignment = Alignment.Center,
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            style = downloadDirActionStyle,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                         ) {
                             Text(
                                 text = "Change",
@@ -834,24 +813,11 @@ fun SettingsPanel(
                         }
 
                         if (isCustomPath) {
-                            // Reset Button
-                            Box(
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                        RoundedCornerShape(8.dp),
-                                    )
-                                    .shinyGlare(shape = RoundedCornerShape(8.dp))
-                                    .pointerHoverIcon(PointerIcon.Hand)
-                                    .clickable {
-                                        deviceConfig.downloadDir = ""
-                                    }
-                                    .padding(horizontal = 10.dp),
-                                contentAlignment = Alignment.Center,
+                            // Reset Button — same geometry, quieter fill, danger label.
+                            DeXButton(
+                                onClick = { deviceConfig.downloadDir = "" },
+                                style = downloadDirActionStyle.copy(horizontalPadding = 10.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             ) {
                                 Text(
                                     text = "Reset",
@@ -892,19 +858,29 @@ fun SettingsPanel(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirm = false
-                    // Revoke every persisted pairing, then rotate the identity hash so a
-                    // previously known auto-trust credential dies with the reset.
-                    coroutineScope.launch(Dispatchers.IO) {
-                        com.dexstudios.dex.core.network.services.TrustRevocationService.revokeAll(deviceConfig)
-                    }
-                }) {
+                DeXButton(
+                    onClick = {
+                        showResetConfirm = false
+                        // Revoke every persisted pairing, then rotate the identity hash so a
+                        // previously known auto-trust credential dies with the reset.
+                        coroutineScope.launch(Dispatchers.IO) {
+                            com.dexstudios.dex.core.network.services.TrustRevocationService.revokeAll(deviceConfig)
+                        }
+                    },
+                    style = DeXButtonDefaults.stadium.copy(horizontalPadding = 16.dp),
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                ) {
                     Text("Reset", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                DeXButton(
+                    onClick = { showResetConfirm = false },
+                    style = DeXButtonDefaults.stadium.copy(horizontalPadding = 16.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             },
         )
     }

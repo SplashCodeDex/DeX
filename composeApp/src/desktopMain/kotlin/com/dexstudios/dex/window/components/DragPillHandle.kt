@@ -36,6 +36,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -124,26 +127,21 @@ fun DragPillHandle(controller: DockedWindowStateController, modifier: Modifier =
                     label = "pinPressProgress",
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .bubbleFluidity(
-                            config = DynamicFluidityConfig.Default,
-                            onPressedChanged = { isPinFluidityPressed = it },
-                        )
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(if (isPinHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else Color.Transparent)
-                        .shinyGlare(
-                            shape = RoundedCornerShape(4.dp),
-                            intensity = if (isPinHovered) DefaultGlareIntensity * (1f + 0.60f * pinPressProgress) else 0f,
-                        )
-                        .hoverable(pinInteraction)
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .clickable(
-                            interactionSource = pinInteraction,
-                            indication = null,
-                        ) { controller.isPinned = !controller.isPinned },
-                    contentAlignment = Alignment.Center,
+                DeXButton(
+                    onClick = { controller.isPinned = !controller.isPinned },
+                    style = DeXButtonDefaults.dense.copy(
+                        shape = RoundedCornerShape(4.dp),
+                        minWidth = 18.dp,
+                        minHeight = 18.dp,
+                        horizontalPadding = 0.dp,
+                        verticalPadding = 0.dp,
+                        shadow = DeXButtonShadow.None,
+                        glareOnHoverOnly = true,
+                        contentGap = 0.dp,
+                    ),
+                    containerColor = Color.Transparent,
+                    hoverContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    interactionSource = pinInteraction,
                 ) {
                     androidx.compose.material3.Icon(
                         painter = painterResource(Res.drawable.ic_fluent_pin),

@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.auth.AuthState
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -210,34 +213,15 @@ private fun InboundPairingCard(alias: String, deadlineElapsedMs: Long, onPinEnte
                 label = "cancelElevation",
             )
 
-            Box(
-                modifier = Modifier
-                    .bubbleFluidity(
-                        config = DynamicFluidityConfig.Default,
-                        onPressedChanged = { isCancelFluidityPressed = it },
-                    )
-                    .defaultMinSize(minWidth = 100.dp)
-                    .shadow(
-                        elevation = cancelElevation,
-                        shape = CircleShape,
-                        spotColor = Color.Black.copy(alpha = 0.15f),
-                        ambientColor = Color.Black.copy(alpha = 0.08f),
-                    )
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .shinyGlare(
-                        shape = CircleShape,
-                        intensity = DefaultGlareIntensity * (1f + 0.60f * cancelPressProgress),
-                    )
-                    .hoverable(interactionSource = cancelInteraction)
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable(
-                        interactionSource = cancelInteraction,
-                        indication = null,
-                        onClick = onCancel,
-                    )
-                    .padding(horizontal = 24.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center,
+            DeXButton(
+                onClick = onCancel,
+                style = DeXButtonDefaults.action.copy(
+                    minWidth = 100.dp,
+                    horizontalPadding = 24.dp,
+                    verticalPadding = 9.dp,
+                    shadow = DeXButtonShadow.Low,
+                ),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 Text(
                     text = "Cancel",

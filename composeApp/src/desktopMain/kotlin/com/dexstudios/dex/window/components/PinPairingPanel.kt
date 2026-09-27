@@ -67,6 +67,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
@@ -505,51 +507,10 @@ private fun PairingStatusMessage(message: String?, modifier: Modifier = Modifier
  */
 @Composable
 private fun PairingActionButton(label: String, background: Color, contentColor: Color, onClick: () -> Unit, leadingIcon: androidx.compose.ui.graphics.painter.Painter? = null) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressedRaw by interactionSource.collectIsPressedAsState()
-    var isFluidityPressed by remember { mutableStateOf(false) }
-    val isPressed = isPressedRaw || isFluidityPressed
-
-    val pressProgress by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 0f,
-        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
-        label = "pairingBtnPressProgress",
-    )
-    val elevation by animateDpAsState(
-        targetValue = (4.dp * (1f - 0.20f * pressProgress)).coerceAtLeast(0.dp),
-        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
-        label = "pairingBtnElevation",
-    )
-
-    Box(
-        modifier = Modifier
-            .bubbleFluidity(
-                config = DynamicFluidityConfig.Default,
-                onPressedChanged = { isFluidityPressed = it },
-            )
-            .defaultMinSize(minWidth = 80.dp)
-            .shadow(
-                elevation = elevation,
-                shape = CircleShape,
-                spotColor = Color.Black.copy(alpha = 0.2f),
-                ambientColor = Color.Black.copy(alpha = 0.1f),
-            )
-            .clip(CircleShape)
-            .background(background)
-            .shinyGlare(
-                shape = CircleShape,
-                intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
-            )
-            .hoverable(interactionSource = interactionSource)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 18.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
+    DeXButton(
+        onClick = onClick,
+        style = DeXButtonDefaults.action,
+        containerColor = background,
     ) {
         Row(
             modifier = Modifier.transientContentBlur(

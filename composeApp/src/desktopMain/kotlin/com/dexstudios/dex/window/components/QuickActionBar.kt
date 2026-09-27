@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicContentBlurConfig
@@ -58,9 +60,10 @@ import org.jetbrains.compose.resources.painterResource
  * Centered row of 4 flat 62x48dp pill buttons (DND, Mirror, Transfers, Clipboard).
  *
  * Flat surface treatment (no liquid glass): state-morphing background
- * (checked = primary, danger hover = error, idle = surfaceVariant), soft ink
- * hover wash, contrast-inverted badge counter, bubbleFluidity press feel and
- * the hover scale 1.08x / translateY -3dp lift (500ms HoverEase).
+ * (checked = primary, danger hover = error, idle = surfaceVariant), a cursor-tracking
+ * spotlight pool that lights the pill under the pointer, soft ink hover wash,
+ * contrast-inverted badge counter, bubbleFluidity press feel and the hover
+ * scale 1.08x / translateY -3dp lift (500ms HoverEase).
  */
 @Composable
 fun QuickActionBar(
@@ -177,34 +180,14 @@ fun DeXQuickActionButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHoveredRaw by interactionSource.collectIsHoveredAsState()
-    val isPressedRaw by interactionSource.collectIsPressedAsState()
-    var isFluidityPressed by remember { mutableStateOf(false) }
     val isHovered = isHoveredRaw && enabled
-    val isPressed = (isPressedRaw || isFluidityPressed) && enabled
     val motionConfig = DynamicMotionConfig.Default
-    val pressProgress by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 0f,
-        animationSpec = motionConfig.springSpec(isPressed),
-        label = "btnPressProgress",
-    )
-    val shadowElevation = (4.dp * (1f - 0.20f * pressProgress)).coerceAtLeast(0.dp)
-
-    // Tactile Scale: 1.0 -> 1.08 (hover)
-    val scale by animateFloatAsState(
-        targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-        label = "btnScale",
-    )
-
-    // Tactile Translation: 0 -> -3dp (lift)
-    val translateY by animateDpAsState(
-        targetValue = if (isHovered) (-3).dp else 0.dp,
-        animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-        label = "btnTransY",
-    )
+    val isPressedRaw by interactionSource.collectIsPressedAsState()
 
     // State Morphing Background Color — semi-transparent for glassmorphism;
     // the ambient smoke haze bleeds through, creating a frosted look without blur.
+    // The hover wash is folded into the primitive's own hover fill rather than painted as a
+    // second background layer, so there is one fill to animate instead of two stacked ones.
     val backgroundColor by animateColorAsState(
         targetValue = when {
             !enabled -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f)
@@ -215,11 +198,7 @@ fun DeXQuickActionButton(
         label = "btnBgColor",
     )
 
-    val hoverOverlayColor by animateColorAsState(
-        targetValue = if (isHovered && !isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent,
-        animationSpec = tween(200),
-        label = "btnHoverOverlay",
-    )
+    val hoverFill = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
 
     // Icon Color Morphing
     val iconColor by animateColorAsState(
@@ -252,91 +231,56 @@ fun DeXQuickActionButton(
         },
         delayMillis = 400,
     ) {
-        Box(
-            modifier = modifier
-                .zIndex(if (isHovered || isPressed) 1f else 0f)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.translationY = translateY.toPx()
+        DeXButton(
+            onClick = onClick,
+            modifier = modifier.then(if (!enabled) Modifier.alpha(0.6f) else Modifier),
+            enabled = enabled,
+            style = DeXButtonDefaults.pill,
+            containerColor = backgroundColor,
+            hoverContainerColor = if (isChecked) backgroundColor else hoverFill,
+            interactionSource = interactionSource,
+            overlay = {
+                if (badgeCount > 0) {
+                    // Contrast Inversion for Badge Counter. Drawn inside the click target so a
+                    // click on the badge still hits the button, as it did when the surface was
+                    // hand-rolled.
+                    val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+                    val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 2.dp, end = 4.dp)
+                            .then(
+                                if (badgeBorder != null) {
+                                    Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .background(badgeBgColor, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = badgeCount.toString(),
+                            color = badgeTextColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
-                .size(width = 62.dp, height = 48.dp)
-                .then(
-                    if (enabled) {
-                        Modifier.bubbleFluidity(
-                            config = DynamicFluidityConfig.Default,
-                            onPressedChanged = { isFluidityPressed = it },
-                        )
-                    } else {
-                        Modifier.alpha(0.6f)
-                    },
-                )
-                .shadow(
-                    elevation = if (enabled) shadowElevation else 0.dp,
-                    shape = CircleShape,
-                    spotColor = Color.Black.copy(alpha = 0.2f),
-                    ambientColor = Color.Black.copy(alpha = 0.1f),
-                )
-                .clip(CircleShape)
-                .background(backgroundColor, CircleShape)
-                .background(hoverOverlayColor, CircleShape)
-                .then(
-                    if (enabled) {
-                        Modifier.shinyGlare(
-                            shape = CircleShape,
-                            intensity = DefaultGlareIntensity * (1f + 0.60f * pressProgress),
-                        )
-                    } else {
-                        Modifier
-                    },
-                )
-                .pointerHoverIcon(if (enabled) PointerIcon.Hand else PointerIcon.Default)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    enabled = enabled,
-                    onClick = onClick,
-                ),
-            contentAlignment = Alignment.Center,
+            },
         ) {
             Box(
                 modifier = Modifier.transientContentBlur(
                     trigger = isChecked,
                     config = DynamicContentBlurConfig.Default,
-                    motion = DynamicMotionConfig.Default,
+                    motion = motionConfig,
                 ),
                 contentAlignment = Alignment.Center,
             ) {
                 iconContent(iconColor)
-            }
-
-            if (badgeCount > 0) {
-                // Contrast Inversion for Badge Counter
-                val badgeBgColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.surface else androidx.compose.material3.MaterialTheme.colorScheme.primary
-                val badgeTextColor = if (isChecked) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
-                val badgeBorder = if (isChecked) BorderStroke(1.dp, androidx.compose.material3.MaterialTheme.colorScheme.primary) else null
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 2.dp, end = 4.dp)
-                        .then(
-                            if (badgeBorder != null) {
-                                Modifier.border(badgeBorder, RoundedCornerShape(10.dp))
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .background(badgeBgColor, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = badgeCount.toString(),
-                        color = badgeTextColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
             }
         }
     }

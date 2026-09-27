@@ -78,6 +78,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
@@ -90,7 +93,6 @@ import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityCon
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
 import com.dexstudios.dex.core.designsystem.components.island.transientContentBlur
 import com.dexstudios.dex.core.designsystem.components.overlay.ConfirmationPopup
-import com.dexstudios.dex.core.designsystem.components.spotlight.spotlight
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_arrow_back
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_file_upload
@@ -117,6 +119,20 @@ import javax.swing.JFileChooser
 import kotlin.math.abs
 import androidx.compose.ui.input.key.isCtrlPressed as isKeyCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed as isKeyMetaPressed
+
+/**
+ * Geometry for the two empty-state send actions. The 62x48 toolbar pill is the wrong scale for
+ * a labelled empty-state call to action, and the only differences between Send Files and
+ * Send Folders are the picker and the icon, so both share this one definition.
+ */
+private val emptyStateActionStyle = DeXButtonDefaults.pill.copy(
+    minWidth = 0.dp,
+    minHeight = 0.dp,
+    horizontalPadding = 16.dp,
+    verticalPadding = 8.dp,
+    shadow = DeXButtonShadow.Raised,
+    contentGap = 8.dp,
+)
 
 /**
  * FileExplorerPanel:
@@ -313,41 +329,18 @@ fun FileExplorerPanel(
                     )
 
                 // 40dp Circular Up-Dir Button
-                Box(
-                    modifier =
-                    Modifier.zIndex(if (isUpDirHovered) 1f else 0f)
-                        .graphicsLayer {
-                            scaleX = upDirScale
-                            scaleY = upDirScale
-                            translationY = upDirTranslateY.toPx()
-                        }
-                        .size(40.dp)
-                        .bubbleFluidity(
-                            config = DynamicFluidityConfig.Default,
-                            onPressedChanged = { isUpDirFluidityPressed = it },
-                        )
-                        .shadow(
-                            elevation = upDirShadowElevation,
-                            shape = CircleShape,
-                            spotColor = Color.Black.copy(alpha = 0.48f),
-                            ambientColor = Color.Black.copy(alpha = 0.26f),
-                        )
-                        .frostedSurface(
-                            shape = CircleShape,
-                            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                            opacity = 1.0f,
-                            glareIntensity = DefaultGlareIntensity * (1f + 0.60f * upDirPressProgress),
-                        )
-                        .alpha(if (!isAtRoot) 1.0f else 0.4f)
-                        .pointerHoverIcon(if (!isAtRoot) PointerIcon.Hand else PointerIcon.Default)
-                        .clickable(
-                            interactionSource = upDirInteraction,
-                            indication = null,
-                            enabled = !isAtRoot,
-                        ) {
-                            viewModel.navigateUp()
-                        },
-                    contentAlignment = Alignment.Center,
+                DeXButton(
+                    onClick = { viewModel.navigateUp() },
+                    modifier = Modifier.alpha(if (!isAtRoot) 1.0f else 0.4f),
+                    enabled = !isAtRoot,
+                    style = DeXButtonDefaults.floating.copy(
+                        minWidth = 40.dp,
+                        minHeight = 40.dp,
+                        horizontalPadding = 0.dp,
+                        verticalPadding = 0.dp,
+                    ),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    interactionSource = upDirInteraction,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_fluent_arrow_back),
@@ -505,36 +498,16 @@ fun FileExplorerPanel(
                     )
 
                 // 40dp Mode Toggle Button (SAF Phone vs PC History)
-                Box(
-                    modifier =
-                    Modifier.zIndex(if (isToggleHovered) 1f else 0f)
-                        .graphicsLayer {
-                            scaleX = toggleScale
-                            scaleY = toggleScale
-                            translationY = toggleTranslateY.toPx()
-                        }
-                        .size(40.dp)
-                        .bubbleFluidity(
-                            config = DynamicFluidityConfig.Default,
-                            onPressedChanged = { isToggleFluidityPressed = it },
-                        )
-                        .shadow(
-                            elevation = toggleShadowElevation,
-                            shape = CircleShape,
-                            spotColor = Color.Black.copy(alpha = 0.48f),
-                            ambientColor = Color.Black.copy(alpha = 0.26f),
-                        )
-                        .frostedSurface(
-                            shape = CircleShape,
-                            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                            opacity = 1.0f,
-                            glareIntensity = DefaultGlareIntensity * (1f + 0.60f * togglePressProgress),
-                        )
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .clickable(interactionSource = toggleInteraction, indication = null) {
-                            viewModel.toggleMode()
-                        },
-                    contentAlignment = Alignment.Center,
+                DeXButton(
+                    onClick = { viewModel.toggleMode() },
+                    style = DeXButtonDefaults.floating.copy(
+                        minWidth = 40.dp,
+                        minHeight = 40.dp,
+                        horizontalPadding = 0.dp,
+                        verticalPadding = 0.dp,
+                    ),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    interactionSource = toggleInteraction,
                 ) {
                     Box(
                         modifier = Modifier.transientContentBlur(
@@ -905,80 +878,24 @@ fun FileExplorerPanel(
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val sendFilesInteraction = remember { MutableInteractionSource() }
-                    val sendFilesHovered by sendFilesInteraction.collectIsHoveredAsState()
-                    val isSendFilesPressedRaw by sendFilesInteraction.collectIsPressedAsState()
-                    var isSendFilesFluidityPressed by remember { mutableStateOf(false) }
-                    val isSendFilesPressed = isSendFilesPressedRaw || isSendFilesFluidityPressed
-                    val sendFilesPressProgress by animateFloatAsState(
-                        targetValue = if (isSendFilesPressed) 1f else 0f,
-                        animationSpec = DynamicMotionConfig.Default.springSpec(isSendFilesPressed),
-                        label = "sendFilesPressProgress",
-                    )
-                    val sendFilesShadowElevation = (8.dp * (1f - 0.20f * sendFilesPressProgress)).coerceAtLeast(0.dp)
-
-                    val sendFilesScale by
-                        animateFloatAsState(
-                            targetValue = if (sendFilesHovered) 1.08f else 1.0f,
-                            animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-                            label = "sendFilesScale",
-                        )
-                    val sendFilesTranslateY by
-                        animateDpAsState(
-                            targetValue = if (sendFilesHovered) (-3).dp else 0.dp,
-                            animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-                            label = "sendFilesTransY",
-                        )
-
                     // Send Files Action (Native File Picker)
-                    Row(
-                        modifier =
-                        Modifier.zIndex(if (sendFilesHovered) 1f else 0f)
-                            .graphicsLayer {
-                                scaleX = sendFilesScale
-                                scaleY = sendFilesScale
-                                translationY = sendFilesTranslateY.toPx()
-                            }
-                            .bubbleFluidity(
-                                config = DynamicFluidityConfig.Default,
-                                onPressedChanged = { isSendFilesFluidityPressed = it },
-                            )
-                            .shadow(
-                                elevation = sendFilesShadowElevation,
-                                shape = CircleShape,
-                                spotColor = Color.Black.copy(alpha = 0.35f),
-                                ambientColor = Color.Black.copy(alpha = 0.18f),
-                            )
-                            .frostedSurface(
-                                shape = CircleShape,
-                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                                opacity = 1.0f,
-                                glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFilesPressProgress),
-                            )
-                            .spotlight(
-                                shape = CircleShape,
-                                pressProgress = sendFilesPressProgress,
-                            )
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable(
-                                interactionSource = sendFilesInteraction,
-                                indication = null,
-                            ) {
-                                controller?.isModalDialogOpen = true
-                                onSendFiles()
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    try {
-                                        val picked = pickFilesForSend("Select Files to Send")
-                                        if (picked.isNotEmpty()) {
-                                            fileSender.sendFiles(picked)
-                                        }
-                                    } finally {
-                                        controller?.isModalDialogOpen = false
+                    DeXButton(
+                        onClick = {
+                            controller?.isModalDialogOpen = true
+                            onSendFiles()
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    val picked = pickFilesForSend("Select Files to Send")
+                                    if (picked.isNotEmpty()) {
+                                        fileSender.sendFiles(picked)
                                     }
+                                } finally {
+                                    controller?.isModalDialogOpen = false
                                 }
                             }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        },
+                        style = emptyStateActionStyle,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_fluent_file_upload),
@@ -994,80 +911,25 @@ fun FileExplorerPanel(
                         )
                     }
 
-                    val sendFoldersInteraction = remember { MutableInteractionSource() }
-                    val sendFoldersHovered by sendFoldersInteraction.collectIsHoveredAsState()
-                    val isSendFoldersPressedRaw by sendFoldersInteraction.collectIsPressedAsState()
-                    var isSendFoldersFluidityPressed by remember { mutableStateOf(false) }
-                    val isSendFoldersPressed = isSendFoldersPressedRaw || isSendFoldersFluidityPressed
-                    val sendFoldersPressProgress by animateFloatAsState(
-                        targetValue = if (isSendFoldersPressed) 1f else 0f,
-                        animationSpec = DynamicMotionConfig.Default.springSpec(isSendFoldersPressed),
-                        label = "sendFoldersPressProgress",
-                    )
-                    val sendFoldersShadowElevation = (8.dp * (1f - 0.20f * sendFoldersPressProgress)).coerceAtLeast(0.dp)
-
-                    val sendFoldersScale by
-                        animateFloatAsState(
-                            targetValue = if (sendFoldersHovered) 1.08f else 1.0f,
-                            animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-                            label = "sendFoldersScale",
-                        )
-                    val sendFoldersTranslateY by
-                        animateDpAsState(
-                            targetValue = if (sendFoldersHovered) (-3).dp else 0.dp,
-                            animationSpec = tween(500, easing = DockCardPhysics.HoverEase),
-                            label = "sendFoldersTransY",
-                        )
-
-                    // Send Folders Action (Native Directory Picker)
-                    Row(
-                        modifier =
-                        Modifier.zIndex(if (sendFoldersHovered) 1f else 0f)
-                            .graphicsLayer {
-                                scaleX = sendFoldersScale
-                                scaleY = sendFoldersScale
-                                translationY = sendFoldersTranslateY.toPx()
-                            }
-                            .bubbleFluidity(
-                                config = DynamicFluidityConfig.Default,
-                                onPressedChanged = { isSendFoldersFluidityPressed = it },
-                            )
-                            .shadow(
-                                elevation = sendFoldersShadowElevation,
-                                shape = CircleShape,
-                                spotColor = Color.Black.copy(alpha = 0.35f),
-                                ambientColor = Color.Black.copy(alpha = 0.18f),
-                            )
-                            .frostedSurface(
-                                shape = CircleShape,
-                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                                opacity = 1.0f,
-                                glareIntensity = DefaultGlareIntensity * (1f + 0.60f * sendFoldersPressProgress),
-                            )
-                            .spotlight(
-                                shape = CircleShape,
-                                pressProgress = sendFoldersPressProgress,
-                            )
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable(
-                                interactionSource = sendFoldersInteraction,
-                                indication = null,
-                            ) {
-                                controller?.isModalDialogOpen = true
-                                onSendFolders()
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    try {
-                                        val folder = pickFolderForSend("Select Folder to Send")
-                                        if (folder != null) {
-                                            fileSender.sendFolders(listOf(folder))
-                                        }
-                                    } finally {
-                                        controller?.isModalDialogOpen = false
+                    // Send Folders Action (Native Directory Picker) — same button as Send Files,
+                    // differing only in picker and icon, so it shares the style by construction.
+                    DeXButton(
+                        onClick = {
+                            controller?.isModalDialogOpen = true
+                            onSendFolders()
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    val folder = pickFolderForSend("Select Folder to Send")
+                                    if (folder != null) {
+                                        fileSender.sendFolders(listOf(folder))
                                     }
+                                } finally {
+                                    controller?.isModalDialogOpen = false
                                 }
                             }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        },
+                        style = emptyStateActionStyle,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_fluent_folder),

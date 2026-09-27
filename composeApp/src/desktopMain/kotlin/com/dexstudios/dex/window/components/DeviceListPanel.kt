@@ -49,6 +49,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
@@ -193,76 +196,50 @@ fun DeviceListPanel(
     }
 }
 
+/**
+ * Geometry for a device list row. A row rather than a button, so it stays transparent at rest,
+ * keeps its own lateral WPF kinematics on the caller modifier, and hides the glare rim until it
+ * is actually hovered or active.
+ */
+private val deviceRowStyle = DeXButtonDefaults.dense.copy(
+    shape = RoundedCornerShape(12.dp),
+    minWidth = 0.dp,
+    minHeight = 0.dp,
+    horizontalPadding = 16.dp,
+    verticalPadding = 10.dp,
+    shadow = DeXButtonShadow.None,
+    hoverScale = 1.08f,
+    glareOnHoverOnly = true,
+    fillWidth = true,
+    // The row owns its own width; the surface has to match it rather than hug the text.
+    fillSurface = true,
+    contentGap = 0.dp,
+)
+
 @Composable
 private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressedRaw by interactionSource.collectIsPressedAsState()
-    var isFluidityPressed by remember { mutableStateOf(false) }
-    val isPressed = isPressedRaw || isFluidityPressed
-
-    val pressProgress by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 0f,
-        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
-        label = "deviceRowPressProgress",
-    )
-    val elevation by animateDpAsState(
-        targetValue = (if (isHovered || device.isActive) 3.dp else 0.dp) * (1f - 0.20f * pressProgress),
-        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
-        label = "deviceRowElevation",
-    )
-
-    val cardBg = when {
-        isHovered || device.isActive -> MaterialTheme.colorScheme.surfaceVariant
-        else -> Color.Transparent
-    }
 
     val alpha = if (device.isOnline) 1.0f else 0.5f
 
-    // WPF Kinematics
+    // WPF Kinematics: the row slides out laterally rather than lifting, which is why the lateral
+    // offset stays on the caller modifier instead of using the primitive's hover lift.
     val transX by animateDpAsState(
         targetValue = if (isHovered) 6.dp else 0.dp,
         animationSpec = DockCardPhysics.ElasticDpSpec,
     )
-    val scale by animateFloatAsState(
-        targetValue = if (isHovered) 1.08f else 1.0f,
-        animationSpec = DockCardAnimations.SoftHoverSpec,
-    )
 
-    Row(
+    DeXButton(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 1.dp)
-            .graphicsLayer {
-                translationX = transX.toPx()
-                scaleX = scale
-                scaleY = scale
-            }
-            .bubbleFluidity(
-                config = DynamicFluidityConfig.Default,
-                onPressedChanged = { isFluidityPressed = it },
-            )
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(12.dp),
-                spotColor = Color.Black.copy(alpha = 0.15f),
-                ambientColor = Color.Black.copy(alpha = 0.08f),
-            )
-            .clip(RoundedCornerShape(12.dp))
-            .background(cardBg)
-            .shinyGlare(
-                shape = RoundedCornerShape(12.dp),
-                intensity = if (isHovered || device.isActive) DefaultGlareIntensity * (1f + 0.60f * pressProgress) else 0f,
-            )
-            .hoverable(interactionSource = interactionSource)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .graphicsLayer { translationX = transX.toPx() },
+        style = deviceRowStyle.copy(shadow = if (device.isActive) DeXButtonShadow.Low else DeXButtonShadow.None),
+        containerColor = Color.Transparent,
+        hoverContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        interactionSource = interactionSource,
     ) {
         Row(modifier = Modifier.weight(1f).alpha(alpha), verticalAlignment = Alignment.CenterVertically) {
             // 38x38dp Leading Circle Glyph with Sub-Dot Indicator
@@ -394,7 +371,7 @@ private fun DeviceListItemRow(device: DeviceItemUiModel, onClick: () -> Unit, mo
  * Empty state for the dock's device list: the shared DevicesMorph loop, plus the label under it.
  *
  * The animation's ritardando choreography, its 8 MB of keyframes and the "do not load while the
- * card is collapsed" rule all live in [DevicesMorphAnimation] now ΓÇö this dock and Android's
+ * card is collapsed" rule all live in [DevicesMorphAnimation] now — this dock and Android's
  * carousel draw the same loop from the same source, which is how the two stopped drifting.
  *
  * @param isVisible the dock card's expanded state; drives the animation's own [enabled] gate.

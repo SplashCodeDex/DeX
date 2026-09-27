@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonShadow
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_close
 import com.dexstudios.dex.core.designsystem.theme.OverlayPhysics
@@ -301,18 +304,18 @@ private fun BacklogSummaryPill(backlogCount: Int, alpha: Float, onClearAll: (() 
         )
 
         if (onClearAll != null) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClearAll,
+            DeXButton(
+                onClick = onClearAll,
+                style = remember {
+                    DeXButtonDefaults.dense.copy(
+                        shape = RoundedCornerShape(8.dp),
+                        horizontalPadding = 6.dp,
+                        verticalPadding = 2.dp,
+                        shadow = DeXButtonShadow.None,
+                        contentGap = 4.dp,
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                },
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_fluent_close),

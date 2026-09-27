@@ -1,38 +1,22 @@
 package com.dexstudios.dex.core.designsystem.components.buttons
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.isSpecified
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
-import com.dexstudios.dex.core.designsystem.components.glass.DefaultGlareIntensity
-import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
-import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.spotlight.spotlight
 import com.dexstudios.dex.core.designsystem.icons.DeXIcons
 import org.jetbrains.compose.resources.painterResource
 
@@ -132,11 +116,17 @@ object DeXCloseButtonDefaults {
 /**
  * Dedicated, centralized Close / Dismiss ('X') button.
  *
+ * A [DeXButton] with the close geometry and the four colour moods, so it inherits the shared
+ * touch physics, cast shadow, glare rim, hand cursor, [Role.Button] semantics and the
+ * cursor-tracking [spotlight] beam rather than restating them.
+ *
  * Implements:
  * 1. Standardized circular geometry across 5 explicit size variants ([DeXCloseButtonSize]).
- * 2. Organic [bubbleFluidity] anisotropic press squish and viscoelastic snap-back.
- * 3. Optical specular glare flaring on hover and press ([shinyGlare]).
- * 4. Hand hover cursor ([PointerIcon.Hand]) and accessible semantics.
+ * 2. A squish-tuned [DeXButtonDefaults] fluidity for dismiss and cancel touch targets.
+ * 3. Four colour moods, from transparent ghost to danger-tinted, each with a hover fill.
+ *    Ghost colors are lit safely: the beam is additive, so it only becomes visible once the
+ *    hover container paints.
+ * 4. Glare rim dark at rest, flaring on hover and press.
  * 5. Zero liquid-glass / backdrop overhead, safely usable anywhere in the application.
  */
 @Composable
@@ -151,50 +141,34 @@ fun DeXCloseButton(
 ) {
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressedRaw by interactionSource.collectIsPressedAsState()
-    var isFluidityPressed by remember { mutableStateOf(false) }
-    val isPressed = (isPressedRaw || isFluidityPressed) && enabled
-
-    val pressProgress by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 0f,
-        animationSpec = DynamicMotionConfig.Default.springSpec(isPressed),
-        label = "closeButtonPressProgress",
-    )
+    val isActive = isHovered || isPressedRaw
 
     val currentContainerColor = when {
         !enabled -> colors.disabledContainerColor
-        isHovered || isPressed -> colors.hoverContainerColor
+        isActive -> colors.hoverContainerColor
         else -> colors.containerColor
     }
-
     val currentContentColor = if (enabled) colors.contentColor else colors.disabledContentColor
 
-    Box(
-        modifier = modifier
-            .size(size.buttonSize)
-            .bubbleFluidity(
-                config = DeXCloseButtonDefaults.Fluidity.copy(enabled = enabled),
-                onPressedChanged = { isFluidityPressed = it },
-            )
-            .clip(CircleShape)
-            .background(currentContainerColor)
-            .shinyGlare(
-                shape = CircleShape,
-                intensity = if ((isHovered || isPressed) && enabled) {
-                    DefaultGlareIntensity * (1f + 0.60f * pressProgress)
-                } else {
-                    0f
-                },
-            )
-            .hoverable(interactionSource = interactionSource, enabled = enabled)
-            .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                role = Role.Button,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
+    // The 18-40dp targets in this size range are why the house default is tuned this tight: a
+    // wide beam on a 24dp button would spill onto the surrounding surface and read as a halo
+    // rather than a lit button.
+    val style = remember(size) {
+        DeXButtonDefaults.icon.copy(
+            minWidth = size.buttonSize,
+            minHeight = size.buttonSize,
+            fluidity = DeXCloseButtonDefaults.Fluidity,
+        )
+    }
+
+    DeXButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        style = style,
+        containerColor = currentContainerColor,
+        hoverContainerColor = colors.hoverContainerColor,
+        interactionSource = interactionSource,
     ) {
         Icon(
             painter = painterResource(DeXIcons.Close),

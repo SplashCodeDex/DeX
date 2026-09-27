@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dexstudios.dex.core.designsystem.components.bubbleFluidity
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButton
+import com.dexstudios.dex.core.designsystem.components.buttons.DeXButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButton
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonDefaults
 import com.dexstudios.dex.core.designsystem.components.buttons.DeXCloseButtonSize
@@ -54,6 +56,7 @@ import com.dexstudios.dex.core.designsystem.components.glass.frostedSurface
 import com.dexstudios.dex.core.designsystem.components.glass.shinyGlare
 import com.dexstudios.dex.core.designsystem.components.island.DynamicFluidityConfig
 import com.dexstudios.dex.core.designsystem.components.island.DynamicMotionConfig
+import com.dexstudios.dex.core.designsystem.components.spotlight.SpotlightConfig
 import com.dexstudios.dex.core.designsystem.generated.resources.Res
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_article
 import com.dexstudios.dex.core.designsystem.generated.resources.ic_fluent_folder
@@ -229,37 +232,16 @@ fun QuickLookModal(
                         label = "openScale",
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = openScale
-                                scaleY = openScale
-                            }
-                            .bubbleFluidity(
-                                config = DynamicFluidityConfig.Default,
-                                onPressedChanged = { isOpenFluidityPressed = it },
-                            )
-                            .shadow(
-                                elevation = openElevation,
-                                shape = RoundedCornerShape(9.dp),
-                                spotColor = Color.Black.copy(alpha = 0.2f),
-                                ambientColor = Color.Black.copy(alpha = 0.1f),
-                            )
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(MaterialTheme.colorScheme.primary)
-                            .shinyGlare(
-                                shape = RoundedCornerShape(9.dp),
-                                intensity = DefaultGlareIntensity * (1f + 0.60f * openPressProgress),
-                            )
-                            .hoverable(interactionSource = openInteraction)
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable(
-                                interactionSource = openInteraction,
-                                indication = null,
-                                onClick = onOpenNative,
-                            )
-                            .padding(horizontal = 11.dp, vertical = 5.dp),
-                        contentAlignment = Alignment.Center,
+                    DeXButton(
+                        onClick = onOpenNative,
+                        style = DeXButtonDefaults.compact.copy(
+                            shape = RoundedCornerShape(9.dp),
+                            minHeight = 0.dp,
+                            horizontalPadding = 11.dp,
+                            verticalPadding = 5.dp,
+                            spotlight = SpotlightConfig.Focused,
+                        ),
+                        containerColor = MaterialTheme.colorScheme.primary,
                     ) {
                         Text(
                             text = if (item.isDirectory) "Open Folder" else "Open App",
@@ -548,32 +530,13 @@ private fun GenericMetadataPreviewPane(item: ExplorerFileItem, file: File, ext: 
         )
 
         // Open Location Button
-        Box(
-            modifier = Modifier
-                .bubbleFluidity(
-                    config = DynamicFluidityConfig.Default,
-                    onPressedChanged = { isLocFluidityPressed = it },
-                )
-                .shadow(
-                    elevation = locElevation,
-                    shape = RoundedCornerShape(8.dp),
-                    spotColor = Color.Black.copy(alpha = 0.15f),
-                    ambientColor = Color.Black.copy(alpha = 0.08f),
-                )
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .shinyGlare(
-                    shape = RoundedCornerShape(8.dp),
-                    intensity = DefaultGlareIntensity * (1f + 0.60f * locPressProgress),
-                )
-                .hoverable(interactionSource = locInteraction)
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(
-                    interactionSource = locInteraction,
-                    indication = null,
-                    onClick = onOpenLocation,
-                )
-                .padding(horizontal = 14.dp, vertical = 6.dp),
+        DeXButton(
+            onClick = onOpenLocation,
+            style = DeXButtonDefaults.compact.copy(
+                minHeight = 0.dp,
+                horizontalPadding = 14.dp,
+            ),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Text(
                 text = "Show in File Location",
